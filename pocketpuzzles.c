@@ -7,13 +7,13 @@
 #include "pocketpuzzles.h"
 
 static bool coord_in_button(int x, int y, BUTTON *button) {
-    return ((x>=button->posx) && (x<(button->posx+button->size)) &&
+    return (button->active &&
+            (x>=button->posx) && (x<(button->posx+button->size)) &&
             (y>=button->posy) && (y<(button->posy+button->size)));
 }
-
-static void button_to_normal(BUTTON *button) {
+static void button_to_normal(BUTTON *button, bool update) {
     StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
-    PartialUpdate(button->posx, button->posy, button->size, button->size);
+    if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
 static void button_to_tapped(BUTTON *button) {
     if (button->bitmap_tap == NULL)
@@ -22,92 +22,143 @@ static void button_to_tapped(BUTTON *button) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap_tap, 0);
     PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
-
-static void setupMenuButtons() {
-    icon_size = PanelHeight();
-
-    bt_home.posx = 10;
-    bt_home.posy = start_y_top;
-    bt_home.size = icon_size; 
-}
-
-static void setupChooserLayout() {
-    SetPanelType(PANEL_ENABLED);
-    ClearScreen();
-    DrawPanel(NULL, "", "", 0);
-    start_y_top = 0;
-    height_top   = PanelHeight()+2;
-
-    start_y_chooser = PanelHeight()+3;
-    height_chooser = ScreenHeight() - PanelHeight() - start_y_chooser - 2;
+static void button_to_cleared(BUTTON *button, bool update) {
+    FillArea(button->posx, button->posy, button->size, button->size, 0x00FFFFFF);
+    if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
 
 static void drawChooserTop() {
-    FillArea(0, start_y_top, ScreenWidth(), height_top, 0x00FFFFFF);
-    FillArea(0, start_y_top+height_top-2, ScreenWidth(), 1, 0x00000000);
+    FillArea(0, layout.menu.starty, ScreenWidth(), layout.menu.height, 0x00FFFFFF);
+    FillArea(0, layout.menu.starty + layout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
-    button_to_normal(&bt_home);
+    button_to_normal(&btn_home, false);
 
     font = OpenFont("LiberationSans-Bold", kFontSize, 0);
-    DrawTextRect(0, (icon_size/2)-(3*kFontSize/4), ScreenWidth(), kFontSize, "PUZZLES", ALIGN_CENTER);
+    DrawTextRect(0, (icon_size/2)-(kFontSize/2), ScreenWidth(), kFontSize, "PUZZLES", ALIGN_CENTER);
     CloseFont(font);
 }
 
 static void setupChooserButtons() {
     int i;
-    int c,r;
+    int c,r,p,pi;
+    int col = chooser_cols;
+    int row = chooser_rows;
+
+    for(i=0;i<num_games;i++) {
+        p = i / (col*row);
+        pi = i % (col*row);
+        c = pi % col;
+        r = pi / col;
+        btn_chooser[i].posx = (c+1)*chooser_padding + c*chooser_size;
+        btn_chooser[i].posy = 50 + layout.maincanvas.starty + r*(20+kFontSize+chooser_size);
+        btn_chooser[i].page = p;
+        btn_chooser[i].size = chooser_size;
+    }
+}
+
+static void drawChooserButtons(int page) {
+    int i;
+    FillArea(0, layout.maincanvas.starty, ScreenWidth(), layout.maincanvas.height, 0x00FFFFFF);
+    font = OpenFont("LiberationSans-Bold", kFontSize, 0);
+    for(i=0;i<num_games;i++) {
+        if (btn_chooser[i].page == page) {
+            btn_chooser[i].active = true;
+            button_to_normal(&btn_chooser[i], false);
+            DrawTextRect(btn_chooser[i].posx-(chooser_padding/2),
+                         btn_chooser[i].posy+btn_chooser[i].size+5,
+                         btn_chooser[i].size+chooser_padding, kFontSize,
+                         btn_chooser[i].title, ALIGN_CENTER);
+        }
+        else {
+            btn_chooser[i].active = false;
+        }
+    }
+    CloseFont(font);
+}
+
+static void drawChooserControlButtons(int page) {
+    FillArea(0, layout.buttonpanel.starty, ScreenWidth(), layout.buttonpanel.height, 0x00FFFFFF);
+    FillArea(0, layout.buttonpanel.starty, ScreenWidth(), 1, 0x00000000);
+
+    if (page == 0) {
+        btn_prev.active = false;
+        button_to_cleared(&btn_prev, false);
+    }
+    else {
+        btn_prev.active = true;
+        button_to_normal(&btn_prev, false);
+    }
+    if (page == chooser_lastpage) {
+        btn_next.active = false;
+        button_to_cleared(&btn_next, false);
+    }
+    else {
+        btn_next.active = true;
+        button_to_normal(&btn_next, false);
+    }
+}
+
+static void setupChooserControlButtons() {
+    control_padding = (ScreenWidth()-(control_num*control_size))/(control_num+1);
+
+    btn_prev.posx = control_padding;
+    btn_prev.posy = layout.buttonpanel.starty + 2;
+    btn_prev.size = control_size;
+    btn_next.posx = 2*control_padding + control_size;
+    btn_next.posy = layout.buttonpanel.starty + 2;
+    btn_next.size = control_size;
+}
+
+static void setupMenuButtons() {
+    btn_home.active = true;
+    btn_home.posx = 10;
+    btn_home.posy = layout.menu.starty;
+    btn_home.size = icon_size;
+}
+
+static void setupLayout() {
+    SetPanelType(PANEL_ENABLED);
+    ClearScreen();
+    DrawPanel(NULL, "", "", 0);
 
     icon_size = PanelHeight();
-    button_size = ScreenWidth()/8;
-    chooser_padding = (ScreenWidth()-(chooser_x_num*button_size))/(chooser_x_num+1);
+    control_size = ScreenWidth()/10;
+    chooser_size = ScreenWidth()/8;
+    chooser_padding = (ScreenWidth()-(chooser_cols*chooser_size))/(chooser_cols+1);
+    chooser_lastpage = num_games / (chooser_cols * chooser_rows);
+    current_chooserpage = 0;
 
-    for(i=0;i<num_games;i++) {
-        c = i % chooser_x_num;
-        r = i / chooser_x_num;
-        bt_chooser[i].button.active = true;
-        bt_chooser[i].button.posx = (c+1)*chooser_padding + c*button_size;
-        bt_chooser[i].button.posy = 10 + start_y_chooser + r*(20+kFontSize+button_size);
-        bt_chooser[i].button.size = button_size;
-    }
-}
+    layout.with_statusbar = false;
+    layout.menu.starty = 0;
+    layout.menu.height = PanelHeight() + 2;
 
-static void drawChooserButtons() {
-    int i;
-    font = OpenFont("LiberationSans-Bold", kFontSize, 0);
-    for(i=0;i<num_games;i++) {
-        CHOOSER chooser = bt_chooser[i];
-        button_to_normal(&chooser.button);
-        DrawTextRect(chooser.button.posx-(chooser_padding/2),
-                     chooser.button.posy+chooser.button.size+5,
-                     chooser.button.size+chooser_padding, kFontSize,
-                     chooser.title, ALIGN_CENTER);
-    }
-    CloseFont(font);
-}
+    layout.statusbar.height = kFontSize + 40;
+    layout.statusbar.starty = ScreenHeight()-PanelHeight()-layout.statusbar.height;
 
-static void drawStatusBar(char *text) {
-    font = OpenFont("LiberationSans-Bold", kFontSize, 0);
-    int bar_top = ScreenHeight()-PanelHeight()-kFontSize-40;
-    
-    FillArea(0, bar_top, ScreenWidth(), kFontSize+40, 0x00FFFFFF);
-    DrawTextRect(10, bar_top+8, ScreenWidth(), kFontSize, text, ALIGN_LEFT);
-    PartialUpdate(0, bar_top, ScreenWidth(), kFontSize+40);
-    CloseFont(font);
+    layout.buttonpanel.height = control_size + 5;
+    layout.buttonpanel.starty = ScreenHeight()-PanelHeight()-layout.buttonpanel.height;
+
+    layout.buttonpanel_sb.height = control_size + 5;
+    layout.buttonpanel_sb.starty = layout.statusbar.starty - layout.buttonpanel_sb.height;
+
+    layout.maincanvas.starty = PanelHeight() + 3;
+    layout.maincanvas.height = ScreenHeight() - 2*PanelHeight() - 5;
+
+    layout.maincanvas_sb.starty = PanelHeight() + 3;
+    layout.maincanvas_sb.height = layout.buttonpanel_sb.starty - layout.maincanvas_sb.starty;
 }
 
 static void tap(int x, int y) {
     init_tap_x = x;
     init_tap_y = y;
     int i;
-    char buf[256];
-    
-    snprintf(buf, 200, "Tap at %d %d", x, y);
-    drawStatusBar(buf);
-    
-    if (coord_in_button(x, y, &bt_home)) button_to_tapped(&bt_home);
+
+    if (coord_in_button(x, y, &btn_home)) button_to_tapped(&btn_home);
+    if (coord_in_button(x, y, &btn_prev)) button_to_tapped(&btn_prev);
+    if (coord_in_button(x, y, &btn_next)) button_to_tapped(&btn_next);
     for (i=0;i<num_games;i++) {
-        if (coord_in_button(x, y, &bt_chooser[i].button)) {
-            button_to_tapped(&bt_chooser[i].button);
+        if (coord_in_button(x, y, &btn_chooser[i])) {
+            button_to_tapped(&btn_chooser[i]);
             break;
         }
     }
@@ -118,26 +169,47 @@ static void long_tap(int x, int y) {
 
 static void release(int x, int y) {
     int i;
-    if (coord_in_button(init_tap_x, init_tap_y, &bt_home)) button_to_normal(&bt_home);
-    if (coord_in_button(init_tap_x, init_tap_y, &bt_home) &&
-        coord_in_button(x, y, &bt_home)) {
-        exitApp();
-    }
+    if (coord_in_button(init_tap_x, init_tap_y, &btn_home)) button_to_normal(&btn_home, true);
+    if (coord_in_button(init_tap_x, init_tap_y, &btn_prev)) button_to_normal(&btn_prev, true);
+    if (coord_in_button(init_tap_x, init_tap_y, &btn_next)) button_to_normal(&btn_next, true);
     for (i=0;i<num_games;i++) {
-        if (coord_in_button(init_tap_x, init_tap_y, &bt_chooser[i].button)) {
-            button_to_normal(&bt_chooser[i].button);
+        if (coord_in_button(init_tap_x, init_tap_y, &btn_chooser[i])) {
+            button_to_normal(&btn_chooser[i], true);
             break;
         }
     }
+
+    if (coord_in_button(init_tap_x, init_tap_y, &btn_home) &&
+        coord_in_button(x, y, &btn_home)) {
+        exitApp();
+    }
+    if (coord_in_button(init_tap_x, init_tap_y, &btn_prev) &&
+        coord_in_button(x, y, &btn_prev) &&
+        (current_chooserpage > 0)) {
+            current_chooserpage -= 1;
+            showChooserPage();
+    }
+    if (coord_in_button(init_tap_x, init_tap_y, &btn_next) &&
+        coord_in_button(x, y, &btn_next) &&
+        (current_chooserpage <= chooser_lastpage)) {
+            current_chooserpage += 1;
+            showChooserPage();
+    }
+}
+
+static void showChooserPage() {
+    drawChooserButtons(current_chooserpage);
+    drawChooserControlButtons(current_chooserpage);
+    FullUpdate();
 }
 
 static void setupApp() {
-    setupChooserLayout();
+    setupLayout();
     setupMenuButtons();
     drawChooserTop();
     setupChooserButtons();
-    drawChooserButtons();
-    FullUpdate();
+    setupChooserControlButtons();
+    showChooserPage();
 }
 
 static void exitApp() {
@@ -168,4 +240,3 @@ int main (int argc, char* argv[]) {
     InkViewMain(main_handler);
     return 0;
 }
-
