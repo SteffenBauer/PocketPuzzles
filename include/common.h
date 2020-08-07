@@ -18,16 +18,10 @@ struct layout {
     int menubtn_size;
     int control_size;
     int chooser_size;
-    int control_padding;
-    int chooser_padding;
 
     PANEL menu;
     PANEL maincanvas;
-    PANEL maincanvas_sb;
-    PANEL maincanvas_nosb;
     PANEL buttonpanel;
-    PANEL buttonpanel_sb;
-    PANEL buttonpanel_nosb;
     PANEL statusbar;
 };
 
@@ -52,14 +46,17 @@ typedef struct button {
 } BUTTON;
 
 bool coord_in_button(int x, int y, BUTTON *button);
+bool release_button(int x, int y, BUTTON *button);
 void button_to_normal(BUTTON *button, bool update);
 void button_to_tapped(BUTTON *button);
 void button_to_cleared(BUTTON *button, bool update);
 
-void exitApp();
-
 int init_tap_x;
 int init_tap_y;
+
+extern void switchToChooser();
+extern void switchToGame();
+extern void exitApp();
 
 #endif
 
