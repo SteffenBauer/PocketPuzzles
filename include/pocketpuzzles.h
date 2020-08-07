@@ -2,6 +2,7 @@
 #define POCKETPUZZLES_HEADER
 
 #include "chooser.h"
+#include "game.h"
 #include "common.h"
 
 typedef enum {
@@ -23,8 +24,12 @@ struct screen {
 
 struct layout mainlayout;
 
+void switchToChooser();
+void switchToGame();
+
 static void setupLayout();
 static void setupApp();
+void exitApp();
 
 #endif
 

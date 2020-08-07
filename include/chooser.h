@@ -7,6 +7,8 @@ int current_chooserpage;
 int chooser_lastpage;
 
 static int control_num = 2;
+static int control_padding;
+static int chooser_padding;
 
 extern ibitmap icon_home, icon_home_tap, 
                game_abcd, game_ascent, game_blackbox, game_boats, game_bridges,
@@ -91,7 +93,7 @@ static void chooserSetupMenuButtons();
 static void chooserSetupChooserButtons();
 static void chooserSetupControlButtons();
 
-static void chooserDrawTop();
+static void chooserDrawMenu();
 static void chooserDrawChooserButtons(int page);
 static void chooserDrawControlButtons(int page);
 

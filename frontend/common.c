@@ -33,7 +33,4 @@ void button_to_cleared(BUTTON *button, bool update) {
     if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
 
-void exitApp() {
-    CloseApp();
-}
 
