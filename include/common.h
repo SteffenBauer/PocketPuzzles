@@ -1,5 +1,6 @@
 #ifndef POCKETPUZZLES_COMMON_HEADER
 #define POCKETPUZZLES_COMMON_HEADER
+#include "puzzles.h"
 
 ifont *font;
 int kFontSize;
@@ -41,8 +42,7 @@ typedef struct button {
     ibitmap *bitmap;
     ibitmap *bitmap_tap;
     ibitmap *bitmap_disabled;
-    char *title;
-    // struct game *thegame;
+    const struct game *thegame;
 } BUTTON;
 
 bool coord_in_button(int x, int y, BUTTON *button);

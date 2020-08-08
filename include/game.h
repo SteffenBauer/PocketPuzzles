@@ -1,6 +1,40 @@
 #ifndef POCKETPUZZLES_GAME_HEADER
 #define POCKETPUZZLES_GAME_HEADER
 #include "common.h"
+#include "puzzles.h"
+
+typedef struct {
+  int x;
+  int y;
+} MWPOINT;
+
+struct frontend {
+  int inkSW;
+  int inkSH;
+  int FH;
+  int FW;
+  int statusbar;
+  ifont *statusfont;
+  char *statustext;
+  struct timeval last_time;
+  int MenuP;
+  int time_int;
+  int isTimer;
+  game_params *pparams;
+};
+
+struct blitter {
+  int width;
+  int height;
+  ibitmap *ibit;
+};
+
+struct game *currentgame;
+frontend *fe;
+midend *me;
+drawing *dr;
+struct preset_menu *presets;
+
 
 static int gamecontrol_padding;
 static int gamecontrol_num;
@@ -51,6 +85,29 @@ void gameShowPage();
 void gameTap(int x, int y);
 void gameLongTap(int x, int y);
 void gameRelease(int x, int y);
+
+
+
+void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
+               int align, int colour, const char *text);
+void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour);
+void ink_draw_rect_outline(void *handle, int x, int y, int w, int h, int colour);
+void ink_draw_line(void *handle, int x1, int y1, int x2, int y2, int colour);
+static void extendrow(int y, int x1, int y1, int x2, int y2, int *minxptr, int *maxxptr);
+void ink_draw_polygon(void *handle, int *icoords, int npoints,
+                  int fillcolour, int outlinecolour);
+void ink_draw_circle(void *handle, int cx, int cy, int radius, int fillcolour, int outlinecolour);
+void ink_clip(void *handle, int x, int y, int w, int h);
+void ink_unclip(void *handle);
+void ink_start_draw(void *handle);
+void ink_draw_update(void *handle, int x, int y, int w, int h);
+void ink_end_draw(void *handle);
+void ink_status_bar(void *handle, const char *text);
+
+blitter *ink_blitter_new(void *handle, int w, int h);
+void ink_blitter_free(void *handle, blitter *bl);
+void ink_blitter_save(void *handle, blitter *bl, int x, int y);
+void ink_blitter_load(void *handle, blitter *bl, int x, int y);
 
 #endif
 

@@ -25,7 +25,10 @@ See also [LICENSE](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/
 - [X] Game chooser
 - [X] Game screen menubar
 - [X] Game screen statusbar
-- [ ] Game initialization / launch
+- [X] Game presets
+- [ ] Drawing callback functions
+- [ ] Game initialization
+- [ ] Game launch
 - [ ] Implement game menu controls (new, restart, solve)
 - [ ] Implement swap / undo / redo functionality
 - [ ] Setup of game specific control buttons
@@ -35,4 +38,5 @@ See also [LICENSE](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/
 - [ ] Implement custom game type entry screen
 - [ ] Implement help screen
 - [ ] Ability to mark games as favorite
+- [ ] Screen orientation handling
 

@@ -3659,7 +3659,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     1, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, game_can_format_as_text_now, game_text_format,
     new_ui,
     free_ui,
     encode_ui,
@@ -3676,7 +3676,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
+    false, false, game_print_size, game_print,
     false /* wants_statusbar */,
     false, game_timing_state,
     0,                                       /* mouse_priorities */
