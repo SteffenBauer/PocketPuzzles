@@ -33,7 +33,7 @@ void chooserRelease(int x, int y) {
     for (i=0;i<num_games;i++) {
         if (coord_in_button(init_tap_x, init_tap_y, &btn_chooser[i])) {
             button_to_normal(&btn_chooser[i], true);
-            switchToGame();
+            switchToGame(btn_chooser[i].thegame);
             break;
         }
     }
@@ -64,7 +64,7 @@ static void chooserDrawChooserButtons(int page) {
             DrawTextRect(btn_chooser[i].posx-(chooser_padding/2),
                          btn_chooser[i].posy+btn_chooser[i].size+5,
                          btn_chooser[i].size+chooser_padding, kFontSize,
-                         btn_chooser[i].title, ALIGN_CENTER);
+                         btn_chooser[i].thegame->name, ALIGN_CENTER);
         }
         else {
             btn_chooser[i].active = false;

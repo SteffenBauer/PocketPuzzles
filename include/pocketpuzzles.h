@@ -25,7 +25,7 @@ struct screen {
 struct layout mainlayout;
 
 void switchToChooser();
-void switchToGame();
+void switchToGame(struct game *thegame);
 
 static void setupLayout();
 static void setupApp();

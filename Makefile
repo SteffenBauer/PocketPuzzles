@@ -17,8 +17,8 @@ FRONTENDOBJS := $(FRONTENDSRCS:%.c=%.o)
 
 all: build/puzzles.app
 
-build/puzzles.app: pocketpuzzles.c icons/icons.c $(FRONTENDOBJS)
-	LC_ALL=C $(CC) -s pocketpuzzles.c icons/icons.c $(FRONTENDOBJS) -I./include -o build/puzzles.app $(CFLAGS)
+build/puzzles.app: pocketpuzzles.c icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS)
+	LC_ALL=C $(CC) -s pocketpuzzles.c icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS) -I./include -o build/puzzles.app $(CFLAGS)
 
 icons/icons.c: ./icons/*.bmp
 	LC_ALL=C $(PBRES) -c ./icons/icons.c -4 ./icons/*.bmp

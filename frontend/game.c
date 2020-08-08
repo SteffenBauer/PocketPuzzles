@@ -5,6 +5,288 @@
 
 #include "inkview.h"
 #include "game.h"
+#include "puzzles.h"
+
+#define DOTTED 0xFF000000
+int pbSW, pbSH, pbOrient;
+
+int inkcolors[12] = {WHITE, LGRAY, DGRAY, BLACK, LGRAY, LGRAY, DGRAY, DGRAY, DGRAY, DGRAY, LGRAY, BLACK};
+const struct drawing_api ink_drawing = {
+    ink_draw_text,
+    ink_draw_rect,
+    ink_draw_line,
+    ink_draw_polygon,
+    ink_draw_circle,
+    ink_draw_update,
+    ink_clip,
+    ink_unclip,
+    ink_start_draw,
+    ink_end_draw,
+    ink_status_bar,
+    ink_blitter_new,
+    ink_blitter_free,
+    ink_blitter_save,
+    ink_blitter_load,
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+};
+
+/* ----------------------------
+   Drawing callbacks
+   ---------------------------- */
+
+void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
+               int align, int colour, const char *text) {
+
+  ifont *tempfont;
+  int sw, sh;
+  tempfont = OpenFont(fonttype == FONT_FIXED ? "LiberationMono" : "LiberationSans",
+                      fontsize, 0);
+
+  SetFont(tempfont, inkcolors[colour]);
+  sw=StringWidth(text);
+  sh=TextRectHeight(sw, text, 0);
+  if (align & ALIGN_VNORMAL) y -= sh;
+  else if (align & ALIGN_VCENTRE) y -= sh/2;
+  if (align & ALIGN_HCENTRE) x -= sw/2;
+  else if (align & ALIGN_HRIGHT) x -= sw;
+
+  DrawString(x, y, text);
+  CloseFont(tempfont);
+}
+
+void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour) {
+
+  int i;
+
+  if (inkcolors[colour] & DOTTED) {
+    for (i=0;i<h;i++) {
+      if ((y+i) & 1) DrawLine(x,y+i,x+w-1,y+i,inkcolors[colour]&WHITE);
+      else DrawLine(x,y+i,x+w-1,y+i,inkcolors[0]);
+    }
+  }
+  else for (i=0;i<h;i++) DrawLine(x,y+i,x+w-1,y+i,inkcolors[colour]);
+}
+void ink_draw_rect_outline(void *handle, int x, int y, int w, int h, int colour) {
+
+    DrawRect(x, y, w, h, inkcolors[colour]);
+}
+
+void ink_draw_line(void *handle, int x1, int y1, int x2, int y2, int colour) {
+
+  DrawLine(x1, y1, x2, y2, inkcolors[colour]);
+}
+
+static void extendrow(int y, int x1, int y1, int x2, int y2, int *minxptr, int *maxxptr) {
+
+  int x;
+  typedef long NUM;
+  NUM num;
+
+  if (((y < y1) || (y > y2)) && ((y < y2) || (y > y1)))
+    return;
+
+  if (y1 == y2) {
+    if (*minxptr > x1) *minxptr = x1;
+    if (*minxptr > x2) *minxptr = x2;
+    if (*maxxptr < x1) *maxxptr = x1;
+    if (*maxxptr < x2) *maxxptr = x2;
+    return;
+  }
+
+  if (x1 == x2) {
+    if (*minxptr > x1) *minxptr = x1;
+    if (*maxxptr < x1) *maxxptr = x1;
+    return;
+  }
+
+  num = ((NUM) (y - y1)) * (x2 - x1);
+  x = x1 + num / (y2 - y1);
+  if (*minxptr > x) *minxptr = x;
+  if (*maxxptr < x) *maxxptr = x;
+}
+
+void ink_draw_polygon(void *handle, int *icoords, int npoints,
+                  int fillcolour, int outlinecolour) {
+
+  MWPOINT *coords = (MWPOINT *)icoords;
+
+  MWPOINT *pp;
+  int miny;
+  int maxy;
+  int minx;
+  int maxx;
+  int i;
+
+  if (fillcolour!=-1) {
+    if (npoints <= 0) return;
+
+    pp = coords;
+    miny = pp->y;
+    maxy = pp->y;
+    for (i = npoints; i-- > 0; pp++) {
+        if (miny > pp->y) miny = pp->y;
+        if (maxy < pp->y) maxy = pp->y;
+    }
+
+    for (; miny <= maxy; miny++) {
+        minx = 32767;
+        maxx = -32768;
+        pp = coords;
+        for (i = npoints; --i > 0; pp++)
+            extendrow(miny, pp[0].x, pp[0].y, pp[1].x, pp[1].y, &minx, &maxx);
+        extendrow(miny, pp[0].x, pp[0].y, coords[0].x, coords[0].y, &minx, &maxx);
+
+        if (minx <= maxx) {
+          if (inkcolors[fillcolour] & DOTTED) {
+            if (miny & 1) DrawLine(minx, miny, maxx, miny, inkcolors[fillcolour]&WHITE);
+            else DrawLine(minx, miny, maxx, miny, inkcolors[0]);
+          }
+          else DrawLine(minx, miny, maxx, miny, inkcolors[fillcolour]);
+        }
+    }
+  }
+
+  for (i = 0; i < npoints-1; i++) {
+    DrawLine(coords[i].x, coords[i].y, coords[i+1].x, coords[i+1].y, inkcolors[outlinecolour]);
+  }
+  DrawLine(coords[i].x, coords[i].y, coords[0].x, coords[0].y, inkcolors[outlinecolour]);
+}
+
+
+void ink_draw_circle(void *handle, int cx, int cy, int radius, int fillcolour, int outlinecolour) {
+
+  int i,x,y,yy=0-radius,xx=0;
+
+  for (i=0; i<=2*radius; i++) {
+    y=i-radius;
+    x=lround(sqrt(radius*radius-y*y));
+
+    DrawLine(cx+xx, cy+yy, cx+x, cy+y, inkcolors[outlinecolour]&WHITE);
+    DrawLine(cx-xx, cy+yy, cx-x, cy+y, inkcolors[outlinecolour]&WHITE);
+
+    if (fillcolour!=-1) {
+      if (!(inkcolors[fillcolour]&DOTTED)) {
+        DrawLine(cx-x, cy+y, cx+x, cy+y, inkcolors[fillcolour]&WHITE);
+      }
+      else if ((cy+y)%2) DrawLine(cx-x, cy+y, cx+x, cy+y, inkcolors[fillcolour]&WHITE);
+    }
+
+    xx=x; yy=y;
+  }
+}
+
+void ink_clip(void *handle, int x, int y, int w, int h) {
+
+    SetClip(x, y, w, h);
+}
+
+void ink_unclip(void *handle) {
+
+    SetClip(0, 0, pbSW, pbSH);
+}
+
+void ink_start_draw(void *handle) {
+//??
+}
+
+void ink_draw_update(void *handle, int x, int y, int w, int h) {
+//??
+}
+
+void ink_end_draw(void *handle) {
+
+  PartialUpdate(0, 0, fe->inkSW, fe->inkSH);
+}
+
+blitter *ink_blitter_new(void *handle, int w, int h) {
+
+  blitter *bl = snew(blitter);
+  bl->width = w;
+  bl->height = h;
+  bl->ibit = NULL;
+  return bl;
+}
+
+void ink_blitter_free(void *handle, blitter *bl) {
+
+  sfree(bl->ibit);
+  sfree(bl);
+}
+
+void ink_blitter_save(void *handle, blitter *bl, int x, int y) {
+
+  bl->ibit = BitmapFromScreen(x, y, bl->width, bl->height);
+}
+
+void ink_blitter_load(void *handle, blitter *bl, int x, int y) {
+
+  DrawBitmap(x, y, bl->ibit);
+}
+
+void ink_status_bar(void *handle, const char *text) {
+
+  size_t tlen;
+
+  if (fe->statusbar) {
+    sfree(fe->statustext);
+    tlen=strlen(text)+1;
+    fe->statustext = snewn(tlen, char);
+    strcpy(fe->statustext, text);
+    ink_draw_rect(0, 10, pbSH-30, pbSW-20, 30, 0);
+    SetFont(fe->statusfont, BLACK);
+    DrawString(10, pbSH-30, fe->statustext);
+    PartialUpdateBW(0, pbSH-50, pbSW, 50);
+  }
+}
+
+
+/* ----------------------------
+   Midend -> Frontend callbacks
+   ---------------------------- */
+
+void frontend_default_colour(frontend *fe, float *output) {
+
+    output[0] = 1.0;
+    output[1] = 1.0;
+    output[2] = 1.0;
+}
+void get_random_seed(void **randseed, int *randseedsize) {
+    struct timeval *tvp = snew(struct timeval);
+    gettimeofday(tvp, NULL);
+    *randseed = (void *)tvp;
+    *randseedsize = sizeof(struct timeval);
+}
+
+void tproc() {
+  if (fe->isTimer) {
+    struct timeval now;
+    float elapsed;
+
+    gettimeofday(&now, NULL);
+    elapsed = ((now.tv_usec - fe->last_time.tv_usec) * 0.000001F + (now.tv_sec - fe->last_time.tv_sec));
+    midend_timer(me, elapsed);
+    fe->last_time = now;
+    SetWeakTimer("timername", tproc, fe->time_int);
+  }
+}
+
+void activate_timer(frontend *fe) {
+  fe->isTimer=1;
+  gettimeofday(&fe->last_time, NULL);
+  SetWeakTimer("timername", tproc, fe->time_int);
+
+};
+
+void deactivate_timer(frontend *fe) {
+  fe->isTimer=0;
+  ClearTimer(tproc);
+};
+
+void fatal(const char *fmt, ...) {
+    exitApp();
+}
+
+/* ------------------------- */
 
 static void drawStatusBar(char *text) {
     FillArea(0, mainlayout.statusbar.starty+2, ScreenWidth(), mainlayout.statusbar.height-2, 0x00FFFFFF);
@@ -41,54 +323,45 @@ void gameMenuHandler(int index) {
 void typeMenuHandler(int index) {
     typeMenu_selectedIndex = index;
     char buf[256];
-    switch (index) {
-        case 201 ... 205:
-            snprintf(buf, 200, "Selected type: '%s'", typeMenu[index-200].text);
-            drawStatusBar(buf);
-            break;
-        default:
-            break;
+    if (index == 200)
+        Message(ICON_WARNING, "Not available", "Custom preset not implemented yet!", 3000);
+    if (index > 200) {
+        snprintf(buf, 200, "Selected type: '%s'", typeMenu[index-199].text);
+        drawStatusBar(buf);
     }
     button_to_normal(&btn_type, true);
 };
 
 static void gameBuildTypeMenu() {
-    typeMenu = malloc(7 * sizeof(imenu));
+    int i, np, chosen;
+    presets = midend_get_presets(me, NULL);
 
+    np = presets->n_entries;
+
+    typeMenu=snewn(np+3, imenu);
     typeMenu[0].type = ITEM_HEADER;
     typeMenu[0].index = 0;
-    typeMenu[0].text = "Game presets";
+    typeMenu[0].text = "Game presets     ";
     typeMenu[0].submenu = NULL;
 
+    typeMenu[1].text = "Custom";
     typeMenu[1].type = ITEM_ACTIVE;
-    typeMenu[1].index = 201;
-    typeMenu[1].text = "6x6 Normal";
+    typeMenu[1].index = 200;
     typeMenu[1].submenu = NULL;
 
-    typeMenu[2].type = ITEM_ACTIVE;
-    typeMenu[2].index = 202;
-    typeMenu[2].text = "6x6 Unreasonable";
-    typeMenu[2].submenu = NULL;
+    for (i=2; i<np+2; i++) {
+      typeMenu[i].text = presets->entries[i-2].title;
+      typeMenu[i].type = ITEM_ACTIVE;
+      typeMenu[i].index = 199+i;
+      typeMenu[i].submenu = NULL;
+    }
+    typeMenu[i].type = 0;
+    typeMenu[i].index = 0;
+    typeMenu[i].text = NULL;
+    typeMenu[i].submenu = NULL;
 
-    typeMenu[3].type = ITEM_ACTIVE;
-    typeMenu[3].index = 203;
-    typeMenu[3].text = "9x9 Normal";
-    typeMenu[3].submenu = NULL;
-
-    typeMenu[4].type = ITEM_ACTIVE;
-    typeMenu[4].index = 204;
-    typeMenu[4].text = "12x12 Unreasonable";
-    typeMenu[4].submenu = NULL;
-
-    typeMenu[5].type = ITEM_ACTIVE;
-    typeMenu[5].index = 205;
-    typeMenu[5].text = "Custom";
-    typeMenu[5].submenu = NULL;
-
-    typeMenu[6].type = 0;
-    typeMenu[6].index = 0;
-    typeMenu[6].text = NULL;
-    typeMenu[6].submenu = NULL;
+    chosen = midend_which_preset(me);
+    typeMenu[(chosen >= 0) ? chosen+2 : 1].type = ITEM_BULLET;
 
 };
 
@@ -149,7 +422,7 @@ static void gameDrawMenu() {
     button_to_normal(&btn_type, false);
 
     font = OpenFont("LiberationSans-Bold", kFontSize, 0);
-    DrawTextRect(0, (mainlayout.menubtn_size/2)-(kFontSize/2), ScreenWidth(), kFontSize, "GAME", ALIGN_CENTER);
+    DrawTextRect(0, (mainlayout.menubtn_size/2)-(kFontSize/2), ScreenWidth(), kFontSize, currentgame->name, ALIGN_CENTER);
     CloseFont(font);
 }
 
@@ -207,6 +480,13 @@ void gameShowPage() {
 }
 
 void gameInit() {
+    pbSW=ScreenWidth();
+    pbSH=ScreenHeight();
+    pbOrient=GetOrientation();
+
+    fe = snew(frontend);
+    me = midend_new(fe, currentgame, &ink_drawing, fe);
+
     gamecontrol_num = 3;
     gamecontrol_padding = (ScreenWidth()-(gamecontrol_num*mainlayout.control_size))/(gamecontrol_num+1);
     gameSetupMenuButtons();

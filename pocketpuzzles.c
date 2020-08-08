@@ -24,12 +24,14 @@ void switchToChooser() {
 
 }
 
-void switchToGame() {
+void switchToGame(struct game *thegame) {
     mainlayout.with_statusbar     = true;
     mainlayout.buttonpanel.height = mainlayout.control_size + 5;
     mainlayout.buttonpanel.starty = mainlayout.statusbar.starty - mainlayout.buttonpanel.height - 1;
     mainlayout.maincanvas.starty = mainlayout.menu.height + 3;
     mainlayout.maincanvas.height = mainlayout.buttonpanel.starty - mainlayout.maincanvas.starty - 1;
+
+    currentgame = thegame;
 
     SCREEN.init     = &gameInit;
     SCREEN.show     = &gameShowPage;
