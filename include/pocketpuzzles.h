@@ -18,12 +18,15 @@ struct screen {
     void (*long_tap)(int x, int y);
     void (*release)(int x, int y);
     void (*init)();
+    LAYOUTTYPE (*getLayout)();
+    void (*prepare)();
     void (*show)();
     void (*destroy)();
 } SCREEN;
 
 struct layout mainlayout;
 
+static void setLayout(LAYOUTTYPE screenlayout);
 void switchToChooser();
 void switchToGame(struct game *thegame);
 

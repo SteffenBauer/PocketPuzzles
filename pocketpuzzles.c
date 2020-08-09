@@ -6,40 +6,91 @@
 #include "inkview.h"
 #include "pocketpuzzles.h"
 
-void switchToChooser() {
-    mainlayout.with_statusbar     = false;
-    mainlayout.buttonpanel.height = mainlayout.control_size + 5;
-    mainlayout.buttonpanel.starty = ScreenHeight()-PanelHeight() - mainlayout.buttonpanel.height;
-    mainlayout.maincanvas.starty = mainlayout.menu.height + 3;
-    mainlayout.maincanvas.height = mainlayout.buttonpanel.starty - mainlayout.maincanvas.starty - 1;
+static void setLayout(LAYOUTTYPE screenlayout) {
+    int bottomy = ScreenHeight()-PanelHeight();
 
-    SCREEN.init     = &chooserInit;
-    SCREEN.show     = &chooserShowPage;
-    SCREEN.tap      = &chooserTap;
-    SCREEN.long_tap = &chooserLongTap;
-    SCREEN.release  = &chooserRelease;
+    switch (screenlayout) {
+        case LAYOUT_FULL:
+            mainlayout.with_statusbar     = false;
+            mainlayout.with_buttonbar     = false;
+            mainlayout.with_2xbuttonbar   = false;
+            mainlayout.buttonpanel.height = 0;
+            mainlayout.buttonpanel.starty = bottomy;
+            break;
+
+        case LAYOUT_STATUSBAR:
+            mainlayout.with_statusbar     = true;
+            mainlayout.with_buttonbar     = false;
+            mainlayout.with_2xbuttonbar   = false;
+            mainlayout.buttonpanel.height = 0;
+            mainlayout.buttonpanel.starty = mainlayout.statusbar.starty - 1;
+            break;
+
+        case LAYOUT_BUTTONBAR:
+            mainlayout.with_statusbar     = false;
+            mainlayout.with_buttonbar     = true;
+            mainlayout.with_2xbuttonbar   = false;
+            mainlayout.buttonpanel.height = mainlayout.control_size + 5;
+            mainlayout.buttonpanel.starty = bottomy - mainlayout.buttonpanel.height;
+            break;
+
+        case LAYOUT_BOTH:
+            mainlayout.with_statusbar     = true;
+            mainlayout.with_buttonbar     = true;
+            mainlayout.with_2xbuttonbar   = false;
+            mainlayout.buttonpanel.height = mainlayout.control_size + 5;
+            mainlayout.buttonpanel.starty = mainlayout.statusbar.starty - mainlayout.buttonpanel.height - 1;
+            break;
+
+        case LAYOUT_2XBUTTONBAR:
+            mainlayout.with_statusbar     = false;
+            mainlayout.with_buttonbar     = true;
+            mainlayout.with_2xbuttonbar   = true;
+            mainlayout.buttonpanel.height = 2 * mainlayout.control_size + 10;
+            mainlayout.buttonpanel.starty = bottomy - mainlayout.buttonpanel.height - 1;
+            break;
+
+        case LAYOUT_2XBOTH:
+            mainlayout.with_statusbar     = true;
+            mainlayout.with_buttonbar     = true;
+            mainlayout.with_2xbuttonbar   = true;
+            mainlayout.buttonpanel.height = 2 * mainlayout.control_size + 10;
+            mainlayout.buttonpanel.starty = mainlayout.statusbar.starty - mainlayout.buttonpanel.height - 1;
+            break;
+    }
+    mainlayout.maincanvas.starty  = mainlayout.menu.height + 3;
+    mainlayout.maincanvas.height  = mainlayout.buttonpanel.starty - mainlayout.maincanvas.starty - 1;
+}
+
+void switchToChooser() {
+    SCREEN.init      = &chooserInit;
+    SCREEN.getLayout = &chooserGetLayout;
+    SCREEN.prepare   = &chooserPrepare;
+    SCREEN.show      = &chooserShowPage;
+    SCREEN.tap       = &chooserTap;
+    SCREEN.long_tap  = &chooserLongTap;
+    SCREEN.release   = &chooserRelease;
 
     SCREEN.init();
+    setLayout(SCREEN.getLayout());
+    SCREEN.prepare();
     SCREEN.show();
 
 }
 
 void switchToGame(struct game *thegame) {
-    mainlayout.with_statusbar     = true;
-    mainlayout.buttonpanel.height = mainlayout.control_size + 5;
-    mainlayout.buttonpanel.starty = mainlayout.statusbar.starty - mainlayout.buttonpanel.height - 1;
-    mainlayout.maincanvas.starty = mainlayout.menu.height + 3;
-    mainlayout.maincanvas.height = mainlayout.buttonpanel.starty - mainlayout.maincanvas.starty - 1;
+    SCREEN.init      = &gameInit;
+    SCREEN.getLayout = &gameGetLayout;
+    SCREEN.prepare   = &gamePrepare;
+    SCREEN.show      = &gameShowPage;
+    SCREEN.tap       = &gameTap;
+    SCREEN.long_tap  = &gameLongTap;
+    SCREEN.release   = &gameRelease;
 
     currentgame = thegame;
-
-    SCREEN.init     = &gameInit;
-    SCREEN.show     = &gameShowPage;
-    SCREEN.tap      = &gameTap;
-    SCREEN.long_tap = &gameLongTap;
-    SCREEN.release  = &gameRelease;
-
     SCREEN.init();
+    setLayout(SCREEN.getLayout());
+    SCREEN.prepare();
     SCREEN.show();
 }
 

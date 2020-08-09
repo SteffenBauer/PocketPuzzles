@@ -3618,7 +3618,7 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
 {
     int i;
     int cr = params->c * params->r;
-    key_label *keys = snewn(cr+1, key_label);
+    key_label *keys = snewn(cr+3, key_label);
     *nkeys = cr + 3;
 
     for (i = 0; i < cr; i++) {
@@ -3633,7 +3633,6 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
     keys[cr+1].label = NULL;
     keys[cr+2].button = '\b';
     keys[cr+2].label = NULL;
-
 
     return keys;
 }

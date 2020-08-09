@@ -13,8 +13,19 @@ typedef struct panel {
     int height;
 } PANEL;
 
+typedef enum {
+    LAYOUT_FULL,
+    LAYOUT_STATUSBAR,
+    LAYOUT_BUTTONBAR,
+    LAYOUT_BOTH,
+    LAYOUT_2XBUTTONBAR,
+    LAYOUT_2XBOTH
+} LAYOUTTYPE;
+
 struct layout {
     bool with_statusbar;
+    bool with_buttonbar;
+    bool with_2xbuttonbar;
 
     int menubtn_size;
     int control_size;

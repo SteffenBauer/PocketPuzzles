@@ -109,6 +109,8 @@ static void chooserDrawChooserButtons(int page);
 static void chooserDrawControlButtons(int page);
 
 void chooserInit();
+LAYOUTTYPE chooserGetLayout();
+void chooserPrepare();
 void chooserShowPage();
 void chooserTap(int x, int y);
 void chooserLongTap(int x, int y);
