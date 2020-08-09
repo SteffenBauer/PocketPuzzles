@@ -432,6 +432,10 @@ char *button2label(int button)
         return dupstr("Select");
     case '\b':
         return dupstr("Clear");
+    case '+':
+        return dupstr("Add");
+    case '-':
+        return dupstr("Subtract");
     default:
         fatal("unknown generic key");
     }

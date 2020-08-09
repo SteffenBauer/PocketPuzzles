@@ -81,11 +81,12 @@ static void gameDrawControlButtons();
 static void gameExitPage();
 
 void gameInit();
+LAYOUTTYPE gameGetLayout();
+void gamePrepare();
 void gameShowPage();
 void gameTap(int x, int y);
 void gameLongTap(int x, int y);
 void gameRelease(int x, int y);
-
 
 
 void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,

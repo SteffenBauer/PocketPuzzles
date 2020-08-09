@@ -150,6 +150,9 @@ void chooserShowPage() {
 }
 
 void chooserInit() {
+}
+
+void chooserPrepare() {
     current_chooserpage = 0;
     control_padding = (ScreenWidth()-(control_num*mainlayout.control_size))/(control_num+1);
     chooser_padding = (ScreenWidth()-(chooser_cols*mainlayout.chooser_size))/(chooser_cols+1);
@@ -160,4 +163,7 @@ void chooserInit() {
     chooserSetupChooserButtons();
 }
 
+LAYOUTTYPE chooserGetLayout() {
+    return LAYOUT_BUTTONBAR;
+}
 

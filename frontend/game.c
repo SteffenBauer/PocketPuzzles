@@ -312,6 +312,7 @@ void gameMenuHandler(int index) {
             drawStatusBar("Selected 'How to play'");
             break;
         case 199:
+            gameExitPage();
             exitApp();
             break;
         default:
@@ -468,6 +469,8 @@ static void gameSetupStatusBar() {
 
 static void gameExitPage() {
     free(typeMenu);
+    midend_free(me);
+    sfree(fe);
 }
 
 void gameShowPage() {
@@ -475,7 +478,7 @@ void gameShowPage() {
     DrawPanel(NULL, "", "", 0);
     gameDrawMenu();
     gameDrawControlButtons();
-    gameSetupStatusBar();
+    if (mainlayout.with_statusbar) gameSetupStatusBar();
     FullUpdate();
 }
 
@@ -486,11 +489,33 @@ void gameInit() {
 
     fe = snew(frontend);
     me = midend_new(fe, currentgame, &ink_drawing, fe);
+}
 
+LAYOUTTYPE gameGetLayout() {
+    bool wants_statusbar;
+    bool wants_2xbuttonbar;
+    int nkeys = 0;
+    struct key_label *keys;
+
+    keys = midend_request_keys(me, &nkeys);
+
+    wants_statusbar = midend_wants_statusbar(me);
+    wants_2xbuttonbar = (keys != NULL) && (nkeys > 0);
+    sfree(keys);
+
+    if (wants_statusbar && !wants_2xbuttonbar)  return LAYOUT_BOTH;
+    if (wants_statusbar && wants_2xbuttonbar)   return LAYOUT_2XBOTH;
+    if (!wants_statusbar && !wants_2xbuttonbar) return LAYOUT_BUTTONBAR;
+    if (!wants_statusbar && wants_2xbuttonbar)  return LAYOUT_2XBUTTONBAR;
+    return LAYOUT_2XBOTH; /* default */
+}
+
+void gamePrepare() {
     gamecontrol_num = 3;
     gamecontrol_padding = (ScreenWidth()-(gamecontrol_num*mainlayout.control_size))/(gamecontrol_num+1);
     gameSetupMenuButtons();
     gameSetupControlButtons();
     gameBuildTypeMenu();
 }
+
 
