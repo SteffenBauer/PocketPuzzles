@@ -84,14 +84,6 @@
 #include "grid.h"
 #include "loopgen.h"
 
-/* Debugging options */
-
-/*
-#define DEBUG_CACHES
-#define SHOW_WORKING
-#define DEBUG_DLINES
-*/
-
 /* ----------------------------------------------------------------------
  * Struct, enum and function declarations
  */
@@ -236,12 +228,6 @@ static const char *validate_desc(const game_params *params, const char *desc);
 static int dot_order(const game_state* state, int i, char line_type);
 static int face_order(const game_state* state, int i, char line_type);
 static solver_state *solve_game_rec(const solver_state *sstate);
-
-#ifdef DEBUG_CACHES
-static void check_caches(const solver_state* sstate);
-#else
-#define check_caches(s)
-#endif
 
 /*
  * Grid type config options available in Loopy.
@@ -516,53 +502,17 @@ static game_params *dup_params(const game_params *params)
 }
 
 static const game_params loopy_presets_top[] = {
-#ifdef SMALL_SCREEN
-    {  7,  7, DIFF_EASY,   LOOPY_GRID_SQUARE },
-    {  7,  7, DIFF_NORMAL, LOOPY_GRID_SQUARE },
-    {  7,  7, DIFF_HARD,   LOOPY_GRID_SQUARE },
-    {  7,  7, DIFF_HARD,   LOOPY_GRID_TRIANGULAR },
-    {  5,  5, DIFF_HARD,   LOOPY_GRID_SNUBSQUARE },
-    {  7,  7, DIFF_HARD,   LOOPY_GRID_CAIRO },
-    {  5,  5, DIFF_HARD,   LOOPY_GRID_KITE },
-    {  6,  6, DIFF_HARD,   LOOPY_GRID_PENROSE_P2 },
-    {  6,  6, DIFF_HARD,   LOOPY_GRID_PENROSE_P3 },
-#else
     {  7,  7, DIFF_EASY,   LOOPY_GRID_SQUARE },
     { 10, 10, DIFF_EASY,   LOOPY_GRID_SQUARE },
     {  7,  7, DIFF_NORMAL, LOOPY_GRID_SQUARE },
     { 10, 10, DIFF_NORMAL, LOOPY_GRID_SQUARE },
     {  7,  7, DIFF_HARD,   LOOPY_GRID_SQUARE },
     { 10, 10, DIFF_HARD,   LOOPY_GRID_SQUARE },
-    { 12, 10, DIFF_HARD,   LOOPY_GRID_TRIANGULAR },
-    {  7,  7, DIFF_HARD,   LOOPY_GRID_SNUBSQUARE },
+    {  7,  7, DIFF_HARD,   LOOPY_GRID_HONEYCOMB },
     {  9,  9, DIFF_HARD,   LOOPY_GRID_CAIRO },
-    {  5,  5, DIFF_HARD,   LOOPY_GRID_KITE },
-    { 10, 10, DIFF_HARD,   LOOPY_GRID_PENROSE_P2 },
-    { 10, 10, DIFF_HARD,   LOOPY_GRID_PENROSE_P3 },
-#endif
+    {  5,  5, DIFF_HARD,   LOOPY_GRID_FLORET },
 };
 
-static const game_params loopy_presets_more[] = {
-#ifdef SMALL_SCREEN
-    {  7,  7, DIFF_HARD,   LOOPY_GRID_HONEYCOMB },
-    {  5,  4, DIFF_HARD,   LOOPY_GRID_GREATHEXAGONAL },
-    {  5,  4, DIFF_HARD,   LOOPY_GRID_KAGOME },
-    {  5,  5, DIFF_HARD,   LOOPY_GRID_OCTAGONAL },
-    {  3,  3, DIFF_HARD,   LOOPY_GRID_FLORET },
-    {  3,  3, DIFF_HARD,   LOOPY_GRID_DODECAGONAL },
-    {  3,  3, DIFF_HARD,   LOOPY_GRID_GREATDODECAGONAL },
-    {  3,  2, DIFF_HARD,   LOOPY_GRID_GREATGREATDODECAGONAL },
-#else
-    { 10, 10, DIFF_HARD,   LOOPY_GRID_HONEYCOMB },
-    {  5,  4, DIFF_HARD,   LOOPY_GRID_GREATHEXAGONAL },
-    {  5,  4, DIFF_HARD,   LOOPY_GRID_KAGOME },
-    {  7,  7, DIFF_HARD,   LOOPY_GRID_OCTAGONAL },
-    {  5,  5, DIFF_HARD,   LOOPY_GRID_FLORET },
-    {  5,  4, DIFF_HARD,   LOOPY_GRID_DODECAGONAL },
-    {  5,  4, DIFF_HARD,   LOOPY_GRID_GREATDODECAGONAL },
-    {  5,  3, DIFF_HARD,   LOOPY_GRID_GREATGREATDODECAGONAL },
-#endif
-};
 
 static void preset_menu_add_preset_with_title(struct preset_menu *menu,
                                               const game_params *params)
@@ -587,10 +537,6 @@ static struct preset_menu *game_preset_menu(void)
     top = preset_menu_new();
     for (i = 0; i < lenof(loopy_presets_top); i++)
         preset_menu_add_preset_with_title(top, &loopy_presets_top[i]);
-
-    more = preset_menu_add_submenu(top, dupstr("More..."));
-    for (i = 0; i < lenof(loopy_presets_more); i++)
-        preset_menu_add_preset_with_title(more, &loopy_presets_more[i]);
 
     return top;
 }
@@ -985,121 +931,9 @@ static float game_anim_length(const game_state *oldstate,
     return 0.0F;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    if (params->type != 0)
-        return false;
-    return true;
+static bool game_can_format_as_text_now(const game_params *params) {
+    return false;
 }
-
-static char *game_text_format(const game_state *state)
-{
-    int w, h, W, H;
-    int x, y, i;
-    int cell_size;
-    char *ret;
-    grid *g = state->game_grid;
-    grid_face *f;
-
-    assert(state->grid_type == 0);
-
-    /* Work out the basic size unit */
-    f = g->faces; /* first face */
-    assert(f->order == 4);
-    /* The dots are ordered clockwise, so the two opposite
-     * corners are guaranteed to span the square */
-    cell_size = abs(f->dots[0]->x - f->dots[2]->x);
-
-    w = (g->highest_x - g->lowest_x) / cell_size;
-    h = (g->highest_y - g->lowest_y) / cell_size;
-
-    /* Create a blank "canvas" to "draw" on */
-    W = 2 * w + 2;
-    H = 2 * h + 1;
-    ret = snewn(W * H + 1, char);
-    for (y = 0; y < H; y++) {
-        for (x = 0; x < W-1; x++) {
-            ret[y*W + x] = ' ';
-        }
-        ret[y*W + W-1] = '\n';
-    }
-    ret[H*W] = '\0';
-
-    /* Fill in edge info */
-    for (i = 0; i < g->num_edges; i++) {
-        grid_edge *e = g->edges + i;
-        /* Cell coordinates, from (0,0) to (w-1,h-1) */
-        int x1 = (e->dot1->x - g->lowest_x) / cell_size;
-        int x2 = (e->dot2->x - g->lowest_x) / cell_size;
-        int y1 = (e->dot1->y - g->lowest_y) / cell_size;
-        int y2 = (e->dot2->y - g->lowest_y) / cell_size;
-        /* Midpoint, in canvas coordinates (canvas coordinates are just twice
-         * cell coordinates) */
-        x = x1 + x2;
-        y = y1 + y2;
-        switch (state->lines[i]) {
-	  case LINE_YES:
-	    ret[y*W + x] = (y1 == y2) ? '-' : '|';
-	    break;
-	  case LINE_NO:
-	    ret[y*W + x] = 'x';
-	    break;
-	  case LINE_UNKNOWN:
-	    break; /* already a space */
-	  default:
-	    assert(!"Illegal line state");
-        }
-    }
-
-    /* Fill in clues */
-    for (i = 0; i < g->num_faces; i++) {
-	int x1, x2, y1, y2;
-
-        f = g->faces + i;
-        assert(f->order == 4);
-        /* Cell coordinates, from (0,0) to (w-1,h-1) */
-	x1 = (f->dots[0]->x - g->lowest_x) / cell_size;
-	x2 = (f->dots[2]->x - g->lowest_x) / cell_size;
-	y1 = (f->dots[0]->y - g->lowest_y) / cell_size;
-	y2 = (f->dots[2]->y - g->lowest_y) / cell_size;
-        /* Midpoint, in canvas coordinates */
-        x = x1 + x2;
-        y = y1 + y2;
-        ret[y*W + x] = CLUE2CHAR(state->clues[i]);
-    }
-    return ret;
-}
-
-/* ----------------------------------------------------------------------
- * Debug code
- */
-
-#ifdef DEBUG_CACHES
-static void check_caches(const solver_state* sstate)
-{
-    int i;
-    const game_state *state = sstate->state;
-    const grid *g = state->game_grid;
-
-    for (i = 0; i < g->num_dots; i++) {
-        assert(dot_order(state, i, LINE_YES) == sstate->dot_yes_count[i]);
-        assert(dot_order(state, i, LINE_NO) == sstate->dot_no_count[i]);
-    }
-
-    for (i = 0; i < g->num_faces; i++) {
-        assert(face_order(state, i, LINE_YES) == sstate->face_yes_count[i]);
-        assert(face_order(state, i, LINE_NO) == sstate->face_no_count[i]);
-    }
-}
-
-#if 0
-#define check_caches(s) \
-    do { \
-        fprintf(stderr, "check_caches at line %d\n", __LINE__); \
-        check_caches(s); \
-    } while (0)
-#endif
-#endif /* DEBUG_CACHES */
 
 /* ----------------------------------------------------------------------
  * Solver utility functions
@@ -1109,30 +943,17 @@ static void check_caches(const solver_state* sstate)
  * the cached counts of any affected faces and dots.
  * Returns true if this actually changed the line's state. */
 static bool solver_set_line(solver_state *sstate, int i,
-                            enum line_state line_new
-#ifdef SHOW_WORKING
-                            , const char *reason
-#endif
-                            )
-{
+                            enum line_state line_new) {
     game_state *state = sstate->state;
     grid *g;
     grid_edge *e;
 
     assert(line_new != LINE_UNKNOWN);
 
-    check_caches(sstate);
-
     if (state->lines[i] == line_new) {
         return false; /* nothing changed */
     }
     state->lines[i] = line_new;
-
-#ifdef SHOW_WORKING
-    fprintf(stderr, "solver: set line [%d] to %s (%s)\n",
-            i, line_new == LINE_YES ? "YES" : "NO",
-            reason);
-#endif
 
     g = state->game_grid;
     e = g->edges + i;
@@ -1158,14 +979,8 @@ static bool solver_set_line(solver_state *sstate, int i,
         }
     }
 
-    check_caches(sstate);
     return true;
 }
-
-#ifdef SHOW_WORKING
-#define solver_set_line(a, b, c) \
-    solver_set_line(a, b, c, __FUNCTION__)
-#endif
 
 /*
  * Merge two dots due to the existence of an edge between them.
@@ -1200,12 +1015,7 @@ static bool merge_dots(solver_state *sstate, int edge_index)
 /* Merge two lines because the solver has deduced that they must be either
  * identical or opposite.   Returns true if this is new information, otherwise
  * false. */
-static bool merge_lines(solver_state *sstate, int i, int j, bool inverse
-#ifdef SHOW_WORKING
-                        , const char *reason
-#endif
-                        )
-{
+static bool merge_lines(solver_state *sstate, int i, int j, bool inverse) {
     bool inv_tmp;
 
     assert(i < sstate->state->game_grid->num_edges);
@@ -1218,20 +1028,8 @@ static bool merge_lines(solver_state *sstate, int i, int j, bool inverse
 
     edsf_merge(sstate->linedsf, i, j, inverse);
 
-#ifdef SHOW_WORKING
-    if (i != j) {
-        fprintf(stderr, "%s [%d] [%d] %s(%s)\n",
-                __FUNCTION__, i, j,
-                inverse ? "inverse " : "", reason);
-    }
-#endif
     return (i != j);
 }
-
-#ifdef SHOW_WORKING
-#define merge_lines(a, b, c, d) \
-    merge_lines(a, b, c, d, __FUNCTION__)
-#endif
 
 /* Count the number of lines of a particular type currently going into the
  * given dot. */
@@ -1452,9 +1250,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
 
     if (params->diff > 0 && game_has_unique_soln(state, params->diff-1)) {
-#ifdef SHOW_WORKING
-        fprintf(stderr, "Rejecting board, it is too easy\n");
-#endif
         goto newboard_please;
     }
 
@@ -1816,18 +1611,8 @@ static int dline_index_from_dot(grid *g, grid_dot *d, int i)
 {
     grid_edge *e = d->edges[i];
     int ret;
-#ifdef DEBUG_DLINES
-    grid_edge *e2;
-    int i2 = i+1;
-    if (i2 == d->order) i2 = 0;
-    e2 = d->edges[i2];
-#endif
+
     ret = 2 * (e - g->edges) + ((e->dot1 == d) ? 1 : 0);
-#ifdef DEBUG_DLINES
-    printf("dline_index_from_dot: d=%d,i=%d, edges [%d,%d] - %d\n",
-           (int)(d - g->dots), i, (int)(e - g->edges),
-           (int)(e2 - g->edges), ret);
-#endif
     return ret;
 }
 /* i points to the second edge of the dline pair, reading clockwise around
@@ -1839,18 +1624,7 @@ static int dline_index_from_face(grid *g, grid_face *f, int i)
     grid_edge *e = f->edges[i];
     grid_dot *d = f->dots[i];
     int ret;
-#ifdef DEBUG_DLINES
-    grid_edge *e2;
-    int i2 = i - 1;
-    if (i2 < 0) i2 += f->order;
-    e2 = f->edges[i2];
-#endif
     ret = 2 * (e - g->edges) + ((e->dot1 == d) ? 1 : 0);
-#ifdef DEBUG_DLINES
-    printf("dline_index_from_face: f=%d,i=%d, edges [%d,%d] - %d\n",
-           (int)(f - g->faces), i, (int)(e - g->edges),
-           (int)(e2 - g->edges), ret);
-#endif
     return ret;
 }
 static bool is_atleastone(const char *dline_array, int index)
@@ -2194,8 +1968,6 @@ static int trivial_deductions(solver_state *sstate)
         }
     }
 
-    check_caches(sstate);
-
     /* Per-dot deductions */
     for (i = 0; i < g->num_dots; i++) {
         grid_dot *d = g->dots + i;
@@ -2235,8 +2007,6 @@ static int trivial_deductions(solver_state *sstate)
             return DIFF_EASY;
         }
     }
-
-    check_caches(sstate);
 
     return diff;
 }
@@ -2876,8 +2646,6 @@ static solver_state *solve_game_rec(const solver_state *sstate_start)
     int threshold_index = 0;
     
     sstate = dup_solver_state(sstate_start);
-
-    check_caches(sstate);
 
     while (i < NUM_SOLVERS) {
         if (sstate->solver_status == SOLVER_MISTAKE)
@@ -3542,103 +3310,6 @@ static int game_status(const game_state *state)
     return state->solved ? +1 : 0;
 }
 
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /*
-     * I'll use 7mm "squares" by default.
-     */
-    game_compute_size(params, 700, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int ink = print_mono_colour(dr, 0);
-    int i;
-    game_drawstate ads, *ds = &ads;
-    grid *g = state->game_grid;
-
-    ds->tilesize = tilesize;
-    ds->textx = snewn(g->num_faces, int);
-    ds->texty = snewn(g->num_faces, int);
-    for (i = 0; i < g->num_faces; i++)
-        ds->textx[i] = ds->texty[i] = -1;
-
-    for (i = 0; i < g->num_dots; i++) {
-        int x, y;
-        grid_to_screen(ds, g, g->dots[i].x, g->dots[i].y, &x, &y);
-        draw_circle(dr, x, y, ds->tilesize / 15, ink, ink);
-    }
-
-    /*
-     * Clues.
-     */
-    for (i = 0; i < g->num_faces; i++) {
-        grid_face *f = g->faces + i;
-        int clue = state->clues[i];
-        if (clue >= 0) {
-            char c[20];
-            int x, y;
-            sprintf(c, "%d", state->clues[i]);
-            face_text_pos(ds, g, f, &x, &y);
-            draw_text(dr, x, y,
-                      FONT_VARIABLE, ds->tilesize / 2,
-                      ALIGN_VCENTRE | ALIGN_HCENTRE, ink, c);
-        }
-    }
-
-    /*
-     * Lines.
-     */
-    for (i = 0; i < g->num_edges; i++) {
-        int thickness = (state->lines[i] == LINE_YES) ? 30 : 150;
-        grid_edge *e = g->edges + i;
-        int x1, y1, x2, y2;
-        grid_to_screen(ds, g, e->dot1->x, e->dot1->y, &x1, &y1);
-        grid_to_screen(ds, g, e->dot2->x, e->dot2->y, &x2, &y2);
-        if (state->lines[i] == LINE_YES)
-        {
-            /* (dx, dy) points from (x1, y1) to (x2, y2).
-             * The line is then "fattened" in a perpendicular
-             * direction to create a thin rectangle. */
-            double d = sqrt(SQ((double)x1 - x2) + SQ((double)y1 - y2));
-            double dx = (x2 - x1) / d;
-            double dy = (y2 - y1) / d;
-	    int points[8];
-
-            dx = (dx * ds->tilesize) / thickness;
-            dy = (dy * ds->tilesize) / thickness;
-	    points[0] = x1 + (int)dy;
-	    points[1] = y1 - (int)dx;
-	    points[2] = x1 - (int)dy;
-	    points[3] = y1 + (int)dx;
-	    points[4] = x2 - (int)dy;
-	    points[5] = y2 + (int)dx;
-	    points[6] = x2 + (int)dy;
-	    points[7] = y2 - (int)dx;
-            draw_polygon(dr, points, 4, ink, ink);
-        }
-        else
-        {
-            /* Draw a dotted line */
-            int divisions = 6;
-            int j;
-            for (j = 1; j < divisions; j++) {
-                /* Weighted average */
-                int x = (x1 * (divisions -j) + x2 * j) / divisions;
-                int y = (y1 * (divisions -j) + y2 * j) / divisions;
-                draw_circle(dr, x, y, ds->tilesize / thickness, ink, ink);
-            }
-        }
-    }
-
-    sfree(ds->textx);
-    sfree(ds->texty);
-}
-
 #ifdef COMBINED
 #define thegame loopy
 #endif
@@ -3659,7 +3330,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     1, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -3676,138 +3347,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false /* wants_statusbar */,
     false, game_timing_state,
     0,                                       /* mouse_priorities */
 };
 
-#ifdef STANDALONE_SOLVER
-
-/*
- * Half-hearted standalone solver. It can't output the solution to
- * anything but a square puzzle, and it can't log the deductions
- * it makes either. But it can solve square puzzles, and more
- * importantly it can use its solver to grade the difficulty of
- * any puzzle you give it.
- */
-
-#include <stdarg.h>
-
-int main(int argc, char **argv)
-{
-    game_params *p;
-    game_state *s;
-    char *id = NULL, *desc;
-    const char *err;
-    bool grade = false;
-    int ret, diff;
-#if 0 /* verbose solver not supported here (yet) */
-    bool really_verbose = false;
-#endif
-
-    while (--argc > 0) {
-        char *p = *++argv;
-#if 0 /* verbose solver not supported here (yet) */
-        if (!strcmp(p, "-v")) {
-            really_verbose = true;
-        } else
-#endif
-	if (!strcmp(p, "-g")) {
-            grade = true;
-        } else if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-            return 1;
-        } else {
-            id = p;
-        }
-    }
-
-    if (!id) {
-        fprintf(stderr, "usage: %s [-g | -v] <game_id>\n", argv[0]);
-        return 1;
-    }
-
-    desc = strchr(id, ':');
-    if (!desc) {
-        fprintf(stderr, "%s: game id expects a colon in it\n", argv[0]);
-        return 1;
-    }
-    *desc++ = '\0';
-
-    p = default_params();
-    decode_params(p, id);
-    err = validate_desc(p, desc);
-    if (err) {
-        fprintf(stderr, "%s: %s\n", argv[0], err);
-        return 1;
-    }
-    s = new_game(NULL, p, desc);
-
-    /*
-     * When solving an Easy puzzle, we don't want to bother the
-     * user with Hard-level deductions. For this reason, we grade
-     * the puzzle internally before doing anything else.
-     */
-    ret = -1;			       /* placate optimiser */
-    for (diff = 0; diff < DIFF_MAX; diff++) {
-	solver_state *sstate_new;
-	solver_state *sstate = new_solver_state((game_state *)s, diff);
-
-	sstate_new = solve_game_rec(sstate);
-
-	if (sstate_new->solver_status == SOLVER_MISTAKE)
-	    ret = 0;
-	else if (sstate_new->solver_status == SOLVER_SOLVED)
-	    ret = 1;
-	else
-	    ret = 2;
-
-	free_solver_state(sstate_new);
-	free_solver_state(sstate);
-
-	if (ret < 2)
-	    break;
-    }
-
-    if (diff == DIFF_MAX) {
-	if (grade)
-	    printf("Difficulty rating: harder than Hard, or ambiguous\n");
-	else
-	    printf("Unable to find a unique solution\n");
-    } else {
-	if (grade) {
-	    if (ret == 0)
-		printf("Difficulty rating: impossible (no solution exists)\n");
-	    else if (ret == 1)
-		printf("Difficulty rating: %s\n", diffnames[diff]);
-	} else {
-	    solver_state *sstate_new;
-	    solver_state *sstate = new_solver_state((game_state *)s, diff);
-
-	    /* If we supported a verbose solver, we'd set verbosity here */
-
-	    sstate_new = solve_game_rec(sstate);
-
-	    if (sstate_new->solver_status == SOLVER_MISTAKE)
-		printf("Puzzle is inconsistent\n");
-	    else {
-		assert(sstate_new->solver_status == SOLVER_SOLVED);
-		if (s->grid_type == 0) {
-		    fputs(game_text_format(sstate_new->state), stdout);
-		} else {
-		    printf("Unable to output non-square grids\n");
-		}
-	    }
-
-	    free_solver_state(sstate_new);
-	    free_solver_state(sstate);
-	}
-    }
-
-    return 0;
-}
-
-#endif
-
-/* vim: set shiftwidth=4 tabstop=8: */

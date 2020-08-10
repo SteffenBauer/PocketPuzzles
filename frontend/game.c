@@ -209,6 +209,7 @@ void ink_blitter_load(void *handle, blitter *bl, int x, int y) {
 
 void ink_status_bar(void *handle, const char *text) {
     ifont *font;
+    fe->statustext = text;
     FillArea(0, fe->gamelayout.statusbar.starty+2, ScreenWidth(), fe->gamelayout.statusbar.height-2, 0x00FFFFFF);
     font = OpenFont("LiberationSans-Bold", 32, 0);
     DrawTextRect(10, fe->gamelayout.statusbar.starty+8, ScreenWidth(), 32, text, ALIGN_LEFT);
@@ -266,16 +267,24 @@ void fatal(const char *fmt, ...) {
 /* ------------------------- */
 
 void gameMenuHandler(int index) {
+    const char *errorMsg;
     gameMenu_selectedIndex = index;
+
     switch (index) {
         case 101:
-            Message(ICON_WARNING, "", "New game not implemented yet!", 3000);
+            gamePrepare();
+            gameShowPage();
             break;
         case 102:
-            Message(ICON_WARNING, "", "Game restart not implemented yet!", 3000);
+            fe->do_partial = false;
+            midend_restart_game(me);
+            fe->do_partial = true;
             break;
         case 103:
-            Message(ICON_WARNING, "", "Show solution not implemented yet!", 3000);
+            fe->do_partial = false;
+            errorMsg = midend_solve(me);
+            fe->do_partial = true;
+            if (errorMsg) Message(ICON_WARNING, "", errorMsg, 3000);
             break;
         case 104:
             Message(ICON_WARNING, "", "Help not implemented yet!", 3000);
@@ -300,11 +309,11 @@ void typeMenuHandler(int index) {
     if (index > 200) {
         if (currentindex >= 0) typeMenu[currentindex+2].type = ITEM_ACTIVE;
         else typeMenu[1].type = ITEM_ACTIVE;
-
         presets = midend_get_presets(me, NULL);
         midend_set_params(me, presets->entries[index-201].params);
-
         typeMenu[index-199].type = ITEM_BULLET;
+        gamePrepare();
+        gameShowPage();
     }
     button_to_normal(&btn_type, true);
 };
@@ -347,6 +356,7 @@ void gameTap(int x, int y) {
     init_tap_y = y;
 
     if (coord_in_button(x, y, &btn_back)) button_to_tapped(&btn_back);
+    if (coord_in_button(x, y, &btn_draw)) button_to_tapped(&btn_draw);
     if (coord_in_button(x, y, &btn_game)) button_to_tapped(&btn_game);
     if (coord_in_button(x, y, &btn_type)) button_to_tapped(&btn_type);
     if (coord_in_button(x, y, &btn_swap)) button_to_tapped(&btn_swap);
@@ -363,6 +373,7 @@ void gameDrag(int x, int y) {
 void gameRelease(int x, int y) {
     int i;
     if (coord_in_button(init_tap_x, init_tap_y, &btn_back)) button_to_normal(&btn_back, true);
+    if (coord_in_button(init_tap_x, init_tap_y, &btn_draw)) button_to_normal(&btn_draw, true);
     if (coord_in_button(init_tap_x, init_tap_y, &btn_game)) button_to_normal(&btn_game, true);
     if (coord_in_button(init_tap_x, init_tap_y, &btn_type)) button_to_normal(&btn_type, true);
     if (coord_in_button(init_tap_x, init_tap_y, &btn_swap)) button_to_normal(&btn_swap, true);
@@ -372,6 +383,9 @@ void gameRelease(int x, int y) {
     if (release_button(x, y, &btn_back)) {
         gameExitPage();
         switchToChooser();
+    }
+    else if (release_button(x, y, &btn_draw)) {
+        gameShowPage();
     }
     else if (release_button(x, y, &btn_game)) {
         OpenMenuEx(gameMenu, gameMenu_selectedIndex, ScreenWidth()-20-(2*fe->gamelayout.menubtn_size), fe->gamelayout.menubtn_size+2, gameMenuHandler);
@@ -399,6 +413,7 @@ static void gameDrawMenu() {
     FillArea(0, fe->gamelayout.menu.starty + fe->gamelayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
     button_to_normal(&btn_back, false);
+    button_to_normal(&btn_draw, false);
     button_to_normal(&btn_game, false);
     button_to_normal(&btn_type, false);
 
@@ -412,6 +427,11 @@ static void gameSetupMenuButtons() {
     btn_back.posx = 10;
     btn_back.posy = fe->gamelayout.menu.starty;
     btn_back.size = fe->gamelayout.menubtn_size;
+
+    btn_draw.active = true;
+    btn_draw.posx = ScreenWidth() - 30 - (3*fe->gamelayout.menubtn_size);
+    btn_draw.posy = fe->gamelayout.menu.starty;
+    btn_draw.size = fe->gamelayout.menubtn_size;
 
     btn_game.active = true;
     btn_game.posx = ScreenWidth() - 20 - (2*fe->gamelayout.menubtn_size);
@@ -443,8 +463,13 @@ static void gameSetupControlButtons() {
 }
 
 static void gameSetupStatusBar() {
+    ifont *font;
     FillArea(0, fe->gamelayout.statusbar.starty, ScreenWidth(), fe->gamelayout.statusbar.height, 0x00FFFFFF);
     FillArea(0, fe->gamelayout.statusbar.starty, ScreenWidth(), 1, 0x00000000);
+
+    font = OpenFont("LiberationSans-Bold", 32, 0);
+    DrawTextRect(10, fe->gamelayout.statusbar.starty+8, ScreenWidth(), 32, fe->statustext, ALIGN_LEFT);
+    CloseFont(font);
 }
 
 static void gameExitPage() {
@@ -455,26 +480,31 @@ static void gameExitPage() {
 }
 
 void gameShowPage() {
+    SetClipRect(&fe->cliprect);
     ClearScreen();
     DrawPanel(NULL, "", "", 0);
     gameDrawMenu();
     gameDrawControlButtons();
     if (fe->gamelayout.with_statusbar) gameSetupStatusBar();
     fe->do_partial = false;
-    midend_redraw(me);
+    midend_force_redraw(me);
     fe->do_partial = true;
 }
 
 void gameInit(const struct game *thegame) {
-    int x, y;
     currentgame = thegame;
     fe = snew(frontend);
     me = midend_new(fe, thegame, &ink_drawing, fe);
-    
+    gamePrepare();
+}
+
+void gamePrepare() {
+    int x, y;
     fe->gamelayout = getLayout(gameGetLayout());
     fe->offset = fe->gamelayout.maincanvas.starty;
     fe->height = fe->gamelayout.maincanvas.height;
     fe->cliprect = GetClipRect();
+    fe->statustext = "";
     gamecontrol_num = 3;
     gamecontrol_padding = (ScreenWidth()-(gamecontrol_num * fe->gamelayout.control_size))/(gamecontrol_num+1);
     gameSetupMenuButtons();

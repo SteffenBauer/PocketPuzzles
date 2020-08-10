@@ -35,7 +35,7 @@ See also [LICENSE](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/
 - [X] Game launch
 - [ ] Screen click handling
 - [ ] Colors -> Greyscale
-- [ ] Implement game menu controls (new, restart, solve)
+- [X] Implement game menu controls (new, restart, solve)
 - [ ] Implement swap / undo / redo functionality
 - [ ] Setup of game specific control buttons
 - [X] Setup of game specific type presets

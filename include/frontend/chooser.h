@@ -24,7 +24,7 @@ extern const struct game abcd, ascent, blackbox, boats, bridges,
                          towers, tracks, twiddle, undead, unequal,
                          unruly, untangle, walls;
 
-extern ibitmap icon_home, icon_home_tap, 
+extern ibitmap icon_home, icon_home_tap, icon_redraw, icon_redraw_tap,
                game_abcd, game_ascent, game_blackbox, game_boats, game_bridges,
                game_clusters, game_cube, game_dominosa, game_fifteen, game_filling,
                game_flip, game_flood, game_galaxies, game_guess, game_inertia,
@@ -38,7 +38,7 @@ extern ibitmap icon_home, icon_home_tap,
                bt_prev, bt_next;
 
 static BUTTON btn_home = { false, BTN_MENU, 0, 0, 0, 0, &icon_home, &icon_home_tap, NULL, NULL};
-
+static BUTTON btn_draw = { false, BTN_MENU, 0, 0, 0, 0, &icon_redraw, &icon_redraw_tap, NULL, NULL};
 static BUTTON btn_prev = { false, BTN_CTRL, 0, 0, 0, 0, &bt_prev, NULL, NULL, NULL};
 static BUTTON btn_next = { false, BTN_CTRL, 0, 0, 0, 0, &bt_next, NULL, NULL, NULL};
 
