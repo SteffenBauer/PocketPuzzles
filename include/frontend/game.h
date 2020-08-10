@@ -10,8 +10,10 @@ typedef struct {
 
 struct frontend {
   struct layout gamelayout;
-  int offset;
+  int width;
   int height;
+  int xoffset;
+  int yoffset;
   bool do_partial;
   irect cliprect;
   const char *statustext;
@@ -19,6 +21,8 @@ struct frontend {
   int time_int;
   int isTimer;
   game_params *pparams;
+  int ncolours;
+  float *colours;
 };
 
 struct blitter {
