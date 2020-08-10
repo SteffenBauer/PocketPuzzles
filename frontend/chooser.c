@@ -12,6 +12,7 @@ void chooserTap(int x, int y) {
     int i;
 
     if (coord_in_button(x, y, &btn_home)) button_to_tapped(&btn_home);
+    if (coord_in_button(x, y, &btn_draw)) button_to_tapped(&btn_draw);
     if (coord_in_button(x, y, &btn_prev)) button_to_tapped(&btn_prev);
     if (coord_in_button(x, y, &btn_next)) button_to_tapped(&btn_next);
     for (i=0;i<num_games;i++) {
@@ -31,25 +32,29 @@ void chooserDrag(int x, int y) {
 void chooserRelease(int x, int y) {
     int i;
     if (coord_in_button(init_tap_x, init_tap_y, &btn_home)) button_to_normal(&btn_home, true);
+    if (coord_in_button(init_tap_x, init_tap_y, &btn_draw)) button_to_normal(&btn_draw, true);
     if (coord_in_button(init_tap_x, init_tap_y, &btn_prev)) button_to_normal(&btn_prev, true);
     if (coord_in_button(init_tap_x, init_tap_y, &btn_next)) button_to_normal(&btn_next, true);
     for (i=0;i<num_games;i++) {
         if (coord_in_button(init_tap_x, init_tap_y, &btn_chooser[i])) {
             button_to_normal(&btn_chooser[i], true);
             switchToGame(btn_chooser[i].thegame);
-            break;
+            return;
         }
     }
 
     if (release_button(x, y, &btn_home)) {
         exitApp();
     }
-    if (release_button(x, y, &btn_prev) &&
+    else if (release_button(x, y, &btn_draw)) {
+        chooserShowPage();
+    }
+    else if (release_button(x, y, &btn_prev) &&
         (current_chooserpage > 0)) {
             current_chooserpage -= 1;
             chooserShowPage();
     }
-    if (release_button(x, y, &btn_next) &&
+    else if (release_button(x, y, &btn_next) &&
         (current_chooserpage <= chooser_lastpage)) {
             current_chooserpage += 1;
             chooserShowPage();
@@ -105,6 +110,7 @@ static void chooserDrawMenu() {
     FillArea(0, chooserlayout.menu.starty + chooserlayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
     button_to_normal(&btn_home, false);
+    button_to_normal(&btn_draw, false);
 
     font = OpenFont("LiberationSans-Bold", 32, 0);
     DrawTextRect(0, (chooserlayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, "PUZZLES", ALIGN_CENTER);
@@ -143,6 +149,11 @@ static void chooserSetupMenuButtons() {
     btn_home.posx = 10;
     btn_home.posy = chooserlayout.menu.starty;
     btn_home.size = chooserlayout.menubtn_size; 
+
+    btn_draw.active = true;
+    btn_draw.posx = ScreenWidth() - chooserlayout.menubtn_size - 10;
+    btn_draw.posy = chooserlayout.menu.starty;
+    btn_draw.size = chooserlayout.menubtn_size; 
 }
 
 void chooserShowPage() {

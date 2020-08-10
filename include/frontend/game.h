@@ -14,6 +14,7 @@ struct frontend {
   int height;
   bool do_partial;
   irect cliprect;
+  const char *statustext;
   struct timeval last_time;
   int time_int;
   int isTimer;
@@ -32,13 +33,11 @@ midend *me;
 drawing *dr;
 struct preset_menu *presets;
 
-
 static int gamecontrol_padding;
 static int gamecontrol_num;
 
-LAYOUTTYPE gameGetLayout();
-
-extern ibitmap icon_back, icon_back_tap, icon_game, icon_game_tap, icon_type, icon_type_tap,
+extern ibitmap icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,
+               icon_game, icon_game_tap, icon_type, icon_type_tap,
                menu_exit, menu_help, menu_new, menu_restart, menu_solve,
                bt_add, bt_backspace, bt_bridges_g, bt_fill, bt_fill_undead, bt_guess_i,
                bt_redo, bt_redo_d, bt_remove, bt_map_c, bt_map_j, bt_net_shuffle, 
@@ -46,6 +45,7 @@ extern ibitmap icon_back, icon_back_tap, icon_game, icon_game_tap, icon_type, ic
                bt_swap, bt_undo, bt_undo_d;
 
 static BUTTON btn_back = { false, BTN_MENU, 0, 0, 0, 0, &icon_back, &icon_back_tap, NULL, NULL};
+static BUTTON btn_draw = { false, BTN_MENU, 0, 0, 0, 0, &icon_redraw, &icon_redraw_tap, NULL, NULL};
 static BUTTON btn_game = { false, BTN_MENU, 0, 0, 0, 0, &icon_game, &icon_game_tap, NULL, NULL};
 static BUTTON btn_type = { false, BTN_MENU, 0, 0, 0, 0, &icon_type, &icon_type_tap, NULL, NULL};
 
@@ -78,6 +78,9 @@ static void gameExitPage();
 
 void gameInit(const struct game *thegame);
 void gameShowPage();
+void gamePrepare();
+LAYOUTTYPE gameGetLayout();
+
 void gameTap(int x, int y);
 void gameLongTap(int x, int y);
 void gameDrag(int x, int y);
