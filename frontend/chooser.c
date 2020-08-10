@@ -155,6 +155,11 @@ void chooserShowPage() {
 }
 
 void chooserInit() {
+    num_games = 0;
+    while (true) {
+        if (btn_chooser[num_games].type == BTN_NULL) break;
+        num_games++;
+    }
     current_chooserpage = 0;
     chooser_lastpage = (num_games-1) / (chooser_cols * chooser_rows);
 

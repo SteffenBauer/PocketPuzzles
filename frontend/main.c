@@ -13,7 +13,6 @@ void switchToChooser() {
     SCREEN.drag          = &chooserDrag;
     SCREEN.release       = &chooserRelease;
 
-    chooserInit();
     chooserShowPage();
 }
 
@@ -30,6 +29,7 @@ void switchToGame(const struct game *thegame) {
 
 static void setupApp() {
     SetPanelType(PANEL_ENABLED);
+    chooserInit();
     switchToChooser();
 }
 
