@@ -9,15 +9,12 @@ typedef struct {
 } MWPOINT;
 
 struct frontend {
-  int inkSW;
-  int inkSH;
-  int FH;
-  int FW;
-  int statusbar;
-  ifont *statusfont;
-  char *statustext;
+  struct layout gamelayout;
+  int offset;
+  int height;
+  bool do_partial;
+  irect cliprect;
   struct timeval last_time;
-  int MenuP;
   int time_int;
   int isTimer;
   game_params *pparams;
@@ -39,7 +36,6 @@ struct preset_menu *presets;
 static int gamecontrol_padding;
 static int gamecontrol_num;
 
-struct layout gamelayout;
 LAYOUTTYPE gameGetLayout();
 
 extern ibitmap icon_back, icon_back_tap, icon_game, icon_game_tap, icon_type, icon_type_tap,
@@ -70,8 +66,6 @@ static int gameMenu_selectedIndex = 1;
 static imenu *typeMenu;
 static int typeMenu_selectedIndex = 1;
 static void gameBuildTypeMenu();
-
-static void drawStatusBar(char *text);
 
 static void gameSetupMenuButtons();
 static void gameSetupControlButtons();

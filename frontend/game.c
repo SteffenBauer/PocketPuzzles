@@ -8,7 +8,6 @@
 #include "puzzles.h"
 
 #define DOTTED 0xFF000000
-int pbSW, pbSH, pbOrient;
 
 int inkcolors[12] = {WHITE, LGRAY, DGRAY, BLACK, LGRAY, LGRAY, DGRAY, DGRAY, DGRAY, DGRAY, LGRAY, BLACK};
 const struct drawing_api ink_drawing = {
@@ -49,7 +48,7 @@ void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
   if (align & ALIGN_HCENTRE) x -= sw/2;
   else if (align & ALIGN_HRIGHT) x -= sw;
 
-  DrawString(x, y, text);
+  DrawString(x, fe->offset + y, text);
   CloseFont(tempfont);
 }
 
@@ -58,18 +57,18 @@ void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour) {
 
   if (inkcolors[colour] & DOTTED) {
     for (i=0;i<h;i++) {
-      if ((y+i) & 1) DrawLine(x,y+i,x+w-1,y+i,inkcolors[colour]&WHITE);
-      else DrawLine(x,y+i,x+w-1,y+i,inkcolors[0]);
+      if ((y+i) & 1) DrawLine(x,fe->offset+y+i,x+w-1,fe->offset+y+i,inkcolors[colour]&WHITE);
+      else DrawLine(x,fe->offset+y+i,x+w-1,fe->offset+y+i,inkcolors[0]);
     }
   }
-  else for (i=0;i<h;i++) DrawLine(x,y+i,x+w-1,y+i,inkcolors[colour]);
+  else for (i=0;i<h;i++) DrawLine(x,fe->offset+y+i,x+w-1,fe->offset+y+i,inkcolors[colour]);
 }
 void ink_draw_rect_outline(void *handle, int x, int y, int w, int h, int colour) {
-    DrawRect(x, y, w, h, inkcolors[colour]);
+    DrawRect(x, fe->offset+y, w, h, inkcolors[colour]);
 }
 
 void ink_draw_line(void *handle, int x1, int y1, int x2, int y2, int colour) {
-  DrawLine(x1, y1, x2, y2, inkcolors[colour]);
+  DrawLine(x1, fe->offset+y1, x2, fe->offset+y2, inkcolors[colour]);
 }
 
 static void extendrow(int y, int x1, int y1, int x2, int y2, int *minxptr, int *maxxptr) {
@@ -132,18 +131,18 @@ void ink_draw_polygon(void *handle, int *icoords, int npoints,
 
         if (minx <= maxx) {
           if (inkcolors[fillcolour] & DOTTED) {
-            if (miny & 1) DrawLine(minx, miny, maxx, miny, inkcolors[fillcolour]&WHITE);
-            else DrawLine(minx, miny, maxx, miny, inkcolors[0]);
+            if (miny & 1) DrawLine(minx, fe->offset+miny, maxx, fe->offset+miny, inkcolors[fillcolour]&WHITE);
+            else DrawLine(minx, fe->offset+miny, maxx, fe->offset+miny, inkcolors[0]);
           }
-          else DrawLine(minx, miny, maxx, miny, inkcolors[fillcolour]);
+          else DrawLine(minx, fe->offset+miny, maxx, fe->offset+miny, inkcolors[fillcolour]);
         }
     }
   }
 
   for (i = 0; i < npoints-1; i++) {
-    DrawLine(coords[i].x, coords[i].y, coords[i+1].x, coords[i+1].y, inkcolors[outlinecolour]);
+    DrawLine(coords[i].x, fe->offset+coords[i].y, coords[i+1].x, fe->offset+coords[i+1].y, inkcolors[outlinecolour]);
   }
-  DrawLine(coords[i].x, coords[i].y, coords[0].x, coords[0].y, inkcolors[outlinecolour]);
+  DrawLine(coords[i].x, fe->offset+coords[i].y, coords[0].x, fe->offset+coords[0].y, inkcolors[outlinecolour]);
 }
 
 
@@ -154,14 +153,14 @@ void ink_draw_circle(void *handle, int cx, int cy, int radius, int fillcolour, i
     y=i-radius;
     x=lround(sqrt(radius*radius-y*y));
 
-    DrawLine(cx+xx, cy+yy, cx+x, cy+y, inkcolors[outlinecolour]&WHITE);
-    DrawLine(cx-xx, cy+yy, cx-x, cy+y, inkcolors[outlinecolour]&WHITE);
+    DrawLine(cx+xx, fe->offset+cy+yy, cx+x, fe->offset+cy+y, inkcolors[outlinecolour]&WHITE);
+    DrawLine(cx-xx, fe->offset+cy+yy, cx-x, fe->offset+cy+y, inkcolors[outlinecolour]&WHITE);
 
     if (fillcolour!=-1) {
       if (!(inkcolors[fillcolour]&DOTTED)) {
-        DrawLine(cx-x, cy+y, cx+x, cy+y, inkcolors[fillcolour]&WHITE);
+        DrawLine(cx-x, fe->offset+cy+y, cx+x, fe->offset+cy+y, inkcolors[fillcolour]&WHITE);
       }
-      else if ((cy+y)%2) DrawLine(cx-x, cy+y, cx+x, cy+y, inkcolors[fillcolour]&WHITE);
+      else if ((cy+y)%2) DrawLine(cx-x, fe->offset+cy+y, cx+x, fe->offset+cy+y, inkcolors[fillcolour]&WHITE);
     }
 
     xx=x; yy=y;
@@ -169,23 +168,22 @@ void ink_draw_circle(void *handle, int cx, int cy, int radius, int fillcolour, i
 }
 
 void ink_clip(void *handle, int x, int y, int w, int h) {
-    SetClip(x, y, w, h);
+    SetClip(x, fe->offset + y, w, h);
 }
 
 void ink_unclip(void *handle) {
-    SetClip(0, 0, pbSW, pbSH);
+    SetClipRect(&fe->cliprect);
 }
 
 void ink_start_draw(void *handle) {
-//??
 }
 
 void ink_draw_update(void *handle, int x, int y, int w, int h) {
-//??
+  if (fe->do_partial) PartialUpdate(x, fe->offset + y, w, h);
 }
 
 void ink_end_draw(void *handle) {
-  PartialUpdate(0, 0, fe->inkSW, fe->inkSH);
+  if (!fe->do_partial) FullUpdate();
 }
 
 blitter *ink_blitter_new(void *handle, int w, int h) {
@@ -210,19 +208,12 @@ void ink_blitter_load(void *handle, blitter *bl, int x, int y) {
 }
 
 void ink_status_bar(void *handle, const char *text) {
-
-  size_t tlen;
-
-  if (fe->statusbar) {
-    sfree(fe->statustext);
-    tlen=strlen(text)+1;
-    fe->statustext = snewn(tlen, char);
-    strcpy(fe->statustext, text);
-    ink_draw_rect(0, 10, pbSH-30, pbSW-20, 30, 0);
-    SetFont(fe->statusfont, BLACK);
-    DrawString(10, pbSH-30, fe->statustext);
-    PartialUpdateBW(0, pbSH-50, pbSW, 50);
-  }
+    ifont *font;
+    FillArea(0, fe->gamelayout.statusbar.starty+2, ScreenWidth(), fe->gamelayout.statusbar.height-2, 0x00FFFFFF);
+    font = OpenFont("LiberationSans-Bold", 32, 0);
+    DrawTextRect(10, fe->gamelayout.statusbar.starty+8, ScreenWidth(), 32, text, ALIGN_LEFT);
+    PartialUpdate(0, fe->gamelayout.statusbar.starty+2, ScreenWidth(), fe->gamelayout.statusbar.height-2);
+    CloseFont(font);
 }
 
 
@@ -274,29 +265,20 @@ void fatal(const char *fmt, ...) {
 
 /* ------------------------- */
 
-static void drawStatusBar(char *text) {
-    ifont *font;
-    FillArea(0, gamelayout.statusbar.starty+2, ScreenWidth(), gamelayout.statusbar.height-2, 0x00FFFFFF);
-    font = OpenFont("LiberationSans-Bold", 32, 0);
-    DrawTextRect(10, gamelayout.statusbar.starty+8, ScreenWidth(), 32, text, ALIGN_LEFT);
-    PartialUpdate(0, gamelayout.statusbar.starty+2, ScreenWidth(), gamelayout.statusbar.height-2);
-    CloseFont(font);
-}
-
 void gameMenuHandler(int index) {
     gameMenu_selectedIndex = index;
     switch (index) {
         case 101:
-            drawStatusBar("Selected 'New game'");
+            Message(ICON_WARNING, "", "New game not implemented yet!", 3000);
             break;
         case 102:
-            drawStatusBar("Selected 'Restart game'");
+            Message(ICON_WARNING, "", "Game restart not implemented yet!", 3000);
             break;
         case 103:
-            drawStatusBar("Selected 'Show solution'");
+            Message(ICON_WARNING, "", "Show solution not implemented yet!", 3000);
             break;
         case 104:
-            drawStatusBar("Selected 'How to play'");
+            Message(ICON_WARNING, "", "Help not implemented yet!", 3000);
             break;
         case 199:
             gameExitPage();
@@ -311,11 +293,18 @@ void gameMenuHandler(int index) {
 void typeMenuHandler(int index) {
     typeMenu_selectedIndex = index;
     char buf[256];
+    int currentindex = midend_which_preset(me);
+
     if (index == 200)
-        Message(ICON_WARNING, "Not available", "Custom preset not implemented yet!", 3000);
+        Message(ICON_WARNING, "", "Custom preset not implemented yet!", 3000);
     if (index > 200) {
-        snprintf(buf, 200, "Selected type: '%s'", typeMenu[index-199].text);
-        drawStatusBar(buf);
+        if (currentindex >= 0) typeMenu[currentindex+2].type = ITEM_ACTIVE;
+        else typeMenu[1].type = ITEM_ACTIVE;
+
+        presets = midend_get_presets(me, NULL);
+        midend_set_params(me, presets->entries[index-201].params);
+
+        typeMenu[index-199].type = ITEM_BULLET;
     }
     button_to_normal(&btn_type, true);
 };
@@ -384,17 +373,17 @@ void gameRelease(int x, int y) {
         gameExitPage();
         switchToChooser();
     }
-    if (release_button(x, y, &btn_game)) {
-        OpenMenuEx(gameMenu, gameMenu_selectedIndex, ScreenWidth()-20-(2*gamelayout.menubtn_size), gamelayout.menubtn_size+2, gameMenuHandler);
+    else if (release_button(x, y, &btn_game)) {
+        OpenMenuEx(gameMenu, gameMenu_selectedIndex, ScreenWidth()-20-(2*fe->gamelayout.menubtn_size), fe->gamelayout.menubtn_size+2, gameMenuHandler);
     }
-    if (release_button(x, y, &btn_type)) {
-        OpenMenu(typeMenu, typeMenu_selectedIndex, ScreenWidth()-10-gamelayout.menubtn_size, gamelayout.menubtn_size+2, typeMenuHandler);
+    else if (release_button(x, y, &btn_type)) {
+        OpenMenu(typeMenu, typeMenu_selectedIndex, ScreenWidth()-10-fe->gamelayout.menubtn_size, fe->gamelayout.menubtn_size+2, typeMenuHandler);
     }
 }
 
 static void gameDrawControlButtons() {
-    FillArea(0, gamelayout.buttonpanel.starty, ScreenWidth(), gamelayout.buttonpanel.height, 0x00FFFFFF);
-    FillArea(0, gamelayout.buttonpanel.starty, ScreenWidth(), 1, 0x00000000);
+    FillArea(0, fe->gamelayout.buttonpanel.starty, ScreenWidth(), fe->gamelayout.buttonpanel.height, 0x00FFFFFF);
+    FillArea(0, fe->gamelayout.buttonpanel.starty, ScreenWidth(), 1, 0x00000000);
 
     btn_swap.active = true;
     button_to_normal(&btn_swap, false);
@@ -406,59 +395,60 @@ static void gameDrawControlButtons() {
 
 static void gameDrawMenu() {
     ifont *font;
-    FillArea(0, gamelayout.menu.starty, ScreenWidth(), gamelayout.menu.height, 0x00FFFFFF);
-    FillArea(0, gamelayout.menu.starty + gamelayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
+    FillArea(0, fe->gamelayout.menu.starty, ScreenWidth(), fe->gamelayout.menu.height, 0x00FFFFFF);
+    FillArea(0, fe->gamelayout.menu.starty + fe->gamelayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
     button_to_normal(&btn_back, false);
     button_to_normal(&btn_game, false);
     button_to_normal(&btn_type, false);
 
     font = OpenFont("LiberationSans-Bold", 32, 0);
-    DrawTextRect(0, (gamelayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, currentgame->name, ALIGN_CENTER);
+    DrawTextRect(0, (fe->gamelayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, currentgame->name, ALIGN_CENTER);
     CloseFont(font);
 }
 
 static void gameSetupMenuButtons() {
     btn_back.active = true;
     btn_back.posx = 10;
-    btn_back.posy = gamelayout.menu.starty;
-    btn_back.size = gamelayout.menubtn_size;
+    btn_back.posy = fe->gamelayout.menu.starty;
+    btn_back.size = fe->gamelayout.menubtn_size;
 
     btn_game.active = true;
-    btn_game.posx = ScreenWidth() - 20 - (2*gamelayout.menubtn_size);
-    btn_game.posy = gamelayout.menu.starty;
-    btn_game.size = gamelayout.menubtn_size;
+    btn_game.posx = ScreenWidth() - 20 - (2*fe->gamelayout.menubtn_size);
+    btn_game.posy = fe->gamelayout.menu.starty;
+    btn_game.size = fe->gamelayout.menubtn_size;
 
     btn_type.active = true;
-    btn_type.posx = ScreenWidth() - 10 - gamelayout.menubtn_size;
-    btn_type.posy = gamelayout.menu.starty;
-    btn_type.size = gamelayout.menubtn_size;
+    btn_type.posx = ScreenWidth() - 10 - fe->gamelayout.menubtn_size;
+    btn_type.posy = fe->gamelayout.menu.starty;
+    btn_type.size = fe->gamelayout.menubtn_size;
 }
 
 static void gameSetupControlButtons() {
 
     btn_swap.active = true;
     btn_swap.posx = gamecontrol_padding;
-    btn_swap.posy = gamelayout.buttonpanel.starty + 2;
-    btn_swap.size = gamelayout.control_size;
+    btn_swap.posy = fe->gamelayout.buttonpanel.starty + 2;
+    btn_swap.size = fe->gamelayout.control_size;
 
     btn_undo.active = true;
-    btn_undo.posx = 2*gamecontrol_padding + gamelayout.control_size;
-    btn_undo.posy = gamelayout.buttonpanel.starty + 2;
-    btn_undo.size = gamelayout.control_size;
+    btn_undo.posx = 2*gamecontrol_padding + fe->gamelayout.control_size;
+    btn_undo.posy = fe->gamelayout.buttonpanel.starty + 2;
+    btn_undo.size = fe->gamelayout.control_size;
 
     btn_redo.active = true;
-    btn_redo.posx = 3*gamecontrol_padding + 2*gamelayout.control_size;
-    btn_redo.posy = gamelayout.buttonpanel.starty + 2;
-    btn_redo.size = gamelayout.control_size;
+    btn_redo.posx = 3*gamecontrol_padding + 2*fe->gamelayout.control_size;
+    btn_redo.posy = fe->gamelayout.buttonpanel.starty + 2;
+    btn_redo.size = fe->gamelayout.control_size;
 }
 
 static void gameSetupStatusBar() {
-    FillArea(0, gamelayout.statusbar.starty, ScreenWidth(), gamelayout.statusbar.height, 0x00FFFFFF);
-    FillArea(0, gamelayout.statusbar.starty, ScreenWidth(), 1, 0x00000000);
+    FillArea(0, fe->gamelayout.statusbar.starty, ScreenWidth(), fe->gamelayout.statusbar.height, 0x00FFFFFF);
+    FillArea(0, fe->gamelayout.statusbar.starty, ScreenWidth(), 1, 0x00000000);
 }
 
 static void gameExitPage() {
+    SetClipRect(&fe->cliprect);
     free(typeMenu);
     midend_free(me);
     sfree(fe);
@@ -469,26 +459,31 @@ void gameShowPage() {
     DrawPanel(NULL, "", "", 0);
     gameDrawMenu();
     gameDrawControlButtons();
-    if (gamelayout.with_statusbar) gameSetupStatusBar();
-    FullUpdate();
+    if (fe->gamelayout.with_statusbar) gameSetupStatusBar();
+    fe->do_partial = false;
+    midend_redraw(me);
+    fe->do_partial = true;
 }
 
 void gameInit(const struct game *thegame) {
+    int x, y;
     currentgame = thegame;
-    pbSW=ScreenWidth();
-    pbSH=ScreenHeight();
-    pbOrient=GetOrientation();
-
     fe = snew(frontend);
     me = midend_new(fe, thegame, &ink_drawing, fe);
     
-    gamelayout = getLayout(gameGetLayout());
+    fe->gamelayout = getLayout(gameGetLayout());
+    fe->offset = fe->gamelayout.maincanvas.starty;
+    fe->height = fe->gamelayout.maincanvas.height;
+    fe->cliprect = GetClipRect();
     gamecontrol_num = 3;
-    gamecontrol_padding = (ScreenWidth()-(gamecontrol_num*gamelayout.control_size))/(gamecontrol_num+1);
+    gamecontrol_padding = (ScreenWidth()-(gamecontrol_num * fe->gamelayout.control_size))/(gamecontrol_num+1);
     gameSetupMenuButtons();
     gameSetupControlButtons();
     gameBuildTypeMenu();
-
+    midend_new_game(me);
+    x = ScreenWidth();
+    y = fe->height;
+    midend_size(me, &x, &y, true);
 }
 
 LAYOUTTYPE gameGetLayout() {
