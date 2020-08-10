@@ -2,9 +2,12 @@
 #define POCKETPUZZLES_CHOOSER_HEADER
 #include "common.h"
 
-extern struct layout mainlayout;
+struct layout chooserlayout;
 int current_chooserpage;
 int chooser_lastpage;
+
+static int chooser_cols = 5;
+static int chooser_rows = 5;
 
 static int control_num = 2;
 static int control_padding;
@@ -98,6 +101,7 @@ static BUTTON btn_chooser[] = {
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_unruly,     NULL, NULL, &unruly},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_untangle,   NULL, NULL, &untangle},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_walls,      NULL, NULL, &walls},
+    { false, BTN_NULL, 0, 0, 0, 0, NULL, NULL, NULL, NULL}
 };
 
 static void chooserSetupMenuButtons();
@@ -109,11 +113,10 @@ static void chooserDrawChooserButtons(int page);
 static void chooserDrawControlButtons(int page);
 
 void chooserInit();
-LAYOUTTYPE chooserGetLayout();
-void chooserPrepare();
 void chooserShowPage();
 void chooserTap(int x, int y);
 void chooserLongTap(int x, int y);
+void chooserDrag(int x, int y);
 void chooserRelease(int x, int y);
 
 #endif

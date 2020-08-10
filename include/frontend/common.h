@@ -2,12 +2,6 @@
 #define POCKETPUZZLES_COMMON_HEADER
 #include "puzzles.h"
 
-ifont *font;
-int kFontSize;
-
-int chooser_cols;
-int chooser_rows;
-
 typedef struct panel {
     int starty;
     int height;
@@ -40,7 +34,8 @@ struct layout {
 typedef enum {
     BTN_MENU,
     BTN_CHOOSER,
-    BTN_CTRL
+    BTN_CTRL,
+    BTN_NULL
 } BUTTONTYPE;
 
 typedef struct button {
@@ -65,8 +60,10 @@ void button_to_cleared(BUTTON *button, bool update);
 int init_tap_x;
 int init_tap_y;
 
+struct layout getLayout(LAYOUTTYPE screenlayout);
+
 extern void switchToChooser();
-extern void switchToGame();
+extern void switchToGame(const struct game *thegame);
 extern void exitApp();
 
 #endif

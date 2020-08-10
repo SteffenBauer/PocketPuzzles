@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include "inkview.h"
-#include "game.h"
+#include "frontend/game.h"
 #include "puzzles.h"
 
 #define DOTTED 0xFF000000
@@ -36,7 +36,6 @@ const struct drawing_api ink_drawing = {
 
 void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
                int align, int colour, const char *text) {
-
   ifont *tempfont;
   int sw, sh;
   tempfont = OpenFont(fonttype == FONT_FIXED ? "LiberationMono" : "LiberationSans",
@@ -55,7 +54,6 @@ void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
 }
 
 void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour) {
-
   int i;
 
   if (inkcolors[colour] & DOTTED) {
@@ -67,17 +65,14 @@ void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour) {
   else for (i=0;i<h;i++) DrawLine(x,y+i,x+w-1,y+i,inkcolors[colour]);
 }
 void ink_draw_rect_outline(void *handle, int x, int y, int w, int h, int colour) {
-
     DrawRect(x, y, w, h, inkcolors[colour]);
 }
 
 void ink_draw_line(void *handle, int x1, int y1, int x2, int y2, int colour) {
-
   DrawLine(x1, y1, x2, y2, inkcolors[colour]);
 }
 
 static void extendrow(int y, int x1, int y1, int x2, int y2, int *minxptr, int *maxxptr) {
-
   int x;
   typedef long NUM;
   NUM num;
@@ -107,7 +102,6 @@ static void extendrow(int y, int x1, int y1, int x2, int y2, int *minxptr, int *
 
 void ink_draw_polygon(void *handle, int *icoords, int npoints,
                   int fillcolour, int outlinecolour) {
-
   MWPOINT *coords = (MWPOINT *)icoords;
 
   MWPOINT *pp;
@@ -154,7 +148,6 @@ void ink_draw_polygon(void *handle, int *icoords, int npoints,
 
 
 void ink_draw_circle(void *handle, int cx, int cy, int radius, int fillcolour, int outlinecolour) {
-
   int i,x,y,yy=0-radius,xx=0;
 
   for (i=0; i<=2*radius; i++) {
@@ -176,12 +169,10 @@ void ink_draw_circle(void *handle, int cx, int cy, int radius, int fillcolour, i
 }
 
 void ink_clip(void *handle, int x, int y, int w, int h) {
-
     SetClip(x, y, w, h);
 }
 
 void ink_unclip(void *handle) {
-
     SetClip(0, 0, pbSW, pbSH);
 }
 
@@ -194,12 +185,10 @@ void ink_draw_update(void *handle, int x, int y, int w, int h) {
 }
 
 void ink_end_draw(void *handle) {
-
   PartialUpdate(0, 0, fe->inkSW, fe->inkSH);
 }
 
 blitter *ink_blitter_new(void *handle, int w, int h) {
-
   blitter *bl = snew(blitter);
   bl->width = w;
   bl->height = h;
@@ -208,18 +197,15 @@ blitter *ink_blitter_new(void *handle, int w, int h) {
 }
 
 void ink_blitter_free(void *handle, blitter *bl) {
-
   sfree(bl->ibit);
   sfree(bl);
 }
 
 void ink_blitter_save(void *handle, blitter *bl, int x, int y) {
-
   bl->ibit = BitmapFromScreen(x, y, bl->width, bl->height);
 }
 
 void ink_blitter_load(void *handle, blitter *bl, int x, int y) {
-
   DrawBitmap(x, y, bl->ibit);
 }
 
@@ -289,10 +275,11 @@ void fatal(const char *fmt, ...) {
 /* ------------------------- */
 
 static void drawStatusBar(char *text) {
-    FillArea(0, mainlayout.statusbar.starty+2, ScreenWidth(), mainlayout.statusbar.height-2, 0x00FFFFFF);
-    font = OpenFont("LiberationSans-Bold", kFontSize, 0);
-    DrawTextRect(10, mainlayout.statusbar.starty+8, ScreenWidth(), kFontSize, text, ALIGN_LEFT);
-    PartialUpdate(0, mainlayout.statusbar.starty+2, ScreenWidth(), mainlayout.statusbar.height-2);
+    ifont *font;
+    FillArea(0, gamelayout.statusbar.starty+2, ScreenWidth(), gamelayout.statusbar.height-2, 0x00FFFFFF);
+    font = OpenFont("LiberationSans-Bold", 32, 0);
+    DrawTextRect(10, gamelayout.statusbar.starty+8, ScreenWidth(), 32, text, ALIGN_LEFT);
+    PartialUpdate(0, gamelayout.statusbar.starty+2, ScreenWidth(), gamelayout.statusbar.height-2);
     CloseFont(font);
 }
 
@@ -381,6 +368,9 @@ void gameTap(int x, int y) {
 void gameLongTap(int x, int y) {
 }
 
+void gameDrag(int x, int y) {
+}
+
 void gameRelease(int x, int y) {
     int i;
     if (coord_in_button(init_tap_x, init_tap_y, &btn_back)) button_to_normal(&btn_back, true);
@@ -395,16 +385,16 @@ void gameRelease(int x, int y) {
         switchToChooser();
     }
     if (release_button(x, y, &btn_game)) {
-        OpenMenuEx(gameMenu, gameMenu_selectedIndex, ScreenWidth()-20-(2*mainlayout.menubtn_size), mainlayout.menubtn_size+2, gameMenuHandler);
+        OpenMenuEx(gameMenu, gameMenu_selectedIndex, ScreenWidth()-20-(2*gamelayout.menubtn_size), gamelayout.menubtn_size+2, gameMenuHandler);
     }
     if (release_button(x, y, &btn_type)) {
-        OpenMenu(typeMenu, typeMenu_selectedIndex, ScreenWidth()-10-mainlayout.menubtn_size, mainlayout.menubtn_size+2, typeMenuHandler);
+        OpenMenu(typeMenu, typeMenu_selectedIndex, ScreenWidth()-10-gamelayout.menubtn_size, gamelayout.menubtn_size+2, typeMenuHandler);
     }
 }
 
 static void gameDrawControlButtons() {
-    FillArea(0, mainlayout.buttonpanel.starty, ScreenWidth(), mainlayout.buttonpanel.height, 0x00FFFFFF);
-    FillArea(0, mainlayout.buttonpanel.starty, ScreenWidth(), 1, 0x00000000);
+    FillArea(0, gamelayout.buttonpanel.starty, ScreenWidth(), gamelayout.buttonpanel.height, 0x00FFFFFF);
+    FillArea(0, gamelayout.buttonpanel.starty, ScreenWidth(), 1, 0x00000000);
 
     btn_swap.active = true;
     button_to_normal(&btn_swap, false);
@@ -415,56 +405,57 @@ static void gameDrawControlButtons() {
 }
 
 static void gameDrawMenu() {
-    FillArea(0, mainlayout.menu.starty, ScreenWidth(), mainlayout.menu.height, 0x00FFFFFF);
-    FillArea(0, mainlayout.menu.starty + mainlayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
+    ifont *font;
+    FillArea(0, gamelayout.menu.starty, ScreenWidth(), gamelayout.menu.height, 0x00FFFFFF);
+    FillArea(0, gamelayout.menu.starty + gamelayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
     button_to_normal(&btn_back, false);
     button_to_normal(&btn_game, false);
     button_to_normal(&btn_type, false);
 
-    font = OpenFont("LiberationSans-Bold", kFontSize, 0);
-    DrawTextRect(0, (mainlayout.menubtn_size/2)-(kFontSize/2), ScreenWidth(), kFontSize, currentgame->name, ALIGN_CENTER);
+    font = OpenFont("LiberationSans-Bold", 32, 0);
+    DrawTextRect(0, (gamelayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, currentgame->name, ALIGN_CENTER);
     CloseFont(font);
 }
 
 static void gameSetupMenuButtons() {
     btn_back.active = true;
     btn_back.posx = 10;
-    btn_back.posy = mainlayout.menu.starty;
-    btn_back.size = mainlayout.menubtn_size;
+    btn_back.posy = gamelayout.menu.starty;
+    btn_back.size = gamelayout.menubtn_size;
 
     btn_game.active = true;
-    btn_game.posx = ScreenWidth() - 20 - (2*mainlayout.menubtn_size);
-    btn_game.posy = mainlayout.menu.starty;
-    btn_game.size = mainlayout.menubtn_size;
+    btn_game.posx = ScreenWidth() - 20 - (2*gamelayout.menubtn_size);
+    btn_game.posy = gamelayout.menu.starty;
+    btn_game.size = gamelayout.menubtn_size;
 
     btn_type.active = true;
-    btn_type.posx = ScreenWidth() - 10 - mainlayout.menubtn_size;
-    btn_type.posy = mainlayout.menu.starty;
-    btn_type.size = mainlayout.menubtn_size;
+    btn_type.posx = ScreenWidth() - 10 - gamelayout.menubtn_size;
+    btn_type.posy = gamelayout.menu.starty;
+    btn_type.size = gamelayout.menubtn_size;
 }
 
 static void gameSetupControlButtons() {
 
     btn_swap.active = true;
     btn_swap.posx = gamecontrol_padding;
-    btn_swap.posy = mainlayout.buttonpanel.starty + 2;
-    btn_swap.size = mainlayout.control_size;
+    btn_swap.posy = gamelayout.buttonpanel.starty + 2;
+    btn_swap.size = gamelayout.control_size;
 
     btn_undo.active = true;
-    btn_undo.posx = 2*gamecontrol_padding + mainlayout.control_size;
-    btn_undo.posy = mainlayout.buttonpanel.starty + 2;
-    btn_undo.size = mainlayout.control_size;
+    btn_undo.posx = 2*gamecontrol_padding + gamelayout.control_size;
+    btn_undo.posy = gamelayout.buttonpanel.starty + 2;
+    btn_undo.size = gamelayout.control_size;
 
     btn_redo.active = true;
-    btn_redo.posx = 3*gamecontrol_padding + 2*mainlayout.control_size;
-    btn_redo.posy = mainlayout.buttonpanel.starty + 2;
-    btn_redo.size = mainlayout.control_size;
+    btn_redo.posx = 3*gamecontrol_padding + 2*gamelayout.control_size;
+    btn_redo.posy = gamelayout.buttonpanel.starty + 2;
+    btn_redo.size = gamelayout.control_size;
 }
 
 static void gameSetupStatusBar() {
-    FillArea(0, mainlayout.statusbar.starty, ScreenWidth(), mainlayout.statusbar.height, 0x00FFFFFF);
-    FillArea(0, mainlayout.statusbar.starty, ScreenWidth(), 1, 0x00000000);
+    FillArea(0, gamelayout.statusbar.starty, ScreenWidth(), gamelayout.statusbar.height, 0x00FFFFFF);
+    FillArea(0, gamelayout.statusbar.starty, ScreenWidth(), 1, 0x00000000);
 }
 
 static void gameExitPage() {
@@ -478,17 +469,26 @@ void gameShowPage() {
     DrawPanel(NULL, "", "", 0);
     gameDrawMenu();
     gameDrawControlButtons();
-    if (mainlayout.with_statusbar) gameSetupStatusBar();
+    if (gamelayout.with_statusbar) gameSetupStatusBar();
     FullUpdate();
 }
 
-void gameInit() {
+void gameInit(const struct game *thegame) {
+    currentgame = thegame;
     pbSW=ScreenWidth();
     pbSH=ScreenHeight();
     pbOrient=GetOrientation();
 
     fe = snew(frontend);
-    me = midend_new(fe, currentgame, &ink_drawing, fe);
+    me = midend_new(fe, thegame, &ink_drawing, fe);
+    
+    gamelayout = getLayout(gameGetLayout());
+    gamecontrol_num = 3;
+    gamecontrol_padding = (ScreenWidth()-(gamecontrol_num*gamelayout.control_size))/(gamecontrol_num+1);
+    gameSetupMenuButtons();
+    gameSetupControlButtons();
+    gameBuildTypeMenu();
+
 }
 
 LAYOUTTYPE gameGetLayout() {
@@ -509,13 +509,4 @@ LAYOUTTYPE gameGetLayout() {
     if (!wants_statusbar && wants_2xbuttonbar)  return LAYOUT_2XBUTTONBAR;
     return LAYOUT_2XBOTH; /* default */
 }
-
-void gamePrepare() {
-    gamecontrol_num = 3;
-    gamecontrol_padding = (ScreenWidth()-(gamecontrol_num*mainlayout.control_size))/(gamecontrol_num+1);
-    gameSetupMenuButtons();
-    gameSetupControlButtons();
-    gameBuildTypeMenu();
-}
-
 
