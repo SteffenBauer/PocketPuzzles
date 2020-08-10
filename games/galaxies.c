@@ -3679,7 +3679,7 @@ const struct game thegame = {
 #else
     true, solve_game,
 #endif
-    true, game_can_format_as_text_now, game_text_format,
+    false, game_can_format_as_text_now, game_text_format,
     new_ui,
     free_ui,
     encode_ui,
@@ -3700,7 +3700,7 @@ const struct game thegame = {
     false, false, NULL, NULL,
     true,                              /* wants_statusbar */
 #else
-    true, false, game_print_size, game_print,
+    false, false, game_print_size, game_print,
     false,			       /* wants_statusbar */
 #endif
     false, game_timing_state,

@@ -48,7 +48,7 @@ void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
   if (align & ALIGN_HCENTRE) x -= sw/2;
   else if (align & ALIGN_HRIGHT) x -= sw;
 
-  DrawString(x, fe->offset + y, text);
+  DrawString(fe->xoffset + x, fe->yoffset + y, text);
   CloseFont(tempfont);
 }
 
@@ -57,18 +57,18 @@ void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour) {
 
   if (inkcolors[colour] & DOTTED) {
     for (i=0;i<h;i++) {
-      if ((y+i) & 1) DrawLine(x,fe->offset+y+i,x+w-1,fe->offset+y+i,inkcolors[colour]&WHITE);
-      else DrawLine(x,fe->offset+y+i,x+w-1,fe->offset+y+i,inkcolors[0]);
+      if ((y+i) & 1) DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,inkcolors[colour]&WHITE);
+      else DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,inkcolors[0]);
     }
   }
-  else for (i=0;i<h;i++) DrawLine(x,fe->offset+y+i,x+w-1,fe->offset+y+i,inkcolors[colour]);
+  else for (i=0;i<h;i++) DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,inkcolors[colour]);
 }
 void ink_draw_rect_outline(void *handle, int x, int y, int w, int h, int colour) {
-    DrawRect(x, fe->offset+y, w, h, inkcolors[colour]);
+    DrawRect(fe->xoffset+x, fe->yoffset+y, w, h, inkcolors[colour]);
 }
 
 void ink_draw_line(void *handle, int x1, int y1, int x2, int y2, int colour) {
-  DrawLine(x1, fe->offset+y1, x2, fe->offset+y2, inkcolors[colour]);
+  DrawLine(fe->xoffset+x1, fe->yoffset+y1, fe->xoffset+x2, fe->yoffset+y2, inkcolors[colour]);
 }
 
 static void extendrow(int y, int x1, int y1, int x2, int y2, int *minxptr, int *maxxptr) {
@@ -131,18 +131,18 @@ void ink_draw_polygon(void *handle, int *icoords, int npoints,
 
         if (minx <= maxx) {
           if (inkcolors[fillcolour] & DOTTED) {
-            if (miny & 1) DrawLine(minx, fe->offset+miny, maxx, fe->offset+miny, inkcolors[fillcolour]&WHITE);
-            else DrawLine(minx, fe->offset+miny, maxx, fe->offset+miny, inkcolors[0]);
+            if (miny & 1) DrawLine(fe->xoffset+minx, fe->yoffset+miny, fe->xoffset+maxx, fe->yoffset+miny, inkcolors[fillcolour]&WHITE);
+            else DrawLine(fe->xoffset+minx, fe->yoffset+miny, fe->xoffset+maxx, fe->yoffset+miny, inkcolors[0]);
           }
-          else DrawLine(minx, fe->offset+miny, maxx, fe->offset+miny, inkcolors[fillcolour]);
+          else DrawLine(fe->xoffset+minx, fe->yoffset+miny, fe->xoffset+maxx, fe->yoffset+miny, inkcolors[fillcolour]);
         }
     }
   }
 
   for (i = 0; i < npoints-1; i++) {
-    DrawLine(coords[i].x, fe->offset+coords[i].y, coords[i+1].x, fe->offset+coords[i+1].y, inkcolors[outlinecolour]);
+    DrawLine(fe->xoffset+coords[i].x, fe->yoffset+coords[i].y, fe->xoffset+coords[i+1].x, fe->yoffset+coords[i+1].y, inkcolors[outlinecolour]);
   }
-  DrawLine(coords[i].x, fe->offset+coords[i].y, coords[0].x, fe->offset+coords[0].y, inkcolors[outlinecolour]);
+  DrawLine(fe->xoffset+coords[i].x, fe->yoffset+coords[i].y, fe->xoffset+coords[0].x, fe->yoffset+coords[0].y, inkcolors[outlinecolour]);
 }
 
 
@@ -153,14 +153,14 @@ void ink_draw_circle(void *handle, int cx, int cy, int radius, int fillcolour, i
     y=i-radius;
     x=lround(sqrt(radius*radius-y*y));
 
-    DrawLine(cx+xx, fe->offset+cy+yy, cx+x, fe->offset+cy+y, inkcolors[outlinecolour]&WHITE);
-    DrawLine(cx-xx, fe->offset+cy+yy, cx-x, fe->offset+cy+y, inkcolors[outlinecolour]&WHITE);
+    DrawLine(fe->xoffset+cx+xx, fe->yoffset+cy+yy, fe->xoffset+cx+x, fe->yoffset+cy+y, inkcolors[outlinecolour]&WHITE);
+    DrawLine(fe->xoffset+cx-xx, fe->yoffset+cy+yy, fe->xoffset+cx-x, fe->yoffset+cy+y, inkcolors[outlinecolour]&WHITE);
 
     if (fillcolour!=-1) {
       if (!(inkcolors[fillcolour]&DOTTED)) {
-        DrawLine(cx-x, fe->offset+cy+y, cx+x, fe->offset+cy+y, inkcolors[fillcolour]&WHITE);
+        DrawLine(fe->xoffset+cx-x, fe->yoffset+cy+y, fe->xoffset+cx+x, fe->yoffset+cy+y, inkcolors[fillcolour]&WHITE);
       }
-      else if ((cy+y)%2) DrawLine(cx-x, fe->offset+cy+y, cx+x, fe->offset+cy+y, inkcolors[fillcolour]&WHITE);
+      else if ((cy+y)%2) DrawLine(fe->xoffset+cx-x, fe->yoffset+cy+y, fe->xoffset+cx+x, fe->yoffset+cy+y, inkcolors[fillcolour]&WHITE);
     }
 
     xx=x; yy=y;
@@ -168,7 +168,7 @@ void ink_draw_circle(void *handle, int cx, int cy, int radius, int fillcolour, i
 }
 
 void ink_clip(void *handle, int x, int y, int w, int h) {
-    SetClip(x, fe->offset + y, w, h);
+    SetClip(fe->xoffset+x, fe->yoffset + y, w, h);
 }
 
 void ink_unclip(void *handle) {
@@ -179,7 +179,7 @@ void ink_start_draw(void *handle) {
 }
 
 void ink_draw_update(void *handle, int x, int y, int w, int h) {
-  if (fe->do_partial) PartialUpdate(x, fe->offset + y, w, h);
+  if (fe->do_partial) PartialUpdate(fe->xoffset+x, fe->yoffset + y, w, h);
 }
 
 void ink_end_draw(void *handle) {
@@ -200,11 +200,11 @@ void ink_blitter_free(void *handle, blitter *bl) {
 }
 
 void ink_blitter_save(void *handle, blitter *bl, int x, int y) {
-  bl->ibit = BitmapFromScreen(x, y, bl->width, bl->height);
+  bl->ibit = BitmapFromScreen(fe->xoffset+x, fe->yoffset+y, bl->width, bl->height);
 }
 
 void ink_blitter_load(void *handle, blitter *bl, int x, int y) {
-  DrawBitmap(x, y, bl->ibit);
+  DrawBitmap(fe->xoffset+x, fe->yoffset+y, bl->ibit);
 }
 
 void ink_status_bar(void *handle, const char *text) {
@@ -446,10 +446,12 @@ static void gameSetupMenuButtons() {
 
 static void gameSetupControlButtons() {
 
-    btn_swap.active = true;
-    btn_swap.posx = gamecontrol_padding;
-    btn_swap.posy = fe->gamelayout.buttonpanel.starty + 2;
-    btn_swap.size = fe->gamelayout.control_size;
+    if (fe->gamelayout.with_rightclick) {
+        btn_swap.active = true;
+        btn_swap.posx = gamecontrol_padding;
+        btn_swap.posy = fe->gamelayout.buttonpanel.starty + 2;
+        btn_swap.size = fe->gamelayout.control_size;
+    }
 
     btn_undo.active = true;
     btn_undo.posx = 2*gamecontrol_padding + fe->gamelayout.control_size;
@@ -500,11 +502,12 @@ void gameInit(const struct game *thegame) {
 
 void gamePrepare() {
     int x, y;
+    char buf[256];
     fe->gamelayout = getLayout(gameGetLayout());
-    fe->offset = fe->gamelayout.maincanvas.starty;
-    fe->height = fe->gamelayout.maincanvas.height;
     fe->cliprect = GetClipRect();
     fe->statustext = "";
+    fe->gamelayout.with_rightclick = currentgame->flags & REQUIRE_RBUTTON;
+    fe->colours = midend_colours(me, &fe->ncolours);
     gamecontrol_num = 3;
     gamecontrol_padding = (ScreenWidth()-(gamecontrol_num * fe->gamelayout.control_size))/(gamecontrol_num+1);
     gameSetupMenuButtons();
@@ -512,8 +515,12 @@ void gamePrepare() {
     gameBuildTypeMenu();
     midend_new_game(me);
     x = ScreenWidth();
-    y = fe->height;
+    y = fe->gamelayout.maincanvas.height;
     midend_size(me, &x, &y, true);
+    fe->width  = x;
+    fe->height = y;
+    fe->xoffset = (ScreenWidth() - fe->width)/2;
+    fe->yoffset = fe->gamelayout.maincanvas.starty + (fe->gamelayout.maincanvas.height - fe->height) / 2 ;
 }
 
 LAYOUTTYPE gameGetLayout() {
