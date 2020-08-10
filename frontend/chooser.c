@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include "inkview.h"
-#include "chooser.h"
+#include "frontend/chooser.h"
 
 void chooserTap(int x, int y) {
     init_tap_x = x;
@@ -23,6 +23,9 @@ void chooserTap(int x, int y) {
 }
 
 void chooserLongTap(int x, int y) {
+}
+
+void chooserDrag(int x, int y) {
 }
 
 void chooserRelease(int x, int y) {
@@ -54,16 +57,17 @@ void chooserRelease(int x, int y) {
 }
 
 static void chooserDrawChooserButtons(int page) {
+    ifont *font;
     int i;
-    FillArea(0, mainlayout.maincanvas.starty, ScreenWidth(), mainlayout.maincanvas.height, 0x00FFFFFF);
-    font = OpenFont("LiberationSans-Bold", kFontSize, 0);
+    FillArea(0, chooserlayout.maincanvas.starty, ScreenWidth(), chooserlayout.maincanvas.height, 0x00FFFFFF);
+    font = OpenFont("LiberationSans-Bold", 32, 0);
     for(i=0;i<num_games;i++) {
         if (btn_chooser[i].page == page) {
             btn_chooser[i].active = true;
             button_to_normal(&btn_chooser[i], false);
             DrawTextRect(btn_chooser[i].posx-(chooser_padding/2),
                          btn_chooser[i].posy+btn_chooser[i].size+5,
-                         btn_chooser[i].size+chooser_padding, kFontSize,
+                         btn_chooser[i].size+chooser_padding, 32,
                          btn_chooser[i].thegame->name, ALIGN_CENTER);
         }
         else {
@@ -74,8 +78,8 @@ static void chooserDrawChooserButtons(int page) {
 }
 
 static void chooserDrawControlButtons(int page) {
-    FillArea(0, mainlayout.buttonpanel.starty, ScreenWidth(), mainlayout.buttonpanel.height, 0x00FFFFFF);
-    FillArea(0, mainlayout.buttonpanel.starty, ScreenWidth(), 1, 0x00000000);
+    FillArea(0, chooserlayout.buttonpanel.starty, ScreenWidth(), chooserlayout.buttonpanel.height, 0x00FFFFFF);
+    FillArea(0, chooserlayout.buttonpanel.starty, ScreenWidth(), 1, 0x00000000);
 
     if (page == 0) {
         btn_prev.active = false;
@@ -96,13 +100,14 @@ static void chooserDrawControlButtons(int page) {
 }
 
 static void chooserDrawMenu() {
-    FillArea(0, mainlayout.menu.starty, ScreenWidth(), mainlayout.menu.height, 0x00FFFFFF);
-    FillArea(0, mainlayout.menu.starty + mainlayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
+    ifont *font;
+    FillArea(0, chooserlayout.menu.starty, ScreenWidth(), chooserlayout.menu.height, 0x00FFFFFF);
+    FillArea(0, chooserlayout.menu.starty + chooserlayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
     button_to_normal(&btn_home, false);
 
-    font = OpenFont("LiberationSans-Bold", kFontSize, 0);
-    DrawTextRect(0, (mainlayout.menubtn_size/2)-(kFontSize/2), ScreenWidth(), kFontSize, "PUZZLES", ALIGN_CENTER);
+    font = OpenFont("LiberationSans-Bold", 32, 0);
+    DrawTextRect(0, (chooserlayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, "PUZZLES", ALIGN_CENTER);
     CloseFont(font);
 }
 
@@ -117,27 +122,27 @@ static void chooserSetupChooserButtons() {
         pi = i % (col*row);
         c = pi % col;
         r = pi / col;
-        btn_chooser[i].posx = (c+1)*chooser_padding + c*mainlayout.chooser_size;
-        btn_chooser[i].posy = 50 + mainlayout.maincanvas.starty + r*(20+kFontSize+mainlayout.chooser_size);
+        btn_chooser[i].posx = (c+1)*chooser_padding + c*chooserlayout.chooser_size;
+        btn_chooser[i].posy = 50 + chooserlayout.maincanvas.starty + r*(20+32+chooserlayout.chooser_size);
         btn_chooser[i].page = p;
-        btn_chooser[i].size = mainlayout.chooser_size;
+        btn_chooser[i].size = chooserlayout.chooser_size;
     }
 }
 
 static void chooserSetupControlButtons() {
     btn_prev.posx = control_padding;
-    btn_prev.posy = mainlayout.buttonpanel.starty + 2;
-    btn_prev.size = mainlayout.control_size;
-    btn_next.posx = 2*control_padding + mainlayout.control_size;
-    btn_next.posy = mainlayout.buttonpanel.starty + 2;
-    btn_next.size = mainlayout.control_size;
+    btn_prev.posy = chooserlayout.buttonpanel.starty + 2;
+    btn_prev.size = chooserlayout.control_size;
+    btn_next.posx = 2*control_padding + chooserlayout.control_size;
+    btn_next.posy = chooserlayout.buttonpanel.starty + 2;
+    btn_next.size = chooserlayout.control_size;
 }
 
 static void chooserSetupMenuButtons() {
     btn_home.active = true;
     btn_home.posx = 10;
-    btn_home.posy = mainlayout.menu.starty;
-    btn_home.size = mainlayout.menubtn_size; 
+    btn_home.posy = chooserlayout.menu.starty;
+    btn_home.size = chooserlayout.menubtn_size; 
 }
 
 void chooserShowPage() {
@@ -150,20 +155,16 @@ void chooserShowPage() {
 }
 
 void chooserInit() {
-}
-
-void chooserPrepare() {
     current_chooserpage = 0;
-    control_padding = (ScreenWidth()-(control_num*mainlayout.control_size))/(control_num+1);
-    chooser_padding = (ScreenWidth()-(chooser_cols*mainlayout.chooser_size))/(chooser_cols+1);
-    chooser_lastpage = num_games / (chooser_cols * chooser_rows);
+    chooser_lastpage = (num_games-1) / (chooser_cols * chooser_rows);
+
+    chooserlayout = getLayout(LAYOUT_BUTTONBAR);
+    control_padding = (ScreenWidth()-(control_num*chooserlayout.control_size))/(control_num+1);
+    chooser_padding = (ScreenWidth()-(chooser_cols*chooserlayout.chooser_size))/(chooser_cols+1);
 
     chooserSetupMenuButtons();
-    chooserSetupControlButtons();
     chooserSetupChooserButtons();
+    chooserSetupControlButtons();
 }
 
-LAYOUTTYPE chooserGetLayout() {
-    return LAYOUT_BUTTONBAR;
-}
 

@@ -29,7 +29,7 @@ struct blitter {
   ibitmap *ibit;
 };
 
-struct game *currentgame;
+const struct game *currentgame;
 frontend *fe;
 midend *me;
 drawing *dr;
@@ -39,7 +39,9 @@ struct preset_menu *presets;
 static int gamecontrol_padding;
 static int gamecontrol_num;
 
-extern struct layout mainlayout;
+struct layout gamelayout;
+LAYOUTTYPE gameGetLayout();
+
 extern ibitmap icon_back, icon_back_tap, icon_game, icon_game_tap, icon_type, icon_type_tap,
                menu_exit, menu_help, menu_new, menu_restart, menu_solve,
                bt_add, bt_backspace, bt_bridges_g, bt_fill, bt_fill_undead, bt_guess_i,
@@ -80,12 +82,11 @@ static void gameDrawControlButtons();
 
 static void gameExitPage();
 
-void gameInit();
-LAYOUTTYPE gameGetLayout();
-void gamePrepare();
+void gameInit(const struct game *thegame);
 void gameShowPage();
 void gameTap(int x, int y);
 void gameLongTap(int x, int y);
+void gameDrag(int x, int y);
 void gameRelease(int x, int y);
 
 
