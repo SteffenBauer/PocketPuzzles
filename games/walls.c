@@ -1191,13 +1191,13 @@ static float *game_colours(frontend *fe, int *ncolours) {
     ret[COL_FLOOR_B * 3 + 1] = 0.7F;
     ret[COL_FLOOR_B * 3 + 2] = 0.7F;
 
-    ret[COL_FIXED * 3 + 0] = 0.1F;
-    ret[COL_FIXED * 3 + 1] = 0.1F;
-    ret[COL_FIXED * 3 + 2] = 0.1F;
+    ret[COL_FIXED * 3 + 0] = 0.0F;
+    ret[COL_FIXED * 3 + 1] = 0.0F;
+    ret[COL_FIXED * 3 + 2] = 0.0F;
 
-    ret[COL_WALL * 3 + 0] = 0.4F;
-    ret[COL_WALL * 3 + 1] = 0.4F;
-    ret[COL_WALL * 3 + 2] = 0.4F;
+    ret[COL_WALL * 3 + 0] = 0.3F;
+    ret[COL_WALL * 3 + 1] = 0.3F;
+    ret[COL_WALL * 3 + 2] = 0.3F;
 
     ret[COL_GRID * 3 + 0] = 0.0F;
     ret[COL_GRID * 3 + 1] = 0.0F;
@@ -1207,9 +1207,9 @@ static float *game_colours(frontend *fe, int *ncolours) {
     ret[COL_LINE * 3 + 1] = 0.1F;
     ret[COL_LINE * 3 + 2] = 0.1F;
 
-    ret[COL_DRAGLINE * 3 + 0] = 0.0F;
-    ret[COL_DRAGLINE * 3 + 1] = 0.0F;
-    ret[COL_DRAGLINE * 3 + 2] = 1.0F;
+    ret[COL_DRAGLINE * 3 + 0] = 0.3F;
+    ret[COL_DRAGLINE * 3 + 1] = 0.3F;
+    ret[COL_DRAGLINE * 3 + 2] = 0.3F;
 
     ret[COL_ERROR * 3 + 0] = 1.0F;
     ret[COL_ERROR * 3 + 1] = 0.0F;
@@ -1401,7 +1401,7 @@ static float game_flash_length(const game_state *oldstate,
 }
 
 static int game_status(const game_state *state) {
-    return 0;
+    return state->completed ? +1 : 0;
 }
 
 static bool game_timing_state(const game_state *state, game_ui *ui) {

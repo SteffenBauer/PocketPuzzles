@@ -3756,7 +3756,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
 		draw_update(dr, tx - (tilesize/2), ty - (tilesize/2),
 			tilesize, tilesize);
 		draw_text(dr, tx, ty,
-		      FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VNORMAL,
+		      FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
 		      bgcol, buf);
 		
 		ds->oldborder[x] = ds->border[x];

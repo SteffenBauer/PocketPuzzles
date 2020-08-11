@@ -2500,7 +2500,7 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
 		      COL_BACKGROUND);
 	    sprintf(buf, "%d", state->numbers->numbers[x]);
 	    draw_text(dr, COORD(x) + TILESIZE/2, COORD(h+1),
-		      FONT_VARIABLE, TILESIZE/2, ALIGN_HCENTRE|ALIGN_VNORMAL,
+		      FONT_VARIABLE, TILESIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
 		      (errors[w*h+x] ? COL_ERROR : COL_GRID), buf);
 	    draw_update(dr, COORD(x), COORD(h)+1, TILESIZE, BRBORDER-1);
 	    if (!printing)

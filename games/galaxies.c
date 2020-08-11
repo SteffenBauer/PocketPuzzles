@@ -53,25 +53,6 @@ static bool solver_show_working;
 #define solvep(x) do { if (solver_show_working) { printf x; } } while(0)
 #endif
 
-#ifdef STANDALONE_PICTURE_GENERATOR
-/*
- * Dirty hack to enable the generator to construct a game ID which
- * solves to a specified black-and-white bitmap. We define a global
- * variable here which gives the desired colour of each square, and
- * we arrange that the grid generator never merges squares of
- * different colours.
- *
- * The bitmap as stored here is a simple int array (at these sizes
- * it isn't worth doing fiddly bit-packing). picture[y*w+x] is 1
- * iff the pixel at (x,y) is intended to be black.
- *
- * (It might be nice to be able to specify some pixels as
- * don't-care, to give the generator more leeway. But that might be
- * fiddly.)
- */
-static int *picture;
-#endif
-
 enum {
     COL_BACKGROUND,
     COL_WHITEBG,
@@ -167,8 +148,8 @@ static space *tile_opposite(const game_state *state, const space *sp);
 static const game_params galaxies_presets[] = {
     {  7,  7, DIFF_NORMAL },
     {  7,  7, DIFF_UNREASONABLE },
-    { 10, 10, DIFF_NORMAL },
-    { 15, 15, DIFF_NORMAL },
+    { 10, 10, DIFF_UNREASONABLE },
+    { 15, 15, DIFF_UNREASONABLE },
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -3036,24 +3017,26 @@ static float *game_colours(frontend *fe, int *ncolours)
     game_mkhighlight(fe, ret, COL_BACKGROUND, COL_WHITEBG, COL_BLACKBG);
 
     for (i = 0; i < 3; i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+
         /*
          * Currently, white dots and white-background squares are
          * both pure white.
          */
         ret[COL_WHITEDOT * 3 + i] = 1.0F;
-        ret[COL_WHITEBG * 3 + i] = 1.0F;
+        ret[COL_WHITEBG * 3 + i] = 0.7F;
 
         /*
          * But black-background squares are a dark grey, whereas
          * black dots are really black.
          */
         ret[COL_BLACKDOT * 3 + i] = 0.0F;
-        ret[COL_BLACKBG * 3 + i] = ret[COL_BACKGROUND * 3 + i] * 0.3F;
+        ret[COL_BLACKBG * 3 + i] = 0.3F;
 
         /*
          * In unfilled squares, we draw a faint gridwork.
          */
-        ret[COL_GRID * 3 + i] = ret[COL_BACKGROUND * 3 + i] * 0.8F;
+        ret[COL_GRID * 3 + i] = 0.0F;
 
         /*
          * Edges and arrows are filled in in pure black.
@@ -3175,8 +3158,8 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
      * Draw the grid.
      */
     gridcol = (flags & DRAW_BLACK ? COL_BLACKDOT : COL_GRID);
-    draw_rect(dr, lx, ly, 1, TILE_SIZE, gridcol);
-    draw_rect(dr, lx, ly, TILE_SIZE, 1, gridcol);
+    draw_rect(dr, lx-1, ly, 3, TILE_SIZE, gridcol);
+    draw_rect(dr, lx, ly-1, TILE_SIZE, 3, gridcol);
 
     /*
      * Draw the arrow, if present, or the cursor, if here.
@@ -3225,11 +3208,14 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
             int dotval = (flags >> (DOT_SHIFT_C + DOT_SHIFT_M*(dy*3+dx)));
             dotval &= (1 << DOT_SHIFT_M)-1;
 
-            if (dotval)
+            if (dotval) {
                 draw_circle(dr, lx+dx*TILE_SIZE/2, ly+dy*TILE_SIZE/2,
-                            DOT_SIZE,
-                            (dotval == 1 ? COL_WHITEDOT : COL_BLACKDOT),
-                            COL_BLACKDOT);
+                            DOT_SIZE, (dotval == 1 ? COL_WHITEDOT : COL_BLACKDOT), COL_BLACKDOT);
+                draw_circle(dr, lx+dx*TILE_SIZE/2, ly+dy*TILE_SIZE/2,
+                            DOT_SIZE-1, (dotval == 1 ? COL_WHITEDOT : COL_BLACKDOT), COL_BLACKDOT);
+                draw_circle(dr, lx+dx*TILE_SIZE/2, ly+dy*TILE_SIZE/2,
+                            DOT_SIZE+1, (dotval == 1 ? COL_WHITEDOT : COL_BLACKDOT), COL_BLACKDOT);
+            }
         }
 
     unclip(dr);
@@ -3417,6 +3403,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             /* draw a red dot (over the top of whatever would be there already) */
             draw_circle(dr, SCOORD(ui->cur_x), SCOORD(ui->cur_y), DOT_SIZE,
                         COL_CURSOR, COL_BLACKDOT);
+            draw_circle(dr, SCOORD(ui->cur_x), SCOORD(ui->cur_y), DOT_SIZE-1,
+                        COL_CURSOR, COL_BLACKDOT);
         } else if (sp->type != s_tile) {
             /* draw an edge/vertex square; tile cursors are dealt with above. */
             int dx = (ui->cur_x % 2) ? CURSOR_SIZE : CURSOR_SIZE/3;
@@ -3441,16 +3429,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         draw_arrow(dr, ds, oppx, oppy, SCOORD(ui->dotx) - oppx,
                    SCOORD(ui->doty) - oppy, COL_ARROW);
     }
-#ifdef EDITOR
-    {
-        char buf[256];
-        if (state->cdiff != -1)
-            sprintf(buf, "Puzzle is %s.", galaxies_diffnames[state->cdiff]);
-        else
-            buf[0] = '\0';
-        status_bar(dr, buf);
-    }
-#endif
+
 }
 
 static float game_anim_length(const game_state *oldstate,
@@ -3462,11 +3441,7 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if ((!oldstate->completed && newstate->completed) &&
-        !(newstate->used_solve))
-        return 3 * FLASH_TIME;
-    else
-        return 0.0F;
+    return 0.0F;
 }
 
 static int game_status(const game_state *state)
@@ -3479,187 +3454,7 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
-#ifndef EDITOR
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-   int pw, ph;
-
-   /*
-    * 8mm squares by default. (There isn't all that much detail
-    * that needs to go in each square.)
-    */
-   game_compute_size(params, 800, &pw, &ph);
-   *x = pw / 100.0F;
-   *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int sz)
-{
-    int w = state->w, h = state->h;
-    int white, black, blackish;
-    int x, y, i, j;
-    int *colours, *dsf;
-    int *coords = NULL;
-    int ncoords = 0, coordsize = 0;
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    ds->tilesize = sz;
-
-    white = print_mono_colour(dr, 1);
-    black = print_mono_colour(dr, 0);
-    blackish = print_hatched_colour(dr, HATCH_X);
-
-    /*
-     * Get the completion information.
-     */
-    dsf = snewn(w * h, int);
-    colours = snewn(w * h, int);
-    check_complete(state, dsf, colours);
-
-    /*
-     * Draw the grid.
-     */
-    print_line_width(dr, TILE_SIZE / 64);
-    for (x = 1; x < w; x++)
-	draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h), black);
-    for (y = 1; y < h; y++)
-	draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y), black);
-
-    /*
-     * Shade the completed regions. Just in case any particular
-     * printing platform deals badly with adjacent
-     * similarly-hatched regions, we'll fill each one as a single
-     * polygon.
-     */
-    for (i = 0; i < w*h; i++) {
-	j = dsf_canonify(dsf, i);
-	if (colours[j] != 0) {
-	    int dx, dy, t;
-
-	    /*
-	     * This is the first square we've run into belonging to
-	     * this polyomino, which means an edge of the polyomino
-	     * is certain to be to our left. (After we finish
-	     * tracing round it, we'll set the colours[] entry to
-	     * zero to prevent accidentally doing it again.)
-	     */
-
-	    x = i % w;
-	    y = i / w;
-	    dx = -1;
-	    dy = 0;
-	    ncoords = 0;
-	    while (1) {
-		/*
-		 * We are currently sitting on square (x,y), which
-		 * we know to be in our polyomino, and we also know
-		 * that (x+dx,y+dy) is not. The way I visualise
-		 * this is that we're standing to the right of a
-		 * boundary line, stretching our left arm out to
-		 * point to the exterior square on the far side.
-		 */
-
-		/*
-		 * First, check if we've gone round the entire
-		 * polyomino.
-		 */
-		if (ncoords > 0 &&
-		    (x == i%w && y == i/w && dx == -1 && dy == 0))
-		    break;
-
-		/*
-		 * Add to our coordinate list the coordinate
-		 * backwards and to the left of where we are.
-		 */
-		if (ncoords + 2 > coordsize) {
-		    coordsize = (ncoords * 3 / 2) + 64;
-		    coords = sresize(coords, coordsize, int);
-		}
-		coords[ncoords++] = COORD((2*x+1 + dx + dy) / 2);
-		coords[ncoords++] = COORD((2*y+1 + dy - dx) / 2);
-
-		/*
-		 * Follow the edge round. If the square directly in
-		 * front of us is not part of the polyomino, we
-		 * turn right; if it is and so is the square in
-		 * front of (x+dx,y+dy), we turn left; otherwise we
-		 * go straight on.
-		 */
-		if (x-dy < 0 || x-dy >= w || y+dx < 0 || y+dx >= h ||
-		    dsf_canonify(dsf, (y+dx)*w+(x-dy)) != j) {
-		    /* Turn right. */
-		    t = dx;
-		    dx = -dy;
-		    dy = t;
-		} else if (x+dx-dy >= 0 && x+dx-dy < w &&
-			   y+dy+dx >= 0 && y+dy+dx < h &&
-			   dsf_canonify(dsf, (y+dy+dx)*w+(x+dx-dy)) == j) {
-		    /* Turn left. */
-		    x += dx;
-		    y += dy;
-		    t = dx;
-		    dx = dy;
-		    dy = -t;
-		    x -= dx;
-		    y -= dy;
-		} else {
-		    /* Straight on. */
-		    x -= dy;
-		    y += dx;
-		}
-	    }
-
-	    /*
-	     * Now we have our polygon complete, so fill it.
-	     */
-	    draw_polygon(dr, coords, ncoords/2,
-			 colours[j] == 2 ? blackish : -1, black);
-
-	    /*
-	     * And mark this polyomino as done.
-	     */
-	    colours[j] = 0;
-	}
-    }
-
-    /*
-     * Draw the edges.
-     */
-    for (y = 0; y <= h; y++)
-	for (x = 0; x <= w; x++) {
-	    if (x < w && SPACE(state, x*2+1, y*2).flags & F_EDGE_SET)
-		draw_rect(dr, COORD(x)-EDGE_THICKNESS, COORD(y)-EDGE_THICKNESS,
-			  EDGE_THICKNESS * 2 + TILE_SIZE, EDGE_THICKNESS * 2,
-			  black);
-	    if (y < h && SPACE(state, x*2, y*2+1).flags & F_EDGE_SET)
-		draw_rect(dr, COORD(x)-EDGE_THICKNESS, COORD(y)-EDGE_THICKNESS,
-			  EDGE_THICKNESS * 2, EDGE_THICKNESS * 2 + TILE_SIZE,
-			  black);
-	}
-
-    /*
-     * Draw the dots.
-     */
-    for (y = 0; y <= 2*h; y++)
-	for (x = 0; x <= 2*w; x++)
-	    if (SPACE(state, x, y).flags & F_DOT) {
-                draw_circle(dr, (int)COORD(x/2.0), (int)COORD(y/2.0), DOT_SIZE,
-                            (SPACE(state, x, y).flags & F_DOT_BLACK ?
-			     black : white), black);
-	    }
-
-    sfree(dsf);
-    sfree(colours);
-    sfree(coords);
-}
-#endif
-
-#ifdef COMBINED
-#define thegame galaxies
-#endif
-
-const struct game thegame = {
+const struct game galaxies = {
     "Galaxies", "games.galaxies", "galaxies",
     default_params,
     game_fetch_preset, NULL,
@@ -3674,11 +3469,7 @@ const struct game thegame = {
     new_game,
     dup_game,
     free_game,
-#ifdef EDITOR
-    false, NULL,
-#else
     true, solve_game,
-#endif
     false, game_can_format_as_text_now, game_text_format,
     new_ui,
     free_ui,
@@ -3696,332 +3487,10 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-#ifdef EDITOR
     false, false, NULL, NULL,
-    true,                              /* wants_statusbar */
-#else
-    false, false, game_print_size, game_print,
     false,			       /* wants_statusbar */
-#endif
     false, game_timing_state,
     REQUIRE_RBUTTON,		       /* flags */
 };
-
-#ifdef STANDALONE_SOLVER
-
-const char *quis;
-
-#include <time.h>
-
-static void usage_exit(const char *msg)
-{
-    if (msg)
-        fprintf(stderr, "%s: %s\n", quis, msg);
-    fprintf(stderr, "Usage: %s [--seed SEED] --soak <params> | [game_id [game_id ...]]\n", quis);
-    exit(1);
-}
-
-static void dump_state(game_state *state)
-{
-    char *temp = game_text_format(state);
-    printf("%s\n", temp);
-    sfree(temp);
-}
-
-static int gen(game_params *p, random_state *rs, bool debug)
-{
-    char *desc;
-    int diff;
-    game_state *state;
-
-#ifndef DEBUGGING
-    solver_show_working = debug;
-#endif
-    printf("Generating a %dx%d %s puzzle.\n",
-           p->w, p->h, galaxies_diffnames[p->diff]);
-
-    desc = new_game_desc(p, rs, NULL, false);
-    state = new_game(NULL, p, desc);
-    dump_state(state);
-
-    diff = solver_state(state, DIFF_UNREASONABLE);
-    printf("Generated %s game %dx%d:%s\n",
-           galaxies_diffnames[diff], p->w, p->h, desc);
-    dump_state(state);
-
-    free_game(state);
-    sfree(desc);
-
-    return diff;
-}
-
-static void soak(game_params *p, random_state *rs)
-{
-    time_t tt_start, tt_now, tt_last;
-    char *desc;
-    game_state *st;
-    int diff, n = 0, i, diffs[DIFF_MAX], ndots = 0, nspaces = 0;
-
-#ifndef DEBUGGING
-    solver_show_working = false;
-#endif
-    tt_start = tt_now = time(NULL);
-    for (i = 0; i < DIFF_MAX; i++) diffs[i] = 0;
-    maxtries = 1;
-
-    printf("Soak-generating a %dx%d grid, max. diff %s.\n",
-           p->w, p->h, galaxies_diffnames[p->diff]);
-    printf("   [");
-    for (i = 0; i < DIFF_MAX; i++)
-        printf("%s%s", (i == 0) ? "" : ", ", galaxies_diffnames[i]);
-    printf("]\n");
-
-    while (1) {
-        desc = new_game_desc(p, rs, NULL, false);
-        st = new_game(NULL, p, desc);
-        diff = solver_state(st, p->diff);
-        nspaces += st->w*st->h;
-        for (i = 0; i < st->sx*st->sy; i++)
-            if (st->grid[i].flags & F_DOT) ndots++;
-        free_game(st);
-        sfree(desc);
-
-        diffs[diff]++;
-        n++;
-        tt_last = time(NULL);
-        if (tt_last > tt_now) {
-            tt_now = tt_last;
-            printf("%d total, %3.1f/s, [",
-                   n, (double)n / ((double)tt_now - tt_start));
-            for (i = 0; i < DIFF_MAX; i++)
-                printf("%s%.1f%%", (i == 0) ? "" : ", ",
-                       100.0 * ((double)diffs[i] / (double)n));
-            printf("], %.1f%% dots\n",
-                   100.0 * ((double)ndots / (double)nspaces));
-        }
-    }
-}
-
-int main(int argc, char **argv)
-{
-    game_params *p;
-    char *id = NULL, *desc;
-    const char *err;
-    game_state *s;
-    int diff;
-    bool do_soak = false, verbose = false;
-    random_state *rs;
-    time_t seed = time(NULL);
-
-    quis = argv[0];
-    while (--argc > 0) {
-        char *p = *++argv;
-        if (!strcmp(p, "-v")) {
-            verbose = true;
-        } else if (!strcmp(p, "--seed")) {
-            if (argc == 0) usage_exit("--seed needs an argument");
-            seed = (time_t)atoi(*++argv);
-            argc--;
-        } else if (!strcmp(p, "--soak")) {
-            do_soak = true;
-        } else if (*p == '-') {
-            usage_exit("unrecognised option");
-        } else {
-            id = p;
-        }
-    }
-
-    maxtries = 50;
-
-    p = default_params();
-    rs = random_new((void*)&seed, sizeof(time_t));
-
-    if (do_soak) {
-        if (!id) usage_exit("need one argument for --soak");
-        decode_params(p, *argv);
-        soak(p, rs);
-        return 0;
-    }
-
-    if (!id) {
-        while (1) {
-            p->w = random_upto(rs, 15) + 3;
-            p->h = random_upto(rs, 15) + 3;
-            p->diff = random_upto(rs, DIFF_UNREASONABLE);
-            diff = gen(p, rs, false);
-        }
-        return 0;
-    }
-
-    desc = strchr(id, ':');
-    if (!desc) {
-        decode_params(p, id);
-        gen(p, rs, verbose);
-    } else {
-#ifndef DEBUGGING
-        solver_show_working = true;
-#endif
-        *desc++ = '\0';
-        decode_params(p, id);
-        err = validate_desc(p, desc);
-        if (err) {
-            fprintf(stderr, "%s: %s\n", argv[0], err);
-            exit(1);
-        }
-        s = new_game(NULL, p, desc);
-        diff = solver_state(s, DIFF_UNREASONABLE);
-        dump_state(s);
-        printf("Puzzle is %s.\n", galaxies_diffnames[diff]);
-        free_game(s);
-    }
-
-    free_params(p);
-
-    return 0;
-}
-
-#endif
-
-#ifdef STANDALONE_PICTURE_GENERATOR
-
-/*
- * Main program for the standalone picture generator. To use it,
- * simply provide it with an XBM-format bitmap file (note XBM, not
- * XPM) on standard input, and it will output a game ID in return.
- * For example:
- *
- *   $ ./galaxiespicture < badly-drawn-cat.xbm
- *   11x11:eloMBLzFeEzLNMWifhaWYdDbixCymBbBMLoDdewGg
- *
- * If you want a puzzle with a non-standard difficulty level, pass
- * a partial parameters string as a command-line argument (e.g.
- * `./galaxiespicture du < foo.xbm', where `du' is the same suffix
- * which if it appeared in a random-seed game ID would set the
- * difficulty level to Unreasonable). However, be aware that if the
- * generator fails to produce an adequately difficult puzzle too
- * many times then it will give up and return an easier one (just
- * as it does during normal GUI play). To be sure you really have
- * the difficulty you asked for, use galaxiessolver to
- * double-check.
- * 
- * (Perhaps I ought to include an option to make this standalone
- * generator carry on looping until it really does get the right
- * difficulty. Hmmm.)
- */
-
-#include <time.h>
-
-int main(int argc, char **argv)
-{
-    game_params *par;
-    char *params, *desc;
-    random_state *rs;
-    time_t seed = time(NULL);
-    char buf[4096];
-    int i;
-    int x, y;
-
-    par = default_params();
-    if (argc > 1)
-	decode_params(par, argv[1]);   /* get difficulty */
-    par->w = par->h = -1;
-
-    /*
-     * Now read an XBM file from standard input. This is simple and
-     * hacky and will do very little error detection, so don't feed
-     * it bogus data.
-     */
-    picture = NULL;
-    x = y = 0;
-    while (fgets(buf, sizeof(buf), stdin)) {
-	buf[strcspn(buf, "\r\n")] = '\0';
-	if (!strncmp(buf, "#define", 7)) {
-	    /*
-	     * Lines starting `#define' give the width and height.
-	     */
-	    char *num = buf + strlen(buf);
-	    char *symend;
-
-	    while (num > buf && isdigit((unsigned char)num[-1]))
-		num--;
-	    symend = num;
-	    while (symend > buf && isspace((unsigned char)symend[-1]))
-		symend--;
-
-	    if (symend-5 >= buf && !strncmp(symend-5, "width", 5))
-		par->w = atoi(num);
-	    else if (symend-6 >= buf && !strncmp(symend-6, "height", 6))
-		par->h = atoi(num);
-	} else {
-	    /*
-	     * Otherwise, break the string up into words and take
-	     * any word of the form `0x' plus hex digits to be a
-	     * byte.
-	     */
-	    char *p, *wordstart;
-
-	    if (!picture) {
-		if (par->w < 0 || par->h < 0) {
-		    printf("failed to read width and height\n");
-		    return 1;
-		}
-		picture = snewn(par->w * par->h, int);
-		for (i = 0; i < par->w * par->h; i++)
-		    picture[i] = -1;
-	    }
-
-	    p = buf;
-	    while (*p) {
-		while (*p && (*p == ',' || isspace((unsigned char)*p)))
-		    p++;
-		wordstart = p;
-		while (*p && !(*p == ',' || *p == '}' ||
-			       isspace((unsigned char)*p)))
-		    p++;
-		if (*p)
-		    *p++ = '\0';
-
-		if (wordstart[0] == '0' &&
-		    (wordstart[1] == 'x' || wordstart[1] == 'X') &&
-		    !wordstart[2 + strspn(wordstart+2,
-					  "0123456789abcdefABCDEF")]) {
-		    unsigned long byte = strtoul(wordstart+2, NULL, 16);
-		    for (i = 0; i < 8; i++) {
-			int bit = (byte >> i) & 1;
-			if (y < par->h && x < par->w)
-			    picture[y * par->w + x] = bit;
-			x++;
-		    }
-
-		    if (x >= par->w) {
-			x = 0;
-			y++;
-		    }
-		}
-	    }
-	}
-    }
-
-    for (i = 0; i < par->w * par->h; i++)
-	if (picture[i] < 0) {
-	    fprintf(stderr, "failed to read enough bitmap data\n");
-	    return 1;
-	}
-
-    rs = random_new((void*)&seed, sizeof(time_t));
-
-    desc = new_game_desc(par, rs, NULL, false);
-    params = encode_params(par, false);
-    printf("%s:%s\n", params, desc);
-
-    sfree(desc);
-    sfree(params);
-    free_params(par);
-    random_free(rs);
-
-    return 0;
-}
-
-#endif
 
 /* vim: set shiftwidth=4 tabstop=8: */
