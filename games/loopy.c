@@ -857,17 +857,17 @@ static float *game_colours(frontend *fe, int *ncolours)
      * found that this went badly with the 0.8,0.8,0.8 favoured as a
      * background by the Java frontend.)
      */
-    ret[COL_LINEUNKNOWN * 3 + 0] = 0.5F;
-    ret[COL_LINEUNKNOWN * 3 + 1] = 0.5F;
-    ret[COL_LINEUNKNOWN * 3 + 2] = 0.5F;
+    ret[COL_LINEUNKNOWN * 3 + 0] = 0.8F;
+    ret[COL_LINEUNKNOWN * 3 + 1] = 0.8F;
+    ret[COL_LINEUNKNOWN * 3 + 2] = 0.8F;
 
     ret[COL_HIGHLIGHT * 3 + 0] = 1.0F;
     ret[COL_HIGHLIGHT * 3 + 1] = 1.0F;
     ret[COL_HIGHLIGHT * 3 + 2] = 1.0F;
 
-    ret[COL_MISTAKE * 3 + 0] = 1.0F;
-    ret[COL_MISTAKE * 3 + 1] = 0.0F;
-    ret[COL_MISTAKE * 3 + 2] = 0.0F;
+    ret[COL_MISTAKE * 3 + 0] = 0.5F;
+    ret[COL_MISTAKE * 3 + 1] = 0.5F;
+    ret[COL_MISTAKE * 3 + 2] = 0.5F;
 
     ret[COL_SATISFIED * 3 + 0] = 0.0F;
     ret[COL_SATISFIED * 3 + 1] = 0.0F;
@@ -877,9 +877,9 @@ static float *game_colours(frontend *fe, int *ncolours)
      * Except if the background is pretty dark already; then it ought to be a
      * bit lighter.  Oy vey.
      */
-    ret[COL_FAINT * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] * 0.9F;
-    ret[COL_FAINT * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] * 0.9F;
-    ret[COL_FAINT * 3 + 2] = ret[COL_BACKGROUND * 3 + 2] * 0.9F;
+    ret[COL_FAINT * 3 + 0] = 0.9F;
+    ret[COL_FAINT * 3 + 1] = 0.9F;
+    ret[COL_FAINT * 3 + 2] = 0.9F;
 
     *ncolours = NCOLOURS;
     return ret;
@@ -3030,40 +3030,37 @@ static void game_redraw_line(drawing *dr, game_drawstate *ds,
 {
     grid *g = state->game_grid;
     grid_edge *e = g->edges + i;
-    int x1, x2, y1, y2;
+    int x1, x2, y1, y2, j;
     int line_colour;
 
-    if (state->line_errors[i])
-	line_colour = COL_MISTAKE;
-    else if (state->lines[i] == LINE_UNKNOWN)
-	line_colour = COL_LINEUNKNOWN;
-    else if (state->lines[i] == LINE_NO)
-	line_colour = COL_FAINT;
-    else if (ds->flashing)
-	line_colour = COL_HIGHLIGHT;
-    else
-	line_colour = COL_FOREGROUND;
-    if (line_colour != loopy_line_redraw_phases[phase])
-        return;
+    if (state->line_errors[i])                line_colour = COL_MISTAKE;
+    else if (state->lines[i] == LINE_UNKNOWN) line_colour = COL_LINEUNKNOWN;
+    else if (state->lines[i] == LINE_NO)      line_colour = COL_FAINT;
+    else if (ds->flashing)                    line_colour = COL_HIGHLIGHT;
+    else                                      line_colour = COL_FOREGROUND;
+
+    if (line_colour != loopy_line_redraw_phases[phase]) return;
 
     /* Convert from grid to screen coordinates */
     grid_to_screen(ds, g, e->dot1->x, e->dot1->y, &x1, &y1);
     grid_to_screen(ds, g, e->dot2->x, e->dot2->y, &x2, &y2);
 
     if (line_colour == COL_FAINT) {
-	static int draw_faint_lines = -1;
-	if (draw_faint_lines < 0) {
-	    char *env = getenv("LOOPY_FAINT_LINES");
-	    draw_faint_lines = (!env || (env[0] == 'y' ||
-					 env[0] == 'Y'));
-	}
-	if (draw_faint_lines)
-	    draw_line(dr, x1, y1, x2, y2, line_colour);
-    } else {
-	draw_thick_line(dr, 5.0,
-			x1 + 0.5, y1 + 0.5,
-			x2 + 0.5, y2 + 0.5,
-			line_colour);
+        draw_line(dr, x1, y1, x2, y2, line_colour);
+    } 
+    else {
+        if (x1 == x2) {
+            for (j=-2;j<3;j++) {
+                draw_line(dr, x1+j, y1, x2+j, y2, line_colour);
+            }
+        }
+        else if (y1 == y2) {
+            for (j=-2;j<3;j++) {
+                draw_line(dr, x1, y1+j, x2, y2+j, line_colour);
+            }
+        }
+        else
+            draw_thick_line(dr, 5.0, x1 + 0.5, y1 + 0.5, x2 + 0.5, y2 + 0.5, line_colour);
     }
 }
 
@@ -3297,11 +3294,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->solved  &&  newstate->solved &&
-        !oldstate->cheated && !newstate->cheated) {
-        return FLASH_TIME;
-    }
-
     return 0.0F;
 }
 

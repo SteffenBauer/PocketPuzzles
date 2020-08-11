@@ -3158,8 +3158,8 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
      * Draw the grid.
      */
     gridcol = (flags & DRAW_BLACK ? COL_BLACKDOT : COL_GRID);
-    draw_rect(dr, lx-1, ly, 3, TILE_SIZE, gridcol);
-    draw_rect(dr, lx, ly-1, TILE_SIZE, 3, gridcol);
+    draw_rect(dr, lx-2, ly, 5, TILE_SIZE, gridcol);
+    draw_rect(dr, lx, ly-2, TILE_SIZE, 5, gridcol);
 
     /*
      * Draw the arrow, if present, or the cursor, if here.
@@ -3209,12 +3209,10 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
             dotval &= (1 << DOT_SHIFT_M)-1;
 
             if (dotval) {
+                int i;
+                for (i=2;i>-3;i--)
                 draw_circle(dr, lx+dx*TILE_SIZE/2, ly+dy*TILE_SIZE/2,
-                            DOT_SIZE, (dotval == 1 ? COL_WHITEDOT : COL_BLACKDOT), COL_BLACKDOT);
-                draw_circle(dr, lx+dx*TILE_SIZE/2, ly+dy*TILE_SIZE/2,
-                            DOT_SIZE-1, (dotval == 1 ? COL_WHITEDOT : COL_BLACKDOT), COL_BLACKDOT);
-                draw_circle(dr, lx+dx*TILE_SIZE/2, ly+dy*TILE_SIZE/2,
-                            DOT_SIZE+1, (dotval == 1 ? COL_WHITEDOT : COL_BLACKDOT), COL_BLACKDOT);
+                            DOT_SIZE+i, (dotval == 1 ? COL_WHITEDOT : COL_BLACKDOT), COL_BLACKDOT);
             }
         }
 

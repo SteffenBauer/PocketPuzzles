@@ -1145,76 +1145,6 @@ static game_state *new_game(midend *me, const game_params *params,
 }
 
 /* ----------------------------------------------------------------------
- * User interface: ascii
- */
-
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int r, c, i, w_string, h_string, n_string;
-    char cellsize;
-    char *ret, *buf, *gridline;
-
-    int const w = state->params.w, h = state->params.h;
-
-    cellsize = 0; /* or may be used uninitialized */
-
-    for (c = 0; c < w; ++c) {
-        for (r = 0; r < h; ++r) {
-            puzzle_size k = state->grid[idx(r, c, w)];
-            int d;
-            for (d = 0; k; k /= 10, ++d);
-            cellsize = max(cellsize, d);
-        }
-    }
-
-    ++cellsize;
-
-    w_string = w * cellsize + 2; /* "|%d|%d|...|\n" */
-    h_string = 2 * h + 1; /* "+--+--+...+\n%s\n+--+--+...+\n" */
-    n_string = w_string * h_string;
-
-    gridline = snewn(w_string + 1, char); /* +1: NUL terminator */
-    memset(gridline, '-', w_string);
-    for (c = 0; c <= w; ++c) gridline[c * cellsize] = '+';
-    gridline[w_string - 1] = '\n';
-    gridline[w_string - 0] = '\0';
-
-    buf = ret = snewn(n_string + 1, char); /* +1: NUL terminator */
-    for (i = r = 0; r < h; ++r) {
-        memcpy(buf, gridline, w_string);
-        buf += w_string;
-        for (c = 0; c < w; ++c, ++i) {
-            char ch;
-            switch (state->grid[i]) {
-	      case BLACK: ch = '#'; break;
-	      case WHITE: ch = '.'; break;
-	      case EMPTY: ch = ' '; break;
-	      default:
-                buf += sprintf(buf, "|%*d", cellsize - 1, state->grid[i]);
-                continue;
-            }
-            *buf++ = '|';
-            memset(buf, ch, cellsize - 1);
-            buf += cellsize - 1;
-        }
-        buf += sprintf(buf, "|\n");
-    }
-    memcpy(buf, gridline, w_string);
-    buf += w_string;
-    assert (buf - ret == n_string);
-    *buf = '\0';
-
-    sfree(gridline);
-
-    return ret;
-}
-
-/* ----------------------------------------------------------------------
  * User interfaces: interactive
  */
 
@@ -1617,8 +1547,9 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
 
     game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
+    COLOUR(ret, COL_BACKGROUND, 1.0F, 1.0F, 1.0F);
     COLOUR(ret, COL_GRID,  0.0F, 0.0F, 0.0F);
-    COLOUR(ret, COL_ERROR, 1.0F, 0.0F, 0.0F);
+    COLOUR(ret, COL_ERROR, 0.5F, 0.5F, 0.5F);
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1750,48 +1681,7 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return false; /* the (non-existing) timer should not be running */
 }
 
-/* ----------------------------------------------------------------------
- * User interface: print
- */
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int print_width, print_height;
-    game_compute_size(params, 800, &print_width, &print_height);
-    *x = print_width  / 100.0F;
-    *y = print_height / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int const w = state->params.w, h = state->params.h;
-    game_drawstate ds_obj, *ds = &ds_obj;
-    int r, c, i, colour;
-
-    ds->tilesize = tilesize;
-
-    colour = print_mono_colour(dr, 1); assert(colour == COL_BACKGROUND);
-    colour = print_mono_colour(dr, 0); assert(colour == COL_GRID);
-    colour = print_mono_colour(dr, 1); assert(colour == COL_ERROR);
-    colour = print_mono_colour(dr, 0); assert(colour == COL_LOWLIGHT);
-    colour = print_mono_colour(dr, 0); assert(colour == NCOLOURS);
-
-    for (i = r = 0; r < h; ++r)
-        for (c = 0; c < w; ++c, ++i)
-            draw_cell(dr, ds, r, c,
-                      makecell(state->grid[i], false, false, false));
-
-    print_line_width(dr, 3 * tilesize / 40);
-    draw_rect_outline(dr, BORDER, BORDER, w*TILESIZE, h*TILESIZE, COL_GRID);
-}
-
-/* And that's about it ;-) **************************************************/
-
-#ifdef COMBINED
-#define thegame range
-#endif
-
-struct game const thegame = {
+struct game const range = {
     "Range", "games.range", "range",
     default_params,
     game_fetch_preset, NULL,
@@ -1807,7 +1697,7 @@ struct game const thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -1824,7 +1714,7 @@ struct game const thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false, /* wants_statusbar */
     false, game_timing_state,
     0, /* flags */

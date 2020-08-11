@@ -376,46 +376,6 @@ static char *generate_desc(game_state *state, bool issolve)
 
 /* --- Useful game functions (completion, etc.) --- */
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int len, x, y, i;
-    char *ret, *p;
-
-    len = (state->w)*2;       /* one row ... */
-    len = len * (state->h*2); /* ... h rows, including gaps ... */
-    len += 1;              /* ... final NL */
-    p = ret = snewn(len, char);
-
-    for (y = 0; y < state->h; y++) {
-        for (x = 0; x < state->w; x++) {
-            i = y*state->w + x;
-            if (x > 0) *p++ = ' ';
-            *p++ = (state->flags[i] & F_BLACK) ? '*' : n2c(state->nums[i]);
-        }
-        *p++ = '\n';
-        for (x = 0; x < state->w; x++) {
-            i = y*state->w + x;
-            if (x > 0) *p++ = ' ';
-            *p++ = (state->flags[i] & F_CIRCLE) ? '~' : ' ';
-        }
-        *p++ = '\n';
-    }
-    *p++ = '\0';
-    assert(p - ret == len);
-
-    return ret;
-}
-
-static void debug_state(const char *desc, game_state *state) {
-    char *dbg = game_text_format(state);
-    debug(("%s:\n%s", desc, dbg));
-    sfree(dbg);
-}
 
 static void connect_if_same(game_state *state, int *dsf, int i1, int i2)
 {
@@ -705,7 +665,6 @@ static int solver_ops_do(game_state *state, struct solver_state *ss)
                     printf("Adding black at (%d,%d): %s\n", op.x, op.y, op.desc);
 #endif
                 state->flags[i] |= F_BLACK;
-                /*debug_state("State after adding black", state);*/
                 n_ops++;
                 solver_op_circle(state, ss, op.x-1, op.y);
                 solver_op_circle(state, ss, op.x+1, op.y);
@@ -725,7 +684,6 @@ static int solver_ops_do(game_state *state, struct solver_state *ss)
                     printf("Adding circle at (%d,%d): %s\n", op.x, op.y, op.desc);
 #endif
                 state->flags[i] |= F_CIRCLE;
-                /*debug_state("State after adding circle", state);*/
                 n_ops++;
                 for (x = 0; x < state->w; x++) {
                     if (x != op.x)
@@ -1331,7 +1289,6 @@ generate:
     for (i = 0; i < state->n; i++)
         state->nums[i] = (int)latin[i];
     sfree(latin);
-    debug_state("State after latin square", state);
 
     /* Add black squares at random, using bits of solver as we go (to lay
      * white squares), until we can lay no more blacks. */
@@ -1362,7 +1319,6 @@ generate:
             goto generate;
         }
     }
-    debug_state("State after adding blacks", state);
 
     /* Now we know which squares are white and which are black, we lay numbers
      * under black squares at random, except that the number must appear in
@@ -1390,7 +1346,6 @@ randomise:
         if (!(state->flags[i] & F_BLACK)) continue;
         state->nums[i] = best_black_col(state, rs, scratch, i, rownums, colnums);
     }
-    debug_state("State after adding numbers", state);
 
     /* DIFF_ANY just returns whatever we first generated, for testing purposes. */
     if (params->diff != DIFF_ANY &&
@@ -1610,18 +1565,19 @@ static float *game_colours(frontend *fe, int *ncolours)
 
     game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
     for (i = 0; i < 3; i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
         ret[COL_BLACK * 3 + i] = 0.0F;
         ret[COL_BLACKNUM * 3 + i] = 0.4F;
         ret[COL_WHITE * 3 + i] = 1.0F;
-        ret[COL_GRID * 3 + i] = ret[COL_LOWLIGHT * 3 + i];
+        ret[COL_GRID * 3 + i] = 0.0F;
     }
     ret[COL_CURSOR * 3 + 0] = 0.2F;
     ret[COL_CURSOR * 3 + 1] = 0.8F;
     ret[COL_CURSOR * 3 + 2] = 0.0F;
 
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
+    ret[COL_ERROR * 3 + 0] = 0.5F;
+    ret[COL_ERROR * 3 + 1] = 0.5F;
+    ret[COL_ERROR * 3 + 2] = 0.5F;
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1752,9 +1708,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed &&
-        newstate->completed && !newstate->used_solve)
-        return FLASH_TIME;
     return 0.0F;
 }
 
@@ -1768,57 +1721,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
 
-    /* 8mm squares by default. */
-    game_compute_size(params, 800, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int ink = print_mono_colour(dr, 0);
-    int paper = print_mono_colour(dr, 1);
-    int x, y, ox, oy, i;
-    char buf[32];
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    game_set_size(dr, ds, NULL, tilesize);
-
-    print_line_width(dr, 2 * TILE_SIZE / 40);
-
-    for (x = 0; x < state->w; x++) {
-        for (y = 0; y < state->h; y++) {
-            ox = COORD(x); oy = COORD(y);
-            i = y*state->w+x;
-
-            if (state->flags[i] & F_BLACK) {
-                draw_rect(dr, ox, oy, TILE_SIZE, TILE_SIZE, ink);
-            } else {
-                draw_rect_outline(dr, ox, oy, TILE_SIZE, TILE_SIZE, ink);
-
-                if (state->flags[i] & DS_CIRCLE)
-                    draw_circle(dr, ox+TILE_SIZE/2, oy+TILE_SIZE/2, CRAD,
-                                paper, ink);
-
-                sprintf(buf, "%d", state->nums[i]);
-                draw_text(dr, ox+TILE_SIZE/2, oy+TILE_SIZE/2, FONT_VARIABLE,
-                          TEXTSZ/strlen(buf), ALIGN_VCENTRE | ALIGN_HCENTRE,
-                          ink, buf);
-            }
-        }
-    }
-}
-
-#ifdef COMBINED
-#define thegame singles
-#endif
-
-const struct game thegame = {
+const struct game singles = {
     "Singles", "games.singles", "singles",
     default_params,
     game_fetch_preset, NULL,
@@ -1834,7 +1738,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -1851,165 +1755,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false,			       /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,		       /* flags */
 };
 
-#ifdef STANDALONE_SOLVER
-
-#include <time.h>
-#include <stdarg.h>
-
-static void start_soak(game_params *p, random_state *rs)
-{
-    time_t tt_start, tt_now, tt_last;
-    char *desc, *aux;
-    game_state *s;
-    int i, n = 0, ndiff[DIFF_MAX], diff, sret, nblack = 0, nsneaky = 0;
-
-    tt_start = tt_now = time(NULL);
-
-    printf("Soak-testing a %dx%d grid.\n", p->w, p->h);
-    p->diff = DIFF_ANY;
-
-    memset(ndiff, 0, DIFF_MAX * sizeof(int));
-
-    while (1) {
-        n++;
-        desc = new_game_desc(p, rs, &aux, false);
-        s = new_game(NULL, p, desc);
-        nsneaky += solve_sneaky(s, NULL);
-
-        for (diff = 0; diff < DIFF_MAX; diff++) {
-            memset(s->flags, 0, s->n * sizeof(unsigned int));
-            s->completed = false;
-            s->impossible = false;
-            sret = solve_specific(s, diff, false);
-            if (sret > 0) {
-                ndiff[diff]++;
-                break;
-            } else if (sret < 0)
-                fprintf(stderr, "Impossible! %s\n", desc);
-        }
-        for (i = 0; i < s->n; i++) {
-            if (s->flags[i] & F_BLACK) nblack++;
-        }
-        free_game(s);
-        sfree(desc);
-
-        tt_last = time(NULL);
-        if (tt_last > tt_now) {
-            tt_now = tt_last;
-            printf("%d total, %3.1f/s, bl/sn %3.1f%%/%3.1f%%: ",
-                   n, (double)n / ((double)tt_now - tt_start),
-                   ((double)nblack * 100.0) / (double)(n * p->w * p->h),
-                   ((double)nsneaky * 100.0) / (double)(n * p->w * p->h));
-            for (diff = 0; diff < DIFF_MAX; diff++) {
-                if (diff > 0) printf(", ");
-                printf("%d (%3.1f%%) %s",
-                       ndiff[diff], (double)ndiff[diff] * 100.0 / (double)n,
-                       singles_diffnames[diff]);
-            }
-            printf("\n");
-        }
-    }
-}
-
-int main(int argc, char **argv)
-{
-    char *id = NULL, *desc, *desc_gen = NULL, *tgame, *aux;
-    const char *err;
-    game_state *s = NULL;
-    game_params *p = NULL;
-    int soln, ret = 1;
-    bool soak = false;
-    time_t seed = time(NULL);
-    random_state *rs = NULL;
-
-    setvbuf(stdout, NULL, _IONBF, 0);
-
-    while (--argc > 0) {
-        char *p = *++argv;
-        if (!strcmp(p, "-v")) {
-            verbose = true;
-        } else if (!strcmp(p, "--soak")) {
-            soak = true;
-        } else if (!strcmp(p, "--seed")) {
-            if (argc == 0) {
-                fprintf(stderr, "%s: --seed needs an argument", argv[0]);
-                goto done;
-            }
-            seed = (time_t)atoi(*++argv);
-            argc--;
-        } else if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-            return 1;
-        } else {
-            id = p;
-        }
-    }
-
-    rs = random_new((void*)&seed, sizeof(time_t));
-
-    if (!id) {
-        fprintf(stderr, "usage: %s [-v] [--soak] <params> | <game_id>\n", argv[0]);
-        goto done;
-    }
-    desc = strchr(id, ':');
-    if (desc) *desc++ = '\0';
-
-    p = default_params();
-    decode_params(p, id);
-    err = validate_params(p, true);
-    if (err) {
-        fprintf(stderr, "%s: %s", argv[0], err);
-        goto done;
-    }
-
-    if (soak) {
-        if (desc) {
-            fprintf(stderr, "%s: --soak only needs params, not game desc.\n", argv[0]);
-            goto done;
-        }
-        start_soak(p, rs);
-    } else {
-        if (!desc) desc = desc_gen = new_game_desc(p, rs, &aux, false);
-
-        err = validate_desc(p, desc);
-        if (err) {
-            fprintf(stderr, "%s: %s\n", argv[0], err);
-            free_params(p);
-            goto done;
-        }
-        s = new_game(NULL, p, desc);
-
-        if (verbose) {
-            tgame = game_text_format(s);
-            fputs(tgame, stdout);
-            sfree(tgame);
-        }
-
-        soln = solve_specific(s, DIFF_ANY, false);
-        tgame = game_text_format(s);
-        fputs(tgame, stdout);
-        sfree(tgame);
-        printf("Game was %s.\n\n",
-               soln < 0 ? "impossible" : soln > 0 ? "solved" : "not solved");
-    }
-    ret = 0;
-
-done:
-    if (desc_gen) sfree(desc_gen);
-    if (p) free_params(p);
-    if (s) free_game(s);
-    if (rs) random_free(rs);
-
-    return ret;
-}
-
-#endif
-
-
-/* vim: set shiftwidth=4 tabstop=8: */

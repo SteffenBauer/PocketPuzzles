@@ -168,12 +168,12 @@ void ink_draw_circle(void *handle, int cx, int cy, int radius, int fillcolour, i
     y=i-radius;
     x=lround(sqrt(radius*radius-y*y));
 
-    DrawLine(fe->xoffset+cx+xx, fe->yoffset+cy+yy, fe->xoffset+cx+x, fe->yoffset+cy+y, convertColor(outlinecolour)&WHITE);
-    DrawLine(fe->xoffset+cx-xx, fe->yoffset+cy+yy, fe->xoffset+cx-x, fe->yoffset+cy+y, convertColor(outlinecolour)&WHITE);
+    DrawLine(fe->xoffset+cx+xx, fe->yoffset+cy+yy, fe->xoffset+cx+x, fe->yoffset+cy+y, convertColor(outlinecolour));
+    DrawLine(fe->xoffset+cx-xx, fe->yoffset+cy+yy, fe->xoffset+cx-x, fe->yoffset+cy+y, convertColor(outlinecolour));
 
     if (fillcolour!=-1) {
       /* if (!(inkcolors[fillcolour]&DOTTED)) { */
-        DrawLine(fe->xoffset+cx-x, fe->yoffset+cy+y, fe->xoffset+cx+x, fe->yoffset+cy+y, convertColor(fillcolour)&WHITE);
+        DrawLine(fe->xoffset+cx-x, fe->yoffset+cy+y, fe->xoffset+cx+x, fe->yoffset+cy+y, convertColor(fillcolour));
       /* }
       else if ((cy+y)%2) DrawLine(fe->xoffset+cx-x, fe->yoffset+cy+y, fe->xoffset+cx+x, fe->yoffset+cy+y, inkcolors[fillcolour]&WHITE); */
     }
@@ -240,11 +240,11 @@ void ink_status_bar(void *handle, const char *text) {
    ---------------------------- */
 
 void frontend_default_colour(frontend *fe, float *output) {
-
     output[0] = 1.0;
     output[1] = 1.0;
     output[2] = 1.0;
 }
+
 void get_random_seed(void **randseed, int *randseedsize) {
     struct timeval *tvp = snew(struct timeval);
     gettimeofday(tvp, NULL);
@@ -266,15 +266,16 @@ void tproc() {
 }
 
 void activate_timer(frontend *fe) {
-  fe->isTimer=true;
-  gettimeofday(&fe->last_time, NULL);
-  SetWeakTimer("timername", tproc, fe->time_int);
+  return;
+//  fe->isTimer=true;
+//  gettimeofday(&fe->last_time, NULL);
+//  SetWeakTimer("timername", tproc, fe->time_int);
 
 };
 
 void deactivate_timer(frontend *fe) {
-  fe->isTimer=false;
-  ClearTimer(tproc);
+ // fe->isTimer=false;
+ // ClearTimer(tproc);
 };
 
 void fatal(const char *fmt, ...) {
@@ -554,11 +555,11 @@ static void checkGameEnd() {
     if (!fe->finished) {
         status = midend_status(me);
         if (status == 1) {
-            Message(ICON_INFORMATION, "", "Puzzle is solved!", 3000);
+            Message(ICON_INFORMATION, "", "Puzzle is solved!", 2000);
             fe->finished = true;
         }
         else if (status == -1) {
-            Message(ICON_WARNING, "", "Puzzle is lost!", 3000);
+            Message(ICON_WARNING, "", "Puzzle is lost!", 2000);
             fe->finished = true;
         }
     }
@@ -586,6 +587,7 @@ void gameInit(const struct game *thegame) {
 void gamePrepare() {
     int x, y;
     char buf[256];
+
     fe->gamelayout = getLayout(gameGetLayout());
     fe->cliprect = GetClipRect();
     fe->statustext = "";
@@ -597,12 +599,17 @@ void gamePrepare() {
     fe->finished = false;
     fe->isTimer = false;
     fe->time_int = 5000;
+
     gamecontrol_num = 3;
     gamecontrol_padding = (ScreenWidth()-(gamecontrol_num * fe->gamelayout.control_size))/(gamecontrol_num+1);
     gameSetupMenuButtons();
     gameSetupControlButtons();
     gameBuildTypeMenu();
+
+    ShowHourglass();
     midend_new_game(me);
+    HideHourglass();
+
     x = ScreenWidth();
     y = fe->gamelayout.maincanvas.height;
     midend_size(me, &x, &y, true);
