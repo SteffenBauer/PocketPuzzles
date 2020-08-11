@@ -25,8 +25,6 @@ struct layout {
     int control_size;
     int chooser_size;
 
-    bool with_rightclick;
-
     PANEL menu;
     PANEL maincanvas;
     PANEL buttonpanel;
