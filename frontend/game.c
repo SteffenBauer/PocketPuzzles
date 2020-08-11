@@ -9,7 +9,6 @@
 
 #define DOTTED 0xFF000000
 
-/* int inkcolors[12] = {WHITE, LGRAY, DGRAY, BLACK, LGRAY, LGRAY, DGRAY, DGRAY, DGRAY, DGRAY, LGRAY, BLACK}; */
 const struct drawing_api ink_drawing = {
     ink_draw_text,
     ink_draw_rect,
@@ -37,6 +36,12 @@ int convertColor(int colindex) {
     return col;
 }
 
+/*
+bool dottedColor(int colindex) {
+    return (fe->colours[3*colindex+0] != fe->colours[3*colindex+1]);
+}
+*/
+
 /* ----------------------------
    Drawing callbacks
    ---------------------------- */
@@ -63,21 +68,22 @@ void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
 void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour) {
   int i;
 
-/*
-  if (inkcolors[colour] & DOTTED) {
+
+  /* if (dottedColor(colour)) {
     for (i=0;i<h;i++) {
-      if ((y+i) & 1) DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,inkcolors[colour]&WHITE);
-      else DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,inkcolors[0]);
+      if ((y+i) & 1) DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,convertColor(colour));
+      else DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,0x000000);
     }
   }
-  else */ for (i=0;i<h;i++) DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,convertColor(colour));
+  else */
+    for (i=0;i<h;i++) DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,convertColor(colour));
 }
 void ink_draw_rect_outline(void *handle, int x, int y, int w, int h, int colour) {
     DrawRect(fe->xoffset+x, fe->yoffset+y, w, h, convertColor(colour));
 }
 
 void ink_draw_line(void *handle, int x1, int y1, int x2, int y2, int colour) {
-  DrawLine(fe->xoffset+x1, fe->yoffset+y1, fe->xoffset+x2, fe->yoffset+y2, convertColor(colour));
+    DrawLine(fe->xoffset+x1, fe->yoffset+y1, fe->xoffset+x2, fe->yoffset+y2, convertColor(colour));
 }
 
 static void extendrow(int y, int x1, int y1, int x2, int y2, int *minxptr, int *maxxptr) {
@@ -218,10 +224,12 @@ void ink_blitter_load(void *handle, blitter *bl, int x, int y) {
 
 void ink_status_bar(void *handle, const char *text) {
     ifont *font;
+    char buf[256];
+    sprintf(buf, "Status: '%s'", text);
     fe->statustext = text;
     FillArea(0, fe->gamelayout.statusbar.starty+2, ScreenWidth(), fe->gamelayout.statusbar.height-2, 0x00FFFFFF);
     font = OpenFont("LiberationSans-Bold", 32, 0);
-    DrawTextRect(10, fe->gamelayout.statusbar.starty+8, ScreenWidth(), 32, text, ALIGN_LEFT);
+    DrawTextRect(10, fe->gamelayout.statusbar.starty+8, ScreenWidth(), 32, buf, ALIGN_LEFT);
     PartialUpdate(0, fe->gamelayout.statusbar.starty+2, ScreenWidth(), fe->gamelayout.statusbar.height-2);
     CloseFont(font);
 }
@@ -422,17 +430,17 @@ void gameRelease(int x, int y) {
     if (fe->current_pointer == LEFT_BUTTON) {
         midend_process_key(me, fe->pointerdown_x-fe->xoffset, fe->pointerdown_y-fe->yoffset, LEFT_BUTTON);
         midend_process_key(me, x-fe->xoffset, y-fe->yoffset, LEFT_RELEASE);
-        fe->current_pointer = LEFT_RELEASE;
+        fe->current_pointer = 0;
         checkGameEnd();
     }
     if (fe->current_pointer == LEFT_DRAG) {
         midend_process_key(me, x-fe->xoffset, y-fe->yoffset, LEFT_RELEASE);
-        fe->current_pointer = LEFT_RELEASE;
+        fe->current_pointer = 0;
         checkGameEnd();
     }
     if (fe->current_pointer == RIGHT_BUTTON || fe->current_pointer == RIGHT_DRAG) {
         midend_process_key(me, x-fe->xoffset, y-fe->yoffset, RIGHT_RELEASE);
-        fe->current_pointer = RIGHT_RELEASE;
+        fe->current_pointer = 0;
         checkGameEnd();
     }
 
@@ -581,7 +589,7 @@ void gamePrepare() {
     fe->gamelayout = getLayout(gameGetLayout());
     fe->cliprect = GetClipRect();
     fe->statustext = "";
-    fe->current_pointer = LEFT_BUTTON;
+    fe->current_pointer = 0;
     fe->pointerdown_x = 0;
     fe->pointerdown_y = 0;
     fe->with_rightpointer = currentgame->flags & REQUIRE_RBUTTON;

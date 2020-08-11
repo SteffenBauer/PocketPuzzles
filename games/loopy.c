@@ -857,9 +857,9 @@ static float *game_colours(frontend *fe, int *ncolours)
      * found that this went badly with the 0.8,0.8,0.8 favoured as a
      * background by the Java frontend.)
      */
-    ret[COL_LINEUNKNOWN * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] * 0.9F;
-    ret[COL_LINEUNKNOWN * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] * 0.9F;
-    ret[COL_LINEUNKNOWN * 3 + 2] = 0.0F;
+    ret[COL_LINEUNKNOWN * 3 + 0] = 0.5F;
+    ret[COL_LINEUNKNOWN * 3 + 1] = 0.5F;
+    ret[COL_LINEUNKNOWN * 3 + 2] = 0.5F;
 
     ret[COL_HIGHLIGHT * 3 + 0] = 1.0F;
     ret[COL_HIGHLIGHT * 3 + 1] = 1.0F;
@@ -3060,7 +3060,7 @@ static void game_redraw_line(drawing *dr, game_drawstate *ds,
 	if (draw_faint_lines)
 	    draw_line(dr, x1, y1, x2, y2, line_colour);
     } else {
-	draw_thick_line(dr, 3.0,
+	draw_thick_line(dr, 5.0,
 			x1 + 0.5, y1 + 0.5,
 			x2 + 0.5, y2 + 0.5,
 			line_colour);
@@ -3075,7 +3075,7 @@ static void game_redraw_dot(drawing *dr, game_drawstate *ds,
     int x, y;
 
     grid_to_screen(ds, g, d->x, d->y, &x, &y);
-    draw_circle(dr, x, y, 2, COL_FOREGROUND, COL_FOREGROUND);
+    draw_circle(dr, x, y, 5, COL_FOREGROUND, COL_FOREGROUND);
 }
 
 static bool boxes_intersect(int x0, int y0, int w0, int h0,

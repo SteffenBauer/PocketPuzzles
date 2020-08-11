@@ -1951,28 +1951,21 @@ static float *game_colours(frontend *fe, int *ncolours)
 
     game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
 
+
     for (i = 0; i < 3; i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+
         ret[COL_TEXT * 3 + i] = 0.0F;
-        ret[COL_NEGATIVE * 3 + i] = 0.0F;
+        ret[COL_DONE * 3 + i] = 0.8F;
+
+        ret[COL_NEGATIVE * 3 + i] = 0.5F;
+        ret[COL_POSITIVE * 3 + i] = 0.8F;
+
         ret[COL_CURSOR * 3 + i] = 0.9F;
-        ret[COL_DONE * 3 + i] = ret[COL_BACKGROUND * 3 + i] / 1.5F;
+        ret[COL_NEUTRAL * 3 + 0] = 0.5F;
+        ret[COL_NOT * 3 + 0] = 0.5F;
+        ret[COL_ERROR * 3 + 0] = 0.3F;
     }
-
-    ret[COL_POSITIVE * 3 + 0] = 0.8F;
-    ret[COL_POSITIVE * 3 + 1] = 0.0F;
-    ret[COL_POSITIVE * 3 + 2] = 0.0F;
-
-    ret[COL_NEUTRAL * 3 + 0] = 0.10F;
-    ret[COL_NEUTRAL * 3 + 1] = 0.60F;
-    ret[COL_NEUTRAL * 3 + 2] = 0.10F;
-
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
-
-    ret[COL_NOT * 3 + 0] = 0.2F;
-    ret[COL_NOT * 3 + 1] = 0.2F;
-    ret[COL_NOT * 3 + 2] = 1.0F;
 
     *ncolours = NCOLOURS;
     return ret;
