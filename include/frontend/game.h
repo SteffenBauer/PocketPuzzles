@@ -9,17 +9,22 @@ typedef struct {
 } MWPOINT;
 
 struct frontend {
-  struct layout gamelayout;
-  int width;
-  int height;
-  int xoffset;
-  int yoffset;
-  bool do_partial;
-  irect cliprect;
-  const char *statustext;
+  struct layout gamelayout; /* Dimensions of game panels */
+  int width;                /* Width of main game canvas */
+  int height;               /* Height of main game canvas */
+  int xoffset;              /* Main game canvas offset in X-direction */
+  int yoffset;              /* Main game canvas offset in Y-direction */
+  bool with_rightpointer;   /* Game operates with right/long-click */
+  int current_pointer;      /* Current pointer type (left/ right) */
+  int pointerdown_x;        /* Coordinates of initial pointer down event */
+  int pointerdown_y;
+  bool finished;            /* Whether game was finished (for showing finish message) */
+  bool do_partial;          /* If game canvas is updated partial or full at end */
+  irect cliprect;           /* Initial screen clip rectangle upon game init */
+  const char *statustext;   /* Currently shown status text (needed for screen redraw) */
   struct timeval last_time;
   int time_int;
-  int isTimer;
+  bool isTimer;
   game_params *pparams;
   int ncolours;
   float *colours;
@@ -79,6 +84,7 @@ static void gameDrawMenu();
 static void gameDrawControlButtons();
 
 static void gameExitPage();
+static void checkGameEnd();
 
 void gameInit(const struct game *thegame);
 void gameShowPage();
@@ -89,7 +95,6 @@ void gameTap(int x, int y);
 void gameLongTap(int x, int y);
 void gameDrag(int x, int y);
 void gameRelease(int x, int y);
-
 
 void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
                int align, int colour, const char *text);

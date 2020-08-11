@@ -9,7 +9,7 @@
 
 #define DOTTED 0xFF000000
 
-int inkcolors[12] = {WHITE, LGRAY, DGRAY, BLACK, LGRAY, LGRAY, DGRAY, DGRAY, DGRAY, DGRAY, LGRAY, BLACK};
+/* int inkcolors[12] = {WHITE, LGRAY, DGRAY, BLACK, LGRAY, LGRAY, DGRAY, DGRAY, DGRAY, DGRAY, LGRAY, BLACK}; */
 const struct drawing_api ink_drawing = {
     ink_draw_text,
     ink_draw_rect,
@@ -29,6 +29,14 @@ const struct drawing_api ink_drawing = {
     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
+int convertColor(int colindex) {
+    int col;
+    col  = 0x010000 * (int)(255.0 * fe->colours[3*colindex+0]);
+    col += 0x000100 * (int)(255.0 * fe->colours[3*colindex+1]);
+    col += 0x000001 * (int)(255.0 * fe->colours[3*colindex+2]);
+    return col;
+}
+
 /* ----------------------------
    Drawing callbacks
    ---------------------------- */
@@ -40,7 +48,7 @@ void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
   tempfont = OpenFont(fonttype == FONT_FIXED ? "LiberationMono" : "LiberationSans",
                       fontsize, 0);
 
-  SetFont(tempfont, inkcolors[colour]);
+  SetFont(tempfont, convertColor(colour));
   sw=StringWidth(text);
   sh=TextRectHeight(sw, text, 0);
   if (align & ALIGN_VNORMAL) y -= sh;
@@ -55,20 +63,21 @@ void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
 void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour) {
   int i;
 
+/*
   if (inkcolors[colour] & DOTTED) {
     for (i=0;i<h;i++) {
       if ((y+i) & 1) DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,inkcolors[colour]&WHITE);
       else DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,inkcolors[0]);
     }
   }
-  else for (i=0;i<h;i++) DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,inkcolors[colour]);
+  else */ for (i=0;i<h;i++) DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,convertColor(colour));
 }
 void ink_draw_rect_outline(void *handle, int x, int y, int w, int h, int colour) {
-    DrawRect(fe->xoffset+x, fe->yoffset+y, w, h, inkcolors[colour]);
+    DrawRect(fe->xoffset+x, fe->yoffset+y, w, h, convertColor(colour));
 }
 
 void ink_draw_line(void *handle, int x1, int y1, int x2, int y2, int colour) {
-  DrawLine(fe->xoffset+x1, fe->yoffset+y1, fe->xoffset+x2, fe->yoffset+y2, inkcolors[colour]);
+  DrawLine(fe->xoffset+x1, fe->yoffset+y1, fe->xoffset+x2, fe->yoffset+y2, convertColor(colour));
 }
 
 static void extendrow(int y, int x1, int y1, int x2, int y2, int *minxptr, int *maxxptr) {
@@ -130,19 +139,19 @@ void ink_draw_polygon(void *handle, int *icoords, int npoints,
         extendrow(miny, pp[0].x, pp[0].y, coords[0].x, coords[0].y, &minx, &maxx);
 
         if (minx <= maxx) {
-          if (inkcolors[fillcolour] & DOTTED) {
+          /* if (inkcolors[fillcolour] & DOTTED) {
             if (miny & 1) DrawLine(fe->xoffset+minx, fe->yoffset+miny, fe->xoffset+maxx, fe->yoffset+miny, inkcolors[fillcolour]&WHITE);
             else DrawLine(fe->xoffset+minx, fe->yoffset+miny, fe->xoffset+maxx, fe->yoffset+miny, inkcolors[0]);
           }
-          else DrawLine(fe->xoffset+minx, fe->yoffset+miny, fe->xoffset+maxx, fe->yoffset+miny, inkcolors[fillcolour]);
+          else */ DrawLine(fe->xoffset+minx, fe->yoffset+miny, fe->xoffset+maxx, fe->yoffset+miny, convertColor(fillcolour));
         }
     }
   }
 
   for (i = 0; i < npoints-1; i++) {
-    DrawLine(fe->xoffset+coords[i].x, fe->yoffset+coords[i].y, fe->xoffset+coords[i+1].x, fe->yoffset+coords[i+1].y, inkcolors[outlinecolour]);
+    DrawLine(fe->xoffset+coords[i].x, fe->yoffset+coords[i].y, fe->xoffset+coords[i+1].x, fe->yoffset+coords[i+1].y, convertColor(outlinecolour));
   }
-  DrawLine(fe->xoffset+coords[i].x, fe->yoffset+coords[i].y, fe->xoffset+coords[0].x, fe->yoffset+coords[0].y, inkcolors[outlinecolour]);
+  DrawLine(fe->xoffset+coords[i].x, fe->yoffset+coords[i].y, fe->xoffset+coords[0].x, fe->yoffset+coords[0].y, convertColor(outlinecolour));
 }
 
 
@@ -153,14 +162,14 @@ void ink_draw_circle(void *handle, int cx, int cy, int radius, int fillcolour, i
     y=i-radius;
     x=lround(sqrt(radius*radius-y*y));
 
-    DrawLine(fe->xoffset+cx+xx, fe->yoffset+cy+yy, fe->xoffset+cx+x, fe->yoffset+cy+y, inkcolors[outlinecolour]&WHITE);
-    DrawLine(fe->xoffset+cx-xx, fe->yoffset+cy+yy, fe->xoffset+cx-x, fe->yoffset+cy+y, inkcolors[outlinecolour]&WHITE);
+    DrawLine(fe->xoffset+cx+xx, fe->yoffset+cy+yy, fe->xoffset+cx+x, fe->yoffset+cy+y, convertColor(outlinecolour)&WHITE);
+    DrawLine(fe->xoffset+cx-xx, fe->yoffset+cy+yy, fe->xoffset+cx-x, fe->yoffset+cy+y, convertColor(outlinecolour)&WHITE);
 
     if (fillcolour!=-1) {
-      if (!(inkcolors[fillcolour]&DOTTED)) {
-        DrawLine(fe->xoffset+cx-x, fe->yoffset+cy+y, fe->xoffset+cx+x, fe->yoffset+cy+y, inkcolors[fillcolour]&WHITE);
-      }
-      else if ((cy+y)%2) DrawLine(fe->xoffset+cx-x, fe->yoffset+cy+y, fe->xoffset+cx+x, fe->yoffset+cy+y, inkcolors[fillcolour]&WHITE);
+      /* if (!(inkcolors[fillcolour]&DOTTED)) { */
+        DrawLine(fe->xoffset+cx-x, fe->yoffset+cy+y, fe->xoffset+cx+x, fe->yoffset+cy+y, convertColor(fillcolour)&WHITE);
+      /* }
+      else if ((cy+y)%2) DrawLine(fe->xoffset+cx-x, fe->yoffset+cy+y, fe->xoffset+cx+x, fe->yoffset+cy+y, inkcolors[fillcolour]&WHITE); */
     }
 
     xx=x; yy=y;
@@ -249,14 +258,14 @@ void tproc() {
 }
 
 void activate_timer(frontend *fe) {
-  fe->isTimer=1;
+  fe->isTimer=true;
   gettimeofday(&fe->last_time, NULL);
   SetWeakTimer("timername", tproc, fe->time_int);
 
 };
 
 void deactivate_timer(frontend *fe) {
-  fe->isTimer=0;
+  fe->isTimer=false;
   ClearTimer(tproc);
 };
 
@@ -362,12 +371,42 @@ void gameTap(int x, int y) {
     if (coord_in_button(x, y, &btn_swap)) button_to_tapped(&btn_swap);
     if (coord_in_button(x, y, &btn_undo)) button_to_tapped(&btn_undo);
     if (coord_in_button(x, y, &btn_redo)) button_to_tapped(&btn_redo);
+    
+    if ((x>=fe->xoffset) && (x<(fe->xoffset+fe->width)) &&
+        (y>=fe->yoffset) && (y<(fe->yoffset+fe->height))) {
+        fe->current_pointer = LEFT_BUTTON;
+        fe->pointerdown_x = x;
+        fe->pointerdown_y = y;
+    }
 }
 
 void gameLongTap(int x, int y) {
+    if ((x>=fe->xoffset) && (x<(fe->xoffset+fe->width)) &&
+        (y>=fe->yoffset) && (y<(fe->yoffset+fe->height))) {
+        midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_BUTTON);
+        fe->current_pointer = RIGHT_BUTTON;
+        fe->pointerdown_x = x;
+        fe->pointerdown_y = y;
+    }
 }
 
 void gameDrag(int x, int y) {
+    if ((x>=fe->xoffset) && (x<(fe->xoffset+fe->width)) &&
+        (y>=fe->yoffset) && (y<(fe->yoffset+fe->height))) {
+        if (fe->current_pointer == LEFT_BUTTON) {
+            midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), LEFT_BUTTON);
+            midend_process_key(me, x-fe->xoffset, y-fe->yoffset, LEFT_DRAG);
+            fe->current_pointer = LEFT_DRAG;
+        }
+        else if (fe->current_pointer == LEFT_DRAG) {
+            midend_process_key(me, x-fe->xoffset, y-fe->yoffset, LEFT_DRAG);
+        }
+        else if (fe->current_pointer == RIGHT_BUTTON || fe->current_pointer == RIGHT_DRAG) {
+            midend_process_key(me, x-fe->xoffset, y-fe->yoffset, RIGHT_DRAG);
+            fe->current_pointer = RIGHT_DRAG;
+        }
+
+    }
 }
 
 void gameRelease(int x, int y) {
@@ -379,6 +418,23 @@ void gameRelease(int x, int y) {
     if (coord_in_button(init_tap_x, init_tap_y, &btn_swap)) button_to_normal(&btn_swap, true);
     if (coord_in_button(init_tap_x, init_tap_y, &btn_undo)) button_to_normal(&btn_undo, true);
     if (coord_in_button(init_tap_x, init_tap_y, &btn_redo)) button_to_normal(&btn_redo, true);
+
+    if (fe->current_pointer == LEFT_BUTTON) {
+        midend_process_key(me, fe->pointerdown_x-fe->xoffset, fe->pointerdown_y-fe->yoffset, LEFT_BUTTON);
+        midend_process_key(me, x-fe->xoffset, y-fe->yoffset, LEFT_RELEASE);
+        fe->current_pointer = LEFT_RELEASE;
+        checkGameEnd();
+    }
+    if (fe->current_pointer == LEFT_DRAG) {
+        midend_process_key(me, x-fe->xoffset, y-fe->yoffset, LEFT_RELEASE);
+        fe->current_pointer = LEFT_RELEASE;
+        checkGameEnd();
+    }
+    if (fe->current_pointer == RIGHT_BUTTON || fe->current_pointer == RIGHT_DRAG) {
+        midend_process_key(me, x-fe->xoffset, y-fe->yoffset, RIGHT_RELEASE);
+        fe->current_pointer = RIGHT_RELEASE;
+        checkGameEnd();
+    }
 
     if (release_button(x, y, &btn_back)) {
         gameExitPage();
@@ -393,14 +449,17 @@ void gameRelease(int x, int y) {
     else if (release_button(x, y, &btn_type)) {
         OpenMenu(typeMenu, typeMenu_selectedIndex, ScreenWidth()-10-fe->gamelayout.menubtn_size, fe->gamelayout.menubtn_size+2, typeMenuHandler);
     }
+
 }
 
 static void gameDrawControlButtons() {
     FillArea(0, fe->gamelayout.buttonpanel.starty, ScreenWidth(), fe->gamelayout.buttonpanel.height, 0x00FFFFFF);
     FillArea(0, fe->gamelayout.buttonpanel.starty, ScreenWidth(), 1, 0x00000000);
 
-    btn_swap.active = true;
-    button_to_normal(&btn_swap, false);
+    if (fe->with_rightpointer) {
+        btn_swap.active = true;
+        button_to_normal(&btn_swap, false);
+    }
     btn_undo.active = true;
     button_to_normal(&btn_undo, false);
     btn_redo.active = true;
@@ -446,7 +505,7 @@ static void gameSetupMenuButtons() {
 
 static void gameSetupControlButtons() {
 
-    if (fe->gamelayout.with_rightclick) {
+    if (fe->with_rightpointer) {
         btn_swap.active = true;
         btn_swap.posx = gamecontrol_padding;
         btn_swap.posy = fe->gamelayout.buttonpanel.starty + 2;
@@ -476,9 +535,25 @@ static void gameSetupStatusBar() {
 
 static void gameExitPage() {
     SetClipRect(&fe->cliprect);
+    deactivate_timer(fe);
     free(typeMenu);
     midend_free(me);
     sfree(fe);
+}
+
+static void checkGameEnd() {
+    int status;
+    if (!fe->finished) {
+        status = midend_status(me);
+        if (status == 1) {
+            Message(ICON_INFORMATION, "", "Puzzle is solved!", 3000);
+            fe->finished = true;
+        }
+        else if (status == -1) {
+            Message(ICON_WARNING, "", "Puzzle is lost!", 3000);
+            fe->finished = true;
+        }
+    }
 }
 
 void gameShowPage() {
@@ -506,8 +581,14 @@ void gamePrepare() {
     fe->gamelayout = getLayout(gameGetLayout());
     fe->cliprect = GetClipRect();
     fe->statustext = "";
-    fe->gamelayout.with_rightclick = currentgame->flags & REQUIRE_RBUTTON;
+    fe->current_pointer = LEFT_BUTTON;
+    fe->pointerdown_x = 0;
+    fe->pointerdown_y = 0;
+    fe->with_rightpointer = currentgame->flags & REQUIRE_RBUTTON;
     fe->colours = midend_colours(me, &fe->ncolours);
+    fe->finished = false;
+    fe->isTimer = false;
+    fe->time_int = 5000;
     gamecontrol_num = 3;
     gamecontrol_padding = (ScreenWidth()-(gamecontrol_num * fe->gamelayout.control_size))/(gamecontrol_num+1);
     gameSetupMenuButtons();
