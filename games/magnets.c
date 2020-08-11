@@ -602,83 +602,6 @@ static void game_text_hborder(const game_state *state, char **p_r)
     *p_r = p;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int len, x, y, i;
-    char *ret, *p;
-
-    len = ((state->w*2)+4) * ((state->h*2)+4) + 2;
-    p = ret = snewn(len, char);
-
-    /* top row: '+' then column totals for plus. */
-    *p++ = '+';
-    for (x = 0; x < state->w; x++) {
-        *p++ = ' ';
-        *p++ = n2c(state->common->colcount[x*3+POSITIVE]);
-    }
-    *p++ = '\n';
-
-    /* top border. */
-    game_text_hborder(state, &p);
-
-    for (y = 0; y < state->h; y++) {
-        *p++ = n2c(state->common->rowcount[y*3+POSITIVE]);
-        *p++ = '|';
-        for (x = 0; x < state->w; x++) {
-            i = y*state->w+x;
-            *p++ = state->common->dominoes[i] == i ? '#' :
-                state->grid[i] == POSITIVE ? '+' :
-                state->grid[i] == NEGATIVE ? '-' :
-                state->flags[i] & GS_SET ? '*' : ' ';
-            if (x < (state->w-1))
-                *p++ = state->common->dominoes[i] == i+1 ? ' ' : '|';
-        }
-        *p++ = '|';
-        *p++ = n2c(state->common->rowcount[y*3+NEGATIVE]);
-        *p++ = '\n';
-
-        if (y < (state->h-1)) {
-            *p++ = ' ';
-            *p++ = '|';
-            for (x = 0; x < state->w; x++) {
-                i = y*state->w+x;
-                *p++ = state->common->dominoes[i] == i+state->w ? ' ' : '-';
-                if (x < (state->w-1))
-                    *p++ = '+';
-            }
-            *p++ = '|';
-            *p++ = '\n';
-        }
-    }
-
-    /* bottom border. */
-    game_text_hborder(state, &p);
-
-    /* bottom row: column totals for minus then '-'. */
-    *p++ = ' ';
-    for (x = 0; x < state->w; x++) {
-        *p++ = ' ';
-        *p++ = n2c(state->common->colcount[x*3+NEGATIVE]);
-    }
-    *p++ = ' ';
-    *p++ = '-';
-    *p++ = '\n';
-    *p++ = '\0';
-
-    return ret;
-}
-
-static void game_debug(game_state *state, const char *desc)
-{
-    char *fmt = game_text_format(state);
-    debug(("%s:\n%s\n", desc, fmt));
-    sfree(fmt);
-}
 
 enum { ROW, COLUMN };
 
@@ -1574,7 +1497,6 @@ static int lay_dominoes(game_state *state, random_state *rs, int *scratch)
     }
 
     debug(("Laid %d dominoes, total %d dominoes.\n", nlaid, state->wh/2));
-    game_debug(state, "Final layout");
     return ret;
 }
 
@@ -1671,7 +1593,6 @@ static int check_difficulty(const game_params *params, game_state *new,
         rc.targets[NEUTRAL] = -1;
 
         /* ...and see if we can still solve it. */
-        game_debug(new, "removed clue, new board:");
         memset(new->grid, EMPTY, new->wh * sizeof(int));
         ret = solve_state(new, params->diff);
         assert(ret != -1);
@@ -1958,13 +1879,13 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_TEXT * 3 + i] = 0.0F;
         ret[COL_DONE * 3 + i] = 0.8F;
 
-        ret[COL_NEGATIVE * 3 + i] = 0.5F;
-        ret[COL_POSITIVE * 3 + i] = 0.8F;
+        ret[COL_NEGATIVE * 3 + i] = 0.4F;
+        ret[COL_POSITIVE * 3 + i] = 0.6F;
 
         ret[COL_CURSOR * 3 + i] = 0.9F;
         ret[COL_NEUTRAL * 3 + 0] = 0.5F;
-        ret[COL_NOT * 3 + 0] = 0.5F;
-        ret[COL_ERROR * 3 + 0] = 0.3F;
+        ret[COL_NOT * 3 + 0] = 0.7F;
+        ret[COL_ERROR * 3 + 0] = 0.5F;
     }
 
     *ncolours = NCOLOURS;
@@ -2278,9 +2199,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-        !oldstate->solved && !newstate->solved)
-        return FLASH_TIME;
     return 0.0F;
 }
 
@@ -2294,106 +2212,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
 
-    /*
-     * I'll use 6mm squares by default.
-     */
-    game_compute_size(params, 600, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w = state->w, h = state->h;
-    int ink = print_mono_colour(dr, 0);
-    int paper = print_mono_colour(dr, 1);
-    int x, y, which, i, j;
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    game_set_size(dr, ds, NULL, tilesize);
-    ds->w = w; ds->h = h;
-
-    /* Border. */
-    print_line_width(dr, TILE_SIZE/12);
-
-    /* Numbers and +/- for corners. */
-    draw_sym(dr, ds, -1, -1, POSITIVE, ink);
-    draw_sym(dr, ds, state->w, state->h, NEGATIVE, ink);
-    for (which = POSITIVE, j = 0; j < 2; which = OPPOSITE(which), j++) {
-        for (i = 0; i < w; i++) {
-            draw_num(dr, ds, COLUMN, which, i, paper, ink,
-                         state->common->colcount[i*3+which]);
-        }
-        for (i = 0; i < h; i++) {
-            draw_num(dr, ds, ROW, which, i, paper, ink,
-                         state->common->rowcount[i*3+which]);
-        }
-    }
-
-    /* Dominoes. */
-    for (x = 0; x < w; x++) {
-        for (y = 0; y < h; y++) {
-            i = y*state->w + x;
-	    if (state->common->dominoes[i] == i+1 ||
-		state->common->dominoes[i] == i+w) {
-		int dx = state->common->dominoes[i] == i+1 ? 2 : 1;
-		int dy = 3 - dx;
-		int xx, yy;
-		int cx = COORD(x), cy = COORD(y);
-
-		print_line_width(dr, 0);
-
-		/* Ink the domino */
-		for (yy = 0; yy < 2; yy++)
-		    for (xx = 0; xx < 2; xx++)
-			draw_circle(dr,
-				    cx+xx*dx*TILE_SIZE+(1-2*xx)*3*TILE_SIZE/16,
-				    cy+yy*dy*TILE_SIZE+(1-2*yy)*3*TILE_SIZE/16,
-				    TILE_SIZE/8, ink, ink);
-		draw_rect(dr, cx + TILE_SIZE/16, cy + 3*TILE_SIZE/16,
-			  dx*TILE_SIZE - 2*(TILE_SIZE/16),
-			  dy*TILE_SIZE - 6*(TILE_SIZE/16), ink);
-		draw_rect(dr, cx + 3*TILE_SIZE/16, cy + TILE_SIZE/16,
-			  dx*TILE_SIZE - 6*(TILE_SIZE/16),
-			  dy*TILE_SIZE - 2*(TILE_SIZE/16), ink);
-
-		/* Un-ink the domino interior */
-		for (yy = 0; yy < 2; yy++)
-		    for (xx = 0; xx < 2; xx++)
-			draw_circle(dr,
-				    cx+xx*dx*TILE_SIZE+(1-2*xx)*3*TILE_SIZE/16,
-				    cy+yy*dy*TILE_SIZE+(1-2*yy)*3*TILE_SIZE/16,
-				    3*TILE_SIZE/32, paper, paper);
-		draw_rect(dr, cx + 3*TILE_SIZE/32, cy + 3*TILE_SIZE/16,
-			  dx*TILE_SIZE - 2*(3*TILE_SIZE/32),
-			  dy*TILE_SIZE - 6*(TILE_SIZE/16), paper);
-		draw_rect(dr, cx + 3*TILE_SIZE/16, cy + 3*TILE_SIZE/32,
-			  dx*TILE_SIZE - 6*(TILE_SIZE/16),
-			  dy*TILE_SIZE - 2*(3*TILE_SIZE/32), paper);
-	    }
-        }
-    }
-
-    /* Grid symbols (solution). */
-    for (x = 0; x < w; x++) {
-        for (y = 0; y < h; y++) {
-            i = y*state->w + x;
-	    if ((state->grid[i] != NEUTRAL) || (state->flags[i] & GS_SET))
-		draw_sym(dr, ds, x, y, state->grid[i], ink);
-	}
-    }
-}
-
-#ifdef COMBINED
-#define thegame magnets
-#endif
-
-const struct game thegame = {
+const struct game magnets = {
     "Magnets", "games.magnets", "magnets",
     default_params,
     game_fetch_preset, NULL,
@@ -2409,7 +2229,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -2426,219 +2246,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false,			       /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,		       /* flags */
 };
 
-#ifdef STANDALONE_SOLVER
-
-#include <time.h>
-#include <stdarg.h>
-
-const char *quis = NULL;
-bool csv = false;
-
-void usage(FILE *out) {
-    fprintf(out, "usage: %s [-v] [--print] <params>|<game id>\n", quis);
-}
-
-void doprint(game_state *state)
-{
-    char *fmt = game_text_format(state);
-    printf("%s", fmt);
-    sfree(fmt);
-}
-
-static void pnum(int n, int ntot, const char *desc)
-{
-    printf("%2.1f%% (%d) %s", (double)n*100.0 / (double)ntot, n, desc);
-}
-
-static void start_soak(game_params *p, random_state *rs)
-{
-    time_t tt_start, tt_now, tt_last;
-    char *aux;
-    game_state *s, *s2;
-    int n = 0, nsolved = 0, nimpossible = 0, ntricky = 0, ret, i;
-    long nn, nn_total = 0, nn_solved = 0, nn_tricky = 0;
-
-    tt_start = tt_now = time(NULL);
-
-    if (csv)
-        printf("time, w, h,  #generated, #solved, #tricky, #impossible,  "
-               "#neutral, #neutral/solved, #neutral/tricky\n");
-    else
-        printf("Soak-testing a %dx%d grid.\n", p->w, p->h);
-
-    s = new_state(p->w, p->h);
-    aux = snewn(s->wh+1, char);
-
-    while (1) {
-        gen_game(s, rs);
-
-        nn = 0;
-        for (i = 0; i < s->wh; i++) {
-            if (s->grid[i] == NEUTRAL) nn++;
-        }
-
-        generate_aux(s, aux);
-        memset(s->grid, EMPTY, s->wh * sizeof(int));
-        s2 = dup_game(s);
-
-        ret = solve_state(s, DIFFCOUNT);
-
-        n++;
-        nn_total += nn;
-        if (ret > 0) {
-            nsolved++;
-            nn_solved += nn;
-            if (solve_state(s2, DIFF_EASY) <= 0) {
-                ntricky++;
-                nn_tricky += nn;
-            }
-        } else if (ret < 0) {
-            char *desc = generate_desc(s);
-            solve_from_aux(s, aux);
-            printf("Game considered impossible:\n  %dx%d:%s\n",
-                    p->w, p->h, desc);
-            sfree(desc);
-            doprint(s);
-            nimpossible++;
-        }
-
-        free_game(s2);
-
-        tt_last = time(NULL);
-        if (tt_last > tt_now) {
-            tt_now = tt_last;
-            if (csv) {
-                printf("%d,%d,%d, %d,%d,%d,%d, %ld,%ld,%ld\n",
-                       (int)(tt_now - tt_start), p->w, p->h,
-                       n, nsolved, ntricky, nimpossible,
-                       nn_total, nn_solved, nn_tricky);
-            } else {
-                printf("%d total, %3.1f/s, ",
-                       n, (double)n / ((double)tt_now - tt_start));
-                pnum(nsolved, n, "solved"); printf(", ");
-                pnum(ntricky, n, "tricky");
-                if (nimpossible > 0)
-                    pnum(nimpossible, n, "impossible");
-                printf("\n");
-
-                printf("  overall %3.1f%% neutral (%3.1f%% for solved, %3.1f%% for tricky)\n",
-                       (double)(nn_total * 100) / (double)(p->w * p->h * n),
-                       (double)(nn_solved * 100) / (double)(p->w * p->h * nsolved),
-                       (double)(nn_tricky * 100) / (double)(p->w * p->h * ntricky));
-            }
-        }
-    }
-    free_game(s);
-    sfree(aux);
-}
-
-int main(int argc, const char *argv[])
-{
-    bool print = false, soak = false, solved = false;
-    int ret;
-    char *id = NULL, *desc, *desc_gen = NULL, *aux = NULL;
-    const char *err;
-    game_state *s = NULL;
-    game_params *p = NULL;
-    random_state *rs = NULL;
-    time_t seed = time(NULL);
-
-    setvbuf(stdout, NULL, _IONBF, 0);
-
-    quis = argv[0];
-    while (--argc > 0) {
-        char *p = (char*)(*++argv);
-        if (!strcmp(p, "-v") || !strcmp(p, "--verbose")) {
-            verbose = true;
-        } else if (!strcmp(p, "--csv")) {
-            csv = true;
-        } else if (!strcmp(p, "-e") || !strcmp(p, "--seed")) {
-            seed = atoi(*++argv);
-            argc--;
-        } else if (!strcmp(p, "-p") || !strcmp(p, "--print")) {
-            print = true;
-        } else if (!strcmp(p, "-s") || !strcmp(p, "--soak")) {
-            soak = true;
-        } else if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-            usage(stderr);
-            exit(1);
-        } else {
-            id = p;
-        }
-    }
-
-    rs = random_new((void*)&seed, sizeof(time_t));
-
-    if (!id) {
-        fprintf(stderr, "usage: %s [-v] [--soak] <params> | <game_id>\n", argv[0]);
-        goto done;
-    }
-    desc = strchr(id, ':');
-    if (desc) *desc++ = '\0';
-
-    p = default_params();
-    decode_params(p, id);
-    err = validate_params(p, true);
-    if (err) {
-        fprintf(stderr, "%s: %s", argv[0], err);
-        goto done;
-    }
-
-    if (soak) {
-        if (desc) {
-            fprintf(stderr, "%s: --soak needs parameters, not description.\n", quis);
-            goto done;
-        }
-        start_soak(p, rs);
-        goto done;
-    }
-
-    if (!desc)
-        desc = desc_gen = new_game_desc(p, rs, &aux, false);
-
-    err = validate_desc(p, desc);
-    if (err) {
-        fprintf(stderr, "%s: %s\nDescription: %s\n", quis, err, desc);
-        goto done;
-    }
-    s = new_game(NULL, p, desc);
-    printf("%s:%s (seed %ld)\n", id, desc, (long)seed);
-    if (aux) {
-        /* We just generated this ourself. */
-        if (verbose || print) {
-            doprint(s);
-            solve_from_aux(s, aux);
-            solved = true;
-        }
-    } else {
-        doprint(s);
-        verbose = true;
-        ret = solve_state(s, DIFFCOUNT);
-        if (ret < 0) printf("Puzzle is impossible.\n");
-        else if (ret == 0) printf("Puzzle is ambiguous.\n");
-        else printf("Puzzle was solved.\n");
-        verbose = false;
-        solved = true;
-    }
-    if (solved) doprint(s);
-
-done:
-    if (desc_gen) sfree(desc_gen);
-    if (p) free_params(p);
-    if (s) free_game(s);
-    if (rs) random_free(rs);
-    if (aux) sfree(aux);
-
-    return 0;
-}
-
-#endif
-
-/* vim: set shiftwidth=4 tabstop=8: */

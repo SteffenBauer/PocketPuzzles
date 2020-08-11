@@ -820,49 +820,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     }
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int w = state->shared->params.w, h = state->shared->params.h, r, c;
-    int cw = 4, ch = 2, gw = cw*w + 2, gh = ch * h + 1, len = gw * gh;
-    char *board;
-
-    setmem(snewa(board, len + 1), ' ', len);
-    for (r = 0; r < h; ++r) {
-        for (c = 0; c < w; ++c) {
-            int cell = r*ch*gw + cw*c, center = cell + gw*ch/2 + cw/2;
-            int i = r * w + c, clue = state->shared->clues[i];
-
-            if (clue != EMPTY) board[center] = '0' + clue;
-
-            board[cell] = '+';
-
-            if (state->borders[i] & BORDER_U)
-                setmem(board + cell + 1, '-', cw - 1);
-            else if (state->borders[i] & DISABLED(BORDER_U))
-                board[cell + cw / 2] = 'x';
-
-            if (state->borders[i] & BORDER_L)
-                board[cell + gw] = '|';
-            else if (state->borders[i] & DISABLED(BORDER_L))
-                board[cell + gw] = 'x';
-        }
-
-        for (c = 0; c < ch; ++c) {
-            board[(r*ch + c)*gw + gw - 2] = c ? '|' : '+';
-            board[(r*ch + c)*gw + gw - 1] = '\n';
-        }
-    }
-
-    scopy(board + len - gw, board, gw);
-    board[len] = '\0';
-
-    return board;
-}
 
 struct game_ui {
     int x, y;
@@ -1074,18 +1031,12 @@ static float *game_colours(frontend *fe, int *ncolours)
 
     game_mkhighlight(fe, ret, COL_BACKGROUND, -1, COL_FLASH);
 
+    COLOUR(COL_BACKGROUND, 1.0F, 1.0F, 1.0F);
     COLOUR(COL_GRID,   0.0F, 0.0F, 0.0F); /* black */
-    COLOUR(COL_ERROR,  1.0F, 0.0F, 0.0F); /* red */
+    COLOUR(COL_ERROR,  0.4F, 0.4F, 0.4F); /* red */
 
-    COLOUR(COL_LINE_MAYBE, /* yellow */
-           ret[COL_BACKGROUND*3 + 0] * DARKER,
-           ret[COL_BACKGROUND*3 + 1] * DARKER,
-           0.0F);
-
-    COLOUR(COL_LINE_NO,
-           ret[COL_BACKGROUND*3 + 0] * DARKER,
-           ret[COL_BACKGROUND*3 + 1] * DARKER,
-           ret[COL_BACKGROUND*3 + 2] * DARKER);
+    COLOUR(COL_LINE_MAYBE, 0.6F, 0.6F, 0.6F);
+    COLOUR(COL_LINE_NO,    0.9F, 0.9F, 0.9F);
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1285,77 +1236,7 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return false;                      /* placate optimiser */
 }
 
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    game_compute_size(params, 700, &pw, &ph); /* 7mm, like loopy */
-
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void print_line(drawing *dr, int x1, int y1, int x2, int y2,
-                       int colour, bool full)
-{
-    if (!full) {
-        int i, subdivisions = 8;
-        for (i = 1; i < subdivisions; ++i) {
-            int x = (x1 * (subdivisions - i) + x2 * i) / subdivisions;
-            int y = (y1 * (subdivisions - i) + y2 * i) / subdivisions;
-            draw_circle(dr, x, y, 3, colour, colour);
-        }
-    } else draw_line(dr, x1, y1, x2, y2, colour);
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w = state->shared->params.w, h = state->shared->params.h;
-    int ink = print_mono_colour(dr, 0);
-    game_drawstate for_tilesize_macros, *ds = &for_tilesize_macros;
-    int r, c;
-
-    ds->tilesize = tilesize;
-
-    for (r = 0; r < h; ++r)
-        for (c = 0; c < w; ++c) {
-            int x = MARGIN + TILESIZE * c, y = MARGIN + TILESIZE * r;
-            int i = r * w + c, clue = state->shared->clues[i];
-
-            if (clue != EMPTY) {
-                char buf[2];
-                buf[0] = '0' + clue;
-                buf[1] = '\0';
-                draw_text(dr, x + CENTER, y + CENTER, FONT_VARIABLE,
-                          TILESIZE / 2, ALIGN_VCENTRE | ALIGN_HCENTRE,
-                          ink, buf);
-            }
-
-#define ts TILESIZE
-#define FULL(DIR) (state->borders[i] & (BORDER_ ## DIR))
-            print_line(dr, x,      y,      x + ts, y,      ink, FULL(U));
-            print_line(dr, x + ts, y,      x + ts, y + ts, ink, FULL(R));
-            print_line(dr, x,      y + ts, x + ts, y + ts, ink, FULL(D));
-            print_line(dr, x,      y,      x,      y + ts, ink, FULL(L));
-#undef ts
-#undef FULL
-        }
-
-    for (r = 1; r < h; ++r)
-        for (c = 1; c < w; ++c) {
-            int j = r * w + c, i = j - 1 - w;
-            int x = MARGIN + TILESIZE * c, y = MARGIN + TILESIZE * r;
-            if (state->borders[i] & (BORDER_D|BORDER_R)) continue;
-            if (state->borders[j] & (BORDER_U|BORDER_L)) continue;
-            draw_circle(dr, x, y, 3, ink, ink);
-        }
-}
-
-#ifdef COMBINED
-#define thegame palisade
-#endif
-
-const struct game thegame = {
+const struct game palisade = {
     "Palisade", "games.palisade", "palisade",
     default_params,
     game_fetch_preset, NULL,
@@ -1371,7 +1252,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -1388,7 +1269,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     true,                                     /* wants_statusbar */
     false, game_timing_state,
     0,                                         /* flags */
