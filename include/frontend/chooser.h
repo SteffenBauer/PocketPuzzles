@@ -44,62 +44,62 @@ static BUTTON btn_next = { false, BTN_CTRL, 0, 0, 0, 0, &bt_next, NULL, NULL, NU
 
 static int num_games;
 static BUTTON btn_chooser[] = {
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_abcd,       NULL, NULL, &abcd},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_ascent,     NULL, NULL, &ascent},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_blackbox,   NULL, NULL, &blackbox},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_abcd,       NULL, NULL, &abcd},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_ascent,     NULL, NULL, &ascent},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_blackbox,   NULL, NULL, &blackbox},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_boats,      NULL, NULL, &boats},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_bridges,    NULL, NULL, &bridges},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_bridges,    NULL, NULL, &bridges},
 
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_clusters,   NULL, NULL, &clusters},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_cube,       NULL, NULL, &cube},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_dominosa,   NULL, NULL, &dominosa},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_fifteen,    NULL, NULL, &fifteen},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_filling,    NULL, NULL, &filling},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_clusters,   NULL, NULL, &clusters},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_cube,       NULL, NULL, &cube},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_dominosa,   NULL, NULL, &dominosa},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_fifteen,    NULL, NULL, &fifteen},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_filling,    NULL, NULL, &filling},
 
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_flip,       NULL, NULL, &flip},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_flood,      NULL, NULL, &flood},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_flip,       NULL, NULL, &flip},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_flood,      NULL, NULL, &flood},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_galaxies,   NULL, NULL, &galaxies},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_guess,      NULL, NULL, &guess},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_inertia,    NULL, NULL, &inertia},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_guess,      NULL, NULL, &guess},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_inertia,    NULL, NULL, &inertia},
 
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_keen,       NULL, NULL, &keen},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_lightup,    NULL, NULL, &lightup},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_keen,       NULL, NULL, &keen},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_lightup,    NULL, NULL, &lightup},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_loopy,      NULL, NULL, &loopy},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_magnets,    NULL, NULL, &magnets},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_map,        NULL, NULL, &map},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_map,        NULL, NULL, &map},
 
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_mathrax,    NULL, NULL, &mathrax},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_mines,      NULL, NULL, &mines},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_net,        NULL, NULL, &net},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_netslide,   NULL, NULL, &netslide},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_net,        NULL, NULL, &net},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_netslide,   NULL, NULL, &netslide},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_palisade,   NULL, NULL, &palisade},
 
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_pattern,    NULL, NULL, &pattern},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_pearl,      NULL, NULL, &pearl},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_pegs,       NULL, NULL, &pegs},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_pattern,    NULL, NULL, &pattern},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_pearl,      NULL, NULL, &pearl},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_pegs,       NULL, NULL, &pegs},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_range,      NULL, NULL, &range},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_rect,       NULL, NULL, &rect},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_rect,       NULL, NULL, &rect},
 
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_rome,       NULL, NULL, &rome},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_salad,      NULL, NULL, &salad},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_samegame,   NULL, NULL, &samegame},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_signpost,   NULL, NULL, &signpost},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_rome,       NULL, NULL, &rome},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_salad,      NULL, NULL, &salad},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_samegame,   NULL, NULL, &samegame},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_signpost,   NULL, NULL, &signpost},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_singles,    NULL, NULL, &singles},
 
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_sixteen,    NULL, NULL, &sixteen},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_sixteen,    NULL, NULL, &sixteen},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_slant,      NULL, NULL, &slant},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_solo,       NULL, NULL, &solo},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_spokes,     NULL, NULL, &spokes},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_spokes,     NULL, NULL, &spokes},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_tents,      NULL, NULL, &tents},
 
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_towers,     NULL, NULL, &towers},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_tracks,     NULL, NULL, &tracks},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_twiddle,    NULL, NULL, &twiddle},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_towers,     NULL, NULL, &towers},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_tracks,     NULL, NULL, &tracks},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_twiddle,    NULL, NULL, &twiddle},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_undead,     NULL, NULL, &undead},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_unequal,    NULL, NULL, &unequal},
 
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_unruly,     NULL, NULL, &unruly},
-//    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_untangle,   NULL, NULL, &untangle},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_unruly,     NULL, NULL, &unruly},
+    { false, BTN_CHOOSER, 0, 0, 0, 0, &game_untangle,   NULL, NULL, &untangle},
     { false, BTN_CHOOSER, 0, 0, 0, 0, &game_walls,      NULL, NULL, &walls},
     { false, BTN_NULL, 0, 0, 0, 0, NULL, NULL, NULL, NULL}
 };
@@ -118,5 +118,7 @@ void chooserTap(int x, int y);
 void chooserLongTap(int x, int y);
 void chooserDrag(int x, int y);
 void chooserRelease(int x, int y);
+void chooserPrev();
+void chooserNext();
 
 #endif

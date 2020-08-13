@@ -61,6 +61,20 @@ void chooserRelease(int x, int y) {
     }
 }
 
+void chooserPrev() {
+    if (current_chooserpage > 0) {
+        current_chooserpage -= 1;
+        chooserShowPage();
+    }
+}
+
+void chooserNext() {
+    if (current_chooserpage <= chooser_lastpage) {
+        current_chooserpage += 1;
+        chooserShowPage();
+    }
+}
+
 static void chooserDrawChooserButtons(int page) {
     ifont *font;
     int i;

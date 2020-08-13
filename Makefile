@@ -13,6 +13,9 @@ GAMEOBJS := $(GAMESRCS:%.c=%.o)
 
 FRONTENDSRCS := $(wildcard frontend/*.c)
 FRONTENDOBJS := $(FRONTENDSRCS:%.c=%.o)
+FRONTENDHDRS := $(wildcard include/frontend/*.h)
+
+HEADERS := $(wildcard include /*.h)
 
 all: build/puzzles.app
 
@@ -22,13 +25,13 @@ build/puzzles.app: icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS)
 icons/icons.c: ./icons/*.bmp
 	LC_ALL=C $(PBRES) -c ./icons/icons.c -4 ./icons/*.bmp
 
-frontend/%.o: frontend/%.c
+frontend/%.o: frontend/%.c $(HEADERS) $(FRONTENDHDRS)
 	LC_ALL=C $(CC) -c $< -o $@ -I./include $(CFLAGS)
 
-games/%.o: games/%.c
+games/%.o: games/%.c $(HEADERS)
 	LC_ALL=C $(CC) -c $< -o $@ -I./include $(CFLAGS)
 
-utils/%.o: utils/%.c
+utils/%.o: utils/%.c $(HEADERS)
 	LC_ALL=C $(CC) -c $< -o $@ -I./include $(CFLAGS)
 
 clean:

@@ -56,6 +56,8 @@ bool release_button(int x, int y, BUTTON *button);
 void button_to_normal(BUTTON *button, bool update);
 void button_to_tapped(BUTTON *button);
 void button_to_cleared(BUTTON *button, bool update);
+void activate_button(BUTTON *button);
+void deactivate_button(BUTTON *button);
 
 int init_tap_x;
 int init_tap_y;

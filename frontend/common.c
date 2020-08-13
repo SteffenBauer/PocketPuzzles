@@ -16,7 +16,6 @@ bool release_button(int x, int y, BUTTON *button) {
             coord_in_button(init_tap_x, init_tap_y, button) &&
             coord_in_button(x, y, button));
 }
-
 void button_to_normal(BUTTON *button, bool update) {
     StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
     if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
@@ -32,6 +31,16 @@ void button_to_cleared(BUTTON *button, bool update) {
     FillArea(button->posx, button->posy, button->size, button->size, 0x00FFFFFF);
     if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
+void activate_button(BUTTON *button) {
+    button->active = true;
+    button_to_normal(button, true);
+}
+void deactivate_button(BUTTON *button) {
+    button->active = false;
+    StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap_disabled, 0);
+    PartialUpdate(button->posx, button->posy, button->size, button->size);
+}
+
 
 struct layout getLayout(LAYOUTTYPE screenlayout) {
     int bottomy = ScreenHeight()-PanelHeight();

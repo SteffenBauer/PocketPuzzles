@@ -15,6 +15,7 @@ struct frontend {
   int xoffset;              /* Main game canvas offset in X-direction */
   int yoffset;              /* Main game canvas offset in Y-direction */
   bool with_rightpointer;   /* Game operates with right/long-click */
+  bool swapped;             /* Indicates if left/right click is swapped */
   int current_pointer;      /* Current pointer type (left/ right) */
   int pointerdown_x;        /* Coordinates of initial pointer down event */
   int pointerdown_y;
@@ -85,16 +86,21 @@ static void gameDrawControlButtons();
 
 static void gameExitPage();
 static void checkGameEnd();
+static bool coord_in_gamecanvas(int x, int y);
 
 void gameInit(const struct game *thegame);
 void gameShowPage();
 void gamePrepare();
 LAYOUTTYPE gameGetLayout();
 
+static void check_button_state();
+
 void gameTap(int x, int y);
 void gameLongTap(int x, int y);
 void gameDrag(int x, int y);
 void gameRelease(int x, int y);
+void gamePrev();
+void gameNext();
 
 void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
                int align, int colour, const char *text);
