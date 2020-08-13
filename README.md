@@ -45,7 +45,7 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 - [X] Screen click handling
 - [X] Colors -> Greyscale
 - [X] Implement game menu controls (new, restart, solve)
-- [ ] Implement swap / undo / redo functionality
+- [X] Implement swap / undo / redo functionality
 - [ ] Setup of game specific control buttons
 - [X] Setup of game specific type presets
 - [ ] Save / restore of game state on app exit / relaunch
@@ -56,7 +56,7 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 - [ ] Screen orientation handling
 - [ ] Better color palette for greyscale screen
 - [ ] Better error visualization suitable for greyscale screen
-- [ ] Handling of physical device buttons
+- [X] Handling of physical device buttons
 - [ ] Modify games with dragging for better handling of eInk screen limitations
 - [ ] Implement left->right->empty cycle on left-click for all games
 

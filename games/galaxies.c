@@ -3210,7 +3210,7 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
 
             if (dotval) {
                 int i;
-                for (i=2;i>-3;i--)
+                for (i=1;i>-2;i--)
                 draw_circle(dr, lx+dx*TILE_SIZE/2, ly+dy*TILE_SIZE/2,
                             DOT_SIZE+i, (dotval == 1 ? COL_WHITEDOT : COL_BLACKDOT), COL_BLACKDOT);
             }

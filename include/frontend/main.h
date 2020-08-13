@@ -9,6 +9,8 @@ extern void chooserTap(int x, int y);
 extern void chooserLongTap(int x, int y);
 extern void chooserDrag(int x, int y);
 extern void chooserRelease(int x, int y);
+extern void chooserPrev();
+extern void chooserNext();
 
 extern void gameInit();
 extern void gameShowPage();
@@ -16,6 +18,8 @@ extern void gameTap(int x, int y);
 extern void gameLongTap(int x, int y);
 extern void gameDrag(int x, int y);
 extern void gameRelease(int x, int y);
+extern void gamePrev();
+extern void gameNext();
 
 typedef enum {
     SCREEN_CHOOSER,
@@ -30,6 +34,8 @@ struct screen {
     void (*long_tap)(int x, int y);
     void (*drag)(int x, int y);
     void (*release)(int x, int y);
+    void (*prev)();
+    void (*next)();
 } SCREEN;
 
 void switchToChooser();
