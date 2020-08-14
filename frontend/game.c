@@ -194,11 +194,12 @@ void ink_start_draw(void *handle) {
 }
 
 void ink_draw_update(void *handle, int x, int y, int w, int h) {
-  if (fe->do_partial) PartialUpdate(fe->xoffset+x, fe->yoffset + y, w, h);
+  // if (fe->do_partial) PartialUpdate(fe->xoffset+x, fe->yoffset + y, w, h);
 }
 
 void ink_end_draw(void *handle) {
-  if (!fe->do_partial) FullUpdate();
+    SoftUpdate();
+  //if (!fe->do_partial) FullUpdate();
 }
 
 blitter *ink_blitter_new(void *handle, int w, int h) {
@@ -223,13 +224,7 @@ void ink_blitter_load(void *handle, blitter *bl, int x, int y) {
 }
 
 void ink_status_bar(void *handle, const char *text) {
-    ifont *font;
-    fe->statustext = text;
-    font = OpenFont("LiberationSans-Bold", 32, 0);
-    FillArea(0, fe->gamelayout.statusbar.starty+2, ScreenWidth(), fe->gamelayout.statusbar.height-2, 0x00FFFFFF);
-    DrawTextRect(10, fe->gamelayout.statusbar.starty+8, ScreenWidth(), 32, text, ALIGN_LEFT);
-    PartialUpdate(0, fe->gamelayout.statusbar.starty+2, ScreenWidth(), fe->gamelayout.statusbar.height-2);
-    CloseFont(font);
+  fe->statustext = text;
 }
 
 
@@ -265,15 +260,15 @@ void tproc() {
 
 void activate_timer(frontend *fe) {
   return;
-//  fe->isTimer=true;
-//  gettimeofday(&fe->last_time, NULL);
-//  SetWeakTimer("timername", tproc, fe->time_int);
+  fe->isTimer=true;
+  gettimeofday(&fe->last_time, NULL);
+  SetWeakTimer("timername", tproc, fe->time_int);
 
 };
 
 void deactivate_timer(frontend *fe) {
- // fe->isTimer=false;
- // ClearTimer(tproc);
+  fe->isTimer=false;
+  ClearTimer(tproc);
 };
 
 void fatal(const char *fmt, ...) {
@@ -467,6 +462,7 @@ void gameRelease(int x, int y) {
     }
     else if (release_button(x, y, &btn_draw)) {
         gameShowPage();
+        FullUpdate();
     }
     else if (release_button(x, y, &btn_game)) {
         OpenMenuEx(gameMenu, gameMenu_selectedIndex, ScreenWidth()-20-(2*fe->gamelayout.menubtn_size),
@@ -485,13 +481,16 @@ void gameRelease(int x, int y) {
         if (midend_can_redo(me)) {
             midend_process_key(me, x-fe->xoffset, y-fe->yoffset, UI_REDO);
         }
-        check_button_state();
     }
     else if (release_button(x, y, &btn_swap)) {
         fe->swapped ? button_to_normal(&btn_swap, true) : button_to_tapped(&btn_swap);
         fe->swapped = !fe->swapped;
-        check_button_state();
     }
+    check_button_state();
+    if (fe->gamelayout.with_statusbar) {
+        gameDrawStatusBar();
+    }
+    SoftUpdate();
 }
 
 void gamePrev() {
@@ -508,20 +507,30 @@ void gameNext() {
     }
 }
 
+static void gameDrawStatusBar() {
+    ifont *font;
+    char buf[256];
+    gameSetupStatusBar();
+    sprintf(buf, "%s                               ", fe->statustext);
+    font = OpenFont("LiberationSans-Bold", 32, 0);
+    SetFont(font, BLACK);
+    DrawString(10, fe->gamelayout.statusbar.starty+8, buf);
+    CloseFont(font);
+}
+
 static void gameDrawControlButtons() {
     FillArea(0, fe->gamelayout.buttonpanel.starty, ScreenWidth(), fe->gamelayout.buttonpanel.height, 0x00FFFFFF);
     FillArea(0, fe->gamelayout.buttonpanel.starty, ScreenWidth(), 1, 0x00000000);
 
     if (fe->with_rightpointer) {
-        btn_swap.active = true;
-        fe->swapped ? button_to_tapped(&btn_swap) : button_to_normal(&btn_swap, false);
+        if (fe->swapped) button_to_tapped(&btn_swap);
+        else button_to_normal(&btn_swap, false);
     }
-    btn_undo.active = true;
     button_to_normal(&btn_undo, false);
-    btn_redo.active = true;
     button_to_normal(&btn_redo, false);
+    deactivate_button(&btn_undo);
+    deactivate_button(&btn_redo);
     check_button_state();
-
 }
 
 static void gameDrawMenu() {
@@ -535,8 +544,13 @@ static void gameDrawMenu() {
     button_to_normal(&btn_type, false);
 
     font = OpenFont("LiberationSans-Bold", 32, 0);
+    SetFont(font, BLACK);
     DrawTextRect(0, (fe->gamelayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, currentgame->name, ALIGN_CENTER);
     CloseFont(font);
+}
+static void gameSetupStatusBar() {
+    FillArea(0, fe->gamelayout.statusbar.starty, ScreenWidth(), fe->gamelayout.statusbar.height, 0x00FFFFFF);
+    FillArea(0, fe->gamelayout.statusbar.starty, ScreenWidth(), 1, 0x00000000);
 }
 
 static void gameSetupMenuButtons() {
@@ -581,16 +595,6 @@ static void gameSetupControlButtons() {
     btn_redo.size = fe->gamelayout.control_size;
 }
 
-static void gameSetupStatusBar() {
-    ifont *font;
-    FillArea(0, fe->gamelayout.statusbar.starty, ScreenWidth(), fe->gamelayout.statusbar.height, 0x00FFFFFF);
-    FillArea(0, fe->gamelayout.statusbar.starty, ScreenWidth(), 1, 0x00000000);
-
-    font = OpenFont("LiberationSans-Bold", 32, 0);
-    DrawTextRect(10, fe->gamelayout.statusbar.starty+8, ScreenWidth(), 32, fe->statustext, ALIGN_LEFT);
-    CloseFont(font);
-}
-
 static void gameExitPage() {
     SetClipRect(&fe->cliprect);
     deactivate_timer(fe);
@@ -620,9 +624,9 @@ void gameShowPage() {
     DrawPanel(NULL, "", "", 0);
     gameDrawMenu();
     gameDrawControlButtons();
-    if (fe->gamelayout.with_statusbar) gameSetupStatusBar();
     fe->do_partial = false;
     midend_force_redraw(me);
+    if (fe->gamelayout.with_statusbar) gameDrawStatusBar();
     fe->do_partial = true;
 }
 
@@ -648,12 +652,13 @@ void gamePrepare() {
     fe->colours = midend_colours(me, &fe->ncolours);
     fe->finished = false;
     fe->isTimer = false;
-    fe->time_int = 5000;
+    fe->time_int = 20;
 
     gamecontrol_num = 3;
     gamecontrol_padding = (ScreenWidth()-(gamecontrol_num * fe->gamelayout.control_size))/(gamecontrol_num+1);
     gameSetupMenuButtons();
     gameSetupControlButtons();
+    if (fe->gamelayout.with_statusbar) gameSetupStatusBar();
     gameBuildTypeMenu();
 
     ShowPureHourglassForce();

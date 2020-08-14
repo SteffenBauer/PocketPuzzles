@@ -3214,7 +3214,7 @@ const struct game thegame = {
     game_status,
     false, false, game_print_size, game_print,
     true,			       /* wants_statusbar */
-    true, game_timing_state,
+    false, game_timing_state,
     BUTTON_BEATS(LEFT_BUTTON, RIGHT_BUTTON) | REQUIRE_RBUTTON,
 };
 

@@ -38,9 +38,9 @@ struct blitter {
 };
 
 const struct game *currentgame;
-frontend *fe;
-midend *me;
-drawing *dr;
+static frontend *fe;
+static midend *me;
+static drawing *dr;
 struct preset_menu *presets;
 
 static int gamecontrol_padding;
@@ -54,14 +54,36 @@ extern ibitmap icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,
                bt_salad_o, bt_salad_x, bt_undead_g, bt_undead_v, bt_undead_z,
                bt_swap, bt_undo, bt_undo_d;
 
-static BUTTON btn_back = { false, BTN_MENU, 0, 0, 0, 0, &icon_back, &icon_back_tap, NULL, NULL};
-static BUTTON btn_draw = { false, BTN_MENU, 0, 0, 0, 0, &icon_redraw, &icon_redraw_tap, NULL, NULL};
-static BUTTON btn_game = { false, BTN_MENU, 0, 0, 0, 0, &icon_game, &icon_game_tap, NULL, NULL};
-static BUTTON btn_type = { false, BTN_MENU, 0, 0, 0, 0, &icon_type, &icon_type_tap, NULL, NULL};
+static BUTTON btn_back = { false, BTN_MENU, 0, 0, 0, 0, ' ', &icon_back, &icon_back_tap, NULL, NULL};
+static BUTTON btn_draw = { false, BTN_MENU, 0, 0, 0, 0, ' ', &icon_redraw, &icon_redraw_tap, NULL, NULL};
+static BUTTON btn_game = { false, BTN_MENU, 0, 0, 0, 0, ' ', &icon_game, &icon_game_tap, NULL, NULL};
+static BUTTON btn_type = { false, BTN_MENU, 0, 0, 0, 0, ' ', &icon_type, &icon_type_tap, NULL, NULL};
 
-static BUTTON btn_swap = { false, BTN_CTRL, 0, 0, 0, 0, &bt_swap, NULL, NULL, NULL};
-static BUTTON btn_undo = { false, BTN_CTRL, 0, 0, 0, 0, &bt_undo, NULL, &bt_undo_d, NULL};
-static BUTTON btn_redo = { false, BTN_CTRL, 0, 0, 0, 0, &bt_redo, NULL, &bt_redo_d, NULL};
+static BUTTON btn_swap = { false, BTN_CTRL, 0, 0, 0, 0, ' ', &bt_swap, NULL, NULL, NULL};
+static BUTTON btn_undo = { false, BTN_CTRL, 0, 0, 0, 0, ' ', &bt_undo, NULL, &bt_undo_d, NULL};
+static BUTTON btn_redo = { false, BTN_CTRL, 0, 0, 0, 0, ' ', &bt_redo, NULL, &bt_redo_d, NULL};
+
+static BUTTON btn_1 = { false, BTN_CTRL, 0, 0, 0, 0, '1', NULL, NULL, NULL, NULL};
+static BUTTON btn_2 = { false, BTN_CTRL, 0, 0, 0, 0, '2', NULL, NULL, NULL, NULL};
+static BUTTON btn_3 = { false, BTN_CTRL, 0, 0, 0, 0, '3', NULL, NULL, NULL, NULL};
+static BUTTON btn_4 = { false, BTN_CTRL, 0, 0, 0, 0, '4', NULL, NULL, NULL, NULL};
+static BUTTON btn_5 = { false, BTN_CTRL, 0, 0, 0, 0, '5', NULL, NULL, NULL, NULL};
+static BUTTON btn_6 = { false, BTN_CTRL, 0, 0, 0, 0, '6', NULL, NULL, NULL, NULL};
+static BUTTON btn_7 = { false, BTN_CTRL, 0, 0, 0, 0, '7', NULL, NULL, NULL, NULL};
+static BUTTON btn_8 = { false, BTN_CTRL, 0, 0, 0, 0, '8', NULL, NULL, NULL, NULL};
+static BUTTON btn_9 = { false, BTN_CTRL, 0, 0, 0, 0, '9', NULL, NULL, NULL, NULL};
+
+static BUTTON btn_a = { false, BTN_CTRL, 0, 0, 0, 0, 'A', NULL, NULL, NULL, NULL};
+static BUTTON btn_b = { false, BTN_CTRL, 0, 0, 0, 0, 'B', NULL, NULL, NULL, NULL};
+static BUTTON btn_c = { false, BTN_CTRL, 0, 0, 0, 0, 'C', NULL, NULL, NULL, NULL};
+static BUTTON btn_d = { false, BTN_CTRL, 0, 0, 0, 0, 'D', NULL, NULL, NULL, NULL};
+static BUTTON btn_e = { false, BTN_CTRL, 0, 0, 0, 0, 'E', NULL, NULL, NULL, NULL};
+static BUTTON btn_f = { false, BTN_CTRL, 0, 0, 0, 0, 'F', NULL, NULL, NULL, NULL};
+
+static BUTTON btn_ghost   = { false, BTN_CTRL, 0, 0, 0, 0, ' ', &bt_undead_g, NULL, NULL, NULL};
+static BUTTON btn_vampire = { false, BTN_CTRL, 0, 0, 0, 0, ' ', &bt_undead_v, NULL, NULL, NULL};
+static BUTTON btn_zombie  = { false, BTN_CTRL, 0, 0, 0, 0, ' ', &bt_undead_z, NULL, NULL, NULL};
+
 
 static imenuex gameMenu[] = {
     { ITEM_HEADER,   0, "Game",          NULL, NULL,          NULL, NULL },
@@ -83,6 +105,7 @@ static void gameSetupStatusBar();
 
 static void gameDrawMenu();
 static void gameDrawControlButtons();
+static void gameDrawStatusBar();
 
 static void gameExitPage();
 static void checkGameEnd();

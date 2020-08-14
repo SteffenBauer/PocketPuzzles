@@ -43,8 +43,9 @@ typedef struct button {
     BUTTONTYPE type;
     int posx;
     int posy;
-    int page;
     int size;
+    int page;
+    char c;
     ibitmap *bitmap;
     ibitmap *bitmap_tap;
     ibitmap *bitmap_disabled;
