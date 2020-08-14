@@ -29,6 +29,7 @@ void switchToGame(const struct game *thegame) {
 
     gameInit(thegame);
     gameShowPage();
+    FullUpdate();
 }
 
 static void setupApp() {

@@ -21,8 +21,10 @@ void button_to_normal(BUTTON *button, bool update) {
     if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
 void button_to_tapped(BUTTON *button) {
-    if (button->bitmap_tap == NULL)
+    if (button->bitmap_tap == NULL) {
+        StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
         InvertArea(button->posx, button->posy, button->size, button->size);
+    }
     else
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap_tap, 0);
     PartialUpdate(button->posx, button->posy, button->size, button->size);
@@ -53,7 +55,7 @@ struct layout getLayout(LAYOUTTYPE screenlayout) {
     requestedLayout.menu.starty = 0;
     requestedLayout.menu.height = PanelHeight() + 2;
     requestedLayout.statusbar.height = 32 + 40;
-    requestedLayout.statusbar.starty = ScreenHeight()-PanelHeight() - requestedLayout.statusbar.height;
+    requestedLayout.statusbar.starty = bottomy - requestedLayout.statusbar.height;
 
     switch (screenlayout) {
         case LAYOUT_FULL:

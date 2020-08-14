@@ -80,6 +80,7 @@ static void chooserDrawChooserButtons(int page) {
     int i;
     FillArea(0, chooserlayout.maincanvas.starty, ScreenWidth(), chooserlayout.maincanvas.height, 0x00FFFFFF);
     font = OpenFont("LiberationSans-Bold", 32, 0);
+    SetFont(font, BLACK);
     for(i=0;i<num_games;i++) {
         if (btn_chooser[i].page == page) {
             btn_chooser[i].active = true;
@@ -127,6 +128,7 @@ static void chooserDrawMenu() {
     button_to_normal(&btn_draw, false);
 
     font = OpenFont("LiberationSans-Bold", 32, 0);
+    SetFont(font, BLACK);
     DrawTextRect(0, (chooserlayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, "PUZZLES", ALIGN_CENTER);
     CloseFont(font);
 }
