@@ -1345,8 +1345,8 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
     int i;
     int w = params->w;
 
-    key_label *keys = snewn(w+1, key_label);
-    *nkeys = w + 1;
+    key_label *keys = snewn(w+2, key_label);
+    *nkeys = w + 2;
 
     for (i = 0; i < w; i++) {
         if (i<9) keys[i].button = '1' + i;
@@ -1354,8 +1354,11 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
 
         keys[i].label = NULL;
     }
-    keys[w].button = '\b';
+    keys[w].button = '+';
     keys[w].label = NULL;
+
+    keys[w+1].button = '\b';
+    keys[w+1].label = NULL;
 
 
     return keys;
@@ -1784,7 +1787,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 	return dupstr(buf);
     }
 
-    if (button == 'M' || button == 'm')
+    if (button == '+' )
         return dupstr("M");
 
     return NULL;
@@ -1879,21 +1882,21 @@ static float *game_colours(frontend *fe, int *ncolours)
     ret[COL_GRID * 3 + 1] = 0.0F;
     ret[COL_GRID * 3 + 2] = 0.0F;
 
-    ret[COL_USER * 3 + 0] = 0.0F;
-    ret[COL_USER * 3 + 1] = 0.6F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_USER * 3 + 2] = 0.0F;
+    ret[COL_USER * 3 + 0] = 0.2F;
+    ret[COL_USER * 3 + 1] = 0.2F;
+    ret[COL_USER * 3 + 2] = 0.2F;
 
-    ret[COL_HIGHLIGHT * 3 + 0] = 0.78F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_HIGHLIGHT * 3 + 1] = 0.78F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_HIGHLIGHT * 3 + 2] = 0.78F * ret[COL_BACKGROUND * 3 + 2];
+    ret[COL_HIGHLIGHT * 3 + 0] = 0.78F;
+    ret[COL_HIGHLIGHT * 3 + 1] = 0.78F;
+    ret[COL_HIGHLIGHT * 3 + 2] = 0.78F;
 
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
+    ret[COL_ERROR * 3 + 0] = 0.5F;
+    ret[COL_ERROR * 3 + 1] = 0.5F;
+    ret[COL_ERROR * 3 + 2] = 0.5F;
 
-    ret[COL_PENCIL * 3 + 0] = 0.5F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_PENCIL * 3 + 1] = 0.5F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_PENCIL * 3 + 2] = ret[COL_BACKGROUND * 3 + 2];
+    ret[COL_PENCIL * 3 + 0] = 0.5F;
+    ret[COL_PENCIL * 3 + 1] = 0.5F;
+    ret[COL_PENCIL * 3 + 2] = 0.5F;
 
     *ncolours = NCOLOURS;
     return ret;
@@ -2008,7 +2011,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
 		  cluetype == C_SUB ? ds->minus_sign :
 		  cluetype == C_MUL ? ds->times_sign :
 		  /* cluetype == C_DIV ? */ ds->divide_sign));
-	draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2 + TILESIZE/4,
+	draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2, // + TILESIZE/4,
 		  FONT_VARIABLE, TILESIZE/4, ALIGN_VNORMAL | ALIGN_HLEFT,
 		  (tile & DF_ERR_CLUE ? COL_ERROR : COL_GRID), str);
     }
@@ -2481,113 +2484,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
+    false, false, game_print_size, game_print,
     false,			       /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON | REQUIRE_NUMPAD,  /* flags */
 };
 
-#ifdef STANDALONE_SOLVER
-
-#include <stdarg.h>
-
-int main(int argc, char **argv)
-{
-    game_params *p;
-    game_state *s;
-    char *id = NULL, *desc;
-    const char *err;
-    bool grade = false;
-    int ret, diff;
-    bool really_show_working = false;
-
-    while (--argc > 0) {
-        char *p = *++argv;
-        if (!strcmp(p, "-v")) {
-            really_show_working = true;
-        } else if (!strcmp(p, "-g")) {
-            grade = true;
-        } else if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-            return 1;
-        } else {
-            id = p;
-        }
-    }
-
-    if (!id) {
-        fprintf(stderr, "usage: %s [-g | -v] <game_id>\n", argv[0]);
-        return 1;
-    }
-
-    desc = strchr(id, ':');
-    if (!desc) {
-        fprintf(stderr, "%s: game id expects a colon in it\n", argv[0]);
-        return 1;
-    }
-    *desc++ = '\0';
-
-    p = default_params();
-    decode_params(p, id);
-    err = validate_desc(p, desc);
-    if (err) {
-        fprintf(stderr, "%s: %s\n", argv[0], err);
-        return 1;
-    }
-    s = new_game(NULL, p, desc);
-
-    /*
-     * When solving an Easy puzzle, we don't want to bother the
-     * user with Hard-level deductions. For this reason, we grade
-     * the puzzle internally before doing anything else.
-     */
-    ret = -1;			       /* placate optimiser */
-    solver_show_working = 0;
-    for (diff = 0; diff < DIFFCOUNT; diff++) {
-	memset(s->grid, 0, p->w * p->w);
-	ret = solver(p->w, s->clues->dsf, s->clues->clues,
-		     s->grid, diff);
-	if (ret <= diff)
-	    break;
-    }
-
-    if (diff == DIFFCOUNT) {
-	if (grade)
-	    printf("Difficulty rating: ambiguous\n");
-	else
-	    printf("Unable to find a unique solution\n");
-    } else {
-	if (grade) {
-	    if (ret == diff_impossible)
-		printf("Difficulty rating: impossible (no solution exists)\n");
-	    else
-		printf("Difficulty rating: %s\n", keen_diffnames[ret]);
-	} else {
-	    solver_show_working = really_show_working ? 1 : 0;
-	    memset(s->grid, 0, p->w * p->w);
-	    ret = solver(p->w, s->clues->dsf, s->clues->clues,
-			 s->grid, diff);
-	    if (ret != diff)
-		printf("Puzzle is inconsistent\n");
-	    else {
-		/*
-		 * We don't have a game_text_format for this game,
-		 * so we have to output the solution manually.
-		 */
-		int x, y;
-		for (y = 0; y < p->w; y++) {
-		    for (x = 0; x < p->w; x++) {
-			printf("%s%c", x>0?" ":"", '0' + s->grid[y*p->w+x]);
-		    }
-		    putchar('\n');
-		}
-	    }
-	}
-    }
-
-    return 0;
-}
-
-#endif
-
-/* vim: set shiftwidth=4 tabstop=8: */

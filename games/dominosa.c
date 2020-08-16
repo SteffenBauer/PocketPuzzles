@@ -3406,7 +3406,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, game_can_format_as_text_now, game_text_format,
     new_ui,
     free_ui,
     encode_ui,
@@ -3423,104 +3423,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
-    false,			       /* wants_statusbar */
+    false, false, game_print_size, game_print,
+    false,                     /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    REQUIRE_RBUTTON,           /* flags */
 };
-
-#ifdef STANDALONE_SOLVER
-
-int main(int argc, char **argv)
-{
-    game_params *p;
-    game_state *s, *s2;
-    char *id = NULL, *desc;
-    int maxdiff = DIFFCOUNT;
-    const char *err;
-    bool grade = false, diagnostics = false;
-    struct solver_scratch *sc;
-    int retd;
-
-    while (--argc > 0) {
-        char *p = *++argv;
-        if (!strcmp(p, "-v")) {
-            diagnostics = true;
-        } else if (!strcmp(p, "-g")) {
-            grade = true;
-        } else if (!strncmp(p, "-d", 2) && p[2] && !p[3]) {
-            int i;
-            bool bad = true;
-            for (i = 0; i < lenof(dominosa_diffchars); i++)
-                if (dominosa_diffchars[i] != DIFF_AMBIGUOUS &&
-                    dominosa_diffchars[i] == p[2]) {
-                    bad = false;
-                    maxdiff = i;
-                    break;
-                }
-            if (bad) {
-                fprintf(stderr, "%s: unrecognised difficulty `%c'\n",
-                        argv[0], p[2]);
-                return 1;
-            }
-        } else if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-            return 1;
-        } else {
-            id = p;
-        }
-    }
-
-    if (!id) {
-        fprintf(stderr, "usage: %s [-v | -g] <game_id>\n", argv[0]);
-        return 1;
-    }
-
-    desc = strchr(id, ':');
-    if (!desc) {
-        fprintf(stderr, "%s: game id expects a colon in it\n", argv[0]);
-        return 1;
-    }
-    *desc++ = '\0';
-
-    p = default_params();
-    decode_params(p, id);
-    err = validate_desc(p, desc);
-    if (err) {
-        fprintf(stderr, "%s: %s\n", argv[0], err);
-        return 1;
-    }
-    s = new_game(NULL, p, desc);
-
-    solver_diagnostics = diagnostics;
-    sc = solver_make_scratch(p->n);
-    solver_setup_grid(sc, s->numbers->numbers);
-    retd = run_solver(sc, maxdiff);
-    if (retd == 0) {
-        printf("Puzzle is inconsistent\n");
-    } else if (grade) {
-        printf("Difficulty rating: %s\n",
-               dominosa_diffnames[sc->max_diff_used]);
-    } else {
-        char *move, *text;
-        move = solution_move_string(sc);
-        s2 = execute_move(s, move);
-        text = game_text_format(s2);
-        sfree(move);
-        fputs(text, stdout);
-        sfree(text);
-        free_game(s2);
-        if (retd > 1)
-            printf("Could not deduce a unique solution\n");
-    }
-    solver_free_scratch(sc);
-    free_game(s);
-    free_params(p);
-
-    return 0;
-}
-
-#endif
-
-/* vim: set shiftwidth=4 :set textwidth=80: */
 
