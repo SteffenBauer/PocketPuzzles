@@ -380,75 +380,9 @@ static space *sp2dot(const game_state *state, int x, int y)
 
 #define IS_VERTICAL_EDGE(x) ((x % 2) == 0)
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int maxlen = (state->sx+1)*state->sy, x, y;
-    char *ret, *p;
-    space *sp;
-
-    ret = snewn(maxlen+1, char);
-    p = ret;
-
-    for (y = 0; y < state->sy; y++) {
-        for (x = 0; x < state->sx; x++) {
-            sp = &SPACE(state, x, y);
-            if (sp->flags & F_DOT)
-                *p++ = 'o';
-#if 0
-            else if (sp->flags & (F_REACHABLE|F_MULTIPLE|F_MARK))
-                *p++ = (sp->flags & F_MULTIPLE) ? 'M' :
-                    (sp->flags & F_REACHABLE) ? 'R' : 'X';
-#endif
-            else {
-                switch (sp->type) {
-                case s_tile:
-                    if (sp->flags & F_TILE_ASSOC) {
-                        space *dot = sp2dot(state, sp->x, sp->y);
-                        if (dot && dot->flags & F_DOT)
-                            *p++ = (dot->flags & F_DOT_BLACK) ? 'B' : 'W';
-                        else
-                            *p++ = '?'; /* association with not-a-dot. */
-                    } else
-                        *p++ = ' ';
-                    break;
-
-                case s_vertex:
-                    *p++ = '+';
-                    break;
-
-                case s_edge:
-                    if (sp->flags & F_EDGE_SET)
-                        *p++ = (IS_VERTICAL_EDGE(x)) ? '|' : '-';
-                    else
-                        *p++ = ' ';
-                    break;
-
-                default:
-                    assert(!"shouldn't get here!");
-                }
-            }
-        }
-        *p++ = '\n';
-    }
-
-    assert(p - ret == maxlen);
-    *p = '\0';
-
-    return ret;
-}
 
 static void dbg_state(const game_state *state)
 {
-#ifdef DEBUGGING
-    char *temp = game_text_format(state);
-    debug(("%s\n", temp));
-    sfree(temp);
-#endif
 }
 
 /* Space-enumeration callbacks should all return 1 for 'progress made',
@@ -1591,9 +1525,6 @@ static game_state *new_game(midend *me, const game_params *params,
         assert("Unable to load ?validated game.");
         return NULL;
     }
-#ifdef EDITOR
-    state->me = me;
-#endif
     return state;
 }
 
@@ -2246,14 +2177,9 @@ got_result:
     dbg_state(state);
 #endif
 
-#ifdef STANDALONE_PICTURE_GENERATOR
-    picture = savepic;
-#endif
-
     return diff;
 }
 
-#ifndef EDITOR
 static char *solve_game(const game_state *state, const game_state *currstate,
                         const char *aux, const char **error)
 {
@@ -2291,7 +2217,6 @@ solved:
     free_game(tosolve);
     return ret;
 }
-#endif
 
 /* ----------------------------------------------------------
  * User interface.
@@ -2414,43 +2339,6 @@ static void coord_round_to_edge(float x, float y, int *xr, int *yr)
 }
 #endif
 
-#ifdef EDITOR
-static char *interpret_move(const game_state *state, game_ui *ui,
-                            const game_drawstate *ds,
-                            int x, int y, int button)
-{
-    char buf[80];
-    int px, py;
-    space *sp;
-
-    px = 2*FROMCOORD((float)x) + 0.5;
-    py = 2*FROMCOORD((float)y) + 0.5;
-
-    state->cdiff = -1;
-
-    if (button == 'C' || button == 'c') return dupstr("C");
-
-    if (button == 'S' || button == 's') {
-        char *ret;
-        game_state *tmp = dup_game(state);
-        state->cdiff = solver_state(tmp, DIFF_UNREASONABLE-1);
-        ret = diff_game(state, tmp, 0);
-        free_game(tmp);
-        return ret;
-    }
-
-    if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
-        if (!INUI(state, px, py)) return NULL;
-        sp = &SPACE(state, px, py);
-        if (!dot_is_possible(state, sp, 1)) return NULL;
-        sprintf(buf, "%c%d,%d",
-                (char)((button == LEFT_BUTTON) ? 'D' : 'd'), px, py);
-        return dupstr(buf);
-    }
-
-    return NULL;
-}
-#else
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int x, int y, int button)
@@ -2663,7 +2551,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     return NULL;
 }
-#endif
 
 static bool check_complete(const game_state *state, int *dsf, int *colours)
 {
@@ -2855,42 +2742,14 @@ static game_state *execute_move(const game_state *state, const char *move)
 
     while (*move) {
         char c = *move;
-        if (c == 'E' || c == 'U' || c == 'M'
-#ifdef EDITOR
-            || c == 'D' || c == 'd'
-#endif
-            ) {
+        if (c == 'E' || c == 'U' || c == 'M') {
             move++;
             if (sscanf(move, "%d,%d%n", &x, &y, &n) != 2 ||
                 !INUI(ret, x, y))
                 goto badmove;
 
             sp = &SPACE(ret, x, y);
-#ifdef EDITOR
-            if (c == 'D' || c == 'd') {
-                unsigned int currf, newf, maskf;
-
-                if (!dot_is_possible(ret, sp, 1)) goto badmove;
-
-                newf = F_DOT | (c == 'd' ? F_DOT_BLACK : 0);
-                currf = GRID(ret, grid, x, y).flags;
-                maskf = F_DOT | F_DOT_BLACK;
-                /* if we clicked 'white dot':
-                 *   white --> empty, empty --> white, black --> white.
-                 * if we clicked 'black dot':
-                 *   black --> empty, empty --> black, white --> black.
-                 */
-                if (currf & maskf) {
-                    sp->flags &= ~maskf;
-                    if ((currf & maskf) != newf)
-                        sp->flags |= newf;
-                } else
-                    sp->flags |= newf;
-                sp->nassoc = 0; /* edit-mode disallows associations. */
-                game_update_dots(ret);
-            } else
-#endif
-                   if (c == 'E') {
+            if (c == 'E') {
                 if (sp->type != s_edge) goto badmove;
                 sp->flags ^= F_EDGE_SET;
             } else if (c == 'U') {
@@ -2933,14 +2792,9 @@ static game_state *execute_move(const game_state *state, const char *move)
                 }
             }
             move += n;
-#ifdef EDITOR
-        } else if (c == 'C') {
-            move++;
-            clear_game(ret, true);
-#endif
         } else if (c == 'S') {
             move++;
-	    ret->used_solve = true;
+            ret->used_solve = true;
             currently_solving = true;
         } else
             goto badmove;
@@ -3024,14 +2878,14 @@ static float *game_colours(frontend *fe, int *ncolours)
          * both pure white.
          */
         ret[COL_WHITEDOT * 3 + i] = 1.0F;
-        ret[COL_WHITEBG * 3 + i] = 0.7F;
+        ret[COL_WHITEBG * 3 + i] = 0.75F;
 
         /*
          * But black-background squares are a dark grey, whereas
          * black dots are really black.
          */
         ret[COL_BLACKDOT * 3 + i] = 0.0F;
-        ret[COL_BLACKBG * 3 + i] = 0.3F;
+        ret[COL_BLACKBG * 3 + i] = 0.25F;
 
         /*
          * In unfilled squares, we draw a faint gridwork.
@@ -3045,16 +2899,9 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_ARROW * 3 + i] = 0.0F;
     }
 
-#ifdef EDITOR
-    /* tinge the edit background to bluey */
-    ret[COL_BACKGROUND * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] * 0.8F;
-    ret[COL_BACKGROUND * 3 + 1] = ret[COL_BACKGROUND * 3 + 0] * 0.8F;
-    ret[COL_BACKGROUND * 3 + 2] = min(ret[COL_BACKGROUND * 3 + 0] * 1.4F, 1.0F);
-#endif
-
-    ret[COL_CURSOR * 3 + 0] = min(ret[COL_BACKGROUND * 3 + 0] * 1.4F, 1.0F);
-    ret[COL_CURSOR * 3 + 1] = ret[COL_BACKGROUND * 3 + 0] * 0.8F;
-    ret[COL_CURSOR * 3 + 2] = ret[COL_BACKGROUND * 3 + 0] * 0.8F;
+    ret[COL_CURSOR * 3 + 0] = 0.75F;
+    ret[COL_CURSOR * 3 + 1] = 0.75F;
+    ret[COL_CURSOR * 3 + 2] = 0.75F;
 
     *ncolours = NCOLOURS;
     return ret;
@@ -3209,10 +3056,11 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
             dotval &= (1 << DOT_SHIFT_M)-1;
 
             if (dotval) {
-                int i;
-                for (i=1;i>-2;i--)
                 draw_circle(dr, lx+dx*TILE_SIZE/2, ly+dy*TILE_SIZE/2,
-                            DOT_SIZE+i, (dotval == 1 ? COL_WHITEDOT : COL_BLACKDOT), COL_BLACKDOT);
+                            DOT_SIZE, COL_BLACKDOT, COL_BLACKDOT);
+                if (dotval == 1)
+                draw_circle(dr, lx+dx*TILE_SIZE/2, ly+dy*TILE_SIZE/2,
+                            DOT_SIZE-7, COL_WHITEDOT, COL_BLACKDOT);
             }
         }
 
@@ -3468,7 +3316,7 @@ const struct game galaxies = {
     dup_game,
     free_game,
     true, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -3486,9 +3334,9 @@ const struct game galaxies = {
     game_flash_length,
     game_status,
     false, false, NULL, NULL,
-    false,			       /* wants_statusbar */
+    false,                     /* wants_statusbar */
     false, game_timing_state,
-    REQUIRE_RBUTTON,		       /* flags */
+    REQUIRE_RBUTTON,           /* flags */
 };
 
 /* vim: set shiftwidth=4 tabstop=8: */

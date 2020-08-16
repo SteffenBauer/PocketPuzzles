@@ -1792,13 +1792,13 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
     *nkeys = 4;
 
     keys[0].button = 'G';
-    keys[0].label = dupstr("Ghost");
+    keys[0].label = "Ghost";
 
     keys[1].button = 'V';
-    keys[1].label = dupstr("Vampire");
+    keys[1].label = "Vampire";
 
     keys[2].button = 'Z';
-    keys[2].label = dupstr("Zombie");
+    keys[2].label = "Zombie";
 
     keys[3].button = '\b';
     keys[3].label = NULL;
@@ -2572,9 +2572,9 @@ static float *game_colours(frontend *fe, int *ncolours)
     ret[COL_TEXT * 3 + 1] = 0.0F;
     ret[COL_TEXT * 3 + 2] = 0.0F;
 
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
+    ret[COL_ERROR * 3 + 0] = 0.5F;
+    ret[COL_ERROR * 3 + 1] = 0.5F;
+    ret[COL_ERROR * 3 + 2] = 0.5F;
 
     ret[COL_HIGHLIGHT * 3 + 0] = 0.78F * ret[COL_BACKGROUND * 3 + 0];
     ret[COL_HIGHLIGHT * 3 + 1] = 0.78F * ret[COL_BACKGROUND * 3 + 1];
@@ -2584,21 +2584,21 @@ static float *game_colours(frontend *fe, int *ncolours)
     ret[COL_FLASH * 3 + 1] = 1.0F;
     ret[COL_FLASH * 3 + 2] = 1.0F;
 
-    ret[COL_GHOST * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] * 0.5F;
+    ret[COL_GHOST * 3 + 0] = ret[COL_BACKGROUND * 3 + 0];
     ret[COL_GHOST * 3 + 1] = ret[COL_BACKGROUND * 3 + 0];
     ret[COL_GHOST * 3 + 2] = ret[COL_BACKGROUND * 3 + 0];
 
-    ret[COL_ZOMBIE * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] * 0.5F;
+    ret[COL_ZOMBIE * 3 + 0] = ret[COL_BACKGROUND * 3 + 0];
     ret[COL_ZOMBIE * 3 + 1] = ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_ZOMBIE * 3 + 2] = ret[COL_BACKGROUND * 3 + 0] * 0.5F;
+    ret[COL_ZOMBIE * 3 + 2] = ret[COL_BACKGROUND * 3 + 0];
 
     ret[COL_VAMPIRE * 3 + 0] = ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_VAMPIRE * 3 + 1] = ret[COL_BACKGROUND * 3 + 0] * 0.9F;
-    ret[COL_VAMPIRE * 3 + 2] = ret[COL_BACKGROUND * 3 + 0] * 0.9F;
+    ret[COL_VAMPIRE * 3 + 1] = ret[COL_BACKGROUND * 3 + 0];
+    ret[COL_VAMPIRE * 3 + 2] = ret[COL_BACKGROUND * 3 + 0];
 
-    ret[COL_DONE * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] / 1.5F;
-    ret[COL_DONE * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] / 1.5F;
-    ret[COL_DONE * 3 + 2] = ret[COL_BACKGROUND * 3 + 2] / 1.5F;
+    ret[COL_DONE * 3 + 0] = 0.8F;
+    ret[COL_DONE * 3 + 1] = 0.8F;
+    ret[COL_DONE * 3 + 2] = 0.8F;
 
     *ncolours = NCOLOURS;
     return ret;
@@ -3102,8 +3102,7 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    return (!oldstate->solved && newstate->solved && !oldstate->cheated &&
-            !newstate->cheated) ? FLASH_TIME : 0.0F;
+    return 0.0F;
 }
 
 static int game_status(const game_state *state)
@@ -3161,8 +3160,8 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false,                 /* wants_statusbar */
     false, game_timing_state,
-    0,                     /* flags */
+    REQUIRE_RBUTTON,                     /* flags */
 };

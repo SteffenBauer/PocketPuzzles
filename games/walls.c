@@ -1116,21 +1116,21 @@ static float *game_colours(frontend *fe, int *ncolours) {
     ret[COL_FIXED * 3 + 1] = 0.0F;
     ret[COL_FIXED * 3 + 2] = 0.0F;
 
-    ret[COL_WALL * 3 + 0] = 0.3F;
-    ret[COL_WALL * 3 + 1] = 0.3F;
-    ret[COL_WALL * 3 + 2] = 0.3F;
+    ret[COL_WALL * 3 + 0] = 0.25F;
+    ret[COL_WALL * 3 + 1] = 0.25F;
+    ret[COL_WALL * 3 + 2] = 0.25F;
 
     ret[COL_GRID * 3 + 0] = 0.0F;
     ret[COL_GRID * 3 + 1] = 0.0F;
     ret[COL_GRID * 3 + 2] = 0.0F;
 
-    ret[COL_LINE * 3 + 0] = 0.3F;
-    ret[COL_LINE * 3 + 1] = 0.3F;
-    ret[COL_LINE * 3 + 2] = 0.3F;
+    ret[COL_LINE * 3 + 0] = 0.25F;
+    ret[COL_LINE * 3 + 1] = 0.25F;
+    ret[COL_LINE * 3 + 2] = 0.25F;
 
-    ret[COL_ERROR * 3 + 0] = 0.8F;
-    ret[COL_ERROR * 3 + 1] = 0.8F;
-    ret[COL_ERROR * 3 + 2] = 0.8F;
+    ret[COL_ERROR * 3 + 0] = 0.5F;
+    ret[COL_ERROR * 3 + 1] = 0.5F;
+    ret[COL_ERROR * 3 + 2] = 0.5F;
 
     *ncolours = NCOLOURS;
     return ret;

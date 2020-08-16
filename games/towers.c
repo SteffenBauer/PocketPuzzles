@@ -2044,7 +2044,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, game_can_format_as_text_now, game_text_format,
     new_ui,
     free_ui,
     encode_ui,
@@ -2061,108 +2061,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
+    false, false, game_print_size, game_print,
     false,			       /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON | REQUIRE_NUMPAD,  /* flags */
 };
 
-#ifdef STANDALONE_SOLVER
-
-#include <stdarg.h>
-
-int main(int argc, char **argv)
-{
-    game_params *p;
-    game_state *s;
-    char *id = NULL, *desc;
-    const char *err;
-    bool grade = false;
-    int ret, diff;
-    bool really_show_working = false;
-
-    while (--argc > 0) {
-        char *p = *++argv;
-        if (!strcmp(p, "-v")) {
-            really_show_working = true;
-        } else if (!strcmp(p, "-g")) {
-            grade = true;
-        } else if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-            return 1;
-        } else {
-            id = p;
-        }
-    }
-
-    if (!id) {
-        fprintf(stderr, "usage: %s [-g | -v] <game_id>\n", argv[0]);
-        return 1;
-    }
-
-    desc = strchr(id, ':');
-    if (!desc) {
-        fprintf(stderr, "%s: game id expects a colon in it\n", argv[0]);
-        return 1;
-    }
-    *desc++ = '\0';
-
-    p = default_params();
-    decode_params(p, id);
-    err = validate_desc(p, desc);
-    if (err) {
-        fprintf(stderr, "%s: %s\n", argv[0], err);
-        return 1;
-    }
-    s = new_game(NULL, p, desc);
-
-    /*
-     * When solving an Easy puzzle, we don't want to bother the
-     * user with Hard-level deductions. For this reason, we grade
-     * the puzzle internally before doing anything else.
-     */
-    ret = -1;			       /* placate optimiser */
-    solver_show_working = 0;
-    for (diff = 0; diff < DIFFCOUNT; diff++) {
-	memcpy(s->grid, s->clues->immutable, p->w * p->w);
-	ret = solver(p->w, s->clues->clues, s->grid, diff);
-	if (ret <= diff)
-	    break;
-    }
-
-    if (really_show_working) {
-        /*
-         * Now run the solver again at the last difficulty level we
-         * tried, but this time with diagnostics enabled.
-         */
-        solver_show_working = really_show_working;
-        memcpy(s->grid, s->clues->immutable, p->w * p->w);
-        ret = solver(p->w, s->clues->clues, s->grid,
-                     diff < DIFFCOUNT ? diff : DIFFCOUNT-1);
-    }
-
-    if (diff == DIFFCOUNT) {
-	if (grade)
-	    printf("Difficulty rating: ambiguous\n");
-	else
-	    printf("Unable to find a unique solution\n");
-    } else {
-	if (grade) {
-	    if (ret == diff_impossible)
-		printf("Difficulty rating: impossible (no solution exists)\n");
-	    else
-		printf("Difficulty rating: %s\n", towers_diffnames[ret]);
-	} else {
-	    if (ret != diff)
-		printf("Puzzle is inconsistent\n");
-	    else
-		fputs(game_text_format(s), stdout);
-	}
-    }
-
-    return 0;
-}
-
-#endif
-
-/* vim: set shiftwidth=4 tabstop=8: */

@@ -6,13 +6,15 @@
 
 Port of [Simon Tatham's Portable Puzzle Collection](http://www.chiark.greenend.org.uk/~sgtatham/puzzles/) to the [PocketBook eReader family](https://de.wikipedia.org/wiki/PocketBook)
 
-I'm planning to also include unofficial puzzles and puzzle variations from [puzzles-unreleased](https://github.com/x-sheep/puzzles-unreleased) and [sgtpuzzles-extended](https://github.com/SteffenBauer/sgtpuzzles-extended)
+I'm planning to also include unofficial puzzles and puzzle variations from [puzzles-unreleased](https://github.com/x-sheep/puzzles-unreleased) and [sgtpuzzles-extended](https://github.com/SteffenBauer/sgtpuzzles-extended), and the two unofficial *Group* and *Sokoban* puzzles from the original collection.
 
 Inspired by and building on [Port to Android by Chris Boyle](https://github.com/chrisboyle/sgtpuzzles) and [Puzzles for pocketbook by mnk](https://github.com/svn2github/pocketbook-free/tree/master/puzzles)
 
 **11.8.2020 Major milestone reached!** Some games are now playable on a very basic level. 
 
-Lots of work still to do. See ToDo list below. eInk screens are limited in response time and color availability, so a lot of the games will need individual tweaking to make them fun to play.
+**16.8.2020 Next milestone** Game control buttons now working. All games playable (but those using blitter / animations still need rewriting)
+
+Lots of work still to do. See ToDo list below. eInk screens are limited in response time and color availability, so most of the games need individual tweaking to make them fun to play.
 
 ### Build and Compatibility
 
@@ -46,7 +48,7 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 - [X] Colors -> Greyscale
 - [X] Implement game menu controls (new, restart, solve)
 - [X] Implement swap / undo / redo functionality
-- [ ] Setup of game specific control buttons
+- [X] Setup of game specific control buttons
 - [X] Setup of game specific type presets
 - [ ] Save / restore of game state on app exit / relaunch
 - [ ] Save / restore current game preset on game screen / app exit / relaunch

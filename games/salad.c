@@ -1101,9 +1101,9 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
 		keys[i].label = NULL;
 	}
 	keys[n].button = 'X';
-	keys[n].label = NULL;
+	keys[n].label = "None";
 	keys[n+1].button = 'O';
-	keys[n+1].label = NULL;
+	keys[n+1].label = "Any";
 	keys[n+2].button = '\b';
 	keys[n+2].label = NULL;
 
@@ -2119,11 +2119,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
 		/* Draw background */
 		draw_rect(dr, 0, 0, (o+2)*TILE_SIZE, (o+2)*TILE_SIZE, COL_BACKGROUND);
 
-#ifndef STYLUS_BASED	
 		/* Draw the status bar only when there is no virtual keyboard */
 		sprintf(buf, "%c~%c", base + 1, base + nums);
 		status_bar(dr, buf);
-#endif
 		
 		draw_update(dr, 0, 0, (o+2)*TILE_SIZE, (o+2)*TILE_SIZE);
 	}
@@ -2467,7 +2465,7 @@ const struct game thegame = {
 	dup_game,
 	free_game,
 	true, solve_game,
-	true, game_can_format_as_text_now, game_text_format,
+	false, game_can_format_as_text_now, game_text_format,
 	new_ui,
 	free_ui,
 	encode_ui,
@@ -2484,135 +2482,9 @@ const struct game thegame = {
 	game_anim_length,
 	game_flash_length,
 	game_status,
-	true, false, game_print_size, game_print,
-#ifndef STYLUS_BASED
+	false, false, game_print_size, game_print,
 	true,			       /* wants_statusbar */
-#else
-	false,
-#endif
 	false, game_timing_state,
 	REQUIRE_RBUTTON, /* flags */
 };
 
-/* ***************** *
- * Standalone solver *
- * ***************** */
-
-#ifdef STANDALONE_SOLVER
-#include <time.h>
-#include <stdarg.h>
-
-/* Most of the standalone solver code was copied from unequal.c and singles.c */
-
-const char *quis;
-
-static void usage_exit(const char *msg)
-{
-	if (msg)
-		fprintf(stderr, "%s: %s\n", quis, msg);
-	fprintf(stderr, "Usage: %s [-v] [--seed SEED] <params> | [game_id [game_id ...]]\n", quis);
-	exit(1);
-}
-
-int main(int argc, char *argv[])
-{
-	random_state *rs;
-	time_t seed = time(NULL);
-	int i, attempts = 1;
-	game_params *params = NULL;
-	
-	char *id = NULL, *desc = NULL;
-	const char *err;
-	
-	quis = argv[0];
-	
-	while (--argc > 0)
-	{
-		char *p = *++argv;
-		if (!strcmp(p, "--seed"))
-		{
-			if (argc == 0)
-				usage_exit("--seed needs an argument");
-			seed = (time_t)atoi(*++argv);
-			argc--;
-		}
-		else if(!strcmp(p, "-v"))
-			solver_show_working = true;
-		else if(!strcmp(p, "--soak"))
-			attempts = 10000;
-		else if (*p == '-')
-			usage_exit("unrecognised option");
-		else
-			id = p;
-	}
-	
-	if(id)
-	{
-		desc = strchr(id, ':');
-		if (desc) *desc++ = '\0';
-
-		params = default_params();
-		decode_params(params, id);
-		err = validate_params(params, true);
-		if (err)
-		{
-			fprintf(stderr, "Parameters are invalid\n");
-			fprintf(stderr, "%s: %s", argv[0], err);
-			exit(1);
-		}
-	}
-	
-	if (!desc)
-	{
-		rs = random_new((void*)&seed, sizeof(time_t));
-		if(!params) params = default_params();
-		char *desc_gen = NULL;
-		char *aux = NULL;
-		char *fail = NULL;
-		char *fmt = NULL;
-		printf("Generating puzzle with parameters %s\n", encode_params(params, true));
-		
-		for(i = 0; i < attempts; i++)
-		{
-			desc_gen = new_game_desc(params, rs, &aux, false);
-			printf("Game ID: %s\n",desc_gen);
-			
-			game_state *state = load_game(params, desc_gen, &fail);
-			if(fail)
-			{
-				printf("The generated puzzle was invalid: %s\n", fail);
-				return -1;
-			}
-			
-			fmt = game_text_format(state);
-			printf("%s\n", fmt);
-			sfree(fmt);
-			
-			free_game(state);
-			sfree(desc_gen);
-			sfree(aux);
-		}
-	}
-	else
-	{
-		char *fmt = NULL;
-		err = validate_desc(params, desc);
-		if (err)
-		{
-			fprintf(stderr, "Description is invalid\n");
-			fprintf(stderr, "%s", err);
-			exit(1);
-		}
-		
-		game_state *state = new_game(NULL, params, desc);
-		salad_solve(state, DIFF_HARD);
-		fmt = game_text_format(state);
-		printf("%s\n", fmt);
-		
-		free_game(state);
-		sfree(fmt);
-	}
-	
-	return 0;
-}
-#endif

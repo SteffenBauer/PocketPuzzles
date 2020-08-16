@@ -17,11 +17,32 @@ bool release_button(int x, int y, BUTTON *button) {
             coord_in_button(x, y, button));
 }
 void button_to_normal(BUTTON *button, bool update) {
-    StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
+    if (button->bitmap != NULL) {
+        StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
+    }
+    else {
+        ifont *font; char buf[2];
+        buf[0] = button->c; buf[1] = '\0';
+        font = OpenFont("LiberationMono-Bold", button->size/2, 0);
+        SetFont(font, BLACK);
+        FillArea(button->posx, button->posy, button->size, button->size, 0x00FFFFFF);
+        DrawTextRect(button->posx, button->posy, button->size, button->size, buf, ALIGN_CENTER | VALIGN_MIDDLE);
+        CloseFont(font);
+    }
     if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
 void button_to_tapped(BUTTON *button) {
-    if (button->bitmap_tap == NULL) {
+    if (button->bitmap == NULL) {
+        ifont *font; char buf[2];
+        buf[0] = button->c; buf[1] = '\0';
+        font = OpenFont("LiberationMono-Bold", button->size/2, 0);
+        SetFont(font, BLACK);
+        FillArea(button->posx, button->posy, button->size, button->size, 0x00FFFFFF);
+        DrawTextRect(button->posx, button->posy, button->size, button->size, buf, ALIGN_CENTER | VALIGN_MIDDLE);
+        InvertArea(button->posx, button->posy, button->size, button->size);
+        CloseFont(font);
+    }
+    else if (button->bitmap_tap == NULL) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
         InvertArea(button->posx, button->posy, button->size, button->size);
     }

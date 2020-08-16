@@ -35,6 +35,7 @@ typedef enum {
     BTN_MENU,
     BTN_CHOOSER,
     BTN_CTRL,
+    BTN_CHAR,
     BTN_NULL
 } BUTTONTYPE;
 

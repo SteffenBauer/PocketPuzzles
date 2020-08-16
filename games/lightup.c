@@ -80,10 +80,10 @@ int verbose = 0;
 enum {
     COL_BACKGROUND,
     COL_GRID,
-    COL_BLACK,			       /* black */
-    COL_LIGHT,			       /* white */
-    COL_LIT,			       /* yellow */
-    COL_ERROR,			       /* red */
+    COL_BLACK,                   /* black */
+    COL_LIGHT,                   /* white */
+    COL_LIT,                   /* yellow */
+    COL_ERROR,                   /* red */
     COL_CURSOR,
     NCOLOURS
 };
@@ -233,7 +233,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -487,9 +487,9 @@ static bool number_wrong(const game_state *state, int x, int y)
      * that either
      * 
      *  (a) it has too many lights around it, or
-     * 	(b) it would have too few lights around it even if all the
-     * 	    plausible squares (not black, lit or F_IMPOSSIBLE) were
-     * 	    filled with lights.
+     *     (b) it would have too few lights around it even if all the
+     *         plausible squares (not black, lit or F_IMPOSSIBLE) were
+     *         filled with lights.
      */
 
     assert(GRID(state, flags, x, y) & F_NUMBERED);
@@ -497,17 +497,17 @@ static bool number_wrong(const game_state *state, int x, int y)
 
     empty = n = 0;
     for (i = 0; i < s.npoints; i++) {
-	if (GRID(state,flags,s.points[i].x,s.points[i].y) & F_LIGHT) {
-	    n++;
-	    continue;
-	}
-	if (GRID(state,flags,s.points[i].x,s.points[i].y) & F_BLACK)
-	    continue;
-	if (GRID(state,flags,s.points[i].x,s.points[i].y) & F_IMPOSSIBLE)
-	    continue;
-	if (GRID(state,lights,s.points[i].x,s.points[i].y))
-	    continue;
-	empty++;
+    if (GRID(state,flags,s.points[i].x,s.points[i].y) & F_LIGHT) {
+        n++;
+        continue;
+    }
+    if (GRID(state,flags,s.points[i].x,s.points[i].y) & F_BLACK)
+        continue;
+    if (GRID(state,flags,s.points[i].x,s.points[i].y) & F_IMPOSSIBLE)
+        continue;
+    if (GRID(state,lights,s.points[i].x,s.points[i].y))
+        continue;
+    empty++;
     }
     return (n > lights || (n + empty < lights));
 }
@@ -1359,7 +1359,7 @@ reduction_success:
             }
         }
         assert(bestn > 0);
-	assert(bestx >= 0 && besty >= 0);
+    assert(bestx >= 0 && besty >= 0);
 
         /* Now we've chosen a plausible (x,y), try to solve it once as 'lit'
          * and once as 'impossible'; we need to make one copy to do this. */
@@ -1523,7 +1523,7 @@ static bool puzzle_is_good(game_state *state, int difficulty)
 #define MAX_GRIDGEN_TRIES 20
 
 static char *new_game_desc(const game_params *params_in, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     game_params params_copy = *params_in; /* structure copy */
     game_params *params = &params_copy;
@@ -1602,28 +1602,28 @@ goodpuzzle:
     p = ret;
     run = 0;
     for (y = 0; y < params->h; y++) {
-	for (x = 0; x < params->w; x++) {
+    for (x = 0; x < params->w; x++) {
             if (GRID(news,flags,x,y) & F_BLACK) {
-		if (run) {
-		    *p++ = ('a'-1) + run;
-		    run = 0;
-		}
+        if (run) {
+            *p++ = ('a'-1) + run;
+            run = 0;
+        }
                 if (GRID(news,flags,x,y) & F_NUMBERED)
                     *p++ = '0' + GRID(news,lights,x,y);
                 else
                     *p++ = 'B';
             } else {
-		if (run == 26) {
-		    *p++ = ('a'-1) + run;
-		    run = 0;
-		}
-		run++;
-	    }
+        if (run == 26) {
+            *p++ = ('a'-1) + run;
+            run = 0;
+        }
+        run++;
+        }
         }
     }
     if (run) {
-	*p++ = ('a'-1) + run;
-	run = 0;
+    *p++ = ('a'-1) + run;
+    run = 0;
     }
     *p = '\0';
     assert(p - ret <= params->w * params->h);
@@ -1642,7 +1642,7 @@ static const char *validate_desc(const game_params *params, const char *desc)
         else if (*desc == 'B')
             /* OK */;
         else if (*desc >= 'a' && *desc <= 'z')
-            i += *desc - 'a';	       /* and the i++ will add another one */
+            i += *desc - 'a';           /* and the i++ will add another one */
         else if (!*desc)
             return "Game description shorter than expected";
         else
@@ -1663,38 +1663,38 @@ static game_state *new_game(midend *me, const game_params *params,
     int run = 0;
 
     for (y = 0; y < params->h; y++) {
-	for (x = 0; x < params->w; x++) {
+    for (x = 0; x < params->w; x++) {
             char c = '\0';
 
-	    if (run == 0) {
-		c = *desc++;
-		assert(c != 'S');
-		if (c >= 'a' && c <= 'z')
-		    run = c - 'a' + 1;
-	    }
+        if (run == 0) {
+        c = *desc++;
+        assert(c != 'S');
+        if (c >= 'a' && c <= 'z')
+            run = c - 'a' + 1;
+        }
 
-	    if (run > 0) {
-		c = 'S';
-		run--;
-	    }
+        if (run > 0) {
+        c = 'S';
+        run--;
+        }
 
             switch (c) {
-	      case '0': case '1': case '2': case '3': case '4':
+          case '0': case '1': case '2': case '3': case '4':
                 GRID(ret,flags,x,y) |= F_NUMBERED;
                 GRID(ret,lights,x,y) = (c - '0');
                 /* run-on... */
 
-	      case 'B':
+          case 'B':
                 GRID(ret,flags,x,y) |= F_BLACK;
                 break;
 
-	      case 'S':
-		/* empty square */
+          case 'S':
+        /* empty square */
                 break;
 
-	      default:
-		assert(!"Malformed desc.");
-		break;
+          default:
+        assert(!"Malformed desc.");
+        break;
             }
         }
     }
@@ -2092,7 +2092,7 @@ static unsigned int tile_flags(game_drawstate *ds, const game_state *state,
         if (flags & F_NUMBERED) {
 #ifdef HINT_NUMBERS
             if (number_wrong(state, x, y))
-		ret |= DF_NUMBERWRONG;
+        ret |= DF_NUMBERWRONG;
 #endif
             ret |= DF_NUMBERED;
         }
@@ -2130,7 +2130,7 @@ static void tile_redraw(drawing *dr, game_drawstate *ds,
             sprintf(str, "%d", GRID(state, lights, x, y));
             draw_text(dr, dx + TILE_SIZE/2, dy + TILE_SIZE/2,
                       FONT_VARIABLE, TILE_SIZE*3/5,
-		      ALIGN_VCENTRE | ALIGN_HCENTRE, ccol, str);
+              ALIGN_VCENTRE | ALIGN_HCENTRE, ccol, str);
         }
     } else {
         draw_rect(dr, dx, dy, TILE_SIZE, TILE_SIZE,
@@ -2143,8 +2143,8 @@ static void tile_redraw(drawing *dr, game_drawstate *ds,
         } else if ((ds_flags & DF_IMPOSSIBLE)) {
             static int draw_blobs_when_lit = -1;
             if (draw_blobs_when_lit < 0) {
-		char *env = getenv("LIGHTUP_LIT_BLOBS");
-		draw_blobs_when_lit = (!env || (env[0] == 'y' ||
+        char *env = getenv("LIGHTUP_LIT_BLOBS");
+        draw_blobs_when_lit = (!env || (env[0] == 'y' ||
                                                 env[0] == 'Y'));
             }
             if (!(ds_flags & DF_LIT) || draw_blobs_when_lit) {
@@ -2255,38 +2255,38 @@ static void game_print(drawing *dr, const game_state *state, int tilesize)
      */
     print_line_width(dr, TILE_SIZE / 16);
     draw_rect_outline(dr, COORD(0), COORD(0),
-		      TILE_SIZE * w, TILE_SIZE * h, ink);
+              TILE_SIZE * w, TILE_SIZE * h, ink);
 
     /*
      * Grid.
      */
     print_line_width(dr, TILE_SIZE / 24);
     for (x = 1; x < w; x++)
-	draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h), ink);
+    draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h), ink);
     for (y = 1; y < h; y++)
-	draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y), ink);
+    draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y), ink);
 
     /*
      * Grid contents.
      */
     for (y = 0; y < h; y++)
-	for (x = 0; x < w; x++) {
+    for (x = 0; x < w; x++) {
             unsigned int ds_flags = tile_flags(ds, state, NULL, x, y, false);
-	    int dx = COORD(x), dy = COORD(y);
-	    if (ds_flags & DF_BLACK) {
-		draw_rect(dr, dx, dy, TILE_SIZE, TILE_SIZE, ink);
-		if (ds_flags & DF_NUMBERED) {
-		    char str[32];
-		    sprintf(str, "%d", GRID(state, lights, x, y));
-		    draw_text(dr, dx + TILE_SIZE/2, dy + TILE_SIZE/2,
-			      FONT_VARIABLE, TILE_SIZE*3/5,
-			      ALIGN_VCENTRE | ALIGN_HCENTRE, paper, str);
-		}
-	    } else if (ds_flags & DF_LIGHT) {
-		draw_circle(dr, dx + TILE_SIZE/2, dy + TILE_SIZE/2,
-			    TILE_RADIUS, -1, ink);
-	    }
-	}
+        int dx = COORD(x), dy = COORD(y);
+        if (ds_flags & DF_BLACK) {
+        draw_rect(dr, dx, dy, TILE_SIZE, TILE_SIZE, ink);
+        if (ds_flags & DF_NUMBERED) {
+            char str[32];
+            sprintf(str, "%d", GRID(state, lights, x, y));
+            draw_text(dr, dx + TILE_SIZE/2, dy + TILE_SIZE/2,
+                  FONT_VARIABLE, TILE_SIZE*3/5,
+                  ALIGN_VCENTRE | ALIGN_HCENTRE, paper, str);
+        }
+        } else if (ds_flags & DF_LIGHT) {
+        draw_circle(dr, dx + TILE_SIZE/2, dy + TILE_SIZE/2,
+                TILE_RADIUS, -1, ink);
+        }
+    }
 }
 
 #ifdef COMBINED
@@ -2309,7 +2309,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, game_can_format_as_text_now, game_text_format,
     new_ui,
     free_ui,
     encode_ui,
@@ -2326,88 +2326,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
-    false,			       /* wants_statusbar */
+    false, false, game_print_size, game_print,
+    false,             /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    REQUIRE_RBUTTON,               /* flags */
 };
 
-#ifdef STANDALONE_SOLVER
-
-int main(int argc, char **argv)
-{
-    game_params *p;
-    game_state *s;
-    char *id = NULL, *desc, *result;
-    const char *err;
-    int nsol, diff, really_verbose = 0;
-    unsigned int sflags;
-
-    while (--argc > 0) {
-        char *p = *++argv;
-        if (!strcmp(p, "-v")) {
-            really_verbose++;
-        } else if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-            return 1;
-        } else {
-            id = p;
-        }
-    }
-
-    if (!id) {
-        fprintf(stderr, "usage: %s [-v] <game_id>\n", argv[0]);
-        return 1;
-    }
-
-    desc = strchr(id, ':');
-    if (!desc) {
-        fprintf(stderr, "%s: game id expects a colon in it\n", argv[0]);
-        return 1;
-    }
-    *desc++ = '\0';
-
-    p = default_params();
-    decode_params(p, id);
-    err = validate_desc(p, desc);
-    if (err) {
-        fprintf(stderr, "%s: %s\n", argv[0], err);
-        return 1;
-    }
-    s = new_game(NULL, p, desc);
-
-    /* Run the solvers easiest to hardest until we find one that
-     * can solve our puzzle. If it's soluble we know that the
-     * hardest (recursive) solver will always find the solution. */
-    nsol = sflags = 0;
-    for (diff = 0; diff <= DIFFCOUNT; diff++) {
-        printf("\nSolving with difficulty %d.\n", diff);
-        sflags = flags_from_difficulty(diff);
-        unplace_lights(s);
-        nsol = dosolve(s, sflags, NULL);
-        if (nsol == 1) break;
-    }
-
-    printf("\n");
-    if (nsol == 0) {
-        printf("Puzzle has no solution.\n");
-    } else if (nsol < 0) {
-        printf("Unable to find a unique solution.\n");
-    } else if (nsol > 1) {
-        printf("Puzzle has multiple solutions.\n");
-    } else {
-        verbose = really_verbose;
-        unplace_lights(s);
-        printf("Puzzle has difficulty %d: solving...\n", diff);
-        dosolve(s, sflags, NULL); /* sflags from last successful solve */
-        result = game_text_format(s);
-        printf("%s", result);
-        sfree(result);
-    }
-
-    return 0;
-}
-
-#endif
-
-/* vim: set shiftwidth=4 tabstop=8: */
