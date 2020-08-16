@@ -64,16 +64,12 @@ static game_params *default_params(void)
 static const struct game_params tracks_presets[] = {
     {8, 8, DIFF_EASY, 1},
     {8, 8, DIFF_TRICKY, 1},
-    {10, 8, DIFF_EASY, 1},
-    {10, 8, DIFF_TRICKY, 1 },
     {10, 10, DIFF_EASY, 1},
     {10, 10, DIFF_TRICKY, 1},
     {10, 10, DIFF_HARD, 1},
-    {15, 10, DIFF_EASY, 1},
-    {15, 10, DIFF_TRICKY, 1},
-    {15, 15, DIFF_EASY, 1},
-    {15, 15, DIFF_TRICKY, 1},
-    {15, 15, DIFF_HARD, 1},
+    {12, 12, DIFF_EASY, 1},
+    {12, 12, DIFF_TRICKY, 1},
+    {12, 12, DIFF_HARD, 1},
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -1677,101 +1673,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     return move;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    char *ret, *p;
-    int x, y, len, w = state->p.w, h = state->p.h;
-
-    len = ((w*2) + 4) * ((h*2)+4) + 2;
-    ret = snewn(len+1, char);
-    p = ret;
-
-    /* top line: column clues */
-    *p++ = ' ';
-    *p++ = ' ';
-    for (x = 0; x < w; x++) {
-        *p++ = (state->numbers->numbers[x] < 10 ?
-                '0' + state->numbers->numbers[x] :
-                'A' + state->numbers->numbers[x] - 10);
-        *p++ = ' ';
-    }
-    *p++ = '\n';
-
-    /* second line: top edge */
-    *p++ = ' ';
-    *p++ = '+';
-    for (x = 0; x < w*2-1; x++)
-        *p++ = '-';
-    *p++ = '+';
-    *p++ = '\n';
-
-    /* grid rows: one line of squares, one line of edges. */
-    for (y = 0; y < h; y++) {
-        /* grid square line */
-        *p++ = (y == state->numbers->row_s) ? 'A' : ' ';
-        *p++ = (y == state->numbers->row_s) ? '-' : '|';
-
-        for (x = 0; x < w; x++) {
-            unsigned int f = S_E_DIRS(state, x, y, E_TRACK);
-            if (state->sflags[y*w+x] & S_CLUE) *p++ = 'C';
-            else if (f == LU || f == RD) *p++ = '/';
-            else if (f == LD || f == RU) *p++ = '\\';
-            else if (f == UD) *p++ = '|';
-            else if (f == RL) *p++ = '-';
-            else if (state->sflags[y*w+x] & S_NOTRACK) *p++ = 'x';
-            else *p++ = ' ';
-
-            if (x < w-1) {
-                *p++ = (f & R) ? '-' : ' ';
-            } else
-                *p++ = '|';
-        }
-        *p++ = (state->numbers->numbers[w+y] < 10 ?
-                '0' + state->numbers->numbers[w+y] :
-                'A' + state->numbers->numbers[w+y] - 10);
-        *p++ = '\n';
-
-        if (y == h-1) continue;
-
-        /* edges line */
-        *p++ = ' ';
-        *p++ = '|';
-        for (x = 0; x < w; x++) {
-            unsigned int f = S_E_DIRS(state, x, y, E_TRACK);
-            *p++ = (f & D) ? '|' : ' ';
-            *p++ = (x < w-1) ? ' ' : '|';
-        }
-        *p++ = '\n';
-    }
-
-    /* next line: bottom edge */
-    *p++ = ' ';
-    *p++ = '+';
-    for (x = 0; x < w*2-1; x++)
-        *p++ = (x == state->numbers->col_s*2) ? '|' : '-';
-    *p++ = '+';
-    *p++ = '\n';
-
-    /* final line: bottom clue */
-    *p++ = ' ';
-    *p++ = ' ';
-    for (x = 0; x < w*2-1; x++)
-        *p++ = (x == state->numbers->col_s*2) ? 'B' : ' ';
-    *p++ = '\n';
-
-    *p = '\0';
-    return ret;
-}
-
 static void debug_state(game_state *state, const char *what) {
-    char *sstring = game_text_format(state);
-    debug(("%s: %s", what, sstring));
-    sfree(sstring);
 }
 
 static void dsf_update_completion(game_state *state, int ax, int ay,
@@ -2422,8 +2324,8 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 }
 
 enum {
-    COL_BACKGROUND, COL_LOWLIGHT, COL_HIGHLIGHT,
-    COL_TRACK_BACKGROUND = COL_LOWLIGHT,
+    COL_BACKGROUND, 
+    COL_TRACK_BACKGROUND,
     COL_GRID, COL_CLUE, COL_CURSOR,
     COL_TRACK, COL_TRACK_CLUE, COL_SLEEPER,
     COL_DRAGON, COL_DRAGOFF,
@@ -2436,36 +2338,23 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
+    // game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
 
     for (i = 0; i < 3; i++) {
+        ret[COL_BACKGROUND       * 3 + i] = 1.0F;
+        ret[COL_TRACK_BACKGROUND * 3 + i] = 0.75F;
         ret[COL_TRACK_CLUE       * 3 + i] = 0.0F;
         ret[COL_TRACK            * 3 + i] = 0.5F;
         ret[COL_CLUE             * 3 + i] = 0.0F;
-        ret[COL_GRID             * 3 + i] = 0.75F;
+        ret[COL_GRID             * 3 + i] = 0.5F;
         ret[COL_CURSOR           * 3 + i] = 0.6F;
-        ret[COL_ERROR_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_ERROR_BACKGROUND * 3 + i] = 0.25F;
+        ret[COL_SLEEPER          * 3 + i] = 0.25F;
+        ret[COL_ERROR            * 3 + i] = 0.75F;
+        ret[COL_DRAGON           * 3 + i] = 0.25F;
+        ret[COL_DRAGOFF          * 3 + i] = 0.75F;
+        ret[COL_FLASH            * 3 + i] = 1.0F;
     }
-
-    ret[COL_SLEEPER * 3 + 0] = 0.5F;
-    ret[COL_SLEEPER * 3 + 1] = 0.4F;
-    ret[COL_SLEEPER * 3 + 2] = 0.1F;
-
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
-
-    ret[COL_DRAGON * 3 + 0] = 0.0F;
-    ret[COL_DRAGON * 3 + 1] = 0.0F;
-    ret[COL_DRAGON * 3 + 2] = 1.0F;
-
-    ret[COL_DRAGOFF * 3 + 0] = 0.8F;
-    ret[COL_DRAGOFF * 3 + 1] = 0.8F;
-    ret[COL_DRAGOFF * 3 + 2] = 1.0F;
-
-    ret[COL_FLASH * 3 + 0] = 1.0F;
-    ret[COL_FLASH * 3 + 1] = 1.0F;
-    ret[COL_FLASH * 3 + 2] = 1.0F;
 
     *ncolours = NCOLOURS;
     return ret;
@@ -2847,11 +2736,7 @@ static float game_anim_length(const game_state *oldstate, const game_state *news
 static float game_flash_length(const game_state *oldstate, const game_state *newstate,
                                int dir, game_ui *ui)
 {
-    if (!oldstate->completed &&
-            newstate->completed && !newstate->used_solve)
-        return FLASH_TIME;
-    else
-        return 0.0F;
+    return 0.0F;
 }
 
 static int game_status(const game_state *state)
@@ -2864,53 +2749,6 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /* The Times uses 7mm squares */
-    game_compute_size(params, 700, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w = state->p.w, h = state->p.h;
-    int black = print_mono_colour(dr, 0), grey = print_grey_colour(dr, 0.5F);
-    int x, y, i;
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    game_set_size(dr, ds, NULL, tilesize);
-
-    /* Grid, then border (second so it is on top) */
-    print_line_width(dr, TILE_SIZE / 24);
-    for (x = 1; x < w; x++)
-        draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h), grey);
-    for (y = 1; y < h; y++)
-        draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y), grey);
-
-    print_line_width(dr, TILE_SIZE / 16);
-    draw_rect_outline(dr, COORD(0), COORD(0), w*TILE_SIZE, h*TILE_SIZE, black);
-
-    print_line_width(dr, TILE_SIZE / 24);
-
-    /* clue numbers, and loop ends */
-    for (i = 0; i < w+h; i++)
-        draw_clue(dr, ds, w, state->numbers->numbers[i], i, black, -1);
-    draw_loop_ends(dr, ds, state, black);
-
-    /* clue tracks / solution */
-    for (x = 0; x < w; x++) {
-        for (y = 0; y < h; y++) {
-            clip(dr, COORD(x), COORD(y), TILE_SIZE, TILE_SIZE);
-            draw_tracks_specific(dr, ds, x, y, S_E_DIRS(state, x, y, E_TRACK),
-                                 black, grey);
-            unclip(dr);
-        }
-    }
-}
 
 #ifdef COMBINED
 #define thegame tracks
@@ -2932,7 +2770,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -2949,93 +2787,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false,			       /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    REQUIRE_RBUTTON,				       /* flags */
 };
 
-#ifdef STANDALONE_SOLVER
-
-int main(int argc, char **argv)
-{
-    game_params *p;
-    game_state *s;
-    char *id = NULL, *desc;
-    int maxdiff = DIFFCOUNT, diff_used;
-    const char *err;
-    bool diagnostics = false, grade = false;
-    int retd;
-
-    while (--argc > 0) {
-        char *p = *++argv;
-        if (!strcmp(p, "-v")) {
-            diagnostics = true;
-        } else if (!strcmp(p, "-g")) {
-            grade = true;
-        } else if (!strncmp(p, "-d", 2) && p[2] && !p[3]) {
-            int i;
-            bool bad = true;
-            for (i = 0; i < lenof(tracks_diffchars); i++)
-                if (tracks_diffchars[i] == p[2]) {
-                    bad = false;
-                    maxdiff = i;
-                    break;
-                }
-            if (bad) {
-                fprintf(stderr, "%s: unrecognised difficulty `%c'\n",
-                        argv[0], p[2]);
-                return 1;
-            }
-        } else if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-            return 1;
-        } else {
-            id = p;
-        }
-    }
-
-    if (!id) {
-        fprintf(stderr, "usage: %s [-v | -g] <game_id>\n", argv[0]);
-        return 1;
-    }
-
-    desc = strchr(id, ':');
-    if (!desc) {
-        fprintf(stderr, "%s: game id expects a colon in it\n", argv[0]);
-        return 1;
-    }
-    *desc++ = '\0';
-
-    p = default_params();
-    decode_params(p, id);
-    err = validate_desc(p, desc);
-    if (err) {
-        fprintf(stderr, "%s: %s\n", argv[0], err);
-        return 1;
-    }
-    s = new_game(NULL, p, desc);
-
-    solver_diagnostics_fp = (diagnostics ? stdout : NULL);
-    retd = tracks_solve(s, maxdiff, &diff_used);
-    if (retd < 0) {
-        printf("Puzzle is inconsistent\n");
-    } else if (grade) {
-        printf("Difficulty rating: %s\n",
-               (retd == 0 ? "Ambiguous" : tracks_diffnames[diff_used]));
-    } else {
-        char *text = game_text_format(s);
-        fputs(text, stdout);
-        sfree(text);
-        if (retd == 0)
-            printf("Could not deduce a unique solution\n");
-    }
-    free_game(s);
-    free_params(p);
-
-    return 0;
-}
-
-#endif
-
-/* vim: set shiftwidth=4 tabstop=8: */

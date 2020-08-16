@@ -503,6 +503,7 @@ void gameRelease(int x, int y) {
                 midend_process_key(me, 0, 0, fe->controls[i].c);
             }
         }
+       checkGameEnd();
     }
 
     check_button_state();

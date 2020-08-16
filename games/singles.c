@@ -128,8 +128,8 @@ static char const singles_diffchars[] = DIFFLIST(ENCODE);
 static game_params *default_params(void)
 {
     game_params *ret = snew(game_params);
-    ret->w = ret->h = 5;
-    ret->diff = DIFF_EASY;
+    ret->w = ret->h = 8;
+    ret->diff = DIFF_TRICKY;
 
     return ret;
 }

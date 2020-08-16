@@ -1077,16 +1077,19 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
     int i;
     int n = params->o;
 
-    key_label *keys = snewn(n + 1, key_label);
-    *nkeys = n + 1;
+    key_label *keys = snewn(n + 2, key_label);
+    *nkeys = n + 2;
 
     for (i = 0; i < n; i++)
     {
         keys[i].button = '1' + i;
         keys[i].label = NULL;
     }
-    keys[n].button = '\b';
+    keys[n].button = '+';
     keys[n].label = NULL;
+
+    keys[n+1].button = '\b';
+    keys[n+1].label = NULL;
 
     return keys;
 }
@@ -1269,7 +1272,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
     
     /* Set maximum pencil marks on all empty cells */
-    if(button == 'M' || button == 'm')
+    if(button == '+')
     {
         int i;
         for(i = 0; i < o*o; i++)

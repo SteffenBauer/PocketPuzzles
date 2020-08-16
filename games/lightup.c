@@ -177,23 +177,15 @@ static void get_surrounds(const game_state *state, int ox, int oy,
 
 /* --- Game parameter functions --- */
 
-#define DEFAULT_PRESET 0
+#define DEFAULT_PRESET 2
 
 static const struct game_params lightup_presets[] = {
-    { 7, 7, 20, SYMM_ROT4, 0 },
-    { 7, 7, 20, SYMM_ROT4, 1 },
-    { 7, 7, 20, SYMM_ROT4, 2 },
-    { 10, 10, 20, SYMM_ROT2, 0 },
-    { 10, 10, 20, SYMM_ROT2, 1 },
-#ifdef SLOW_SYSTEM
-    { 12, 12, 20, SYMM_ROT2, 0 },
-    { 12, 12, 20, SYMM_ROT2, 1 },
-#else
-    { 10, 10, 20, SYMM_ROT2, 2 },
-    { 14, 14, 20, SYMM_ROT2, 0 },
-    { 14, 14, 20, SYMM_ROT2, 1 },
-    { 14, 14, 20, SYMM_ROT2, 2 }
-#endif
+    { 6, 6, 20, SYMM_NONE, 0 },
+    { 6, 6, 20, SYMM_NONE, 1 },
+    { 8, 8, 20, SYMM_NONE, 1 },
+    { 8, 8, 20, SYMM_NONE, 2 },
+    { 10, 10, 20, SYMM_NONE, 1 },
+    { 10, 10, 20, SYMM_NONE, 2 },
 };
 
 static game_params *default_params(void)
@@ -1759,66 +1751,6 @@ done:
     return move;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-/* 'borrowed' from slant.c, mainly. I could have printed it one
- * character per cell (like debug_state) but that comes out tiny.
- * 'L' is used for 'light here' because 'O' looks too much like '0'
- * (black square with no surrounding lights). */
-static char *game_text_format(const game_state *state)
-{
-    int w = state->w, h = state->h, W = w+1, H = h+1;
-    int x, y, len, lights;
-    unsigned int flags;
-    char *ret, *p;
-
-    len = (h+H) * (w+W+1) + 1;
-    ret = snewn(len, char);
-    p = ret;
-
-    for (y = 0; y < H; y++) {
-        for (x = 0; x < W; x++) {
-            *p++ = '+';
-            if (x < w)
-                *p++ = '-';
-        }
-        *p++ = '\n';
-        if (y < h) {
-            for (x = 0; x < W; x++) {
-                *p++ = '|';
-                if (x < w) {
-                    /* actual interesting bit. */
-                    flags = GRID(state, flags, x, y);
-                    lights = GRID(state, lights, x, y);
-                    if (flags & F_BLACK) {
-                        if (flags & F_NUMBERED)
-                            *p++ = '0' + lights;
-                        else
-                            *p++ = '#';
-                    } else {
-                        if (flags & F_LIGHT)
-                            *p++ = 'L';
-                        else if (flags & F_IMPOSSIBLE)
-                            *p++ = 'x';
-                        else if (lights > 0)
-                            *p++ = '.';
-                        else
-                            *p++ = ' ';
-                    }
-                }
-            }
-            *p++ = '\n';
-        }
-    }
-    *p++ = '\0';
-
-    assert(p - ret == len);
-    return ret;
-}
-
 struct game_ui {
     int cur_x, cur_y;
     bool cur_visible;
@@ -2027,20 +1959,13 @@ static float *game_colours(frontend *fe, int *ncolours)
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
 
     for (i = 0; i < 3; i++) {
-        ret[COL_BLACK * 3 + i] = 0.0F;
-        ret[COL_LIGHT * 3 + i] = 1.0F;
-        ret[COL_CURSOR * 3 + i] = ret[COL_BACKGROUND * 3 + i] / 2.0F;
-        ret[COL_GRID * 3 + i] = ret[COL_BACKGROUND * 3 + i] / 1.5F;
-
+        ret[COL_BLACK  * 3 + i] = 0.0F;
+        ret[COL_LIGHT  * 3 + i] = 1.0F;
+        ret[COL_CURSOR * 3 + i] = 0.5F;
+        ret[COL_GRID   * 3 + i] = 0.5F;
+        ret[COL_ERROR  * 3 + i] = 0.25F;
+        ret[COL_LIT    * 3 + i] = 0.75F;
     }
-
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.25F;
-    ret[COL_ERROR * 3 + 2] = 0.25F;
-
-    ret[COL_LIT * 3 + 0] = 1.0F;
-    ret[COL_LIT * 3 + 1] = 1.0F;
-    ret[COL_LIT * 3 + 2] = 0.0F;
 
     *ncolours = NCOLOURS;
     return ret;
@@ -2211,9 +2136,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-        !oldstate->used_solve && !newstate->used_solve)
-        return FLASH_TIME;
     return 0.0F;
 }
 
@@ -2225,68 +2147,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /*
-     * I'll use 6mm squares by default.
-     */
-    game_compute_size(params, 600, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w = state->w, h = state->h;
-    int ink = print_mono_colour(dr, 0);
-    int paper = print_mono_colour(dr, 1);
-    int x, y;
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    game_set_size(dr, ds, NULL, tilesize);
-
-    /*
-     * Border.
-     */
-    print_line_width(dr, TILE_SIZE / 16);
-    draw_rect_outline(dr, COORD(0), COORD(0),
-              TILE_SIZE * w, TILE_SIZE * h, ink);
-
-    /*
-     * Grid.
-     */
-    print_line_width(dr, TILE_SIZE / 24);
-    for (x = 1; x < w; x++)
-    draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h), ink);
-    for (y = 1; y < h; y++)
-    draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y), ink);
-
-    /*
-     * Grid contents.
-     */
-    for (y = 0; y < h; y++)
-    for (x = 0; x < w; x++) {
-            unsigned int ds_flags = tile_flags(ds, state, NULL, x, y, false);
-        int dx = COORD(x), dy = COORD(y);
-        if (ds_flags & DF_BLACK) {
-        draw_rect(dr, dx, dy, TILE_SIZE, TILE_SIZE, ink);
-        if (ds_flags & DF_NUMBERED) {
-            char str[32];
-            sprintf(str, "%d", GRID(state, lights, x, y));
-            draw_text(dr, dx + TILE_SIZE/2, dy + TILE_SIZE/2,
-                  FONT_VARIABLE, TILE_SIZE*3/5,
-                  ALIGN_VCENTRE | ALIGN_HCENTRE, paper, str);
-        }
-        } else if (ds_flags & DF_LIGHT) {
-        draw_circle(dr, dx + TILE_SIZE/2, dy + TILE_SIZE/2,
-                TILE_RADIUS, -1, ink);
-        }
-    }
 }
 
 #ifdef COMBINED
@@ -2309,7 +2169,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -2326,7 +2186,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false,             /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,               /* flags */
