@@ -92,17 +92,15 @@ struct game_params {
     bool stripclues;
 };
 
-#define DEFAULT_PRESET 2
+#define DEFAULT_PRESET 1
 
 static const struct game_params magnets_presets[] = {
-    {6, 5, DIFF_EASY, 0},
-    {6, 5, DIFF_TRICKY, 0},
-    {6, 5, DIFF_TRICKY, 1},
-    {8, 7, DIFF_EASY, 0},
-    {8, 7, DIFF_TRICKY, 0},
-    {8, 7, DIFF_TRICKY, 1},
-    {10, 9, DIFF_TRICKY, 0},
-    {10, 9, DIFF_TRICKY, 1}
+    {5, 6, DIFF_EASY, 1},
+    {5, 6, DIFF_TRICKY, 1},
+    {7, 8, DIFF_EASY, 1},
+    {7, 8, DIFF_TRICKY, 1},
+    {9, 10, DIFF_EASY, 1},
+    {9, 10, DIFF_TRICKY, 1}
 };
 
 static game_params *default_params(void)
@@ -1875,17 +1873,18 @@ static float *game_colours(frontend *fe, int *ncolours)
 
     for (i = 0; i < 3; i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.75F;
 
         ret[COL_TEXT * 3 + i] = 0.0F;
-        ret[COL_DONE * 3 + i] = 0.8F;
+        ret[COL_DONE * 3 + i] = 0.75F;
 
         ret[COL_NEGATIVE * 3 + i] = 0.4F;
         ret[COL_POSITIVE * 3 + i] = 0.6F;
 
         ret[COL_CURSOR * 3 + i] = 0.9F;
-        ret[COL_NEUTRAL * 3 + 0] = 0.5F;
-        ret[COL_NOT * 3 + 0] = 0.7F;
-        ret[COL_ERROR * 3 + 0] = 0.5F;
+        ret[COL_NEUTRAL * 3 + i] = 0.5F;
+        ret[COL_NOT * 3 + i] = 0.25F;
+        ret[COL_ERROR * 3 + i] = 0.25F;
     }
 
     *ncolours = NCOLOURS;
@@ -1942,7 +1941,7 @@ static void draw_num(drawing *dr, game_drawstate *ds, int rowcol, int which,
         if (which == NEGATIVE) cy += TILE_SIZE * (ds->h+1);
     }
 
-    draw_rect(dr, cx, cy, TILE_SIZE, TILE_SIZE, colbg);
+    draw_rect(dr, cx, cy, TILE_SIZE, TILE_SIZE, (col == COL_ERROR) ? COL_LOWLIGHT : colbg);
     draw_text(dr, cx + TILE_SIZE/2, cy + TILE_SIZE/2, FONT_VARIABLE, tsz,
               ALIGN_VCENTRE | ALIGN_HCENTRE, col, buf);
 

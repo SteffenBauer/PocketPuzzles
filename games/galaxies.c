@@ -143,13 +143,13 @@ static space *tile_opposite(const game_state *state, const space *sp);
 
 /* make up some sensible default sizes */
 
-#define DEFAULT_PRESET 0
+#define DEFAULT_PRESET 1
 
 static const game_params galaxies_presets[] = {
-    {  7,  7, DIFF_NORMAL },
-    {  7,  7, DIFF_UNREASONABLE },
-    { 10, 10, DIFF_UNREASONABLE },
-    { 15, 15, DIFF_UNREASONABLE },
+    {  7,  9, DIFF_NORMAL },
+    {  7,  9, DIFF_UNREASONABLE },
+    {  8, 10, DIFF_UNREASONABLE },
+    { 10, 12, DIFF_UNREASONABLE },
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)

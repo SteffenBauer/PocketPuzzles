@@ -99,7 +99,7 @@ struct game_state {
 };
 
 #define DEFAULT_PRESET 0
-static struct game_params range_presets[] = {{9, 6}, {12, 8}, {13, 9}, {16, 11}};
+static struct game_params range_presets[] = {{5, 7}, {6, 9}, {8, 12}, {9, 13}};
 /* rationale: I want all four combinations of {odd/even, odd/even}, as
  * they play out differently with respect to two-way symmetry.  I also
  * want them to be generated relatively fast yet still be large enough
@@ -1038,36 +1038,36 @@ static char *newdesc_encode_game_description(int area, puzzle_size *grid)
 
     run = 0;
     for (i = 0; i <= area; i++) {
-	int n = (i < area ? grid[i] : -1);
+    int n = (i < area ? grid[i] : -1);
 
-	if (!n)
-	    run++;
-	else {
-	    if (descsize < desclen + 40) {
-		descsize = desclen * 3 / 2 + 40;
-		desc = sresize(desc, descsize, char);
-	    }
-	    if (run) {
-		while (run > 0) {
-		    int c = 'a' - 1 + run;
-		    if (run > 26)
-			c = 'z';
-		    desc[desclen++] = c;
-		    run -= c - ('a' - 1);
-		}
-	    } else {
-		/*
-		 * If there's a number in the very top left or
-		 * bottom right, there's no point putting an
-		 * unnecessary _ before or after it.
-		 */
-		if (desclen > 0 && n > 0)
-		    desc[desclen++] = '_';
-	    }
-	    if (n > 0)
-		desclen += sprintf(desc+desclen, "%d", n);
-	    run = 0;
-	}
+    if (!n)
+        run++;
+    else {
+        if (descsize < desclen + 40) {
+        descsize = desclen * 3 / 2 + 40;
+        desc = sresize(desc, descsize, char);
+        }
+        if (run) {
+        while (run > 0) {
+            int c = 'a' - 1 + run;
+            if (run > 26)
+            c = 'z';
+            desc[desclen++] = c;
+            run -= c - ('a' - 1);
+        }
+        } else {
+        /*
+         * If there's a number in the very top left or
+         * bottom right, there's no point putting an
+         * unnecessary _ before or after it.
+         */
+        if (desclen > 0 && n > 0)
+            desc[desclen++] = '_';
+        }
+        if (n > 0)
+        desclen += sprintf(desc+desclen, "%d", n);
+        run = 0;
+    }
     }
     desc[desclen] = '\0';
     return desc;
@@ -1125,8 +1125,8 @@ static game_state *new_game(midend *me, const game_params *params,
         int c = *p++;
         if (c >= 'a' && c <= 'z') {
             int squares = c - 'a' + 1;
-	    while (squares--)
-		state->grid[i++] = 0;
+        while (squares--)
+        state->grid[i++] = 0;
         } else if (c == '_') {
             /* do nothing */;
         } else if (c > '0' && c <= '9') {
@@ -1213,38 +1213,38 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
 
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
-	/*
-	 * Utterly awful hack, exactly analogous to the one in Slant,
-	 * to configure the left and right mouse buttons the opposite
-	 * way round.
-	 *
-	 * The original puzzle submitter thought it would be more
-	 * useful to have the left button turn an empty square into a
-	 * dotted one, on the grounds that that was what you did most
-	 * often; I (SGT) felt instinctively that the left button
-	 * ought to place black squares and the right button place
-	 * dots, on the grounds that that was consistent with many
-	 * other puzzles in which the left button fills in the data
-	 * used by the solution checker while the right button places
-	 * pencil marks for the user's convenience.
-	 *
-	 * My first beta-player wasn't sure either, so I thought I'd
-	 * pre-emptively put in a 'configuration' mechanism just in
-	 * case.
-	 */
-	{
-	    static int swap_buttons = -1;
-	    if (swap_buttons < 0) {
-		char *env = getenv("RANGE_SWAP_BUTTONS");
-		swap_buttons = (env && (env[0] == 'y' || env[0] == 'Y'));
-	    }
-	    if (swap_buttons) {
-		if (button == LEFT_BUTTON)
-		    button = RIGHT_BUTTON;
-		else
-		    button = LEFT_BUTTON;
-	    }
-	}
+    /*
+     * Utterly awful hack, exactly analogous to the one in Slant,
+     * to configure the left and right mouse buttons the opposite
+     * way round.
+     *
+     * The original puzzle submitter thought it would be more
+     * useful to have the left button turn an empty square into a
+     * dotted one, on the grounds that that was what you did most
+     * often; I (SGT) felt instinctively that the left button
+     * ought to place black squares and the right button place
+     * dots, on the grounds that that was consistent with many
+     * other puzzles in which the left button fills in the data
+     * used by the solution checker while the right button places
+     * pencil marks for the user's convenience.
+     *
+     * My first beta-player wasn't sure either, so I thought I'd
+     * pre-emptively put in a 'configuration' mechanism just in
+     * case.
+     */
+    {
+        static int swap_buttons = -1;
+        if (swap_buttons < 0) {
+        char *env = getenv("RANGE_SWAP_BUTTONS");
+        swap_buttons = (env && (env[0] == 'y' || env[0] == 'Y'));
+        }
+        if (swap_buttons) {
+        if (button == LEFT_BUTTON)
+            button = RIGHT_BUTTON;
+        else
+            button = LEFT_BUTTON;
+        }
+    }
     }
 
     switch (button) {
@@ -1349,44 +1349,44 @@ static bool find_errors(const game_state *state, bool *report)
         for (c = 0; c < w; ++c, ++i) {
             switch (state->grid[i]) {
 
-	      case BLACK:
-		{
-		    int j;
-		    ++nblack;
-		    for (j = 0; j < 4; ++j) {
-			int const rr = r + dr[j], cc = c + dc[j];
-			if (out_of_bounds(rr, cc, w, h)) continue;
-			if (state->grid[idx(rr, cc, w)] != BLACK) continue;
-			if (!report) goto found_error;
-			report[i] = true;
-			break;
-		    }
-		}
+          case BLACK:
+        {
+            int j;
+            ++nblack;
+            for (j = 0; j < 4; ++j) {
+            int const rr = r + dr[j], cc = c + dc[j];
+            if (out_of_bounds(rr, cc, w, h)) continue;
+            if (state->grid[idx(rr, cc, w)] != BLACK) continue;
+            if (!report) goto found_error;
+            report[i] = true;
+            break;
+            }
+        }
                 break;
-	      default:
-		{
-		    int j, runs;
-		    for (runs = 1, j = 0; j < 4; ++j) {
-			int const rr = r + dr[j], cc = c + dc[j];
-			runs += runlength(rr, cc, dr[j], dc[j], state,
-					  ~MASK(BLACK));
-		    }
-		    if (!report) {
-			if (runs != state->grid[i]) goto found_error;
-		    } else if (runs < state->grid[i]) report[i] = true;
-		    else {
-			for (runs = 1, j = 0; j < 4; ++j) {
-			    int const rr = r + dr[j], cc = c + dc[j];
-			    runs += runlength(rr, cc, dr[j], dc[j], state,
-					      ~(MASK(BLACK) | MASK(EMPTY)));
-			}
-			if (runs > state->grid[i]) report[i] = true;
-		    }
-		}
+          default:
+        {
+            int j, runs;
+            for (runs = 1, j = 0; j < 4; ++j) {
+            int const rr = r + dr[j], cc = c + dc[j];
+            runs += runlength(rr, cc, dr[j], dc[j], state,
+                      ~MASK(BLACK));
+            }
+            if (!report) {
+            if (runs != state->grid[i]) goto found_error;
+            } else if (runs < state->grid[i]) report[i] = true;
+            else {
+            for (runs = 1, j = 0; j < 4; ++j) {
+                int const rr = r + dr[j], cc = c + dc[j];
+                runs += runlength(rr, cc, dr[j], dc[j], state,
+                          ~(MASK(BLACK) | MASK(EMPTY)));
+            }
+            if (runs > state->grid[i]) report[i] = true;
+            }
+        }
 
                 /* note: fallthrough _into_ these cases */
-	      case EMPTY:
-	      case WHITE: any_white_cell = i;
+          case EMPTY:
+          case WHITE: any_white_cell = i;
             }
         }
 
@@ -1462,10 +1462,10 @@ static game_state *execute_move(const game_state *state, const char *move)
         ntok = sscanf(move, "%c,%d,%d%n", &what_to_do, &r, &c, &nchars);
         if (ntok < 3) goto failure;
         switch (what_to_do) {
-	  case 'W': value = WHITE; break;
-	  case 'E': value = EMPTY; break;
-	  case 'B': value = BLACK; break;
-	  default: goto failure;
+      case 'W': value = WHITE; break;
+      case 'E': value = EMPTY; break;
+      case 'B': value = BLACK; break;
+      default: goto failure;
         }
         if (out_of_bounds(r, c, ret->params.w, ret->params.h)) goto failure;
         ret->grid[idx(r, c, ret->params.w)] = value;
@@ -1656,20 +1656,20 @@ static void draw_cell(drawing *draw, game_drawstate *ds, int r, int c,
     draw_rect_outline(draw, x,     y,     ts + 1, ts + 1, COL_GRID);
     draw_rect        (draw, x + 1, y + 1, ts - 1, ts - 1, colour);
     if (cell.error)
-	draw_rect_outline(draw, x + 1, y + 1, ts - 1, ts - 1, COL_ERROR);
+        draw_rect_outline(draw, x + 1, y + 1, ts - 1, ts - 1, COL_ERROR);
 
     switch (cell.value) {
       case WHITE: draw_rect(draw, tx - dotsz / 2, ty - dotsz / 2, dotsz, dotsz,
-			    cell.error ? COL_ERROR : COL_USER);
+                cell.error ? COL_ERROR : COL_USER);
       case BLACK: case EMPTY: break;
       default:
-	{
-	    int const colour = (cell.error ? COL_ERROR : COL_GRID);
-	    char *msg = nfmtstr(10, "%d", cell.value);
-	    draw_text(draw, tx, ty, FONT_VARIABLE, ts * 3 / 5,
-		      ALIGN_VCENTRE | ALIGN_HCENTRE, colour, msg);
-	    sfree(msg);
-	}
+    {
+        int const colour = (cell.error ? COL_ERROR : COL_GRID);
+        char *msg = nfmtstr(10, "%d", cell.value);
+        draw_text(draw, tx, ty, FONT_VARIABLE, ts * 3 / 5,
+              ALIGN_VCENTRE | ALIGN_HCENTRE, colour, msg);
+        sfree(msg);
+    }
     }
 
     draw_update(draw, x, y, ts + 1, ts + 1);
