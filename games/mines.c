@@ -60,35 +60,35 @@ struct mine_layout {
     int n;
     bool unique;
     random_state *rs;
-    midend *me;		       /* to give back the new game desc */
+    midend *me;               /* to give back the new game desc */
 };
 
 struct game_state {
     int w, h, n;
     bool dead, won, used_solve;
-    struct mine_layout *layout;	       /* real mine positions */
-    signed char *grid;			       /* player knowledge */
+    struct mine_layout *layout;           /* real mine positions */
+    signed char *grid;                   /* player knowledge */
     /*
      * Each item in the `grid' array is one of the following values:
      * 
-     * 	- 0 to 8 mean the square is open and has a surrounding mine
-     * 	  count.
+     *     - 0 to 8 mean the square is open and has a surrounding mine
+     *       count.
      * 
      *  - -1 means the square is marked as a mine.
      * 
      *  - -2 means the square is unknown.
      * 
-     * 	- -3 means the square is marked with a question mark
-     * 	  (FIXME: do we even want to bother with this?).
+     *     - -3 means the square is marked with a question mark
+     *       (FIXME: do we even want to bother with this?).
      * 
-     * 	- 64 means the square has had a mine revealed when the game
-     * 	  was lost.
+     *     - 64 means the square has had a mine revealed when the game
+     *       was lost.
      * 
-     * 	- 65 means the square had a mine revealed and this was the
-     * 	  one the player hits.
+     *     - 65 means the square had a mine revealed and this was the
+     *       one the player hits.
      * 
-     * 	- 66 means the square has a crossed-out mine because the
-     * 	  player had incorrectly marked it.
+     *     - 66 means the square has a crossed-out mine because the
+     *       player had incorrectly marked it.
      */
 };
 
@@ -140,7 +140,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -158,19 +158,19 @@ static void decode_params(game_params *params, char const *string)
         params->h = params->w;
     }
     if (*p == 'n') {
-	p++;
-	params->n = atoi(p);
-	while (*p && (*p == '.' || isdigit((unsigned char)*p))) p++;
+    p++;
+    params->n = atoi(p);
+    while (*p && (*p == '.' || isdigit((unsigned char)*p))) p++;
     } else {
-	params->n = params->w * params->h / 10;
+    params->n = params->w * params->h / 10;
     }
 
     while (*p) {
-	if (*p == 'a') {
+    if (*p == 'a') {
             p++;
-	    params->unique = false;
-	} else
-	    p++;		       /* skip any other gunk */
+        params->unique = false;
+    } else
+        p++;               /* skip any other gunk */
     }
 }
 
@@ -185,7 +185,7 @@ static char *encode_params(const game_params *params, bool full)
      * deduced from the mine bitmap!
      */
     if (full)
-	len += sprintf(ret+len, "n%d", params->n);
+    len += sprintf(ret+len, "n%d", params->n);
     if (full && !params->unique)
         ret[len++] = 'a';
     assert(len < lenof(ret));
@@ -234,7 +234,7 @@ static game_params *custom_params(const config_item *cfg)
     ret->h = atoi(cfg[1].u.string.sval);
     ret->n = atoi(cfg[2].u.string.sval);
     if (strchr(cfg[2].u.string.sval, '%'))
-	ret->n = ret->n * (ret->w * ret->h) / 100;
+    ret->n = ret->n * (ret->w * ret->h) / 100;
     ret->unique = cfg[3].u.boolean.bval;
 
     return ret;
@@ -257,11 +257,11 @@ static const char *validate_params(const game_params *params, bool full)
      * position of.
      */
     if (full && params->unique && (params->w <= 2 || params->h <= 2))
-	return "Width and height must both be greater than two";
+    return "Width and height must both be greater than two";
     if (params->n < 0)
-	return "Mine count may not be negative";
+    return "Mine count may not be negative";
     if (params->n > params->w * params->h - 9)
-	return "Too many mines for grid size";
+    return "Too many mines for grid size";
 
     /*
      * FIXME: Need more constraints here. Not sure what the
@@ -309,19 +309,19 @@ static int setcmp(void *av, void *bv)
     struct set *b = (struct set *)bv;
 
     if (a->y < b->y)
-	return -1;
+    return -1;
     else if (a->y > b->y)
-	return +1;
+    return +1;
     else if (a->x < b->x)
-	return -1;
+    return -1;
     else if (a->x > b->x)
-	return +1;
+    return +1;
     else if (a->mask < b->mask)
-	return -1;
+    return -1;
     else if (a->mask > b->mask)
-	return +1;
+    return +1;
     else
-	return 0;
+    return 0;
 }
 
 struct setstore {
@@ -343,35 +343,35 @@ static struct setstore *ss_new(void)
  * with the second. Return the new mask part of the first set.
  */
 static int setmunge(int x1, int y1, int mask1, int x2, int y2, int mask2,
-		    bool diff)
+            bool diff)
 {
     /*
      * Adjust the second set so that it has the same x,y
      * coordinates as the first.
      */
     if (abs(x2-x1) >= 3 || abs(y2-y1) >= 3) {
-	mask2 = 0;
+    mask2 = 0;
     } else {
-	while (x2 > x1) {
-	    mask2 &= ~(4|32|256);
-	    mask2 <<= 1;
-	    x2--;
-	}
-	while (x2 < x1) {
-	    mask2 &= ~(1|8|64);
-	    mask2 >>= 1;
-	    x2++;
-	}
-	while (y2 > y1) {
-	    mask2 &= ~(64|128|256);
-	    mask2 <<= 3;
-	    y2--;
-	}
-	while (y2 < y1) {
-	    mask2 &= ~(1|2|4);
-	    mask2 >>= 3;
-	    y2++;
-	}
+    while (x2 > x1) {
+        mask2 &= ~(4|32|256);
+        mask2 <<= 1;
+        x2--;
+    }
+    while (x2 < x1) {
+        mask2 &= ~(1|8|64);
+        mask2 >>= 1;
+        x2++;
+    }
+    while (y2 > y1) {
+        mask2 &= ~(64|128|256);
+        mask2 <<= 3;
+        y2--;
+    }
+    while (y2 < y1) {
+        mask2 &= ~(1|2|4);
+        mask2 >>= 3;
+        y2++;
+    }
     }
 
     /*
@@ -379,7 +379,7 @@ static int setmunge(int x1, int y1, int mask1, int x2, int y2, int mask2,
      * rather than A & B).
      */
     if (diff)
-	mask2 ^= 511;
+    mask2 ^= 511;
 
     /*
      * Now all that's left is a logical AND.
@@ -390,18 +390,18 @@ static int setmunge(int x1, int y1, int mask1, int x2, int y2, int mask2,
 static void ss_add_todo(struct setstore *ss, struct set *s)
 {
     if (s->todo)
-	return;			       /* already on it */
+    return;                   /* already on it */
 
 #ifdef SOLVER_DIAGNOSTICS
     printf("adding set on todo list: %d,%d %03x %d\n",
-	   s->x, s->y, s->mask, s->mines);
+       s->x, s->y, s->mask, s->mines);
 #endif
 
     s->prev = ss->todo_tail;
     if (s->prev)
-	s->prev->next = s;
+    s->prev->next = s;
     else
-	ss->todo_head = s;
+    ss->todo_head = s;
     ss->todo_tail = s;
     s->next = NULL;
     s->todo = true;
@@ -418,9 +418,9 @@ static void ss_add(struct setstore *ss, int x, int y, int mask, int mines)
      * rectangle.
      */
     while (!(mask & (1|8|64)))
-	mask >>= 1, x++;
+    mask >>= 1, x++;
     while (!(mask & (1|2|4)))
-	mask >>= 3, y++;
+    mask >>= 3, y++;
 
     /*
      * Create a set structure and add it to the tree.
@@ -432,11 +432,11 @@ static void ss_add(struct setstore *ss, int x, int y, int mask, int mines)
     s->mines = mines;
     s->todo = false;
     if (add234(ss->sets, s) != s) {
-	/*
-	 * This set already existed! Free it and return.
-	 */
-	sfree(s);
-	return;
+    /*
+     * This set already existed! Free it and return.
+     */
+    sfree(s);
+    return;
     }
 
     /*
@@ -457,14 +457,14 @@ static void ss_remove(struct setstore *ss, struct set *s)
      * Remove s from the todo list.
      */
     if (prev)
-	prev->next = next;
+    prev->next = next;
     else if (s == ss->todo_head)
-	ss->todo_head = next;
+    ss->todo_head = next;
 
     if (next)
-	next->prev = prev;
+    next->prev = prev;
     else if (s == ss->todo_tail)
-	ss->todo_tail = prev;
+    ss->todo_tail = prev;
 
     s->todo = false;
 
@@ -490,41 +490,41 @@ static struct set **ss_overlap(struct setstore *ss, int x, int y, int mask)
     int xx, yy;
 
     for (xx = x-3; xx < x+3; xx++)
-	for (yy = y-3; yy < y+3; yy++) {
-	    struct set stmp, *s;
-	    int pos;
+    for (yy = y-3; yy < y+3; yy++) {
+        struct set stmp, *s;
+        int pos;
 
-	    /*
-	     * Find the first set with these top left coordinates.
-	     */
-	    stmp.x = xx;
-	    stmp.y = yy;
-	    stmp.mask = 0;
+        /*
+         * Find the first set with these top left coordinates.
+         */
+        stmp.x = xx;
+        stmp.y = yy;
+        stmp.mask = 0;
 
-	    if (findrelpos234(ss->sets, &stmp, NULL, REL234_GE, &pos)) {
-		while ((s = index234(ss->sets, pos)) != NULL &&
-		       s->x == xx && s->y == yy) {
-		    /*
-		     * This set potentially overlaps the input one.
-		     * Compute the intersection to see if they
-		     * really overlap, and add it to the list if
-		     * so.
-		     */
-		    if (setmunge(x, y, mask, s->x, s->y, s->mask, false)) {
-			/*
-			 * There's an overlap.
-			 */
-			if (nret >= retsize) {
-			    retsize = nret + 32;
-			    ret = sresize(ret, retsize, struct set *);
-			}
-			ret[nret++] = s;
-		    }
+        if (findrelpos234(ss->sets, &stmp, NULL, REL234_GE, &pos)) {
+        while ((s = index234(ss->sets, pos)) != NULL &&
+               s->x == xx && s->y == yy) {
+            /*
+             * This set potentially overlaps the input one.
+             * Compute the intersection to see if they
+             * really overlap, and add it to the list if
+             * so.
+             */
+            if (setmunge(x, y, mask, s->x, s->y, s->mask, false)) {
+            /*
+             * There's an overlap.
+             */
+            if (nret >= retsize) {
+                retsize = nret + 32;
+                ret = sresize(ret, retsize, struct set *);
+            }
+            ret[nret++] = s;
+            }
 
-		    pos++;
-		}
-	    }
-	}
+            pos++;
+        }
+        }
+    }
 
     ret = sresize(ret, nret+1, struct set *);
     ret[nret] = NULL;
@@ -538,17 +538,17 @@ static struct set **ss_overlap(struct setstore *ss, int x, int y, int mask)
 static struct set *ss_todo(struct setstore *ss)
 {
     if (ss->todo_head) {
-	struct set *ret = ss->todo_head;
-	ss->todo_head = ret->next;
-	if (ss->todo_head)
-	    ss->todo_head->prev = NULL;
-	else
-	    ss->todo_tail = NULL;
-	ret->next = ret->prev = NULL;
-	ret->todo = false;
-	return ret;
+    struct set *ret = ss->todo_head;
+    ss->todo_head = ret->next;
+    if (ss->todo_head)
+        ss->todo_head->prev = NULL;
+    else
+        ss->todo_tail = NULL;
+    ret->next = ret->prev = NULL;
+    ret->todo = false;
+    return ret;
     } else {
-	return NULL;
+    return NULL;
     }
 }
 
@@ -560,9 +560,9 @@ struct squaretodo {
 static void std_add(struct squaretodo *std, int i)
 {
     if (std->tail >= 0)
-	std->next[std->tail] = i;
+    std->next[std->tail] = i;
     else
-	std->head = i;
+    std->head = i;
     std->tail = i;
     std->next[i] = -1;
 }
@@ -571,37 +571,37 @@ typedef int (*open_cb)(void *, int, int);
 
 static void known_squares(int w, int h, struct squaretodo *std,
                           signed char *grid,
-			  open_cb open, void *openctx,
-			  int x, int y, int mask, bool mine)
+              open_cb open, void *openctx,
+              int x, int y, int mask, bool mine)
 {
     int xx, yy, bit;
 
     bit = 1;
 
     for (yy = 0; yy < 3; yy++)
-	for (xx = 0; xx < 3; xx++) {
-	    if (mask & bit) {
-		int i = (y + yy) * w + (x + xx);
+    for (xx = 0; xx < 3; xx++) {
+        if (mask & bit) {
+        int i = (y + yy) * w + (x + xx);
 
-		/*
-		 * It's possible that this square is _already_
-		 * known, in which case we don't try to add it to
-		 * the list twice.
-		 */
-		if (grid[i] == -2) {
+        /*
+         * It's possible that this square is _already_
+         * known, in which case we don't try to add it to
+         * the list twice.
+         */
+        if (grid[i] == -2) {
 
-		    if (mine) {
-			grid[i] = -1;   /* and don't open it! */
-		    } else {
-			grid[i] = open(openctx, x + xx, y + yy);
-			assert(grid[i] != -1);   /* *bang* */
-		    }
-		    std_add(std, i);
+            if (mine) {
+            grid[i] = -1;   /* and don't open it! */
+            } else {
+            grid[i] = open(openctx, x + xx, y + yy);
+            assert(grid[i] != -1);   /* *bang* */
+            }
+            std_add(std, i);
 
-		}
-	    }
-	    bit <<= 1;
-	}
+        }
+        }
+        bit <<= 1;
+    }
 }
 
 /*
@@ -614,7 +614,7 @@ static void known_squares(int w, int h, struct squaretodo *std,
  */
 struct perturbation {
     int x, y;
-    int delta;			       /* +1 == become a mine; -1 == cleared */
+    int delta;                   /* +1 == become a mine; -1 == cleared */
 };
 struct perturbations {
     int n;
@@ -641,9 +641,9 @@ struct perturbations {
 typedef struct perturbations *(*perturb_cb) (void *, signed char *, int, int, int);
 
 static int minesolve(int w, int h, int n, signed char *grid,
-		     open_cb open,
+             open_cb open,
                      perturb_cb perturb,
-		     void *ctx, random_state *rs)
+             void *ctx, random_state *rs)
 {
     struct setstore *ss = ss_new();
     struct set **list;
@@ -663,634 +663,634 @@ static int minesolve(int w, int h, int n, signed char *grid,
      * grid.
      */
     for (y = 0; y < h; y++) {
-	for (x = 0; x < w; x++) {
-	    i = y*w+x;
-	    if (grid[i] != -2)
-		std_add(std, i);
-	}
+    for (x = 0; x < w; x++) {
+        i = y*w+x;
+        if (grid[i] != -2)
+        std_add(std, i);
+    }
     }
 
     /*
      * Main deductive loop.
      */
     while (1) {
-	bool done_something = false;
-	struct set *s;
+    bool done_something = false;
+    struct set *s;
 
-	/*
-	 * If there are any known squares on the todo list, process
-	 * them and construct a set for each.
-	 */
-	while (std->head != -1) {
-	    i = std->head;
+    /*
+     * If there are any known squares on the todo list, process
+     * them and construct a set for each.
+     */
+    while (std->head != -1) {
+        i = std->head;
 #ifdef SOLVER_DIAGNOSTICS
-	    printf("known square at %d,%d [%d]\n", i%w, i/w, grid[i]);
+        printf("known square at %d,%d [%d]\n", i%w, i/w, grid[i]);
 #endif
-	    std->head = std->next[i];
-	    if (std->head == -1)
-		std->tail = -1;
+        std->head = std->next[i];
+        if (std->head == -1)
+        std->tail = -1;
 
-	    x = i % w;
-	    y = i / w;
+        x = i % w;
+        y = i / w;
 
-	    if (grid[i] >= 0) {
-		int dx, dy, mines, bit, val;
+        if (grid[i] >= 0) {
+        int dx, dy, mines, bit, val;
 #ifdef SOLVER_DIAGNOSTICS
-		printf("creating set around this square\n");
+        printf("creating set around this square\n");
 #endif
-		/*
-		 * Empty square. Construct the set of non-known squares
-		 * around this one, and determine its mine count.
-		 */
-		mines = grid[i];
-		bit = 1;
-		val = 0;
-		for (dy = -1; dy <= +1; dy++) {
-		    for (dx = -1; dx <= +1; dx++) {
+        /*
+         * Empty square. Construct the set of non-known squares
+         * around this one, and determine its mine count.
+         */
+        mines = grid[i];
+        bit = 1;
+        val = 0;
+        for (dy = -1; dy <= +1; dy++) {
+            for (dx = -1; dx <= +1; dx++) {
 #ifdef SOLVER_DIAGNOSTICS
-			printf("grid %d,%d = %d\n", x+dx, y+dy, grid[i+dy*w+dx]);
+            printf("grid %d,%d = %d\n", x+dx, y+dy, grid[i+dy*w+dx]);
 #endif
-			if (x+dx < 0 || x+dx >= w || y+dy < 0 || y+dy >= h)
-			    /* ignore this one */;
-			else if (grid[i+dy*w+dx] == -1)
-			    mines--;
-			else if (grid[i+dy*w+dx] == -2)
-			    val |= bit;
-			bit <<= 1;
-		    }
-		}
-		if (val)
-		    ss_add(ss, x-1, y-1, val, mines);
-	    }
+            if (x+dx < 0 || x+dx >= w || y+dy < 0 || y+dy >= h)
+                /* ignore this one */;
+            else if (grid[i+dy*w+dx] == -1)
+                mines--;
+            else if (grid[i+dy*w+dx] == -2)
+                val |= bit;
+            bit <<= 1;
+            }
+        }
+        if (val)
+            ss_add(ss, x-1, y-1, val, mines);
+        }
 
-	    /*
-	     * Now, whether the square is empty or full, we must
-	     * find any set which contains it and replace it with
-	     * one which does not.
-	     */
-	    {
+        /*
+         * Now, whether the square is empty or full, we must
+         * find any set which contains it and replace it with
+         * one which does not.
+         */
+        {
 #ifdef SOLVER_DIAGNOSTICS
-		printf("finding sets containing known square %d,%d\n", x, y);
+        printf("finding sets containing known square %d,%d\n", x, y);
 #endif
-		list = ss_overlap(ss, x, y, 1);
+        list = ss_overlap(ss, x, y, 1);
 
-		for (j = 0; list[j]; j++) {
-		    int newmask, newmines;
+        for (j = 0; list[j]; j++) {
+            int newmask, newmines;
 
-		    s = list[j];
+            s = list[j];
 
-		    /*
-		     * Compute the mask for this set minus the
-		     * newly known square.
-		     */
-		    newmask = setmunge(s->x, s->y, s->mask, x, y, 1, true);
+            /*
+             * Compute the mask for this set minus the
+             * newly known square.
+             */
+            newmask = setmunge(s->x, s->y, s->mask, x, y, 1, true);
 
-		    /*
-		     * Compute the new mine count.
-		     */
-		    newmines = s->mines - (grid[i] == -1);
+            /*
+             * Compute the new mine count.
+             */
+            newmines = s->mines - (grid[i] == -1);
 
-		    /*
-		     * Insert the new set into the collection,
-		     * unless it's been whittled right down to
-		     * nothing.
-		     */
-		    if (newmask)
-			ss_add(ss, s->x, s->y, newmask, newmines);
+            /*
+             * Insert the new set into the collection,
+             * unless it's been whittled right down to
+             * nothing.
+             */
+            if (newmask)
+            ss_add(ss, s->x, s->y, newmask, newmines);
 
-		    /*
-		     * Destroy the old one; it is actually obsolete.
-		     */
-		    ss_remove(ss, s);
-		}
+            /*
+             * Destroy the old one; it is actually obsolete.
+             */
+            ss_remove(ss, s);
+        }
 
-		sfree(list);
-	    }
+        sfree(list);
+        }
 
-	    /*
-	     * Marking a fresh square as known certainly counts as
-	     * doing something.
-	     */
-	    done_something = true;
-	}
+        /*
+         * Marking a fresh square as known certainly counts as
+         * doing something.
+         */
+        done_something = true;
+    }
 
-	/*
-	 * Now pick a set off the to-do list and attempt deductions
-	 * based on it.
-	 */
-	if ((s = ss_todo(ss)) != NULL) {
+    /*
+     * Now pick a set off the to-do list and attempt deductions
+     * based on it.
+     */
+    if ((s = ss_todo(ss)) != NULL) {
 
 #ifdef SOLVER_DIAGNOSTICS
-	    printf("set to do: %d,%d %03x %d\n", s->x, s->y, s->mask, s->mines);
+        printf("set to do: %d,%d %03x %d\n", s->x, s->y, s->mask, s->mines);
 #endif
-	    /*
-	     * Firstly, see if this set has a mine count of zero or
-	     * of its own cardinality.
-	     */
-	    if (s->mines == 0 || s->mines == bitcount16(s->mask)) {
-		/*
-		 * If so, we can immediately mark all the squares
-		 * in the set as known.
-		 */
+        /*
+         * Firstly, see if this set has a mine count of zero or
+         * of its own cardinality.
+         */
+        if (s->mines == 0 || s->mines == bitcount16(s->mask)) {
+        /*
+         * If so, we can immediately mark all the squares
+         * in the set as known.
+         */
 #ifdef SOLVER_DIAGNOSTICS
-		printf("easy\n");
+        printf("easy\n");
 #endif
-		known_squares(w, h, std, grid, open, ctx,
-			      s->x, s->y, s->mask, (s->mines != 0));
+        known_squares(w, h, std, grid, open, ctx,
+                  s->x, s->y, s->mask, (s->mines != 0));
 
-		/*
-		 * Having done that, we need do nothing further
-		 * with this set; marking all the squares in it as
-		 * known will eventually eliminate it, and will
-		 * also permit further deductions about anything
-		 * that overlaps it.
-		 */
-		continue;
-	    }
+        /*
+         * Having done that, we need do nothing further
+         * with this set; marking all the squares in it as
+         * known will eventually eliminate it, and will
+         * also permit further deductions about anything
+         * that overlaps it.
+         */
+        continue;
+        }
 
-	    /*
-	     * Failing that, we now search through all the sets
-	     * which overlap this one.
-	     */
-	    list = ss_overlap(ss, s->x, s->y, s->mask);
+        /*
+         * Failing that, we now search through all the sets
+         * which overlap this one.
+         */
+        list = ss_overlap(ss, s->x, s->y, s->mask);
 
-	    for (j = 0; list[j]; j++) {
-		struct set *s2 = list[j];
-		int swing, s2wing, swc, s2wc;
+        for (j = 0; list[j]; j++) {
+        struct set *s2 = list[j];
+        int swing, s2wing, swc, s2wc;
 
-		/*
-		 * Find the non-overlapping parts s2-s and s-s2,
-		 * and their cardinalities.
-		 * 
-		 * I'm going to refer to these parts as `wings'
-		 * surrounding the central part common to both
-		 * sets. The `s wing' is s-s2; the `s2 wing' is
-		 * s2-s.
-		 */
-		swing = setmunge(s->x, s->y, s->mask, s2->x, s2->y, s2->mask,
-				 true);
-		s2wing = setmunge(s2->x, s2->y, s2->mask, s->x, s->y, s->mask,
-				 true);
-		swc = bitcount16(swing);
-		s2wc = bitcount16(s2wing);
+        /*
+         * Find the non-overlapping parts s2-s and s-s2,
+         * and their cardinalities.
+         * 
+         * I'm going to refer to these parts as `wings'
+         * surrounding the central part common to both
+         * sets. The `s wing' is s-s2; the `s2 wing' is
+         * s2-s.
+         */
+        swing = setmunge(s->x, s->y, s->mask, s2->x, s2->y, s2->mask,
+                 true);
+        s2wing = setmunge(s2->x, s2->y, s2->mask, s->x, s->y, s->mask,
+                 true);
+        swc = bitcount16(swing);
+        s2wc = bitcount16(s2wing);
 
-		/*
-		 * If one set has more mines than the other, and
-		 * the number of extra mines is equal to the
-		 * cardinality of that set's wing, then we can mark
-		 * every square in the wing as a known mine, and
-		 * every square in the other wing as known clear.
-		 */
-		if (swc == s->mines - s2->mines ||
-		    s2wc == s2->mines - s->mines) {
-		    known_squares(w, h, std, grid, open, ctx,
-				  s->x, s->y, swing,
-				  (swc == s->mines - s2->mines));
-		    known_squares(w, h, std, grid, open, ctx,
-				  s2->x, s2->y, s2wing,
-				  (s2wc == s2->mines - s->mines));
-		    continue;
-		}
+        /*
+         * If one set has more mines than the other, and
+         * the number of extra mines is equal to the
+         * cardinality of that set's wing, then we can mark
+         * every square in the wing as a known mine, and
+         * every square in the other wing as known clear.
+         */
+        if (swc == s->mines - s2->mines ||
+            s2wc == s2->mines - s->mines) {
+            known_squares(w, h, std, grid, open, ctx,
+                  s->x, s->y, swing,
+                  (swc == s->mines - s2->mines));
+            known_squares(w, h, std, grid, open, ctx,
+                  s2->x, s2->y, s2wing,
+                  (s2wc == s2->mines - s->mines));
+            continue;
+        }
 
-		/*
-		 * Failing that, see if one set is a subset of the
-		 * other. If so, we can divide up the mine count of
-		 * the larger set between the smaller set and its
-		 * complement, even if neither smaller set ends up
-		 * being immediately clearable.
-		 */
-		if (swc == 0 && s2wc != 0) {
-		    /* s is a subset of s2. */
-		    assert(s2->mines > s->mines);
-		    ss_add(ss, s2->x, s2->y, s2wing, s2->mines - s->mines);
-		} else if (s2wc == 0 && swc != 0) {
-		    /* s2 is a subset of s. */
-		    assert(s->mines > s2->mines);
-		    ss_add(ss, s->x, s->y, swing, s->mines - s2->mines);
-		}
-	    }
+        /*
+         * Failing that, see if one set is a subset of the
+         * other. If so, we can divide up the mine count of
+         * the larger set between the smaller set and its
+         * complement, even if neither smaller set ends up
+         * being immediately clearable.
+         */
+        if (swc == 0 && s2wc != 0) {
+            /* s is a subset of s2. */
+            assert(s2->mines > s->mines);
+            ss_add(ss, s2->x, s2->y, s2wing, s2->mines - s->mines);
+        } else if (s2wc == 0 && swc != 0) {
+            /* s2 is a subset of s. */
+            assert(s->mines > s2->mines);
+            ss_add(ss, s->x, s->y, swing, s->mines - s2->mines);
+        }
+        }
 
-	    sfree(list);
+        sfree(list);
 
-	    /*
-	     * In this situation we have definitely done
-	     * _something_, even if it's only reducing the size of
-	     * our to-do list.
-	     */
-	    done_something = true;
-	} else if (n >= 0) {
-	    /*
-	     * We have nothing left on our todo list, which means
-	     * all localised deductions have failed. Our next step
-	     * is to resort to global deduction based on the total
-	     * mine count. This is computationally expensive
-	     * compared to any of the above deductions, which is
-	     * why we only ever do it when all else fails, so that
-	     * hopefully it won't have to happen too often.
-	     * 
-	     * If you pass n<0 into this solver, that informs it
-	     * that you do not know the total mine count, so it
-	     * won't even attempt these deductions.
-	     */
+        /*
+         * In this situation we have definitely done
+         * _something_, even if it's only reducing the size of
+         * our to-do list.
+         */
+        done_something = true;
+    } else if (n >= 0) {
+        /*
+         * We have nothing left on our todo list, which means
+         * all localised deductions have failed. Our next step
+         * is to resort to global deduction based on the total
+         * mine count. This is computationally expensive
+         * compared to any of the above deductions, which is
+         * why we only ever do it when all else fails, so that
+         * hopefully it won't have to happen too often.
+         * 
+         * If you pass n<0 into this solver, that informs it
+         * that you do not know the total mine count, so it
+         * won't even attempt these deductions.
+         */
 
-	    int minesleft, squaresleft;
-	    int nsets, cursor;
+        int minesleft, squaresleft;
+        int nsets, cursor;
             bool setused[10];
 
-	    /*
-	     * Start by scanning the current grid state to work out
-	     * how many unknown squares we still have, and how many
-	     * mines are to be placed in them.
-	     */
-	    squaresleft = 0;
-	    minesleft = n;
-	    for (i = 0; i < w*h; i++) {
-		if (grid[i] == -1)
-		    minesleft--;
-		else if (grid[i] == -2)
-		    squaresleft++;
-	    }
+        /*
+         * Start by scanning the current grid state to work out
+         * how many unknown squares we still have, and how many
+         * mines are to be placed in them.
+         */
+        squaresleft = 0;
+        minesleft = n;
+        for (i = 0; i < w*h; i++) {
+        if (grid[i] == -1)
+            minesleft--;
+        else if (grid[i] == -2)
+            squaresleft++;
+        }
 
 #ifdef SOLVER_DIAGNOSTICS
-	    printf("global deduction time: squaresleft=%d minesleft=%d\n",
-		   squaresleft, minesleft);
-	    for (y = 0; y < h; y++) {
-		for (x = 0; x < w; x++) {
-		    int v = grid[y*w+x];
-		    if (v == -1)
-			putchar('*');
-		    else if (v == -2)
-			putchar('?');
-		    else if (v == 0)
-			putchar('-');
-		    else
-			putchar('0' + v);
-		}
-		putchar('\n');
-	    }
+        printf("global deduction time: squaresleft=%d minesleft=%d\n",
+           squaresleft, minesleft);
+        for (y = 0; y < h; y++) {
+        for (x = 0; x < w; x++) {
+            int v = grid[y*w+x];
+            if (v == -1)
+            putchar('*');
+            else if (v == -2)
+            putchar('?');
+            else if (v == 0)
+            putchar('-');
+            else
+            putchar('0' + v);
+        }
+        putchar('\n');
+        }
 #endif
 
-	    /*
-	     * If there _are_ no unknown squares, we have actually
-	     * finished.
-	     */
-	    if (squaresleft == 0) {
-		assert(minesleft == 0);
-		break;
-	    }
+        /*
+         * If there _are_ no unknown squares, we have actually
+         * finished.
+         */
+        if (squaresleft == 0) {
+        assert(minesleft == 0);
+        break;
+        }
 
-	    /*
-	     * First really simple case: if there are no more mines
-	     * left, or if there are exactly as many mines left as
-	     * squares to play them in, then it's all easy.
-	     */
-	    if (minesleft == 0 || minesleft == squaresleft) {
-		for (i = 0; i < w*h; i++)
-		    if (grid[i] == -2)
-			known_squares(w, h, std, grid, open, ctx,
-				      i % w, i / w, 1, minesleft != 0);
-		continue;	       /* now go back to main deductive loop */
-	    }
+        /*
+         * First really simple case: if there are no more mines
+         * left, or if there are exactly as many mines left as
+         * squares to play them in, then it's all easy.
+         */
+        if (minesleft == 0 || minesleft == squaresleft) {
+        for (i = 0; i < w*h; i++)
+            if (grid[i] == -2)
+            known_squares(w, h, std, grid, open, ctx,
+                      i % w, i / w, 1, minesleft != 0);
+        continue;           /* now go back to main deductive loop */
+        }
 
-	    /*
-	     * Failing that, we have to do some _real_ work.
-	     * Ideally what we do here is to try every single
-	     * combination of the currently available sets, in an
-	     * attempt to find a disjoint union (i.e. a set of
-	     * squares with a known mine count between them) such
-	     * that the remaining unknown squares _not_ contained
-	     * in that union either contain no mines or are all
-	     * mines.
-	     * 
-	     * Actually enumerating all 2^n possibilities will get
-	     * a bit slow for large n, so I artificially cap this
-	     * recursion at n=10 to avoid too much pain.
-	     */
-	    nsets = count234(ss->sets);
-	    if (nsets <= lenof(setused)) {
-		/*
-		 * Doing this with actual recursive function calls
-		 * would get fiddly because a load of local
-		 * variables from this function would have to be
-		 * passed down through the recursion. So instead
-		 * I'm going to use a virtual recursion within this
-		 * function. The way this works is:
-		 * 
-		 *  - we have an array `setused', such that setused[n]
-		 *    is true if set n is currently in the union we
-		 *    are considering.
-		 * 
-		 *  - we have a value `cursor' which indicates how
-		 *    much of `setused' we have so far filled in.
-		 *    It's conceptually the recursion depth.
-		 * 
-		 * We begin by setting `cursor' to zero. Then:
-		 * 
-		 *  - if cursor can advance, we advance it by one. We
-		 *    set the value in `setused' that it went past to
-		 *    true if that set is disjoint from anything else
-		 *    currently in `setused', or to false otherwise.
-		 * 
-		 *  - If cursor cannot advance because it has
-		 *    reached the end of the setused list, then we
-		 *    have a maximal disjoint union. Check to see
-		 *    whether its mine count has any useful
-		 *    properties. If so, mark all the squares not
-		 *    in the union as known and terminate.
-		 * 
-		 *  - If cursor has reached the end of setused and the
-		 *    algorithm _hasn't_ terminated, back cursor up to
-		 *    the nearest true entry, reset it to false, and
-		 *    advance cursor just past it.
-		 * 
-		 *  - If we attempt to back up to the nearest 1 and
-		 *    there isn't one at all, then we have gone
-		 *    through all disjoint unions of sets in the
-		 *    list and none of them has been helpful, so we
-		 *    give up.
-		 */
-		struct set *sets[lenof(setused)];
-		for (i = 0; i < nsets; i++)
-		    sets[i] = index234(ss->sets, i);
+        /*
+         * Failing that, we have to do some _real_ work.
+         * Ideally what we do here is to try every single
+         * combination of the currently available sets, in an
+         * attempt to find a disjoint union (i.e. a set of
+         * squares with a known mine count between them) such
+         * that the remaining unknown squares _not_ contained
+         * in that union either contain no mines or are all
+         * mines.
+         * 
+         * Actually enumerating all 2^n possibilities will get
+         * a bit slow for large n, so I artificially cap this
+         * recursion at n=10 to avoid too much pain.
+         */
+        nsets = count234(ss->sets);
+        if (nsets <= lenof(setused)) {
+        /*
+         * Doing this with actual recursive function calls
+         * would get fiddly because a load of local
+         * variables from this function would have to be
+         * passed down through the recursion. So instead
+         * I'm going to use a virtual recursion within this
+         * function. The way this works is:
+         * 
+         *  - we have an array `setused', such that setused[n]
+         *    is true if set n is currently in the union we
+         *    are considering.
+         * 
+         *  - we have a value `cursor' which indicates how
+         *    much of `setused' we have so far filled in.
+         *    It's conceptually the recursion depth.
+         * 
+         * We begin by setting `cursor' to zero. Then:
+         * 
+         *  - if cursor can advance, we advance it by one. We
+         *    set the value in `setused' that it went past to
+         *    true if that set is disjoint from anything else
+         *    currently in `setused', or to false otherwise.
+         * 
+         *  - If cursor cannot advance because it has
+         *    reached the end of the setused list, then we
+         *    have a maximal disjoint union. Check to see
+         *    whether its mine count has any useful
+         *    properties. If so, mark all the squares not
+         *    in the union as known and terminate.
+         * 
+         *  - If cursor has reached the end of setused and the
+         *    algorithm _hasn't_ terminated, back cursor up to
+         *    the nearest true entry, reset it to false, and
+         *    advance cursor just past it.
+         * 
+         *  - If we attempt to back up to the nearest 1 and
+         *    there isn't one at all, then we have gone
+         *    through all disjoint unions of sets in the
+         *    list and none of them has been helpful, so we
+         *    give up.
+         */
+        struct set *sets[lenof(setused)];
+        for (i = 0; i < nsets; i++)
+            sets[i] = index234(ss->sets, i);
 
-		cursor = 0;
-		while (1) {
+        cursor = 0;
+        while (1) {
 
-		    if (cursor < nsets) {
-			bool ok = true;
+            if (cursor < nsets) {
+            bool ok = true;
 
-			/* See if any existing set overlaps this one. */
-			for (i = 0; i < cursor; i++)
-			    if (setused[i] &&
-				setmunge(sets[cursor]->x,
-					 sets[cursor]->y,
-					 sets[cursor]->mask,
-					 sets[i]->x, sets[i]->y, sets[i]->mask,
-					 false)) {
-				ok = false;
-				break;
-			    }
+            /* See if any existing set overlaps this one. */
+            for (i = 0; i < cursor; i++)
+                if (setused[i] &&
+                setmunge(sets[cursor]->x,
+                     sets[cursor]->y,
+                     sets[cursor]->mask,
+                     sets[i]->x, sets[i]->y, sets[i]->mask,
+                     false)) {
+                ok = false;
+                break;
+                }
 
-			if (ok) {
-			    /*
-			     * We're adding this set to our union,
-			     * so adjust minesleft and squaresleft
-			     * appropriately.
-			     */
-			    minesleft -= sets[cursor]->mines;
-			    squaresleft -= bitcount16(sets[cursor]->mask);
-			}
+            if (ok) {
+                /*
+                 * We're adding this set to our union,
+                 * so adjust minesleft and squaresleft
+                 * appropriately.
+                 */
+                minesleft -= sets[cursor]->mines;
+                squaresleft -= bitcount16(sets[cursor]->mask);
+            }
 
-			setused[cursor++] = ok;
-		    } else {
+            setused[cursor++] = ok;
+            } else {
 #ifdef SOLVER_DIAGNOSTICS
-			printf("trying a set combination with %d %d\n",
-			       squaresleft, minesleft);
+            printf("trying a set combination with %d %d\n",
+                   squaresleft, minesleft);
 #endif /* SOLVER_DIAGNOSTICS */
 
-			/*
-			 * We've reached the end. See if we've got
-			 * anything interesting.
-			 */
-			if (squaresleft > 0 &&
-			    (minesleft == 0 || minesleft == squaresleft)) {
-			    /*
-			     * We have! There is at least one
-			     * square not contained within the set
-			     * union we've just found, and we can
-			     * deduce that either all such squares
-			     * are mines or all are not (depending
-			     * on whether minesleft==0). So now all
-			     * we have to do is actually go through
-			     * the grid, find those squares, and
-			     * mark them.
-			     */
-			    for (i = 0; i < w*h; i++)
-				if (grid[i] == -2) {
+            /*
+             * We've reached the end. See if we've got
+             * anything interesting.
+             */
+            if (squaresleft > 0 &&
+                (minesleft == 0 || minesleft == squaresleft)) {
+                /*
+                 * We have! There is at least one
+                 * square not contained within the set
+                 * union we've just found, and we can
+                 * deduce that either all such squares
+                 * are mines or all are not (depending
+                 * on whether minesleft==0). So now all
+                 * we have to do is actually go through
+                 * the grid, find those squares, and
+                 * mark them.
+                 */
+                for (i = 0; i < w*h; i++)
+                if (grid[i] == -2) {
                                     bool outside = true;
-				    y = i / w;
-				    x = i % w;
-				    for (j = 0; j < nsets; j++)
-					if (setused[j] &&
-					    setmunge(sets[j]->x, sets[j]->y,
-						     sets[j]->mask, x, y, 1,
-						     false)) {
-					    outside = false;
-					    break;
-					}
-				    if (outside)
-					known_squares(w, h, std, grid,
-						      open, ctx,
-						      x, y, 1, minesleft != 0);
-				}
+                    y = i / w;
+                    x = i % w;
+                    for (j = 0; j < nsets; j++)
+                    if (setused[j] &&
+                        setmunge(sets[j]->x, sets[j]->y,
+                             sets[j]->mask, x, y, 1,
+                             false)) {
+                        outside = false;
+                        break;
+                    }
+                    if (outside)
+                    known_squares(w, h, std, grid,
+                              open, ctx,
+                              x, y, 1, minesleft != 0);
+                }
 
-			    done_something = true;
-			    break;     /* return to main deductive loop */
-			}
+                done_something = true;
+                break;     /* return to main deductive loop */
+            }
 
-			/*
-			 * If we reach here, then this union hasn't
-			 * done us any good, so move on to the
-			 * next. Backtrack cursor to the nearest 1,
-			 * change it to a 0 and continue.
-			 */
-			while (--cursor >= 0 && !setused[cursor]);
-			if (cursor >= 0) {
-			    assert(setused[cursor]);
+            /*
+             * If we reach here, then this union hasn't
+             * done us any good, so move on to the
+             * next. Backtrack cursor to the nearest 1,
+             * change it to a 0 and continue.
+             */
+            while (--cursor >= 0 && !setused[cursor]);
+            if (cursor >= 0) {
+                assert(setused[cursor]);
 
-			    /*
-			     * We're removing this set from our
-			     * union, so re-increment minesleft and
-			     * squaresleft.
-			     */
-			    minesleft += sets[cursor]->mines;
-			    squaresleft += bitcount16(sets[cursor]->mask);
+                /*
+                 * We're removing this set from our
+                 * union, so re-increment minesleft and
+                 * squaresleft.
+                 */
+                minesleft += sets[cursor]->mines;
+                squaresleft += bitcount16(sets[cursor]->mask);
 
-			    setused[cursor++] = false;
-			} else {
-			    /*
-			     * We've backtracked all the way to the
-			     * start without finding a single 1,
-			     * which means that our virtual
-			     * recursion is complete and nothing
-			     * helped.
-			     */
-			    break;
-			}
-		    }
+                setused[cursor++] = false;
+            } else {
+                /*
+                 * We've backtracked all the way to the
+                 * start without finding a single 1,
+                 * which means that our virtual
+                 * recursion is complete and nothing
+                 * helped.
+                 */
+                break;
+            }
+            }
 
-		}
+        }
 
-	    }
-	}
+        }
+    }
 
-	if (done_something)
-	    continue;
-
-#ifdef SOLVER_DIAGNOSTICS
-	/*
-	 * Dump the current known state of the grid.
-	 */
-	printf("solver ran out of steam, ret=%d, grid:\n", nperturbs);
-	for (y = 0; y < h; y++) {
-	    for (x = 0; x < w; x++) {
-		int v = grid[y*w+x];
-		if (v == -1)
-		    putchar('*');
-		else if (v == -2)
-		    putchar('?');
-		else if (v == 0)
-		    putchar('-');
-		else
-		    putchar('0' + v);
-	    }
-	    putchar('\n');
-	}
-
-	{
-	    struct set *s;
-
-	    for (i = 0; (s = index234(ss->sets, i)) != NULL; i++)
-		printf("remaining set: %d,%d %03x %d\n", s->x, s->y, s->mask, s->mines);
-	}
-#endif
-
-	/*
-	 * Now we really are at our wits' end as far as solving
-	 * this grid goes. Our only remaining option is to call
-	 * a perturb function and ask it to modify the grid to
-	 * make it easier.
-	 */
-	if (perturb) {
-	    struct perturbations *ret;
-	    struct set *s;
-
-	    nperturbs++;
-
-	    /*
-	     * Choose a set at random from the current selection,
-	     * and ask the perturb function to either fill or empty
-	     * it.
-	     * 
-	     * If we have no sets at all, we must give up.
-	     */
-	    if (count234(ss->sets) == 0) {
-#ifdef SOLVER_DIAGNOSTICS
-		printf("perturbing on entire unknown set\n");
-#endif
-		ret = perturb(ctx, grid, 0, 0, 0);
-	    } else {
-		s = index234(ss->sets, random_upto(rs, count234(ss->sets)));
-#ifdef SOLVER_DIAGNOSTICS
-		printf("perturbing on set %d,%d %03x\n", s->x, s->y, s->mask);
-#endif
-		ret = perturb(ctx, grid, s->x, s->y, s->mask);
-	    }
-
-	    if (ret) {
-		assert(ret->n > 0);    /* otherwise should have been NULL */
-
-		/*
-		 * A number of squares have been fiddled with, and
-		 * the returned structure tells us which. Adjust
-		 * the mine count in any set which overlaps one of
-		 * those squares, and put them back on the to-do
-		 * list. Also, if the square itself is marked as a
-		 * known non-mine, put it back on the squares-to-do
-		 * list.
-		 */
-		for (i = 0; i < ret->n; i++) {
-#ifdef SOLVER_DIAGNOSTICS
-		    printf("perturbation %s mine at %d,%d\n",
-			   ret->changes[i].delta > 0 ? "added" : "removed",
-			   ret->changes[i].x, ret->changes[i].y);
-#endif
-
-		    if (ret->changes[i].delta < 0 &&
-			grid[ret->changes[i].y*w+ret->changes[i].x] != -2) {
-			std_add(std, ret->changes[i].y*w+ret->changes[i].x);
-		    }
-
-		    list = ss_overlap(ss,
-				      ret->changes[i].x, ret->changes[i].y, 1);
-
-		    for (j = 0; list[j]; j++) {
-			list[j]->mines += ret->changes[i].delta;
-			ss_add_todo(ss, list[j]);
-		    }
-
-		    sfree(list);
-		}
-
-		/*
-		 * Now free the returned data.
-		 */
-		sfree(ret->changes);
-		sfree(ret);
+    if (done_something)
+        continue;
 
 #ifdef SOLVER_DIAGNOSTICS
-		/*
-		 * Dump the current known state of the grid.
-		 */
-		printf("state after perturbation:\n");
-		for (y = 0; y < h; y++) {
-		    for (x = 0; x < w; x++) {
-			int v = grid[y*w+x];
-			if (v == -1)
-			    putchar('*');
-			else if (v == -2)
-			    putchar('?');
-			else if (v == 0)
-			    putchar('-');
-			else
-			    putchar('0' + v);
-		    }
-		    putchar('\n');
-		}
+    /*
+     * Dump the current known state of the grid.
+     */
+    printf("solver ran out of steam, ret=%d, grid:\n", nperturbs);
+    for (y = 0; y < h; y++) {
+        for (x = 0; x < w; x++) {
+        int v = grid[y*w+x];
+        if (v == -1)
+            putchar('*');
+        else if (v == -2)
+            putchar('?');
+        else if (v == 0)
+            putchar('-');
+        else
+            putchar('0' + v);
+        }
+        putchar('\n');
+    }
 
-		{
-		    struct set *s;
+    {
+        struct set *s;
 
-		    for (i = 0; (s = index234(ss->sets, i)) != NULL; i++)
-			printf("remaining set: %d,%d %03x %d\n", s->x, s->y, s->mask, s->mines);
-		}
+        for (i = 0; (s = index234(ss->sets, i)) != NULL; i++)
+        printf("remaining set: %d,%d %03x %d\n", s->x, s->y, s->mask, s->mines);
+    }
 #endif
 
-		/*
-		 * And now we can go back round the deductive loop.
-		 */
-		continue;
-	    }
-	}
+    /*
+     * Now we really are at our wits' end as far as solving
+     * this grid goes. Our only remaining option is to call
+     * a perturb function and ask it to modify the grid to
+     * make it easier.
+     */
+    if (perturb) {
+        struct perturbations *ret;
+        struct set *s;
 
-	/*
-	 * If we get here, even that didn't work (either we didn't
-	 * have a perturb function or it returned failure), so we
-	 * give up entirely.
-	 */
-	break;
+        nperturbs++;
+
+        /*
+         * Choose a set at random from the current selection,
+         * and ask the perturb function to either fill or empty
+         * it.
+         * 
+         * If we have no sets at all, we must give up.
+         */
+        if (count234(ss->sets) == 0) {
+#ifdef SOLVER_DIAGNOSTICS
+        printf("perturbing on entire unknown set\n");
+#endif
+        ret = perturb(ctx, grid, 0, 0, 0);
+        } else {
+        s = index234(ss->sets, random_upto(rs, count234(ss->sets)));
+#ifdef SOLVER_DIAGNOSTICS
+        printf("perturbing on set %d,%d %03x\n", s->x, s->y, s->mask);
+#endif
+        ret = perturb(ctx, grid, s->x, s->y, s->mask);
+        }
+
+        if (ret) {
+        assert(ret->n > 0);    /* otherwise should have been NULL */
+
+        /*
+         * A number of squares have been fiddled with, and
+         * the returned structure tells us which. Adjust
+         * the mine count in any set which overlaps one of
+         * those squares, and put them back on the to-do
+         * list. Also, if the square itself is marked as a
+         * known non-mine, put it back on the squares-to-do
+         * list.
+         */
+        for (i = 0; i < ret->n; i++) {
+#ifdef SOLVER_DIAGNOSTICS
+            printf("perturbation %s mine at %d,%d\n",
+               ret->changes[i].delta > 0 ? "added" : "removed",
+               ret->changes[i].x, ret->changes[i].y);
+#endif
+
+            if (ret->changes[i].delta < 0 &&
+            grid[ret->changes[i].y*w+ret->changes[i].x] != -2) {
+            std_add(std, ret->changes[i].y*w+ret->changes[i].x);
+            }
+
+            list = ss_overlap(ss,
+                      ret->changes[i].x, ret->changes[i].y, 1);
+
+            for (j = 0; list[j]; j++) {
+            list[j]->mines += ret->changes[i].delta;
+            ss_add_todo(ss, list[j]);
+            }
+
+            sfree(list);
+        }
+
+        /*
+         * Now free the returned data.
+         */
+        sfree(ret->changes);
+        sfree(ret);
+
+#ifdef SOLVER_DIAGNOSTICS
+        /*
+         * Dump the current known state of the grid.
+         */
+        printf("state after perturbation:\n");
+        for (y = 0; y < h; y++) {
+            for (x = 0; x < w; x++) {
+            int v = grid[y*w+x];
+            if (v == -1)
+                putchar('*');
+            else if (v == -2)
+                putchar('?');
+            else if (v == 0)
+                putchar('-');
+            else
+                putchar('0' + v);
+            }
+            putchar('\n');
+        }
+
+        {
+            struct set *s;
+
+            for (i = 0; (s = index234(ss->sets, i)) != NULL; i++)
+            printf("remaining set: %d,%d %03x %d\n", s->x, s->y, s->mask, s->mines);
+        }
+#endif
+
+        /*
+         * And now we can go back round the deductive loop.
+         */
+        continue;
+        }
+    }
+
+    /*
+     * If we get here, even that didn't work (either we didn't
+     * have a perturb function or it returned failure), so we
+     * give up entirely.
+     */
+    break;
     }
 
     /*
      * See if we've got any unknown squares left.
      */
     for (y = 0; y < h; y++)
-	for (x = 0; x < w; x++)
-	    if (grid[y*w+x] == -2) {
-		nperturbs = -1;	       /* failed to complete */
-		break;
-	    }
+    for (x = 0; x < w; x++)
+        if (grid[y*w+x] == -2) {
+        nperturbs = -1;           /* failed to complete */
+        break;
+        }
 
     /*
      * Free the set list and square-todo list.
      */
     {
-	struct set *s;
-	while ((s = delpos234(ss->sets, 0)) != NULL)
-	    sfree(s);
-	freetree234(ss->sets);
-	sfree(ss);
-	sfree(std->next);
+    struct set *s;
+    while ((s = delpos234(ss->sets, 0)) != NULL)
+        sfree(s);
+    freetree234(ss->sets);
+    sfree(ss);
+    sfree(std->next);
     }
 
     return nperturbs;
@@ -1315,20 +1315,20 @@ static int mineopen(void *vctx, int x, int y)
 
     assert(x >= 0 && x < ctx->w && y >= 0 && y < ctx->h);
     if (ctx->grid[y * ctx->w + x])
-	return -1;		       /* *bang* */
+    return -1;               /* *bang* */
 
     n = 0;
     for (i = -1; i <= +1; i++) {
-	if (x + i < 0 || x + i >= ctx->w)
-	    continue;
-	for (j = -1; j <= +1; j++) {
-	    if (y + j < 0 || y + j >= ctx->h)
-		continue;
-	    if (i == 0 && j == 0)
-		continue;
-	    if (ctx->grid[(y+j) * ctx->w + (x+i)])
-		n++;
-	}
+    if (x + i < 0 || x + i >= ctx->w)
+        continue;
+    for (j = -1; j <= +1; j++) {
+        if (y + j < 0 || y + j >= ctx->h)
+        continue;
+        if (i == 0 && j == 0)
+        continue;
+        if (ctx->grid[(y+j) * ctx->w + (x+i)])
+        n++;
+    }
     }
 
     return n;
@@ -1343,21 +1343,21 @@ static int squarecmp(const void *av, const void *bv)
     const struct square *a = (const struct square *)av;
     const struct square *b = (const struct square *)bv;
     if (a->type < b->type)
-	return -1;
+    return -1;
     else if (a->type > b->type)
-	return +1;
+    return +1;
     else if (a->random < b->random)
-	return -1;
+    return -1;
     else if (a->random > b->random)
-	return +1;
+    return +1;
     else if (a->y < b->y)
-	return -1;
+    return -1;
     else if (a->y > b->y)
-	return +1;
+    return +1;
     else if (a->x < b->x)
-	return -1;
+    return -1;
     else if (a->x > b->x)
-	return +1;
+    return +1;
     return 0;
 }
 
@@ -1378,7 +1378,7 @@ static int squarecmp(const void *av, const void *bv)
  * and fall back to it after no useful grid has been generated.
  */
 static struct perturbations *mineperturb(void *vctx, signed char *grid,
-					 int setx, int sety, int mask)
+                     int setx, int sety, int mask)
 {
     struct minectx *ctx = (struct minectx *)vctx;
     struct square *sqlist;
@@ -1389,7 +1389,7 @@ static struct perturbations *mineperturb(void *vctx, signed char *grid,
     int *setlist;
 
     if (!mask && !ctx->allow_big_perturbs)
-	return NULL;
+    return NULL;
 
     /*
      * Make a list of all the squares in the grid which we can
@@ -1398,8 +1398,8 @@ static struct perturbations *mineperturb(void *vctx, signed char *grid,
      * 
      *  - first, unknown squares on the boundary of known space
      *  - next, unknown squares beyond that boundary
-     * 	- as a very last resort, known squares, but not within one
-     * 	  square of the starting position.
+     *     - as a very last resort, known squares, but not within one
+     *       square of the starting position.
      * 
      * Each of these sections needs to be shuffled independently.
      * We do this by preparing list of all squares and then sorting
@@ -1408,56 +1408,56 @@ static struct perturbations *mineperturb(void *vctx, signed char *grid,
     sqlist = snewn(ctx->w * ctx->h, struct square);
     n = 0;
     for (y = 0; y < ctx->h; y++)
-	for (x = 0; x < ctx->w; x++) {
-	    /*
-	     * If this square is too near the starting position,
-	     * don't put it on the list at all.
-	     */
-	    if (abs(y - ctx->sy) <= 1 && abs(x - ctx->sx) <= 1)
-		continue;
+    for (x = 0; x < ctx->w; x++) {
+        /*
+         * If this square is too near the starting position,
+         * don't put it on the list at all.
+         */
+        if (abs(y - ctx->sy) <= 1 && abs(x - ctx->sx) <= 1)
+        continue;
 
-	    /*
-	     * If this square is in the input set, also don't put
-	     * it on the list!
-	     */
-	    if ((mask == 0 && grid[y*ctx->w+x] == -2) ||
-		(x >= setx && x < setx + 3 &&
-		 y >= sety && y < sety + 3 &&
-		 mask & (1 << ((y-sety)*3+(x-setx)))))
-		continue;
+        /*
+         * If this square is in the input set, also don't put
+         * it on the list!
+         */
+        if ((mask == 0 && grid[y*ctx->w+x] == -2) ||
+        (x >= setx && x < setx + 3 &&
+         y >= sety && y < sety + 3 &&
+         mask & (1 << ((y-sety)*3+(x-setx)))))
+        continue;
 
-	    sqlist[n].x = x;
-	    sqlist[n].y = y;
+        sqlist[n].x = x;
+        sqlist[n].y = y;
 
-	    if (grid[y*ctx->w+x] != -2) {
-		sqlist[n].type = 3;    /* known square */
-	    } else {
-		/*
-		 * Unknown square. Examine everything around it and
-		 * see if it borders on any known squares. If it
-		 * does, it's class 1, otherwise it's 2.
-		 */
+        if (grid[y*ctx->w+x] != -2) {
+        sqlist[n].type = 3;    /* known square */
+        } else {
+        /*
+         * Unknown square. Examine everything around it and
+         * see if it borders on any known squares. If it
+         * does, it's class 1, otherwise it's 2.
+         */
 
-		sqlist[n].type = 2;
+        sqlist[n].type = 2;
 
-		for (dy = -1; dy <= +1; dy++)
-		    for (dx = -1; dx <= +1; dx++)
-			if (x+dx >= 0 && x+dx < ctx->w &&
-			    y+dy >= 0 && y+dy < ctx->h &&
-			    grid[(y+dy)*ctx->w+(x+dx)] != -2) {
-			    sqlist[n].type = 1;
-			    break;
-			}
-	    }
+        for (dy = -1; dy <= +1; dy++)
+            for (dx = -1; dx <= +1; dx++)
+            if (x+dx >= 0 && x+dx < ctx->w &&
+                y+dy >= 0 && y+dy < ctx->h &&
+                grid[(y+dy)*ctx->w+(x+dx)] != -2) {
+                sqlist[n].type = 1;
+                break;
+            }
+        }
 
-	    /*
-	     * Finally, a random number to cause qsort to
-	     * shuffle within each group.
-	     */
-	    sqlist[n].random = random_bits(ctx->rs, 31);
+        /*
+         * Finally, a random number to cause qsort to
+         * shuffle within each group.
+         */
+        sqlist[n].random = random_bits(ctx->rs, 31);
 
-	    n++;
-	}
+        n++;
+    }
 
     qsort(sqlist, n, sizeof(struct square), squarecmp);
 
@@ -1467,25 +1467,25 @@ static struct perturbations *mineperturb(void *vctx, signed char *grid,
      */
     nfull = nempty = 0;
     if (mask) {
-	for (dy = 0; dy < 3; dy++)
-	    for (dx = 0; dx < 3; dx++)
-		if (mask & (1 << (dy*3+dx))) {
-		    assert(setx+dx <= ctx->w);
-		    assert(sety+dy <= ctx->h);
-		    if (ctx->grid[(sety+dy)*ctx->w+(setx+dx)])
-			nfull++;
-		    else
-			nempty++;
-		}
+    for (dy = 0; dy < 3; dy++)
+        for (dx = 0; dx < 3; dx++)
+        if (mask & (1 << (dy*3+dx))) {
+            assert(setx+dx <= ctx->w);
+            assert(sety+dy <= ctx->h);
+            if (ctx->grid[(sety+dy)*ctx->w+(setx+dx)])
+            nfull++;
+            else
+            nempty++;
+        }
     } else {
-	for (y = 0; y < ctx->h; y++)
-	    for (x = 0; x < ctx->w; x++)
-		if (grid[y*ctx->w+x] == -2) {
-		    if (ctx->grid[y*ctx->w+x])
-			nfull++;
-		    else
-			nempty++;
-		}
+    for (y = 0; y < ctx->h; y++)
+        for (x = 0; x < ctx->w; x++)
+        if (grid[y*ctx->w+x] == -2) {
+            if (ctx->grid[y*ctx->w+x])
+            nfull++;
+            else
+            nempty++;
+        }
     }
 
     /*
@@ -1497,20 +1497,20 @@ static struct perturbations *mineperturb(void *vctx, signed char *grid,
      */
     ntofill = ntoempty = 0;
     if (mask) {
-	tofill = snewn(9, struct square *);
-	toempty = snewn(9, struct square *);
+    tofill = snewn(9, struct square *);
+    toempty = snewn(9, struct square *);
     } else {
-	tofill = snewn(ctx->w * ctx->h, struct square *);
-	toempty = snewn(ctx->w * ctx->h, struct square *);
+    tofill = snewn(ctx->w * ctx->h, struct square *);
+    toempty = snewn(ctx->w * ctx->h, struct square *);
     }
     for (i = 0; i < n; i++) {
-	struct square *sq = &sqlist[i];
-	if (ctx->grid[sq->y * ctx->w + sq->x])
-	    toempty[ntoempty++] = sq;
-	else
-	    tofill[ntofill++] = sq;
-	if (ntofill == nfull || ntoempty == nempty)
-	    break;
+    struct square *sq = &sqlist[i];
+    if (ctx->grid[sq->y * ctx->w + sq->x])
+        toempty[ntoempty++] = sq;
+    else
+        tofill[ntofill++] = sq;
+    if (ntofill == nfull || ntoempty == nempty)
+        break;
     }
 
     /*
@@ -1526,50 +1526,50 @@ static struct perturbations *mineperturb(void *vctx, signed char *grid,
      * random selection of them.
      */
     if (ntofill != nfull && ntoempty != nempty) {
-	int k;
+    int k;
 
-	assert(ntoempty != 0);
+    assert(ntoempty != 0);
 
-	setlist = snewn(ctx->w * ctx->h, int);
-	i = 0;
-	if (mask) {
-	    for (dy = 0; dy < 3; dy++)
-		for (dx = 0; dx < 3; dx++)
-		    if (mask & (1 << (dy*3+dx))) {
-			assert(setx+dx <= ctx->w);
-			assert(sety+dy <= ctx->h);
-			if (!ctx->grid[(sety+dy)*ctx->w+(setx+dx)])
-			    setlist[i++] = (sety+dy)*ctx->w+(setx+dx);
-		    }
-	} else {
-	    for (y = 0; y < ctx->h; y++)
-		for (x = 0; x < ctx->w; x++)
-		    if (grid[y*ctx->w+x] == -2) {
-			if (!ctx->grid[y*ctx->w+x])
-			    setlist[i++] = y*ctx->w+x;
-		    }
-	}
-	assert(i > ntoempty);
-	/*
-	 * Now pick `ntoempty' items at random from the list.
-	 */
-	for (k = 0; k < ntoempty; k++) {
-	    int index = k + random_upto(ctx->rs, i - k);
-	    int tmp;
+    setlist = snewn(ctx->w * ctx->h, int);
+    i = 0;
+    if (mask) {
+        for (dy = 0; dy < 3; dy++)
+        for (dx = 0; dx < 3; dx++)
+            if (mask & (1 << (dy*3+dx))) {
+            assert(setx+dx <= ctx->w);
+            assert(sety+dy <= ctx->h);
+            if (!ctx->grid[(sety+dy)*ctx->w+(setx+dx)])
+                setlist[i++] = (sety+dy)*ctx->w+(setx+dx);
+            }
+    } else {
+        for (y = 0; y < ctx->h; y++)
+        for (x = 0; x < ctx->w; x++)
+            if (grid[y*ctx->w+x] == -2) {
+            if (!ctx->grid[y*ctx->w+x])
+                setlist[i++] = y*ctx->w+x;
+            }
+    }
+    assert(i > ntoempty);
+    /*
+     * Now pick `ntoempty' items at random from the list.
+     */
+    for (k = 0; k < ntoempty; k++) {
+        int index = k + random_upto(ctx->rs, i - k);
+        int tmp;
 
-	    tmp = setlist[k];
-	    setlist[k] = setlist[index];
-	    setlist[index] = tmp;
-	}
+        tmp = setlist[k];
+        setlist[k] = setlist[index];
+        setlist[index] = tmp;
+    }
     } else
-	setlist = NULL;
+    setlist = NULL;
 
     /*
      * Now we're pretty much there. We need to either
-     * 	(a) put a mine in each of the empty squares in the set, and
-     * 	    take one out of each square in `toempty'
-     * 	(b) take a mine out of each of the full squares in the set,
-     * 	    and put one in each square in `tofill'
+     *     (a) put a mine in each of the empty squares in the set, and
+     *         take one out of each square in `toempty'
+     *     (b) take a mine out of each of the full squares in the set,
+     *         and put one in each square in `tofill'
      * depending on which one we've found enough squares to do.
      * 
      * So we start by constructing our list of changes to return to
@@ -1578,64 +1578,64 @@ static struct perturbations *mineperturb(void *vctx, signed char *grid,
      */
     ret = snew(struct perturbations);
     if (ntofill == nfull) {
-	todo = tofill;
-	ntodo = ntofill;
-	dtodo = +1;
-	dset = -1;
-	sfree(toempty);
+    todo = tofill;
+    ntodo = ntofill;
+    dtodo = +1;
+    dset = -1;
+    sfree(toempty);
     } else {
-	/*
-	 * (We also fall into this case if we've constructed a
-	 * setlist.)
-	 */
-	todo = toempty;
-	ntodo = ntoempty;
-	dtodo = -1;
-	dset = +1;
-	sfree(tofill);
+    /*
+     * (We also fall into this case if we've constructed a
+     * setlist.)
+     */
+    todo = toempty;
+    ntodo = ntoempty;
+    dtodo = -1;
+    dset = +1;
+    sfree(tofill);
     }
     ret->n = 2 * ntodo;
     ret->changes = snewn(ret->n, struct perturbation);
     for (i = 0; i < ntodo; i++) {
-	ret->changes[i].x = todo[i]->x;
-	ret->changes[i].y = todo[i]->y;
-	ret->changes[i].delta = dtodo;
+    ret->changes[i].x = todo[i]->x;
+    ret->changes[i].y = todo[i]->y;
+    ret->changes[i].delta = dtodo;
     }
     /* now i == ntodo */
     if (setlist) {
-	int j;
-	assert(todo == toempty);
-	for (j = 0; j < ntoempty; j++) {
-	    ret->changes[i].x = setlist[j] % ctx->w;
-	    ret->changes[i].y = setlist[j] / ctx->w;
-	    ret->changes[i].delta = dset;
-	    i++;
-	}
-	sfree(setlist);
+    int j;
+    assert(todo == toempty);
+    for (j = 0; j < ntoempty; j++) {
+        ret->changes[i].x = setlist[j] % ctx->w;
+        ret->changes[i].y = setlist[j] / ctx->w;
+        ret->changes[i].delta = dset;
+        i++;
+    }
+    sfree(setlist);
     } else if (mask) {
-	for (dy = 0; dy < 3; dy++)
-	    for (dx = 0; dx < 3; dx++)
-		if (mask & (1 << (dy*3+dx))) {
-		    int currval = (ctx->grid[(sety+dy)*ctx->w+(setx+dx)] ? +1 : -1);
-		    if (dset == -currval) {
-			ret->changes[i].x = setx + dx;
-			ret->changes[i].y = sety + dy;
-			ret->changes[i].delta = dset;
-			i++;
-		    }
-		}
+    for (dy = 0; dy < 3; dy++)
+        for (dx = 0; dx < 3; dx++)
+        if (mask & (1 << (dy*3+dx))) {
+            int currval = (ctx->grid[(sety+dy)*ctx->w+(setx+dx)] ? +1 : -1);
+            if (dset == -currval) {
+            ret->changes[i].x = setx + dx;
+            ret->changes[i].y = sety + dy;
+            ret->changes[i].delta = dset;
+            i++;
+            }
+        }
     } else {
-	for (y = 0; y < ctx->h; y++)
-	    for (x = 0; x < ctx->w; x++)
-		if (grid[y*ctx->w+x] == -2) {
-		    int currval = (ctx->grid[y*ctx->w+x] ? +1 : -1);
-		    if (dset == -currval) {
-			ret->changes[i].x = x;
-			ret->changes[i].y = y;
-			ret->changes[i].delta = dset;
-			i++;
-		    }
-		}
+    for (y = 0; y < ctx->h; y++)
+        for (x = 0; x < ctx->w; x++)
+        if (grid[y*ctx->w+x] == -2) {
+            int currval = (ctx->grid[y*ctx->w+x] ? +1 : -1);
+            if (dset == -currval) {
+            ret->changes[i].x = x;
+            ret->changes[i].y = y;
+            ret->changes[i].delta = dset;
+            i++;
+            }
+        }
     }
     assert(i == ret->n);
 
@@ -1647,75 +1647,75 @@ static struct perturbations *mineperturb(void *vctx, signed char *grid,
      * make, we now simply make them and return.
      */
     for (i = 0; i < ret->n; i++) {
-	int delta;
+    int delta;
 
-	x = ret->changes[i].x;
-	y = ret->changes[i].y;
-	delta = ret->changes[i].delta;
+    x = ret->changes[i].x;
+    y = ret->changes[i].y;
+    delta = ret->changes[i].delta;
 
-	/*
-	 * Check we're not trying to add an existing mine or remove
-	 * an absent one.
-	 */
-	assert((delta < 0) ^ (ctx->grid[y*ctx->w+x] == 0));
+    /*
+     * Check we're not trying to add an existing mine or remove
+     * an absent one.
+     */
+    assert((delta < 0) ^ (ctx->grid[y*ctx->w+x] == 0));
 
-	/*
-	 * Actually make the change.
-	 */
-	ctx->grid[y*ctx->w+x] = (delta > 0);
+    /*
+     * Actually make the change.
+     */
+    ctx->grid[y*ctx->w+x] = (delta > 0);
 
-	/*
-	 * Update any numbers already present in the grid.
-	 */
-	for (dy = -1; dy <= +1; dy++)
-	    for (dx = -1; dx <= +1; dx++)
-		if (x+dx >= 0 && x+dx < ctx->w &&
-		    y+dy >= 0 && y+dy < ctx->h &&
-		    grid[(y+dy)*ctx->w+(x+dx)] != -2) {
-		    if (dx == 0 && dy == 0) {
-			/*
-			 * The square itself is marked as known in
-			 * the grid. Mark it as a mine if it's a
-			 * mine, or else work out its number.
-			 */
-			if (delta > 0) {
-			    grid[y*ctx->w+x] = -1;
-			} else {
-			    int dx2, dy2, minecount = 0;
-			    for (dy2 = -1; dy2 <= +1; dy2++)
-				for (dx2 = -1; dx2 <= +1; dx2++)
-				    if (x+dx2 >= 0 && x+dx2 < ctx->w &&
-					y+dy2 >= 0 && y+dy2 < ctx->h &&
-					ctx->grid[(y+dy2)*ctx->w+(x+dx2)])
-					minecount++;
-			    grid[y*ctx->w+x] = minecount;
-			}
-		    } else {
-			if (grid[(y+dy)*ctx->w+(x+dx)] >= 0)
-			    grid[(y+dy)*ctx->w+(x+dx)] += delta;
-		    }
-		}
+    /*
+     * Update any numbers already present in the grid.
+     */
+    for (dy = -1; dy <= +1; dy++)
+        for (dx = -1; dx <= +1; dx++)
+        if (x+dx >= 0 && x+dx < ctx->w &&
+            y+dy >= 0 && y+dy < ctx->h &&
+            grid[(y+dy)*ctx->w+(x+dx)] != -2) {
+            if (dx == 0 && dy == 0) {
+            /*
+             * The square itself is marked as known in
+             * the grid. Mark it as a mine if it's a
+             * mine, or else work out its number.
+             */
+            if (delta > 0) {
+                grid[y*ctx->w+x] = -1;
+            } else {
+                int dx2, dy2, minecount = 0;
+                for (dy2 = -1; dy2 <= +1; dy2++)
+                for (dx2 = -1; dx2 <= +1; dx2++)
+                    if (x+dx2 >= 0 && x+dx2 < ctx->w &&
+                    y+dy2 >= 0 && y+dy2 < ctx->h &&
+                    ctx->grid[(y+dy2)*ctx->w+(x+dx2)])
+                    minecount++;
+                grid[y*ctx->w+x] = minecount;
+            }
+            } else {
+            if (grid[(y+dy)*ctx->w+(x+dx)] >= 0)
+                grid[(y+dy)*ctx->w+(x+dx)] += delta;
+            }
+        }
     }
 
 #ifdef GENERATION_DIAGNOSTICS
     {
-	int yy, xx;
-	printf("grid after perturbing:\n");
-	for (yy = 0; yy < ctx->h; yy++) {
-	    for (xx = 0; xx < ctx->w; xx++) {
-		int v = ctx->grid[yy*ctx->w+xx];
-		if (yy == ctx->sy && xx == ctx->sx) {
-		    assert(!v);
-		    putchar('S');
-		} else if (v) {
-		    putchar('*');
-		} else {
-		    putchar('-');
-		}
-	    }
-	    putchar('\n');
-	}
-	printf("\n");
+    int yy, xx;
+    printf("grid after perturbing:\n");
+    for (yy = 0; yy < ctx->h; yy++) {
+        for (xx = 0; xx < ctx->w; xx++) {
+        int v = ctx->grid[yy*ctx->w+xx];
+        if (yy == ctx->sy && xx == ctx->sx) {
+            assert(!v);
+            putchar('S');
+        } else if (v) {
+            putchar('*');
+        } else {
+            putchar('-');
+        }
+        }
+        putchar('\n');
+    }
+    printf("\n");
     }
 #endif
 
@@ -1723,111 +1723,111 @@ static struct perturbations *mineperturb(void *vctx, signed char *grid,
 }
 
 static bool *minegen(int w, int h, int n, int x, int y, bool unique,
-		     random_state *rs)
+             random_state *rs)
 {
     bool *ret = snewn(w*h, bool);
     bool success;
     int ntries = 0;
 
     do {
-	success = false;
-	ntries++;
+    success = false;
+    ntries++;
 
-	memset(ret, 0, w*h);
+    memset(ret, 0, w*h);
 
-	/*
-	 * Start by placing n mines, none of which is at x,y or within
-	 * one square of it.
-	 */
-	{
-	    int *tmp = snewn(w*h, int);
-	    int i, j, k, nn;
+    /*
+     * Start by placing n mines, none of which is at x,y or within
+     * one square of it.
+     */
+    {
+        int *tmp = snewn(w*h, int);
+        int i, j, k, nn;
 
-	    /*
-	     * Write down the list of possible mine locations.
-	     */
-	    k = 0;
-	    for (i = 0; i < h; i++)
-		for (j = 0; j < w; j++)
-		    if (abs(i - y) > 1 || abs(j - x) > 1)
-			tmp[k++] = i*w+j;
+        /*
+         * Write down the list of possible mine locations.
+         */
+        k = 0;
+        for (i = 0; i < h; i++)
+        for (j = 0; j < w; j++)
+            if (abs(i - y) > 1 || abs(j - x) > 1)
+            tmp[k++] = i*w+j;
 
-	    /*
-	     * Now pick n off the list at random.
-	     */
-	    nn = n;
-	    while (nn-- > 0) {
-		i = random_upto(rs, k);
-		ret[tmp[i]] = true;
-		tmp[i] = tmp[--k];
-	    }
+        /*
+         * Now pick n off the list at random.
+         */
+        nn = n;
+        while (nn-- > 0) {
+        i = random_upto(rs, k);
+        ret[tmp[i]] = true;
+        tmp[i] = tmp[--k];
+        }
 
-	    sfree(tmp);
-	}
+        sfree(tmp);
+    }
 
 #ifdef GENERATION_DIAGNOSTICS
-	{
-	    int yy, xx;
-	    printf("grid after initial generation:\n");
-	    for (yy = 0; yy < h; yy++) {
-		for (xx = 0; xx < w; xx++) {
-		    int v = ret[yy*w+xx];
-		    if (yy == y && xx == x) {
-			assert(!v);
-			putchar('S');
-		    } else if (v) {
-			putchar('*');
-		    } else {
-			putchar('-');
-		    }
-		}
-		putchar('\n');
-	    }
-	    printf("\n");
-	}
+    {
+        int yy, xx;
+        printf("grid after initial generation:\n");
+        for (yy = 0; yy < h; yy++) {
+        for (xx = 0; xx < w; xx++) {
+            int v = ret[yy*w+xx];
+            if (yy == y && xx == x) {
+            assert(!v);
+            putchar('S');
+            } else if (v) {
+            putchar('*');
+            } else {
+            putchar('-');
+            }
+        }
+        putchar('\n');
+        }
+        printf("\n");
+    }
 #endif
 
-	/*
-	 * Now set up a results grid to run the solver in, and a
-	 * context for the solver to open squares. Then run the solver
-	 * repeatedly; if the number of perturb steps ever goes up or
-	 * it ever returns -1, give up completely.
-	 *
-	 * We bypass this bit if we're not after a unique grid.
+    /*
+     * Now set up a results grid to run the solver in, and a
+     * context for the solver to open squares. Then run the solver
+     * repeatedly; if the number of perturb steps ever goes up or
+     * it ever returns -1, give up completely.
+     *
+     * We bypass this bit if we're not after a unique grid.
          */
-	if (unique) {
-	    signed char *solvegrid = snewn(w*h, signed char);
-	    struct minectx actx, *ctx = &actx;
-	    int solveret, prevret = -2;
+    if (unique) {
+        signed char *solvegrid = snewn(w*h, signed char);
+        struct minectx actx, *ctx = &actx;
+        int solveret, prevret = -2;
 
-	    ctx->grid = ret;
-	    ctx->w = w;
-	    ctx->h = h;
-	    ctx->sx = x;
-	    ctx->sy = y;
-	    ctx->rs = rs;
-	    ctx->allow_big_perturbs = (ntries > 100);
+        ctx->grid = ret;
+        ctx->w = w;
+        ctx->h = h;
+        ctx->sx = x;
+        ctx->sy = y;
+        ctx->rs = rs;
+        ctx->allow_big_perturbs = (ntries > 100);
 
-	    while (1) {
-		memset(solvegrid, -2, w*h);
-		solvegrid[y*w+x] = mineopen(ctx, x, y);
-		assert(solvegrid[y*w+x] == 0); /* by deliberate arrangement */
+        while (1) {
+        memset(solvegrid, -2, w*h);
+        solvegrid[y*w+x] = mineopen(ctx, x, y);
+        assert(solvegrid[y*w+x] == 0); /* by deliberate arrangement */
 
-		solveret =
-		    minesolve(w, h, n, solvegrid, mineopen, mineperturb, ctx, rs);
-		if (solveret < 0 || (prevret >= 0 && solveret >= prevret)) {
-		    success = false;
-		    break;
-		} else if (solveret == 0) {
-		    success = true;
-		    break;
-		}
-	    }
+        solveret =
+            minesolve(w, h, n, solvegrid, mineopen, mineperturb, ctx, rs);
+        if (solveret < 0 || (prevret >= 0 && solveret >= prevret)) {
+            success = false;
+            break;
+        } else if (solveret == 0) {
+            success = true;
+            break;
+        }
+        }
 
-	    sfree(solvegrid);
-	} else {
-	    success = true;
-	}
+        sfree(solvegrid);
+    } else {
+        success = true;
+    }
 
     } while (!success);
 
@@ -1876,70 +1876,70 @@ static char *describe_layout(bool *grid, int area, int x, int y,
 }
 
 static bool *new_mine_layout(int w, int h, int n, int x, int y, bool unique,
-			     random_state *rs, char **game_desc)
+                 random_state *rs, char **game_desc)
 {
     bool *grid;
 
 #ifdef TEST_OBFUSCATION
     static int tested_obfuscation = false;
     if (!tested_obfuscation) {
-	/*
-	 * A few simple test vectors for the obfuscator.
-	 * 
-	 * First test: the 28-bit stream 1234567. This divides up
-	 * into 1234 and 567[0]. The SHA of 56 70 30 (appending
-	 * "0") is 15ce8ab946640340bbb99f3f48fd2c45d1a31d30. Thus,
-	 * we XOR the 16-bit string 15CE into the input 1234 to get
-	 * 07FA. Next, we SHA that with "0": the SHA of 07 FA 30 is
-	 * 3370135c5e3da4fed937adc004a79533962b6391. So we XOR the
-	 * 12-bit string 337 into the input 567 to get 650. Thus
-	 * our output is 07FA650.
-	 */
-	{
-	    unsigned char bmp1[] = "\x12\x34\x56\x70";
-	    obfuscate_bitmap(bmp1, 28, false);
-	    printf("test 1 encode: %s\n",
-		   memcmp(bmp1, "\x07\xfa\x65\x00", 4) ? "failed" : "passed");
-	    obfuscate_bitmap(bmp1, 28, true);
-	    printf("test 1 decode: %s\n",
-		   memcmp(bmp1, "\x12\x34\x56\x70", 4) ? "failed" : "passed");
-	}
-	/*
-	 * Second test: a long string to make sure we switch from
-	 * one SHA to the next correctly. My input string this time
-	 * is simply fifty bytes of zeroes.
-	 */
-	{
-	    unsigned char bmp2[50];
-	    unsigned char bmp2a[50];
-	    memset(bmp2, 0, 50);
-	    memset(bmp2a, 0, 50);
-	    obfuscate_bitmap(bmp2, 50 * 8, false);
-	    /*
-	     * SHA of twenty-five zero bytes plus "0" is
-	     * b202c07b990c01f6ff2d544707f60e506019b671. SHA of
-	     * twenty-five zero bytes plus "1" is
-	     * fcb1d8b5a2f6b592fe6780b36aa9d65dd7aa6db9. Thus our
-	     * first half becomes
-	     * b202c07b990c01f6ff2d544707f60e506019b671fcb1d8b5a2.
-	     * 
-	     * SHA of that lot plus "0" is
-	     * 10b0af913db85d37ca27f52a9f78bba3a80030db. SHA of the
-	     * same string plus "1" is
-	     * 3d01d8df78e76d382b8106f480135a1bc751d725. So the
-	     * second half becomes
-	     * 10b0af913db85d37ca27f52a9f78bba3a80030db3d01d8df78.
-	     */
-	    printf("test 2 encode: %s\n",
-		   memcmp(bmp2, "\xb2\x02\xc0\x7b\x99\x0c\x01\xf6\xff\x2d\x54"
-			  "\x47\x07\xf6\x0e\x50\x60\x19\xb6\x71\xfc\xb1\xd8"
-			  "\xb5\xa2\x10\xb0\xaf\x91\x3d\xb8\x5d\x37\xca\x27"
-			  "\xf5\x2a\x9f\x78\xbb\xa3\xa8\x00\x30\xdb\x3d\x01"
-			  "\xd8\xdf\x78", 50) ? "failed" : "passed");
-	    obfuscate_bitmap(bmp2, 50 * 8, true);
-	    printf("test 2 decode: %s\n",
-		   memcmp(bmp2, bmp2a, 50) ? "failed" : "passed");
-	}
+    /*
+     * A few simple test vectors for the obfuscator.
+     * 
+     * First test: the 28-bit stream 1234567. This divides up
+     * into 1234 and 567[0]. The SHA of 56 70 30 (appending
+     * "0") is 15ce8ab946640340bbb99f3f48fd2c45d1a31d30. Thus,
+     * we XOR the 16-bit string 15CE into the input 1234 to get
+     * 07FA. Next, we SHA that with "0": the SHA of 07 FA 30 is
+     * 3370135c5e3da4fed937adc004a79533962b6391. So we XOR the
+     * 12-bit string 337 into the input 567 to get 650. Thus
+     * our output is 07FA650.
+     */
+    {
+        unsigned char bmp1[] = "\x12\x34\x56\x70";
+        obfuscate_bitmap(bmp1, 28, false);
+        printf("test 1 encode: %s\n",
+           memcmp(bmp1, "\x07\xfa\x65\x00", 4) ? "failed" : "passed");
+        obfuscate_bitmap(bmp1, 28, true);
+        printf("test 1 decode: %s\n",
+           memcmp(bmp1, "\x12\x34\x56\x70", 4) ? "failed" : "passed");
+    }
+    /*
+     * Second test: a long string to make sure we switch from
+     * one SHA to the next correctly. My input string this time
+     * is simply fifty bytes of zeroes.
+     */
+    {
+        unsigned char bmp2[50];
+        unsigned char bmp2a[50];
+        memset(bmp2, 0, 50);
+        memset(bmp2a, 0, 50);
+        obfuscate_bitmap(bmp2, 50 * 8, false);
+        /*
+         * SHA of twenty-five zero bytes plus "0" is
+         * b202c07b990c01f6ff2d544707f60e506019b671. SHA of
+         * twenty-five zero bytes plus "1" is
+         * fcb1d8b5a2f6b592fe6780b36aa9d65dd7aa6db9. Thus our
+         * first half becomes
+         * b202c07b990c01f6ff2d544707f60e506019b671fcb1d8b5a2.
+         * 
+         * SHA of that lot plus "0" is
+         * 10b0af913db85d37ca27f52a9f78bba3a80030db. SHA of the
+         * same string plus "1" is
+         * 3d01d8df78e76d382b8106f480135a1bc751d725. So the
+         * second half becomes
+         * 10b0af913db85d37ca27f52a9f78bba3a80030db3d01d8df78.
+         */
+        printf("test 2 encode: %s\n",
+           memcmp(bmp2, "\xb2\x02\xc0\x7b\x99\x0c\x01\xf6\xff\x2d\x54"
+              "\x47\x07\xf6\x0e\x50\x60\x19\xb6\x71\xfc\xb1\xd8"
+              "\xb5\xa2\x10\xb0\xaf\x91\x3d\xb8\x5d\x37\xca\x27"
+              "\xf5\x2a\x9f\x78\xbb\xa3\xa8\x00\x30\xdb\x3d\x01"
+              "\xd8\xdf\x78", 50) ? "failed" : "passed");
+        obfuscate_bitmap(bmp2, 50 * 8, true);
+        printf("test 2 decode: %s\n",
+           memcmp(bmp2, bmp2a, 50) ? "failed" : "passed");
+    }
     }
 #endif
 
@@ -1952,7 +1952,7 @@ static bool *new_mine_layout(int w, int h, int n, int x, int y, bool unique,
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     /*
      * We generate the coordinates of an initial click even if they
@@ -1969,24 +1969,24 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     int y = random_upto(rs, params->h);
 
     if (!interactive) {
-	/*
-	 * For batch-generated grids, pre-open one square.
-	 */
-	bool *grid;
-	char *desc;
+    /*
+     * For batch-generated grids, pre-open one square.
+     */
+    bool *grid;
+    char *desc;
 
-	grid = new_mine_layout(params->w, params->h, params->n,
-			       x, y, params->unique, rs, &desc);
-	sfree(grid);
-	return desc;
+    grid = new_mine_layout(params->w, params->h, params->n,
+                   x, y, params->unique, rs, &desc);
+    sfree(grid);
+    return desc;
     } else {
-	char *rsdesc, *desc;
+    char *rsdesc, *desc;
 
-	rsdesc = random_state_encode(rs);
-	desc = snewn(strlen(rsdesc) + 100, char);
-	sprintf(desc, "r%d,%c,%s", params->n, (char)(params->unique ? 'u' : 'a'), rsdesc);
-	sfree(rsdesc);
-	return desc;
+    rsdesc = random_state_encode(rs);
+    desc = snewn(strlen(rsdesc) + 100, char);
+    sprintf(desc, "r%d,%c,%s", params->n, (char)(params->unique ? 'u' : 'a'), rsdesc);
+    sfree(rsdesc);
+    return desc;
     }
 }
 
@@ -1997,46 +1997,46 @@ static const char *validate_desc(const game_params *params, const char *desc)
 
     if (*desc == 'r') {
         desc++;
-	if (!*desc || !isdigit((unsigned char)*desc))
-	    return "No initial mine count in game description";
-	while (*desc && isdigit((unsigned char)*desc))
-	    desc++;		       /* skip over mine count */
-	if (*desc != ',')
-	    return "No ',' after initial x-coordinate in game description";
-	desc++;
-	if (*desc != 'u' && *desc != 'a')
-	    return "No uniqueness specifier in game description";
-	desc++;
-	if (*desc != ',')
-	    return "No ',' after uniqueness specifier in game description";
-	/* now ignore the rest */
+    if (!*desc || !isdigit((unsigned char)*desc))
+        return "No initial mine count in game description";
+    while (*desc && isdigit((unsigned char)*desc))
+        desc++;               /* skip over mine count */
+    if (*desc != ',')
+        return "No ',' after initial x-coordinate in game description";
+    desc++;
+    if (*desc != 'u' && *desc != 'a')
+        return "No uniqueness specifier in game description";
+    desc++;
+    if (*desc != ',')
+        return "No ',' after uniqueness specifier in game description";
+    /* now ignore the rest */
     } else {
-	if (*desc && isdigit((unsigned char)*desc)) {
-	    x = atoi(desc);
-	    if (x < 0 || x >= params->w)
-		return "Initial x-coordinate was out of range";
-	    while (*desc && isdigit((unsigned char)*desc))
-		desc++;		       /* skip over x coordinate */
-	    if (*desc != ',')
-		return "No ',' after initial x-coordinate in game description";
-	    desc++;		       /* eat comma */
-	    if (!*desc || !isdigit((unsigned char)*desc))
-		return "No initial y-coordinate in game description";
-	    y = atoi(desc);
-	    if (y < 0 || y >= params->h)
-		return "Initial y-coordinate was out of range";
-	    while (*desc && isdigit((unsigned char)*desc))
-		desc++;		       /* skip over y coordinate */
-	    if (*desc != ',')
-		return "No ',' after initial y-coordinate in game description";
-	    desc++;		       /* eat comma */
-	}
-	/* eat `m' for `masked' or `u' for `unmasked', if present */
-	if (*desc == 'm' || *desc == 'u')
-	    desc++;
-	/* now just check length of remainder */
-	if (strlen(desc) != (wh+3)/4)
-	    return "Game description is wrong length";
+    if (*desc && isdigit((unsigned char)*desc)) {
+        x = atoi(desc);
+        if (x < 0 || x >= params->w)
+        return "Initial x-coordinate was out of range";
+        while (*desc && isdigit((unsigned char)*desc))
+        desc++;               /* skip over x coordinate */
+        if (*desc != ',')
+        return "No ',' after initial x-coordinate in game description";
+        desc++;               /* eat comma */
+        if (!*desc || !isdigit((unsigned char)*desc))
+        return "No initial y-coordinate in game description";
+        y = atoi(desc);
+        if (y < 0 || y >= params->h)
+        return "Initial y-coordinate was out of range";
+        while (*desc && isdigit((unsigned char)*desc))
+        desc++;               /* skip over y coordinate */
+        if (*desc != ',')
+        return "No ',' after initial y-coordinate in game description";
+        desc++;               /* eat comma */
+    }
+    /* eat `m' for `masked' or `u' for `unmasked', if present */
+    if (*desc == 'm' || *desc == 'u')
+        desc++;
+    /* now just check length of remainder */
+    if (strlen(desc) != (wh+3)/4)
+        return "Game description is wrong length";
     }
 
     return NULL;
@@ -2048,48 +2048,48 @@ static int open_square(game_state *state, int x, int y)
     int xx, yy, nmines, ncovered;
 
     if (!state->layout->mines) {
-	/*
-	 * We have a preliminary game in which the mine layout
-	 * hasn't been generated yet. Generate it based on the
-	 * initial click location.
-	 */
-	char *desc, *privdesc;
-	state->layout->mines = new_mine_layout(w, h, state->layout->n,
-					       x, y, state->layout->unique,
-					       state->layout->rs,
-					       &desc);
-	/*
-	 * Find the trailing substring of the game description
-	 * corresponding to just the mine layout; we will use this
-	 * as our second `private' game ID for serialisation.
-	 */
-	privdesc = desc;
-	while (*privdesc && isdigit((unsigned char)*privdesc)) privdesc++;
-	if (*privdesc == ',') privdesc++;
-	while (*privdesc && isdigit((unsigned char)*privdesc)) privdesc++;
-	if (*privdesc == ',') privdesc++;
-	assert(*privdesc == 'm');
-	midend_supersede_game_desc(state->layout->me, desc, privdesc);
-	sfree(desc);
-	random_free(state->layout->rs);
-	state->layout->rs = NULL;
+    /*
+     * We have a preliminary game in which the mine layout
+     * hasn't been generated yet. Generate it based on the
+     * initial click location.
+     */
+    char *desc, *privdesc;
+    state->layout->mines = new_mine_layout(w, h, state->layout->n,
+                           x, y, state->layout->unique,
+                           state->layout->rs,
+                           &desc);
+    /*
+     * Find the trailing substring of the game description
+     * corresponding to just the mine layout; we will use this
+     * as our second `private' game ID for serialisation.
+     */
+    privdesc = desc;
+    while (*privdesc && isdigit((unsigned char)*privdesc)) privdesc++;
+    if (*privdesc == ',') privdesc++;
+    while (*privdesc && isdigit((unsigned char)*privdesc)) privdesc++;
+    if (*privdesc == ',') privdesc++;
+    assert(*privdesc == 'm');
+    midend_supersede_game_desc(state->layout->me, desc, privdesc);
+    sfree(desc);
+    random_free(state->layout->rs);
+    state->layout->rs = NULL;
     }
 
     if (state->layout->mines[y*w+x]) {
-	/*
-	 * The player has landed on a mine. Bad luck. Expose the
-	 * mine that killed them, but not the rest (in case they
-	 * want to Undo and carry on playing).
-	 */
-	state->dead = true;
-	state->grid[y*w+x] = 65;
-	return -1;
+    /*
+     * The player has landed on a mine. Bad luck. Expose the
+     * mine that killed them, but not the rest (in case they
+     * want to Undo and carry on playing).
+     */
+    state->dead = true;
+    state->grid[y*w+x] = 65;
+    return -1;
     }
 
     /*
      * Otherwise, the player has opened a safe square. Mark it to-do.
      */
-    state->grid[y*w+x] = -10;	       /* `todo' value internal to this func */
+    state->grid[y*w+x] = -10;           /* `todo' value internal to this func */
 
     /*
      * Now go through the grid finding all `todo' values and
@@ -2101,40 +2101,40 @@ static int open_square(game_state *state, int x, int y)
      * using repeated N^2 scans of the grid.
      */
     while (1) {
-	bool done_something = false;
+    bool done_something = false;
 
-	for (yy = 0; yy < h; yy++)
-	    for (xx = 0; xx < w; xx++)
-		if (state->grid[yy*w+xx] == -10) {
-		    int dx, dy, v;
+    for (yy = 0; yy < h; yy++)
+        for (xx = 0; xx < w; xx++)
+        if (state->grid[yy*w+xx] == -10) {
+            int dx, dy, v;
 
-		    assert(!state->layout->mines[yy*w+xx]);
+            assert(!state->layout->mines[yy*w+xx]);
 
-		    v = 0;
+            v = 0;
 
-		    for (dx = -1; dx <= +1; dx++)
-			for (dy = -1; dy <= +1; dy++)
-			    if (xx+dx >= 0 && xx+dx < state->w &&
-				yy+dy >= 0 && yy+dy < state->h &&
-				state->layout->mines[(yy+dy)*w+(xx+dx)])
-				v++;
+            for (dx = -1; dx <= +1; dx++)
+            for (dy = -1; dy <= +1; dy++)
+                if (xx+dx >= 0 && xx+dx < state->w &&
+                yy+dy >= 0 && yy+dy < state->h &&
+                state->layout->mines[(yy+dy)*w+(xx+dx)])
+                v++;
 
-		    state->grid[yy*w+xx] = v;
+            state->grid[yy*w+xx] = v;
 
-		    if (v == 0) {
-			for (dx = -1; dx <= +1; dx++)
-			    for (dy = -1; dy <= +1; dy++)
-				if (xx+dx >= 0 && xx+dx < state->w &&
-				    yy+dy >= 0 && yy+dy < state->h &&
-				    state->grid[(yy+dy)*w+(xx+dx)] == -2)
-				    state->grid[(yy+dy)*w+(xx+dx)] = -10;
-		    }
+            if (v == 0) {
+            for (dx = -1; dx <= +1; dx++)
+                for (dy = -1; dy <= +1; dy++)
+                if (xx+dx >= 0 && xx+dx < state->w &&
+                    yy+dy >= 0 && yy+dy < state->h &&
+                    state->grid[(yy+dy)*w+(xx+dx)] == -2)
+                    state->grid[(yy+dy)*w+(xx+dx)] = -10;
+            }
 
-		    done_something = true;
-		}
+            done_something = true;
+        }
 
-	if (!done_something)
-	    break;
+    if (!done_something)
+        break;
     }
 
     /*
@@ -2144,20 +2144,20 @@ static int open_square(game_state *state, int x, int y)
      */
     nmines = ncovered = 0;
     for (yy = 0; yy < h; yy++)
-	for (xx = 0; xx < w; xx++) {
-	    if (state->grid[yy*w+xx] < 0)
-		ncovered++;
-	    if (state->layout->mines[yy*w+xx])
-		nmines++;
-	}
+    for (xx = 0; xx < w; xx++) {
+        if (state->grid[yy*w+xx] < 0)
+        ncovered++;
+        if (state->layout->mines[yy*w+xx])
+        nmines++;
+    }
     assert(ncovered >= nmines);
     if (ncovered == nmines) {
-	for (yy = 0; yy < h; yy++)
-	    for (xx = 0; xx < w; xx++) {
-		if (state->grid[yy*w+xx] < 0)
-		    state->grid[yy*w+xx] = -1;
-	}
-	state->won = true;
+    for (yy = 0; yy < h; yy++)
+        for (xx = 0; xx < w; xx++) {
+        if (state->grid[yy*w+xx] < 0)
+            state->grid[yy*w+xx] = -1;
+    }
+    state->won = true;
     }
 
     return 0;
@@ -2187,83 +2187,84 @@ static game_state *new_game(midend *me, const game_params *params,
     memset(state->grid, -2, wh);
 
     if (*desc == 'r') {
-	desc++;
-	state->layout->n = atoi(desc);
-	while (*desc && isdigit((unsigned char)*desc))
-	    desc++;		       /* skip over mine count */
-	if (*desc) desc++;	       /* eat comma */
-	if (*desc == 'a')
-	    state->layout->unique = false;
-	else
-	    state->layout->unique = true;
-	desc++;
-	if (*desc) desc++;	       /* eat comma */
+    desc++;
+    state->layout->n = atoi(desc);
+    while (*desc && isdigit((unsigned char)*desc))
+        desc++;               /* skip over mine count */
+    if (*desc) desc++;           /* eat comma */
+    if (*desc == 'a')
+        state->layout->unique = false;
+    else
+        state->layout->unique = true;
+    desc++;
+    if (*desc) desc++;           /* eat comma */
 
-	state->layout->mines = NULL;
-	state->layout->rs = random_state_decode(desc);
-	state->layout->me = me;
+    state->layout->mines = NULL;
+    state->layout->rs = random_state_decode(desc);
+    state->layout->me = me;
 
     } else {
-	state->layout->rs = NULL;
-	state->layout->me = NULL;
-	state->layout->mines = snewn(wh, bool);
+        state->layout->rs = NULL;
+        state->layout->me = NULL;
+        state->layout->mines = snewn(wh, bool);
 
-	if (*desc && isdigit((unsigned char)*desc)) {
-	    x = atoi(desc);
-	    while (*desc && isdigit((unsigned char)*desc))
-		desc++;		       /* skip over x coordinate */
-	    if (*desc) desc++;	       /* eat comma */
-	    y = atoi(desc);
-	    while (*desc && isdigit((unsigned char)*desc))
-		desc++;		       /* skip over y coordinate */
-	    if (*desc) desc++;	       /* eat comma */
-	} else {
-	    x = y = -1;
-	}
+        if (*desc && isdigit((unsigned char)*desc)) {
+            x = atoi(desc);
+            while (*desc && isdigit((unsigned char)*desc))
+            desc++;               /* skip over x coordinate */
+            if (*desc) desc++;           /* eat comma */
+            y = atoi(desc);
+            while (*desc && isdigit((unsigned char)*desc))
+            desc++;               /* skip over y coordinate */
+            if (*desc) desc++;           /* eat comma */
+        } else {
+            x = y = -1;
+        }
 
-	if (*desc == 'm') {
-	    masked = true;
-	    desc++;
-	} else {
-	    if (*desc == 'u')
-		desc++;
-	    /*
-	     * We permit game IDs to be entered by hand without the
-	     * masking transformation.
-	     */
-	    masked = false;
-	}
+        if (*desc == 'm') {
+            masked = true;
+            desc++;
+        } else {
+            if (*desc == 'u')
+            desc++;
+            /*
+             * We permit game IDs to be entered by hand without the
+             * masking transformation.
+             */
+            masked = false;
+        }
 
-	bmp = snewn((wh + 7) / 8, unsigned char);
-	memset(bmp, 0, (wh + 7) / 8);
-	for (i = 0; i < (wh+3)/4; i++) {
-	    int c = desc[i];
-	    int v;
+        bmp = snewn((wh + 7) / 8, unsigned char);
+        memset(bmp, 0, (wh + 7) / 8);
+        for (i = 0; i < (wh+3)/4; i++) {
+            int c = desc[i];
+            int v;
 
-	    assert(c != 0);	       /* validate_desc should have caught */
-	    if (c >= '0' && c <= '9')
-		v = c - '0';
-	    else if (c >= 'a' && c <= 'f')
-		v = c - 'a' + 10;
-	    else if (c >= 'A' && c <= 'F')
-		v = c - 'A' + 10;
-	    else
-		v = 0;
+            assert(c != 0);           /* validate_desc should have caught */
+            if (c >= '0' && c <= '9')
+                v = c - '0';
+            else if (c >= 'a' && c <= 'f')
+                v = c - 'a' + 10;
+            else if (c >= 'A' && c <= 'F')
+                v = c - 'A' + 10;
+            else
+                v = 0;
 
-	    bmp[i / 2] |= v << (4 * (1 - (i % 2)));
-	}
+            bmp[i / 2] |= v << (4 * (1 - (i % 2)));
+        }
 
-	if (masked)
-	    obfuscate_bitmap(bmp, wh, true);
+        if (masked)
+            obfuscate_bitmap(bmp, wh, true);
 
-	memset(state->layout->mines, 0, wh * sizeof(bool));
-	for (i = 0; i < wh; i++) {
-	    if (bmp[i / 8] & (0x80 >> (i % 8)))
-		state->layout->mines[i] = true;
-	}
+        memset(state->layout->mines, 0, wh * sizeof(bool));
+        for (i = 0; i < wh; i++) {
+            if (bmp[i / 8] & (0x80 >> (i % 8)))
+                state->layout->mines[i] = true;
+        }
 
-	if (x >= 0 && y >= 0)
-	    open_square(state, x, y);
+        if (x >= 0 && y >= 0)
+            open_square(state, x, y);
+
         sfree(bmp);
     }
 
@@ -2291,10 +2292,10 @@ static game_state *dup_game(const game_state *state)
 static void free_game(game_state *state)
 {
     if (--state->layout->refcount <= 0) {
-	sfree(state->layout->mines);
-	if (state->layout->rs)
-	    random_free(state->layout->rs);
-	sfree(state->layout);
+    sfree(state->layout->mines);
+    if (state->layout->rs)
+        random_free(state->layout->rs);
+    sfree(state->layout);
     }
     sfree(state->grid);
     sfree(state);
@@ -2304,48 +2305,15 @@ static char *solve_game(const game_state *state, const game_state *currstate,
                         const char *aux, const char **error)
 {
     if (!state->layout->mines) {
-	*error = "Game has not been started yet";
-	return NULL;
+    *error = "Game has not been started yet";
+    return NULL;
     }
 
     return dupstr("S");
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    char *ret;
-    int x, y;
-
-    ret = snewn((state->w + 1) * state->h + 1, char);
-    for (y = 0; y < state->h; y++) {
-	for (x = 0; x < state->w; x++) {
-	    int v = state->grid[y*state->w+x];
-	    if (v == 0)
-		v = '-';
-	    else if (v >= 1 && v <= 8)
-		v = '0' + v;
-	    else if (v == -1)
-		v = '*';
-	    else if (v == -2 || v == -3)
-		v = '?';
-	    else if (v >= 64)
-		v = '!';
-	    ret[y * (state->w+1) + x] = v;
-	}
-	ret[y * (state->w+1) + state->w] = '\n';
-    }
-    ret[(state->w + 1) * state->h] = '\0';
-
-    return ret;
-}
-
 struct game_ui {
-    int hx, hy, hradius;	       /* for mouse-down highlights */
+    int hx, hy, hradius;           /* for mouse-down highlights */
     int validradius;
     bool flash_is_death;
     int deaths;
@@ -2361,7 +2329,7 @@ static game_ui *new_ui(const game_state *state)
     ui->hradius = ui->validradius = 0;
     ui->deaths = 0;
     ui->completed = false;
-    ui->flash_is_death = false;	       /* *shrug* */
+    ui->flash_is_death = false;           /* *shrug* */
     ui->cur_x = ui->cur_y = 0;
     ui->cur_visible = false;
     return ui;
@@ -2381,7 +2349,7 @@ static char *encode_ui(const game_ui *ui)
      */
     sprintf(buf, "D%d", ui->deaths);
     if (ui->completed)
-	strcat(buf, "C");
+    strcat(buf, "C");
     return dupstr(buf);
 }
 
@@ -2390,14 +2358,14 @@ static void decode_ui(game_ui *ui, const char *encoding)
     int p= 0;
     sscanf(encoding, "D%d%n", &ui->deaths, &p);
     if (encoding[p] == 'C')
-	ui->completed = true;
+    ui->completed = true;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
     if (newstate->won)
-	ui->completed = true;
+    ui->completed = true;
 }
 
 struct game_drawstate {
@@ -2408,11 +2376,11 @@ struct game_drawstate {
      * Items in this `grid' array have all the same values as in
      * the game_state grid, and in addition:
      * 
-     * 	- -10 means the tile was drawn `specially' as a result of a
-     * 	  flash, so it will always need redrawing.
+     *     - -10 means the tile was drawn `specially' as a result of a
+     *       flash, so it will always need redrawing.
      * 
-     * 	- -22 and -23 mean the tile is highlighted for a possible
-     * 	  click.
+     *     - -22 and -23 mean the tile is highlighted for a possible
+     *       click.
      */
     int cur_x, cur_y; /* -1, -1 for no cursor displayed. */
 };
@@ -2425,7 +2393,7 @@ static char *interpret_move(const game_state *from, game_ui *ui,
     char buf[256];
 
     if (from->dead || from->won)
-	return NULL;		       /* no further moves permitted */
+    return NULL;               /* no further moves permitted */
 
     cx = FROMCOORD(x);
     cy = FROMCOORD(y);
@@ -2464,132 +2432,132 @@ static char *interpret_move(const game_state *from, game_ui *ui,
     }
 
     if (button == LEFT_BUTTON || button == LEFT_DRAG ||
-	button == MIDDLE_BUTTON || button == MIDDLE_DRAG) {
-	if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
-	    return NULL;
+        button == MIDDLE_BUTTON || button == MIDDLE_DRAG) {
+        if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
+            return NULL;
 
-	/*
-	 * Mouse-downs and mouse-drags just cause highlighting
-	 * updates.
-	 */
-	ui->hx = cx;
-	ui->hy = cy;
-	ui->hradius = (from->grid[cy*from->w+cx] >= 0 ? 1 : 0);
-	if (button == LEFT_BUTTON)
-	    ui->validradius = ui->hradius;
-	else if (button == MIDDLE_BUTTON)
-	    ui->validradius = 1;
+        /*
+         * Mouse-downs and mouse-drags just cause highlighting
+         * updates.
+         */
+        ui->hx = cx;
+        ui->hy = cy;
+        ui->hradius = (from->grid[cy*from->w+cx] >= 0 ? 1 : 0);
+        if (button == LEFT_BUTTON)
+            ui->validradius = ui->hradius;
+        else if (button == MIDDLE_BUTTON)
+            ui->validradius = 1;
         ui->cur_visible = false;
-	return UI_UPDATE;
+        return UI_UPDATE;
     }
 
     if (button == RIGHT_BUTTON) {
-	if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
-	    return NULL;
+    if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
+        return NULL;
 
-	/*
-	 * Right-clicking only works on a covered square, and it
-	 * toggles between -1 (marked as mine) and -2 (not marked
-	 * as mine).
-	 *
-	 * FIXME: question marks.
-	 */
-	if (from->grid[cy * from->w + cx] != -2 &&
-	    from->grid[cy * from->w + cx] != -1)
-	    return NULL;
+    /*
+     * Right-clicking only works on a covered square, and it
+     * toggles between -1 (marked as mine) and -2 (not marked
+     * as mine).
+     *
+     * FIXME: question marks.
+     */
+    if (from->grid[cy * from->w + cx] != -2 &&
+        from->grid[cy * from->w + cx] != -1)
+        return NULL;
 
-	sprintf(buf, "F%d,%d", cx, cy);
-	return dupstr(buf);
+    sprintf(buf, "F%d,%d", cx, cy);
+    return dupstr(buf);
     }
 
     if (button == LEFT_RELEASE || button == MIDDLE_RELEASE) {
-	ui->hx = ui->hy = -1;
-	ui->hradius = 0;
+    ui->hx = ui->hy = -1;
+    ui->hradius = 0;
 
-	/*
-	 * At this stage we must never return NULL: we have adjusted
-	 * the ui, so at worst we return UI_UPDATE.
-	 */
-	if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
-	    return UI_UPDATE;
+    /*
+     * At this stage we must never return NULL: we have adjusted
+     * the ui, so at worst we return UI_UPDATE.
+     */
+    if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
+        return UI_UPDATE;
 
-	/*
-	 * Left-clicking on a covered square opens a tile. Not
-	 * permitted if the tile is marked as a mine, for safety.
-	 * (Unmark it and _then_ open it.)
-	 */
-	if (button == LEFT_RELEASE &&
-	    (from->grid[cy * from->w + cx] == -2 ||
-	     from->grid[cy * from->w + cx] == -3) &&
-	    ui->validradius == 0) {
-	    /* Check if you've killed yourself. */
-	    if (from->layout->mines && from->layout->mines[cy * from->w + cx])
-		ui->deaths++;
+    /*
+     * Left-clicking on a covered square opens a tile. Not
+     * permitted if the tile is marked as a mine, for safety.
+     * (Unmark it and _then_ open it.)
+     */
+    if (button == LEFT_RELEASE &&
+        (from->grid[cy * from->w + cx] == -2 ||
+         from->grid[cy * from->w + cx] == -3) &&
+        ui->validradius == 0) {
+        /* Check if you've killed yourself. */
+        if (from->layout->mines && from->layout->mines[cy * from->w + cx])
+        ui->deaths++;
 
-	    sprintf(buf, "O%d,%d", cx, cy);
-	    return dupstr(buf);
-	}
+        sprintf(buf, "O%d,%d", cx, cy);
+        return dupstr(buf);
+    }
         goto uncover;
     }
     return NULL;
 
 uncover:
     {
-	/*
-	 * Left-clicking or middle-clicking on an uncovered tile:
-	 * first we check to see if the number of mine markers
-	 * surrounding the tile is equal to its mine count, and if
-	 * so then we open all other surrounding squares.
-	 */
-	if (from->grid[cy * from->w + cx] > 0 && ui->validradius == 1) {
-	    int dy, dx, n;
+    /*
+     * Left-clicking or middle-clicking on an uncovered tile:
+     * first we check to see if the number of mine markers
+     * surrounding the tile is equal to its mine count, and if
+     * so then we open all other surrounding squares.
+     */
+    if (from->grid[cy * from->w + cx] > 0 && ui->validradius == 1) {
+        int dy, dx, n;
 
-	    /* Count mine markers. */
-	    n = 0;
-	    for (dy = -1; dy <= +1; dy++)
-		for (dx = -1; dx <= +1; dx++)
-		    if (cx+dx >= 0 && cx+dx < from->w &&
-			cy+dy >= 0 && cy+dy < from->h) {
-			if (from->grid[(cy+dy)*from->w+(cx+dx)] == -1)
-			    n++;
-		    }
+        /* Count mine markers. */
+        n = 0;
+        for (dy = -1; dy <= +1; dy++)
+        for (dx = -1; dx <= +1; dx++)
+            if (cx+dx >= 0 && cx+dx < from->w &&
+            cy+dy >= 0 && cy+dy < from->h) {
+            if (from->grid[(cy+dy)*from->w+(cx+dx)] == -1)
+                n++;
+            }
 
-	    if (n == from->grid[cy * from->w + cx]) {
+        if (n == from->grid[cy * from->w + cx]) {
 
-		/*
-		 * Now see if any of the squares we're clearing
-		 * contains a mine (which will happen iff you've
-		 * incorrectly marked the mines around the clicked
-		 * square). If so, we open _just_ those squares, to
-		 * reveal as little additional information as we
-		 * can.
-		 */
-		char *p = buf;
-		const char *sep = "";
+        /*
+         * Now see if any of the squares we're clearing
+         * contains a mine (which will happen iff you've
+         * incorrectly marked the mines around the clicked
+         * square). If so, we open _just_ those squares, to
+         * reveal as little additional information as we
+         * can.
+         */
+        char *p = buf;
+        const char *sep = "";
 
-		for (dy = -1; dy <= +1; dy++)
-		    for (dx = -1; dx <= +1; dx++)
-			if (cx+dx >= 0 && cx+dx < from->w &&
-			    cy+dy >= 0 && cy+dy < from->h) {
-			    if (from->grid[(cy+dy)*from->w+(cx+dx)] != -1 &&
-				from->layout->mines &&
-				from->layout->mines[(cy+dy)*from->w+(cx+dx)]) {
-				p += sprintf(p, "%sO%d,%d", sep, cx+dx, cy+dy);
-				sep = ";";
-			    }
-			}
+        for (dy = -1; dy <= +1; dy++)
+            for (dx = -1; dx <= +1; dx++)
+            if (cx+dx >= 0 && cx+dx < from->w &&
+                cy+dy >= 0 && cy+dy < from->h) {
+                if (from->grid[(cy+dy)*from->w+(cx+dx)] != -1 &&
+                from->layout->mines &&
+                from->layout->mines[(cy+dy)*from->w+(cx+dx)]) {
+                p += sprintf(p, "%sO%d,%d", sep, cx+dx, cy+dy);
+                sep = ";";
+                }
+            }
 
-		if (p > buf) {
-		    ui->deaths++;
-		} else {
-		    sprintf(buf, "C%d,%d", cx, cy);
-		}
+        if (p > buf) {
+            ui->deaths++;
+        } else {
+            sprintf(buf, "C%d,%d", cx, cy);
+        }
 
-		return dupstr(buf);
-	    }
-	}
+        return dupstr(buf);
+        }
+    }
 
-	return UI_UPDATE;
+    return UI_UPDATE;
     }
 }
 
@@ -2599,9 +2567,9 @@ static game_state *execute_move(const game_state *from, const char *move)
     game_state *ret;
 
     if (!strcmp(move, "S")) {
-	int yy, xx;
+    int yy, xx;
 
-	ret = dup_game(from);
+    ret = dup_game(from);
         if (!ret->dead) {
             /*
              * If the player is still alive at the moment of pressing
@@ -2652,41 +2620,41 @@ static game_state *execute_move(const game_state *from, const char *move)
         }
         ret->used_solve = true;
 
-	return ret;
+    return ret;
     } else {
-	ret = dup_game(from);
+    ret = dup_game(from);
 
-	while (*move) {
-	    if (move[0] == 'F' &&
-		sscanf(move+1, "%d,%d", &cx, &cy) == 2 &&
-		cx >= 0 && cx < from->w && cy >= 0 && cy < from->h) {
-		ret->grid[cy * from->w + cx] ^= (-2 ^ -1);
-	    } else if (move[0] == 'O' &&
-		       sscanf(move+1, "%d,%d", &cx, &cy) == 2 &&
-		       cx >= 0 && cx < from->w && cy >= 0 && cy < from->h) {
-		open_square(ret, cx, cy);
-	    } else if (move[0] == 'C' &&
-		       sscanf(move+1, "%d,%d", &cx, &cy) == 2 &&
-		       cx >= 0 && cx < from->w && cy >= 0 && cy < from->h) {
-		int dx, dy;
+    while (*move) {
+        if (move[0] == 'F' &&
+        sscanf(move+1, "%d,%d", &cx, &cy) == 2 &&
+        cx >= 0 && cx < from->w && cy >= 0 && cy < from->h) {
+        ret->grid[cy * from->w + cx] ^= (-2 ^ -1);
+        } else if (move[0] == 'O' &&
+               sscanf(move+1, "%d,%d", &cx, &cy) == 2 &&
+               cx >= 0 && cx < from->w && cy >= 0 && cy < from->h) {
+        open_square(ret, cx, cy);
+        } else if (move[0] == 'C' &&
+               sscanf(move+1, "%d,%d", &cx, &cy) == 2 &&
+               cx >= 0 && cx < from->w && cy >= 0 && cy < from->h) {
+        int dx, dy;
 
-		for (dy = -1; dy <= +1; dy++)
-		    for (dx = -1; dx <= +1; dx++)
-			if (cx+dx >= 0 && cx+dx < ret->w &&
-			    cy+dy >= 0 && cy+dy < ret->h &&
-			    (ret->grid[(cy+dy)*ret->w+(cx+dx)] == -2 ||
-			     ret->grid[(cy+dy)*ret->w+(cx+dx)] == -3))
-			    open_square(ret, cx+dx, cy+dy);
-	    } else {
-		free_game(ret);
-		return NULL;
-	    }
+        for (dy = -1; dy <= +1; dy++)
+            for (dx = -1; dx <= +1; dx++)
+            if (cx+dx >= 0 && cx+dx < ret->w &&
+                cy+dy >= 0 && cy+dy < ret->h &&
+                (ret->grid[(cy+dy)*ret->w+(cx+dx)] == -2 ||
+                 ret->grid[(cy+dy)*ret->w+(cx+dx)] == -3))
+                open_square(ret, cx+dx, cy+dy);
+        } else {
+        free_game(ret);
+        return NULL;
+        }
 
-	    while (*move && *move != ';') move++;
-	    if (*move) move++;
-	}
+        while (*move && *move != ';') move++;
+        if (*move) move++;
+    }
 
-	return ret;
+    return ret;
     }
 }
 
@@ -2713,86 +2681,32 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-
-    ret[COL_BACKGROUND2 * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] * 19.0F / 20.0F;
-    ret[COL_BACKGROUND2 * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] * 19.0F / 20.0F;
-    ret[COL_BACKGROUND2 * 3 + 2] = ret[COL_BACKGROUND * 3 + 2] * 19.0F / 20.0F;
-
-    ret[COL_1 * 3 + 0] = 0.0F;
-    ret[COL_1 * 3 + 1] = 0.0F;
-    ret[COL_1 * 3 + 2] = 1.0F;
-
-    ret[COL_2 * 3 + 0] = 0.0F;
-    ret[COL_2 * 3 + 1] = 0.5F;
-    ret[COL_2 * 3 + 2] = 0.0F;
-
-    ret[COL_3 * 3 + 0] = 1.0F;
-    ret[COL_3 * 3 + 1] = 0.0F;
-    ret[COL_3 * 3 + 2] = 0.0F;
-
-    ret[COL_4 * 3 + 0] = 0.0F;
-    ret[COL_4 * 3 + 1] = 0.0F;
-    ret[COL_4 * 3 + 2] = 0.5F;
-
-    ret[COL_5 * 3 + 0] = 0.5F;
-    ret[COL_5 * 3 + 1] = 0.0F;
-    ret[COL_5 * 3 + 2] = 0.0F;
-
-    ret[COL_6 * 3 + 0] = 0.0F;
-    ret[COL_6 * 3 + 1] = 0.5F;
-    ret[COL_6 * 3 + 2] = 0.5F;
-
-    ret[COL_7 * 3 + 0] = 0.0F;
-    ret[COL_7 * 3 + 1] = 0.0F;
-    ret[COL_7 * 3 + 2] = 0.0F;
-
-    ret[COL_8 * 3 + 0] = 0.5F;
-    ret[COL_8 * 3 + 1] = 0.5F;
-    ret[COL_8 * 3 + 2] = 0.5F;
-
-    ret[COL_MINE * 3 + 0] = 0.0F;
-    ret[COL_MINE * 3 + 1] = 0.0F;
-    ret[COL_MINE * 3 + 2] = 0.0F;
-
-    ret[COL_BANG * 3 + 0] = 1.0F;
-    ret[COL_BANG * 3 + 1] = 0.0F;
-    ret[COL_BANG * 3 + 2] = 0.0F;
-
-    ret[COL_CROSS * 3 + 0] = 1.0F;
-    ret[COL_CROSS * 3 + 1] = 0.0F;
-    ret[COL_CROSS * 3 + 2] = 0.0F;
-
-    ret[COL_FLAG * 3 + 0] = 1.0F;
-    ret[COL_FLAG * 3 + 1] = 0.0F;
-    ret[COL_FLAG * 3 + 2] = 0.0F;
-
-    ret[COL_FLAGBASE * 3 + 0] = 0.0F;
-    ret[COL_FLAGBASE * 3 + 1] = 0.0F;
-    ret[COL_FLAGBASE * 3 + 2] = 0.0F;
-
-    ret[COL_QUERY * 3 + 0] = 0.0F;
-    ret[COL_QUERY * 3 + 1] = 0.0F;
-    ret[COL_QUERY * 3 + 2] = 0.0F;
-
-    ret[COL_HIGHLIGHT * 3 + 0] = 1.0F;
-    ret[COL_HIGHLIGHT * 3 + 1] = 1.0F;
-    ret[COL_HIGHLIGHT * 3 + 2] = 1.0F;
-
-    ret[COL_LOWLIGHT * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] * 2.0F / 3.0F;
-    ret[COL_LOWLIGHT * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] * 2.0F / 3.0F;
-    ret[COL_LOWLIGHT * 3 + 2] = ret[COL_BACKGROUND * 3 + 2] * 2.0F / 3.0F;
-
-    ret[COL_WRONGNUMBER * 3 + 0] = 1.0F;
-    ret[COL_WRONGNUMBER * 3 + 1] = 0.6F;
-    ret[COL_WRONGNUMBER * 3 + 2] = 0.6F;
-
-    /* Red tinge to a light colour, for the cursor. */
-    ret[COL_CURSOR * 3 + 0] = ret[COL_HIGHLIGHT * 3 + 0];
-    ret[COL_CURSOR * 3 + 1] = ret[COL_HIGHLIGHT * 3 + 0] / 2.0F;
-    ret[COL_CURSOR * 3 + 2] = ret[COL_HIGHLIGHT * 3 + 0] / 2.0F;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND  * 3 + i] = 1.0F;
+        ret[COL_BACKGROUND2 * 3 + i] = 0.9F;
+        ret[COL_1           * 3 + i] = 0.0F;
+        ret[COL_2           * 3 + i] = 0.0F;
+        ret[COL_3           * 3 + i] = 0.0F;
+        ret[COL_4           * 3 + i] = 0.0F;
+        ret[COL_5           * 3 + i] = 0.0F;
+        ret[COL_6           * 3 + i] = 0.0F;
+        ret[COL_7           * 3 + i] = 0.0F;
+        ret[COL_8           * 3 + i] = 0.0F;
+        ret[COL_MINE        * 3 + i] = 0.0F;
+        ret[COL_BANG        * 3 + i] = 0.5F;
+        ret[COL_CROSS       * 3 + i] = 1.0F;
+        ret[COL_FLAG        * 3 + i] = 0.25F;
+        ret[COL_FLAGBASE    * 3 + i] = 0.0F;
+        ret[COL_QUERY       * 3 + i] = 0.0F;
+        ret[COL_HIGHLIGHT   * 3 + i] = 0.75F;
+        ret[COL_LOWLIGHT    * 3 + i] = 0.25;
+        ret[COL_WRONGNUMBER * 3 + i] = 0.5F;
+        ret[COL_CURSOR      * 3 + i] = 0.75F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -2826,131 +2740,131 @@ static void draw_tile(drawing *dr, game_drawstate *ds,
 {
     if (v < 0) {
         int coords[12];
-	int hl = 0;
+    int hl = 0;
 
-	if (v == -22 || v == -23) {
-	    v += 20;
+    if (v == -22 || v == -23) {
+        v += 20;
 
-	    /*
-	     * Omit the highlights in this case.
-	     */
-	    draw_rect(dr, x, y, TILE_SIZE, TILE_SIZE,
+        /*
+         * Omit the highlights in this case.
+         */
+        draw_rect(dr, x, y, TILE_SIZE, TILE_SIZE,
                       bg == COL_BACKGROUND ? COL_BACKGROUND2 : bg);
-	    draw_line(dr, x, y, x + TILE_SIZE - 1, y, COL_LOWLIGHT);
-	    draw_line(dr, x, y, x, y + TILE_SIZE - 1, COL_LOWLIGHT);
-	} else {
-	    /*
-	     * Draw highlights to indicate the square is covered.
-	     */
-	    coords[0] = x + TILE_SIZE - 1;
-	    coords[1] = y + TILE_SIZE - 1;
-	    coords[2] = x + TILE_SIZE - 1;
-	    coords[3] = y;
-	    coords[4] = x;
-	    coords[5] = y + TILE_SIZE - 1;
-	    draw_polygon(dr, coords, 3, COL_LOWLIGHT ^ hl, COL_LOWLIGHT ^ hl);
+        draw_line(dr, x, y, x + TILE_SIZE - 1, y, COL_LOWLIGHT);
+        draw_line(dr, x, y, x, y + TILE_SIZE - 1, COL_LOWLIGHT);
+    } else {
+        /*
+         * Draw highlights to indicate the square is covered.
+         */
+        coords[0] = x + TILE_SIZE - 1;
+        coords[1] = y + TILE_SIZE - 1;
+        coords[2] = x + TILE_SIZE - 1;
+        coords[3] = y;
+        coords[4] = x;
+        coords[5] = y + TILE_SIZE - 1;
+        draw_polygon(dr, coords, 3, COL_LOWLIGHT ^ hl, COL_LOWLIGHT ^ hl);
 
-	    coords[0] = x;
-	    coords[1] = y;
-	    draw_polygon(dr, coords, 3, COL_HIGHLIGHT ^ hl,
-			 COL_HIGHLIGHT ^ hl);
+        coords[0] = x;
+        coords[1] = y;
+        draw_polygon(dr, coords, 3, COL_HIGHLIGHT ^ hl,
+             COL_HIGHLIGHT ^ hl);
 
-	    draw_rect(dr, x + HIGHLIGHT_WIDTH, y + HIGHLIGHT_WIDTH,
-		      TILE_SIZE - 2*HIGHLIGHT_WIDTH, TILE_SIZE - 2*HIGHLIGHT_WIDTH,
-		      bg);
-	}
+        draw_rect(dr, x + HIGHLIGHT_WIDTH, y + HIGHLIGHT_WIDTH,
+              TILE_SIZE - 2*HIGHLIGHT_WIDTH, TILE_SIZE - 2*HIGHLIGHT_WIDTH,
+              bg);
+    }
 
-	if (v == -1) {
-	    /*
-	     * Draw a flag.
-	     */
+    if (v == -1) {
+        /*
+         * Draw a flag.
+         */
 #define SETCOORD(n, dx, dy) do { \
     coords[(n)*2+0] = x + (int)(TILE_SIZE * (dx)); \
     coords[(n)*2+1] = y + (int)(TILE_SIZE * (dy)); \
 } while (0)
-	    SETCOORD(0, 0.6F,  0.35F);
-	    SETCOORD(1, 0.6F,  0.7F);
-	    SETCOORD(2, 0.8F,  0.8F);
-	    SETCOORD(3, 0.25F, 0.8F);
-	    SETCOORD(4, 0.55F, 0.7F);
-	    SETCOORD(5, 0.55F, 0.35F);
-	    draw_polygon(dr, coords, 6, COL_FLAGBASE, COL_FLAGBASE);
+        SETCOORD(0, 0.6F,  0.35F);
+        SETCOORD(1, 0.6F,  0.7F);
+        SETCOORD(2, 0.8F,  0.8F);
+        SETCOORD(3, 0.25F, 0.8F);
+        SETCOORD(4, 0.55F, 0.7F);
+        SETCOORD(5, 0.55F, 0.35F);
+        draw_polygon(dr, coords, 6, COL_FLAGBASE, COL_FLAGBASE);
 
-	    SETCOORD(0, 0.6F, 0.2F);
-	    SETCOORD(1, 0.6F, 0.5F);
-	    SETCOORD(2, 0.2F, 0.35F);
-	    draw_polygon(dr, coords, 3, COL_FLAG, COL_FLAG);
+        SETCOORD(0, 0.6F, 0.2F);
+        SETCOORD(1, 0.6F, 0.5F);
+        SETCOORD(2, 0.2F, 0.35F);
+        draw_polygon(dr, coords, 3, COL_FLAG, COL_FLAG);
 #undef SETCOORD
 
-	} else if (v == -3) {
-	    /*
-	     * Draw a question mark.
-	     */
-	    draw_text(dr, x + TILE_SIZE / 2, y + TILE_SIZE / 2,
-		      FONT_VARIABLE, TILE_SIZE * 6 / 8,
-		      ALIGN_VCENTRE | ALIGN_HCENTRE,
-		      COL_QUERY, "?");
-	}
+    } else if (v == -3) {
+        /*
+         * Draw a question mark.
+         */
+        draw_text(dr, x + TILE_SIZE / 2, y + TILE_SIZE / 2,
+              FONT_VARIABLE, TILE_SIZE * 6 / 8,
+              ALIGN_VCENTRE | ALIGN_HCENTRE,
+              COL_QUERY, "?");
+    }
     } else {
-	/*
-	 * Clear the square to the background colour, and draw thin
-	 * grid lines along the top and left.
-	 * 
-	 * Exception is that for value 65 (mine we've just trodden
-	 * on), we clear the square to COL_BANG.
-	 */
+    /*
+     * Clear the square to the background colour, and draw thin
+     * grid lines along the top and left.
+     * 
+     * Exception is that for value 65 (mine we've just trodden
+     * on), we clear the square to COL_BANG.
+     */
         if (v & 32) {
             bg = COL_WRONGNUMBER;
             v &= ~32;
         }
         draw_rect(dr, x, y, TILE_SIZE, TILE_SIZE,
-		  (v == 65 ? COL_BANG :
+          (v == 65 ? COL_BANG :
                    bg == COL_BACKGROUND ? COL_BACKGROUND2 : bg));
-	draw_line(dr, x, y, x + TILE_SIZE - 1, y, COL_LOWLIGHT);
-	draw_line(dr, x, y, x, y + TILE_SIZE - 1, COL_LOWLIGHT);
+    draw_line(dr, x, y, x + TILE_SIZE - 1, y, COL_LOWLIGHT);
+    draw_line(dr, x, y, x, y + TILE_SIZE - 1, COL_LOWLIGHT);
 
-	if (v > 0 && v <= 8) {
-	    /*
-	     * Mark a number.
-	     */
-	    char str[2];
-	    str[0] = v + '0';
-	    str[1] = '\0';
-	    draw_text(dr, x + TILE_SIZE / 2, y + TILE_SIZE / 2,
-		      FONT_VARIABLE, TILE_SIZE * 7 / 8,
-		      ALIGN_VCENTRE | ALIGN_HCENTRE,
-		      (COL_1 - 1) + v, str);
+    if (v > 0 && v <= 8) {
+        /*
+         * Mark a number.
+         */
+        char str[2];
+        str[0] = v + '0';
+        str[1] = '\0';
+        draw_text(dr, x + TILE_SIZE / 2, y + TILE_SIZE / 2,
+              FONT_VARIABLE, TILE_SIZE * 7 / 8,
+              ALIGN_VCENTRE | ALIGN_HCENTRE,
+              (COL_1 - 1) + v, str);
 
-	} else if (v >= 64) {
-	    /*
-	     * Mark a mine.
-	     */
-	    {
-		int cx = x + TILE_SIZE / 2;
-		int cy = y + TILE_SIZE / 2;
-		int r = TILE_SIZE / 2 - 3;
+    } else if (v >= 64) {
+        /*
+         * Mark a mine.
+         */
+        {
+        int cx = x + TILE_SIZE / 2;
+        int cy = y + TILE_SIZE / 2;
+        int r = TILE_SIZE / 2 - 3;
 
-		draw_circle(dr, cx, cy, 5*r/6, COL_MINE, COL_MINE);
-		draw_rect(dr, cx - r/6, cy - r, 2*(r/6)+1, 2*r+1, COL_MINE);
-		draw_rect(dr, cx - r, cy - r/6, 2*r+1, 2*(r/6)+1, COL_MINE);
-		draw_rect(dr, cx-r/3, cy-r/3, r/3, r/4, COL_HIGHLIGHT);
-	    }
+        draw_circle(dr, cx, cy, 5*r/6, COL_MINE, COL_MINE);
+        draw_rect(dr, cx - r/6, cy - r, 2*(r/6)+1, 2*r+1, COL_MINE);
+        draw_rect(dr, cx - r, cy - r/6, 2*r+1, 2*(r/6)+1, COL_MINE);
+        draw_rect(dr, cx-r/3, cy-r/3, r/3, r/4, COL_HIGHLIGHT);
+        }
 
-	    if (v == 66) {
-		/*
-		 * Cross through the mine.
-		 */
-		int dx;
-		for (dx = -1; dx <= +1; dx++) {
-		    draw_line(dr, x + 3 + dx, y + 2,
-			      x + TILE_SIZE - 3 + dx,
-			      y + TILE_SIZE - 2, COL_CROSS);
-		    draw_line(dr, x + TILE_SIZE - 3 + dx, y + 2,
-			      x + 3 + dx, y + TILE_SIZE - 2,
-			      COL_CROSS);
-		}
-	    }
-	}
+        if (v == 66) {
+        /*
+         * Cross through the mine.
+         */
+        int dx;
+        for (dx = -1; dx <= +1; dx++) {
+            draw_line(dr, x + 3 + dx, y + 2,
+                  x + TILE_SIZE - 3 + dx,
+                  y + TILE_SIZE - 2, COL_CROSS);
+            draw_line(dr, x + TILE_SIZE - 3 + dx, y + 2,
+                  x + 3 + dx, y + TILE_SIZE - 2,
+                  COL_CROSS);
+        }
+        }
+    }
     }
 
     draw_update(dr, x, y, TILE_SIZE, TILE_SIZE);
@@ -2967,23 +2881,23 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     bool cmoved;
 
     if (flashtime) {
-	int frame = (int)(flashtime / FLASH_FRAME);
-	if (frame % 2)
-	    bg = (ui->flash_is_death ? COL_BACKGROUND : COL_LOWLIGHT);
-	else
-	    bg = (ui->flash_is_death ? COL_BANG : COL_HIGHLIGHT);
+    int frame = (int)(flashtime / FLASH_FRAME);
+    if (frame % 2)
+        bg = (ui->flash_is_death ? COL_BACKGROUND : COL_LOWLIGHT);
+    else
+        bg = (ui->flash_is_death ? COL_BANG : COL_HIGHLIGHT);
     } else
-	bg = COL_BACKGROUND;
+    bg = COL_BACKGROUND;
 
     if (!ds->started) {
         int coords[10];
 
-	draw_rect(dr, 0, 0,
-		  TILE_SIZE * state->w + 2 * BORDER,
-		  TILE_SIZE * state->h + 2 * BORDER, COL_BACKGROUND);
-	draw_update(dr, 0, 0,
-		    TILE_SIZE * state->w + 2 * BORDER,
-		    TILE_SIZE * state->h + 2 * BORDER);
+    draw_rect(dr, 0, 0,
+          TILE_SIZE * state->w + 2 * BORDER,
+          TILE_SIZE * state->h + 2 * BORDER, COL_BACKGROUND);
+    draw_update(dr, 0, 0,
+            TILE_SIZE * state->w + 2 * BORDER,
+            TILE_SIZE * state->h + 2 * BORDER);
 
         /*
          * Recessed area containing the whole puzzle.
@@ -3017,16 +2931,16 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      */
     mines = markers = closed = 0;
     for (y = 0; y < ds->h; y++)
-	for (x = 0; x < ds->w; x++) {
-	    int v = state->grid[y*ds->w+x];
+    for (x = 0; x < ds->w; x++) {
+        int v = state->grid[y*ds->w+x];
             bool cc = false;
 
             if (v < 0)
                 closed++;
-	    if (v == -1)
-		markers++;
-	    if (state->layout->mines && state->layout->mines[y*ds->w+x])
-		mines++;
+        if (v == -1)
+        markers++;
+        if (state->layout->mines && state->layout->mines[y*ds->w+x])
+        mines++;
 
             if (v >= 0 && v <= 8) {
                 /*
@@ -3048,41 +2962,41 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                     v |= 32;
             }
 
-	    if ((v == -2 || v == -3) &&
-		(abs(x-ui->hx) <= ui->hradius && abs(y-ui->hy) <= ui->hradius))
-		v -= 20;
+        if ((v == -2 || v == -3) &&
+        (abs(x-ui->hx) <= ui->hradius && abs(y-ui->hy) <= ui->hradius))
+        v -= 20;
 
             if (cmoved && /* if cursor has moved, force redraw of curr and prev pos */
                 ((x == cx && y == cy) || (x == ds->cur_x && y == ds->cur_y)))
               cc = true;
 
-	    if (ds->grid[y*ds->w+x] != v || bg != ds->bg || cc) {
-		draw_tile(dr, ds, COORD(x), COORD(y), v,
+        if (ds->grid[y*ds->w+x] != v || bg != ds->bg || cc) {
+        draw_tile(dr, ds, COORD(x), COORD(y), v,
                           (x == cx && y == cy) ? COL_CURSOR : bg);
-		ds->grid[y*ds->w+x] = v;
-	    }
-	}
+        ds->grid[y*ds->w+x] = v;
+        }
+    }
     ds->bg = bg;
     ds->cur_x = cx; ds->cur_y = cy;
 
     if (!state->layout->mines)
-	mines = state->layout->n;
+    mines = state->layout->n;
 
     /*
      * Update the status bar.
      */
     {
-	char statusbar[512];
-	if (state->dead) {
-	    sprintf(statusbar, "DEAD!");
-	} else if (state->won) {
+    char statusbar[512];
+    if (state->dead) {
+        sprintf(statusbar, "DEAD!");
+    } else if (state->won) {
             if (state->used_solve)
                 sprintf(statusbar, "Auto-solved.");
             else
                 sprintf(statusbar, "COMPLETED!");
-	} else {
+    } else {
             int safe_closed = closed - mines;
-	    sprintf(statusbar, "Marked: %d / %d", markers, mines);
+        sprintf(statusbar, "Marked: %d / %d", markers, mines);
             if (safe_closed > 0 && safe_closed <= 9) {
                 /*
                  * In the situation where there's a very small number
@@ -3117,11 +3031,11 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                             " (%d safe squares remain)", safe_closed);
                 }
             }
-	}
+    }
         if (ui->deaths)
             sprintf(statusbar + strlen(statusbar),
                     "  Deaths: %d", ui->deaths);
-	status_bar(dr, statusbar);
+    status_bar(dr, statusbar);
     }
 }
 
@@ -3134,19 +3048,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (oldstate->used_solve || newstate->used_solve)
-        return 0.0F;
-
-    if (dir > 0 && !oldstate->dead && !oldstate->won) {
-	if (newstate->dead) {
-	    ui->flash_is_death = true;
-	    return 3 * FLASH_FRAME;
-	}
-	if (newstate->won) {
-	    ui->flash_is_death = false;
-	    return 2 * FLASH_FRAME;
-	}
-    }
     return 0.0F;
 }
 
@@ -3162,17 +3063,7 @@ static int game_status(const game_state *state)
 
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
-    if (state->dead || state->won || ui->completed || !state->layout->mines)
-	return false;
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
 }
 
 #ifdef COMBINED
@@ -3195,7 +3086,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -3212,81 +3103,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
-    true,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     BUTTON_BEATS(LEFT_BUTTON, RIGHT_BUTTON) | REQUIRE_RBUTTON,
 };
 
-#ifdef STANDALONE_OBFUSCATOR
-
-/*
- * Vaguely useful stand-alone program which translates between
- * obfuscated and clear Mines game descriptions. Pass in a game
- * description on the command line, and if it's clear it will be
- * obfuscated and vice versa. The output text should also be a
- * valid game ID describing the same game. Like this:
- *
- * $ ./mineobfusc 9x9:4,4,mb071b49fbd1cb6a0d5868
- * 9x9:4,4,004000007c00010022080
- * $ ./mineobfusc 9x9:4,4,004000007c00010022080
- * 9x9:4,4,mb071b49fbd1cb6a0d5868
- */
-
-int main(int argc, char **argv)
-{
-    game_params *p;
-    game_state *s;
-    char *id = NULL, *desc;
-    const char *err;
-    int y, x;
-
-    while (--argc > 0) {
-        char *p = *++argv;
-	if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-            return 1;
-        } else {
-            id = p;
-        }
-    }
-
-    if (!id) {
-        fprintf(stderr, "usage: %s <game_id>\n", argv[0]);
-        return 1;
-    }
-
-    desc = strchr(id, ':');
-    if (!desc) {
-        fprintf(stderr, "%s: game id expects a colon in it\n", argv[0]);
-        return 1;
-    }
-    *desc++ = '\0';
-
-    p = default_params();
-    decode_params(p, id);
-    err = validate_desc(p, desc);
-    if (err) {
-        fprintf(stderr, "%s: %s\n", argv[0], err);
-        return 1;
-    }
-    s = new_game(NULL, p, desc);
-
-    x = atoi(desc);
-    while (*desc && *desc != ',') desc++;
-    if (*desc) desc++;
-    y = atoi(desc);
-    while (*desc && *desc != ',') desc++;
-    if (*desc) desc++;
-
-    printf("%s:%s\n", id, describe_layout(s->layout->mines,
-                                          p->w * p->h,
-                                          x, y,
-                                          (*desc != 'm')));
-
-    return 0;
-}
-
-#endif
-
-/* vim: set shiftwidth=4 tabstop=8: */
