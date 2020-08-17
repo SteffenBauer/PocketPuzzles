@@ -138,7 +138,7 @@ static game_params *default_params(void)
 {
     game_params *ret = snew(game_params);
 
-    ret->w = 12;
+    ret->w = 10;
     ret->h = 10;
 
     return ret;
@@ -157,9 +157,10 @@ static game_params *dup_params(const game_params *params)
 }
 
 static const struct game_params sokoban_presets[] = {
-    { 12, 10 },
-    { 16, 12 },
-    { 20, 16 },
+    { 8, 8 },
+    { 10, 10 },
+    { 12, 12 },
+    { 14, 14 },
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -904,16 +905,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     return NULL;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    return NULL;
-}
-
 static game_ui *new_ui(const game_state *state)
 {
     return NULL;
@@ -1206,45 +1197,19 @@ static float *game_colours(frontend *fe, int *ncolours)
 
     game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
 
-    ret[COL_OUTLINE * 3 + 0] = 0.0F;
-    ret[COL_OUTLINE * 3 + 1] = 0.0F;
-    ret[COL_OUTLINE * 3 + 2] = 0.0F;
-
-    ret[COL_PLAYER * 3 + 0] = 0.0F;
-    ret[COL_PLAYER * 3 + 1] = 1.0F;
-    ret[COL_PLAYER * 3 + 2] = 0.0F;
-
-    ret[COL_BARREL * 3 + 0] = 0.6F;
-    ret[COL_BARREL * 3 + 1] = 0.3F;
-    ret[COL_BARREL * 3 + 2] = 0.0F;
-
-    ret[COL_TARGET * 3 + 0] = ret[COL_LOWLIGHT * 3 + 0];
-    ret[COL_TARGET * 3 + 1] = ret[COL_LOWLIGHT * 3 + 1];
-    ret[COL_TARGET * 3 + 2] = ret[COL_LOWLIGHT * 3 + 2];
-
-    ret[COL_PIT * 3 + 0] = ret[COL_LOWLIGHT * 3 + 0] / 2;
-    ret[COL_PIT * 3 + 1] = ret[COL_LOWLIGHT * 3 + 1] / 2;
-    ret[COL_PIT * 3 + 2] = ret[COL_LOWLIGHT * 3 + 2] / 2;
-
-    ret[COL_DEEP_PIT * 3 + 0] = 0.0F;
-    ret[COL_DEEP_PIT * 3 + 1] = 0.0F;
-    ret[COL_DEEP_PIT * 3 + 2] = 0.0F;
-
-    ret[COL_TEXT * 3 + 0] = 1.0F;
-    ret[COL_TEXT * 3 + 1] = 1.0F;
-    ret[COL_TEXT * 3 + 2] = 1.0F;
-
-    ret[COL_GRID * 3 + 0] = ret[COL_LOWLIGHT * 3 + 0];
-    ret[COL_GRID * 3 + 1] = ret[COL_LOWLIGHT * 3 + 1];
-    ret[COL_GRID * 3 + 2] = ret[COL_LOWLIGHT * 3 + 2];
-
-    ret[COL_OUTLINE * 3 + 0] = 0.0F;
-    ret[COL_OUTLINE * 3 + 1] = 0.0F;
-    ret[COL_OUTLINE * 3 + 2] = 0.0F;
-
-    for (i = 0; i < 3; i++) {
-	ret[COL_WALL * 3 + i] = (3 * ret[COL_BACKGROUND * 3 + i] +
-				 1 * ret[COL_HIGHLIGHT * 3 + i]) / 4;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.9F;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.6F;
+        ret[COL_TARGET     * 3 + i] = 0.75F;
+        ret[COL_OUTLINE    * 3 + i] = 0.0F;
+        ret[COL_PLAYER     * 3 + i] = 0.8F;
+        ret[COL_BARREL     * 3 + i] = 0.25F;
+        ret[COL_PIT        * 3 + i] = 0.6F;
+        ret[COL_DEEP_PIT   * 3 + i] = 0.6F;
+        ret[COL_TEXT       * 3 + i] = 1.0F;
+        ret[COL_GRID       * 3 + i] = 0.75F;
+        ret[COL_WALL       * 3 + i] = 0.75F;
     }
 
     *ncolours = NCOLOURS;
@@ -1313,8 +1278,16 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, int v)
                         TILESIZE*3/7, COL_TARGET, COL_OUTLINE);
         }
         if (IS_PLAYER(v)) {
-            draw_circle(dr, tx + TILESIZE/2, ty + TILESIZE/2,
-                        TILESIZE/3, COL_PLAYER, COL_OUTLINE);
+            int coords[8];
+            coords[0] = tx + TILESIZE/2;
+            coords[1] = ty + 15;
+            coords[2] = tx + TILESIZE - 15;
+            coords[3] = ty + TILESIZE/2;
+            coords[4] = tx + TILESIZE/2;
+            coords[5] = ty + TILESIZE - 15;
+            coords[6] = tx + 15;
+            coords[7] = ty + TILESIZE/2;
+            draw_polygon(dr, coords, 4, COL_PLAYER, COL_OUTLINE);
         } else if (IS_BARREL(v)) {
             char str[2];
 
@@ -1422,14 +1395,6 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-}
-
 #ifdef COMBINED
 #define thegame sokoban
 #endif
@@ -1450,7 +1415,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     false, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -1467,7 +1432,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false,			       /* wants_statusbar */
     false, game_timing_state,
     0,				       /* flags */

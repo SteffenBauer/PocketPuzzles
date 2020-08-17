@@ -116,7 +116,7 @@ static game_params *default_params(void)
     game_params *ret = snew(game_params);
 
     ret->o = 5;
-    ret->diff = DIFF_EASY;
+    ret->diff = DIFF_NORMAL;
     ret->options = OPTIONSMASK;
 
     return ret;
@@ -1062,16 +1062,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
  * User Interface *
  * ************** */
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    return NULL;
-}
-
 static key_label *game_request_keys(const game_params *params, int *nkeys)
 {
     int i;
@@ -1388,30 +1378,22 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
     game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
     
-    ret[COL_BORDER*3 + 0] = 0.0F;
-    ret[COL_BORDER*3 + 1] = 0.0F;
-    ret[COL_BORDER*3 + 2] = 0.0F;
-    
-    ret[COL_GUESS*3 + 0] = 0.0F;
-    ret[COL_GUESS*3 + 1] = 0.5F;
-    ret[COL_GUESS*3 + 2] = 0.0F;
-    
-    ret[COL_PENCIL*3 + 0] = 0.0F;
-    ret[COL_PENCIL*3 + 1] = 0.5F;
-    ret[COL_PENCIL*3 + 2] = 0.5F;
-    
-    ret[COL_ERROR*3 + 0] = 1.0F;
-    ret[COL_ERROR*3 + 1] = 0.0F;
-    ret[COL_ERROR*3 + 2] = 0.0F;
-    
-    ret[COL_ERRORBG*3 + 0] = 1.0F;
-    ret[COL_ERRORBG*3 + 1] = 0.85F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_ERRORBG*3 + 2] = 0.85F * ret[COL_BACKGROUND * 3 + 2];
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.85F;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.85F;
+        ret[COL_BORDER     * 3 + i] = 0.0F;
+        ret[COL_GUESS      * 3 + i] = 0.0F;
+        ret[COL_PENCIL     * 3 + i] = 0.0F;
+        ret[COL_ERROR      * 3 + i] = 0.5F;
+        ret[COL_ERRORBG    * 3 + i] = 0.5F;
+    }
     
     *ncolours = NCOLOURS;
     return ret;
@@ -1577,8 +1559,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             buf[0] = state->grid[y*o+x] + '0';
             buf[1] = '\0';
             
+            if (fs & FE_COUNT) {
+                draw_circle(dr, tx + (tilesize/2), ty + (tilesize/2), tilesize/2-5, COL_ERRORBG, COL_ERRORBG);
+                draw_circle(dr, tx + (tilesize/2), ty + (tilesize/2), tilesize/2-10, COL_BACKGROUND, COL_ERRORBG);
+            }
+            
             draw_text(dr, tx + (tilesize/2), ty + (tilesize/2),
-                FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
+                FONT_VARIABLE, (fs & F_IMMUTABLE) ? tilesize/2 : tilesize/2-5, ALIGN_HCENTRE|ALIGN_VCENTRE,
                 fs & F_IMMUTABLE ? COL_BORDER : 
                 fs & FE_COUNT ? COL_ERROR : COL_GUESS,
                 buf);
@@ -1641,9 +1628,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-            !oldstate->cheated && !newstate->cheated)
-        return FLASH_TIME;
     return 0.0F;
 }
 
@@ -1655,74 +1639,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-/* Using 9mm squares */
-#define PRINT_SQUARE_SIZE 900
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    game_compute_size(params, PRINT_SQUARE_SIZE, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int o = state->o, co = o-1;
-    int x, y;
-    int ink = print_mono_colour(dr, 0);
-    int paper = print_grey_colour(dr, 1);
-    char buf[16];
-    struct mathrax_symbols symbols;
-
-    symbols.minus_sign = text_fallback(dr, minus_signs, lenof(minus_signs));
-    symbols.times_sign = text_fallback(dr, times_signs, lenof(times_signs));
-    symbols.divide_sign = text_fallback(dr, divide_signs, lenof(divide_signs));
-
-    for(x = 0; x <= o; x++)
-    for(y = 0; y < o; y++)
-    {
-        draw_line(dr, (x+0.5)*tilesize, (y+0.5)*tilesize, 
-            (x+0.5)*tilesize, (y+1.5)*tilesize, ink);
-    }
-    for(x = 0; x < o; x++)
-    for(y = 0; y <= o; y++)
-    {
-        draw_line(dr, (x+0.5)*tilesize, (y+0.5)*tilesize, 
-                (x+1.5)*tilesize, (y+0.5)*tilesize, ink);
-    }
-
-    for(x = 0; x < o-1; x++)
-    for(y = 0; y < o-1; y++)
-    {
-        if(state->clues[y*co+x])
-        {
-            int tx = x*tilesize + (tilesize*1.5);
-            int ty = y*tilesize + (tilesize*1.5);
-            mathrax_clue_label(symbols, buf, state->clues[y*co+x]);
-
-            draw_circle(dr, tx, ty, tilesize/3, paper, ink);
-            draw_text(dr, tx, ty, FONT_VARIABLE, tilesize/3, ALIGN_HCENTRE|ALIGN_VCENTRE, ink, buf);
-        }
-    }
-
-    buf[1] = '\0';
-    for(x = 0; x < o; x++)
-    for(y = 0; y < o; y++)
-    {
-        if(!state->grid[y*o+x]) continue;
-        buf[0] = state->grid[y*o+x] + '0';
-        draw_text(dr, (x+1)*tilesize,
-              (y+1)*tilesize,
-              FONT_VARIABLE, tilesize/2,
-              ALIGN_VCENTRE | ALIGN_HCENTRE, ink, buf);
-    }
-
-    sfree(symbols.minus_sign);
-    sfree(symbols.times_sign);
-    sfree(symbols.divide_sign);
 }
 
 #ifdef COMBINED
@@ -1745,7 +1661,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -1762,7 +1678,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
