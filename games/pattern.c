@@ -67,19 +67,17 @@ static game_params *default_params(void)
 {
     game_params *ret = snew(game_params);
 
-    ret->w = ret->h = 15;
+    ret->w = 8;
+    ret->h = 10;
 
     return ret;
 }
 
 static const struct game_params pattern_presets[] = {
-    {10, 10},
-    {15, 15},
-    {20, 20},
-#ifndef SLOW_SYSTEM
-    {25, 25},
-    {30, 30},
-#endif
+    {6, 8},
+    {8, 10},
+    {10, 12},
+    {12, 15}
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -108,7 +106,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -175,7 +173,7 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w <= 0 || params->h <= 0)
-	return "Width and height must both be greater than zero";
+    return "Width and height must both be greater than zero";
     return NULL;
 }
 
@@ -279,15 +277,15 @@ static void generate(random_state *rs, int w, int h, unsigned char *retgrid)
                     for (q = -1; q <= +1; q++) {
                         if (i+p < 0 || i+p >= h || j+q < 0 || j+q >= w)
                             continue;
-			/*
-			 * An additional special case not mentioned
-			 * above: if a grid dimension is 2xn then
-			 * we do not average across that dimension
-			 * at all. Otherwise a 2x2 grid would
-			 * contain four identical squares.
-			 */
-			if ((h==2 && p!=0) || (w==2 && q!=0))
-			    continue;
+            /*
+             * An additional special case not mentioned
+             * above: if a grid dimension is 2xn then
+             * we do not average across that dimension
+             * at all. Otherwise a 2x2 grid would
+             * contain four identical squares.
+             */
+            if ((h==2 && p!=0) || (w==2 && q!=0))
+                continue;
                         n++;
                         sx += fgrid[(i+p)*w+(j+q)];
                     }
@@ -363,9 +361,9 @@ bool verbose = false;
 
 static bool do_recurse(unsigned char *known, unsigned char *deduced,
                        unsigned char *row,
-		       unsigned char *minpos_done, unsigned char *maxpos_done,
-		       unsigned char *minpos_ok, unsigned char *maxpos_ok,
-		       int *data, int len,
+               unsigned char *minpos_done, unsigned char *maxpos_done,
+               unsigned char *minpos_ok, unsigned char *maxpos_ok,
+               int *data, int len,
                        int freespace, int ndone, int lowest)
 {
     int i, j, k;
@@ -379,48 +377,48 @@ static bool do_recurse(unsigned char *known, unsigned char *deduced,
      * invalid (partial) solution is detected.
      */
     if (data[ndone]) {
-	if (lowest >= minpos_done[ndone] && lowest <= maxpos_done[ndone]) {
-	    if (lowest >= minpos_ok[ndone] && lowest <= maxpos_ok[ndone]) {
-		for (i=0; i<lowest; i++)
-		    deduced[i] |= row[i];
-	    }
-	    return lowest >= minpos_ok[ndone] && lowest <= maxpos_ok[ndone];
-	} else {
-	    if (lowest < minpos_done[ndone]) minpos_done[ndone] = lowest;
-	    if (lowest > maxpos_done[ndone]) maxpos_done[ndone] = lowest;
-	}
-	for (i=0; i<=freespace; i++) {
-	    j = lowest;
-	    for (k=0; k<i; k++) {
-		if (known[j] == BLOCK) goto next_iter;
-	        row[j++] = DOT;
-	    }
-	    for (k=0; k<data[ndone]; k++) {
-		if (known[j] == DOT) goto next_iter;
-	        row[j++] = BLOCK;
-	    }
-	    if (j < len) {
-		if (known[j] == BLOCK) goto next_iter;
-	        row[j++] = DOT;
-	    }
-	    if (do_recurse(known, deduced, row, minpos_done, maxpos_done,
-	                   minpos_ok, maxpos_ok, data, len, freespace-i, ndone+1, j)) {
-	        if (lowest < minpos_ok[ndone]) minpos_ok[ndone] = lowest;
-	        if (lowest + i > maxpos_ok[ndone]) maxpos_ok[ndone] = lowest + i;
-	        if (lowest + i > maxpos_done[ndone]) maxpos_done[ndone] = lowest + i;
-	    }
-	    next_iter:
-	    j++;
-	}
-	return lowest >= minpos_ok[ndone] && lowest <= maxpos_ok[ndone];
+    if (lowest >= minpos_done[ndone] && lowest <= maxpos_done[ndone]) {
+        if (lowest >= minpos_ok[ndone] && lowest <= maxpos_ok[ndone]) {
+        for (i=0; i<lowest; i++)
+            deduced[i] |= row[i];
+        }
+        return lowest >= minpos_ok[ndone] && lowest <= maxpos_ok[ndone];
     } else {
-	for (i=lowest; i<len; i++) {
-	    if (known[i] == BLOCK) return false;
-	    row[i] = DOT;
-	    }
-	for (i=0; i<len; i++)
-	    deduced[i] |= row[i];
-	return true;
+        if (lowest < minpos_done[ndone]) minpos_done[ndone] = lowest;
+        if (lowest > maxpos_done[ndone]) maxpos_done[ndone] = lowest;
+    }
+    for (i=0; i<=freespace; i++) {
+        j = lowest;
+        for (k=0; k<i; k++) {
+        if (known[j] == BLOCK) goto next_iter;
+            row[j++] = DOT;
+        }
+        for (k=0; k<data[ndone]; k++) {
+        if (known[j] == DOT) goto next_iter;
+            row[j++] = BLOCK;
+        }
+        if (j < len) {
+        if (known[j] == BLOCK) goto next_iter;
+            row[j++] = DOT;
+        }
+        if (do_recurse(known, deduced, row, minpos_done, maxpos_done,
+                       minpos_ok, maxpos_ok, data, len, freespace-i, ndone+1, j)) {
+            if (lowest < minpos_ok[ndone]) minpos_ok[ndone] = lowest;
+            if (lowest + i > maxpos_ok[ndone]) maxpos_ok[ndone] = lowest + i;
+            if (lowest + i > maxpos_done[ndone]) maxpos_done[ndone] = lowest + i;
+        }
+        next_iter:
+        j++;
+    }
+    return lowest >= minpos_ok[ndone] && lowest <= maxpos_ok[ndone];
+    } else {
+    for (i=lowest; i<len; i++) {
+        if (known[i] == BLOCK) return false;
+        row[i] = DOT;
+        }
+    for (i=0; i<len; i++)
+        deduced[i] |= row[i];
+    return true;
     }
 }
 
@@ -441,14 +439,14 @@ static bool do_row(unsigned char *known, unsigned char *deduced,
 
     freespace = len+1;
     for (rowlen = 0; data[rowlen]; rowlen++) {
-	minpos_done[rowlen] = minpos_ok[rowlen] = len - 1;
-	maxpos_done[rowlen] = maxpos_ok[rowlen] = 0;
-	freespace -= data[rowlen]+1;
+    minpos_done[rowlen] = minpos_ok[rowlen] = len - 1;
+    maxpos_done[rowlen] = maxpos_ok[rowlen] = 0;
+    freespace -= data[rowlen]+1;
     }
 
     for (i = 0; i < len; i++) {
-	known[i] = start[i*step];
-	deduced[i] = 0;
+    known[i] = start[i*step];
+    deduced[i] = 0;
     }
     for (i = len - 1; i >= 0 && known[i] == DOT; i--)
         freespace--;
@@ -464,30 +462,30 @@ static bool do_row(unsigned char *known, unsigned char *deduced,
 
     done_any = false;
     for (i=0; i<len; i++)
-	if (deduced[i] && deduced[i] != STILL_UNKNOWN && !known[i]) {
-	    start[i*step] = deduced[i];
-	    if (changed) changed[i]++;
-	    done_any = true;
-	}
+    if (deduced[i] && deduced[i] != STILL_UNKNOWN && !known[i]) {
+        start[i*step] = deduced[i];
+        if (changed) changed[i]++;
+        done_any = true;
+    }
 #ifdef STANDALONE_SOLVER
     if (verbose && done_any) {
-	char buf[80];
-	int thiscluewid;
-	printf("%s %2d: [", rowcol, index);
-	for (thiscluewid = -1, i = 0; data[i]; i++)
-	    thiscluewid += sprintf(buf, " %d", data[i]);
-	printf("%*s", cluewid - thiscluewid, "");
-	for (i = 0; data[i]; i++)
-	    printf(" %d", data[i]);
-	printf(" ] ");
-	for (i = 0; i < len; i++)
-	    putchar(known[i] == BLOCK ? '#' :
-		    known[i] == DOT ? '.' : '?');
-	printf(" -> ");
-	for (i = 0; i < len; i++)
-	    putchar(start[i*step] == BLOCK ? '#' :
-		    start[i*step] == DOT ? '.' : '?');
-	putchar('\n');
+    char buf[80];
+    int thiscluewid;
+    printf("%s %2d: [", rowcol, index);
+    for (thiscluewid = -1, i = 0; data[i]; i++)
+        thiscluewid += sprintf(buf, " %d", data[i]);
+    printf("%*s", cluewid - thiscluewid, "");
+    for (i = 0; data[i]; i++)
+        printf(" %d", data[i]);
+    printf(" ] ");
+    for (i = 0; i < len; i++)
+        putchar(known[i] == BLOCK ? '#' :
+            known[i] == DOT ? '.' : '?');
+    printf(" -> ");
+    for (i = 0; i < len; i++)
+        putchar(start[i*step] == BLOCK ? '#' :
+            start[i*step] == DOT ? '.' : '?');
+    putchar('\n');
     }
 #endif
     return done_any;
@@ -528,13 +526,13 @@ static bool solve_puzzle(const game_state *state, unsigned char *grid,
      * Changed_* is used to choose the next rows / cols to re-examine
      */
     for (i=0; i<h; i++) {
-	int freespace, rowlen;
-	if (state && state->common->rowdata) {
+    int freespace, rowlen;
+    if (state && state->common->rowdata) {
             memcpy(rowdata, state->common->rowdata + state->common->rowsize*(w+i), max*sizeof(int));
-	    rowlen = state->common->rowlen[w+i];
-	} else {
-	    rowlen = compute_rowdata(rowdata, grid+i*w, w, 1);
-	}
+        rowlen = state->common->rowlen[w+i];
+    } else {
+        rowlen = compute_rowdata(rowdata, grid+i*w, w, 1);
+    }
         rowdata[rowlen] = 0;
         if (rowlen == 0) {
             changed_h[i] = w;
@@ -550,16 +548,16 @@ static bool solve_puzzle(const game_state *state, unsigned char *grid,
                 changed_h[i]++;
     }
     for (i=0,max_h=0; i<h; i++)
-	if (changed_h[i] > max_h)
-	    max_h = changed_h[i];
+    if (changed_h[i] > max_h)
+        max_h = changed_h[i];
     for (i=0; i<w; i++) {
-	int freespace, rowlen;
-	if (state && state->common->rowdata) {
-	    memcpy(rowdata, state->common->rowdata + state->common->rowsize*i, max*sizeof(int));
-	    rowlen = state->common->rowlen[i];
-	} else {
+    int freespace, rowlen;
+    if (state && state->common->rowdata) {
+        memcpy(rowdata, state->common->rowdata + state->common->rowsize*i, max*sizeof(int));
+        rowlen = state->common->rowlen[i];
+    } else {
             rowlen = compute_rowdata(rowdata, grid+i, h, w);
-	}
+    }
         rowdata[rowlen] = 0;
         if (rowlen == 0) {
             changed_w[i] = h;
@@ -575,8 +573,8 @@ static bool solve_puzzle(const game_state *state, unsigned char *grid,
                 changed_w[i]++;
     }
     for (i=0,max_w=0; i<w; i++)
-	if (changed_w[i] > max_w)
-	    max_w = changed_w[i];
+    if (changed_w[i] > max_w)
+        max_w = changed_w[i];
 
     /* Solve the puzzle.
      * Process rows/columns individually. Deductions involving more than one
@@ -588,62 +586,62 @@ static bool solve_puzzle(const game_state *state, unsigned char *grid,
      * Extremely rectangular grids (e.g. 10x20, 15x40, etc.) are not treated specially.
      */
     do {
-	for (; max_h && max_h >= max_w; max_h--) {
-	    for (i=0; i<h; i++) {
-		if (changed_h[i] >= max_h) {
-		    if (state && state->common->rowdata) {
-			memcpy(rowdata, state->common->rowdata + state->common->rowsize*(w+i), max*sizeof(int));
-			rowdata[state->common->rowlen[w+i]] = 0;
-		    } else {
-			rowdata[compute_rowdata(rowdata, grid+i*w, w, 1)] = 0;
-		    }
-		    do_row(workspace, workspace+max, workspace+2*max,
-			   workspace+3*max, workspace+4*max,
-			   workspace+5*max, workspace+6*max,
-			   matrix+i*w, w, 1, rowdata, changed_w
+    for (; max_h && max_h >= max_w; max_h--) {
+        for (i=0; i<h; i++) {
+        if (changed_h[i] >= max_h) {
+            if (state && state->common->rowdata) {
+            memcpy(rowdata, state->common->rowdata + state->common->rowsize*(w+i), max*sizeof(int));
+            rowdata[state->common->rowlen[w+i]] = 0;
+            } else {
+            rowdata[compute_rowdata(rowdata, grid+i*w, w, 1)] = 0;
+            }
+            do_row(workspace, workspace+max, workspace+2*max,
+               workspace+3*max, workspace+4*max,
+               workspace+5*max, workspace+6*max,
+               matrix+i*w, w, 1, rowdata, changed_w
 #ifdef STANDALONE_SOLVER
-			   , "row", i+1, cluewid
+               , "row", i+1, cluewid
 #endif
-			   );
-		    changed_h[i] = 0;
-		}
-	    }
-	    for (i=0,max_w=0; i<w; i++)
-		if (changed_w[i] > max_w)
-		    max_w = changed_w[i];
-	}
-	for (; max_w && max_w >= max_h; max_w--) {
-	    for (i=0; i<w; i++) {
-		if (changed_w[i] >= max_w) {
-		    if (state && state->common->rowdata) {
-			memcpy(rowdata, state->common->rowdata + state->common->rowsize*i, max*sizeof(int));
-			rowdata[state->common->rowlen[i]] = 0;
-		    } else {
-			rowdata[compute_rowdata(rowdata, grid+i, h, w)] = 0;
-		    }
-		    do_row(workspace, workspace+max, workspace+2*max,
-			   workspace+3*max, workspace+4*max,
-			   workspace+5*max, workspace+6*max,
-			   matrix+i, h, w, rowdata, changed_h
+               );
+            changed_h[i] = 0;
+        }
+        }
+        for (i=0,max_w=0; i<w; i++)
+        if (changed_w[i] > max_w)
+            max_w = changed_w[i];
+    }
+    for (; max_w && max_w >= max_h; max_w--) {
+        for (i=0; i<w; i++) {
+        if (changed_w[i] >= max_w) {
+            if (state && state->common->rowdata) {
+            memcpy(rowdata, state->common->rowdata + state->common->rowsize*i, max*sizeof(int));
+            rowdata[state->common->rowlen[i]] = 0;
+            } else {
+            rowdata[compute_rowdata(rowdata, grid+i, h, w)] = 0;
+            }
+            do_row(workspace, workspace+max, workspace+2*max,
+               workspace+3*max, workspace+4*max,
+               workspace+5*max, workspace+6*max,
+               matrix+i, h, w, rowdata, changed_h
 #ifdef STANDALONE_SOLVER
-			   , "col", i+1, cluewid
+               , "col", i+1, cluewid
 #endif
-			   );
-		    changed_w[i] = 0;
-		}
-	    }
-	    for (i=0,max_h=0; i<h; i++)
-		if (changed_h[i] > max_h)
-		    max_h = changed_h[i];
-	}
+               );
+            changed_w[i] = 0;
+        }
+        }
+        for (i=0,max_h=0; i<h; i++)
+        if (changed_h[i] > max_h)
+            max_h = changed_h[i];
+    }
     } while (max_h>0 || max_w>0);
 
     ok = true;
     for (i=0; i<h; i++) {
-	for (j=0; j<w; j++) {
-	    if (matrix[i*w+j] == UNKNOWN)
-		ok = false;
-	}
+    for (j=0; j<w; j++) {
+        if (matrix[i*w+j] == UNKNOWN)
+        ok = false;
+    }
     }
 
     return ok;
@@ -703,8 +701,8 @@ static unsigned char *generate_soluble(random_state *rs, int w, int h)
         if (!ok)
             continue;
 
-	ok = solve_puzzle(NULL, grid, w, h, matrix, workspace,
-			  changed_h, changed_w, rowdata, 0);
+    ok = solve_puzzle(NULL, grid, w, h, matrix, workspace,
+              changed_h, changed_w, rowdata, 0);
     } while (!ok);
 
     sfree(matrix);
@@ -721,7 +719,7 @@ unsigned char *picture;
 #endif
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     unsigned char *grid;
     int i, j, max, rowlen, *rowdata;
@@ -785,7 +783,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      * Save the solved game in aux.
      */
     if (aux) {
-	char *ai = snewn(params->w * params->h + 2, char);
+    char *ai = snewn(params->w * params->h + 2, char);
 
         /*
          * String format is exactly the same as a solve move, so we
@@ -799,7 +797,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
         ai[params->w * params->h + 1] = '\0';
 
-	*aux = ai;
+    *aux = ai;
     }
 
     /*
@@ -1078,7 +1076,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     rowdata = snewn(max+1, int);
 
     ok = solve_puzzle(state, NULL, w, h, matrix, workspace,
-		      changed_h, changed_w, rowdata, 0);
+              changed_h, changed_w, rowdata, 0);
 
     sfree(workspace);
     sfree(changed_h);
@@ -1086,115 +1084,22 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     sfree(rowdata);
 
     if (!ok) {
-	sfree(matrix);
-	*error = "Solving algorithm cannot complete this puzzle";
-	return NULL;
+    sfree(matrix);
+    *error = "Solving algorithm cannot complete this puzzle";
+    return NULL;
     }
 
     ret = snewn(w*h+2, char);
     ret[0] = 'S';
     for (i = 0; i < w*h; i++) {
-	assert(matrix[i] == BLOCK || matrix[i] == DOT);
-	ret[i+1] = (matrix[i] == BLOCK ? '1' : '0');
+    assert(matrix[i] == BLOCK || matrix[i] == DOT);
+    ret[i+1] = (matrix[i] == BLOCK ? '1' : '0');
     }
     ret[w*h+1] = '\0';
 
     sfree(matrix);
 
     return ret;
-}
-
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int w = state->common->w, h = state->common->h, i, j;
-    int left_gap = 0, top_gap = 0, ch = 2, cw = 1, limit = 1;
-
-    int len, topleft, lw, lh, gw, gh; /* {line,grid}_{width,height} */
-    char *board, *buf;
-
-    for (i = 0; i < w; ++i) {
-	top_gap = max(top_gap, state->common->rowlen[i]);
-	for (j = 0; j < state->common->rowlen[i]; ++j)
-	    while (state->common->rowdata[i*state->common->rowsize + j] >= limit) {
-		++cw;
-		limit *= 10;
-	    }
-    }
-    for (i = 0; i < h; ++i) {
-	int rowlen = 0;
-        bool predecessors = false;
-	for (j = 0; j < state->common->rowlen[i+w]; ++j) {
-	    int copy = state->common->rowdata[(i+w)*state->common->rowsize + j];
-	    rowlen += predecessors;
-	    predecessors = true;
-	    do ++rowlen; while (copy /= 10);
-	}
-	left_gap = max(left_gap, rowlen);
-    }
-
-    cw = max(cw, 3);
-
-    gw = w*cw + 2;
-    gh = h*ch + 1;
-    lw = gw + left_gap;
-    lh = gh + top_gap;
-    len = lw * lh;
-    topleft = lw * top_gap + left_gap;
-
-    board = snewn(len + 1, char);
-    sprintf(board, "%*s\n", len - 2, "");
-
-    for (i = 0; i < lh; ++i) {
-	board[lw - 1 + i*lw] = '\n';
-	if (i < top_gap) continue;
-	board[lw - 2 + i*lw] = ((i - top_gap) % ch ? '|' : '+');
-    }
-
-    for (i = 0; i < w; ++i) {
-	for (j = 0; j < state->common->rowlen[i]; ++j) {
-	    int cell = topleft + i*cw + 1 + lw*(j - state->common->rowlen[i]);
-	    int nch = sprintf(board + cell, "%*d", cw - 1,
-			      state->common->rowdata[i*state->common->rowsize + j]);
-	    board[cell + nch] = ' '; /* de-NUL-ify */
-	}
-    }
-
-    buf = snewn(left_gap, char);
-    for (i = 0; i < h; ++i) {
-	char *p = buf, *start = board + top_gap*lw + left_gap + (i*ch+1)*lw;
-	for (j = 0; j < state->common->rowlen[i+w]; ++j) {
-	    if (p > buf) *p++ = ' ';
-	    p += sprintf(p, "%d", state->common->rowdata[(i+w)*state->common->rowsize + j]);
-	}
-	memcpy(start - (p - buf), buf, p - buf);
-    }
-
-    for (i = 0; i < w; ++i) {
-	for (j = 0; j < h; ++j) {
-	    int cell = topleft + i*cw + j*ch*lw;
-	    int center = cell + cw/2 + (ch/2)*lw;
-	    int dx, dy;
-	    board[cell] = false ? center : '+';
-	    for (dx = 1; dx < cw; ++dx) board[cell + dx] = '-';
-	    for (dy = 1; dy < ch; ++dy) board[cell + dy*lw] = '|';
-	    if (state->grid[i*w+j] == GRID_UNKNOWN) continue;
-	    for (dx = 1; dx < cw; ++dx)
-		for (dy = 1; dy < ch; ++dy)
-		    board[cell + dx + dy*lw] =
-			state->grid[i*w+j] == GRID_FULL ? '#' : '.';
-	}
-    }
-
-    memcpy(board + topleft + h*ch*lw, board + topleft, gw - 1);
-
-    sfree(buf);
-
-    return board;
 }
 
 struct game_ui {
@@ -1342,32 +1247,32 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->dragging = false;
 
         if (move_needed) {
-	    char buf[80];
-	    sprintf(buf, "%c%d,%d,%d,%d",
-		    (char)(ui->state == GRID_FULL ? 'F' :
-		           ui->state == GRID_EMPTY ? 'E' : 'U'),
-		    x1, y1, x2-x1+1, y2-y1+1);
-	    return dupstr(buf);
+        char buf[80];
+        sprintf(buf, "%c%d,%d,%d,%d",
+            (char)(ui->state == GRID_FULL ? 'F' :
+                   ui->state == GRID_EMPTY ? 'E' : 'U'),
+            x1, y1, x2-x1+1, y2-y1+1);
+        return dupstr(buf);
         } else
             return UI_UPDATE;
     }
 
     if (IS_CURSOR_MOVE(button)) {
-	int x = ui->cur_x, y = ui->cur_y, newstate;
-	char buf[80];
+    int x = ui->cur_x, y = ui->cur_y, newstate;
+    char buf[80];
         move_cursor(button, &ui->cur_x, &ui->cur_y, state->common->w, state->common->h, false);
         ui->cur_visible = true;
-	if (!control && !shift) return UI_UPDATE;
+    if (!control && !shift) return UI_UPDATE;
 
-	newstate = control ? shift ? GRID_UNKNOWN : GRID_FULL : GRID_EMPTY;
-	if (state->grid[y * state->common->w + x] == newstate &&
-	    state->grid[ui->cur_y * state->common->w + ui->cur_x] == newstate)
-	    return UI_UPDATE;
+    newstate = control ? shift ? GRID_UNKNOWN : GRID_FULL : GRID_EMPTY;
+    if (state->grid[y * state->common->w + x] == newstate &&
+        state->grid[ui->cur_y * state->common->w + ui->cur_x] == newstate)
+        return UI_UPDATE;
 
-	sprintf(buf, "%c%d,%d,%d,%d", control ? shift ? 'U' : 'F' : 'E',
-		min(x, ui->cur_x), min(y, ui->cur_y),
-		abs(x - ui->cur_x) + 1, abs(y - ui->cur_y) + 1);
-	return dupstr(buf);
+    sprintf(buf, "%c%d,%d,%d,%d", control ? shift ? 'U' : 'F' : 'E',
+        min(x, ui->cur_x), min(y, ui->cur_y),
+        abs(x - ui->cur_x) + 1, abs(y - ui->cur_y) + 1);
+    return dupstr(buf);
     }
 
     if (IS_CURSOR_SELECT(button)) {
@@ -1389,7 +1294,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         sprintf(buf, "%c%d,%d,%d,%d",
                 (char)(newstate == GRID_FULL ? 'F' :
-		       newstate == GRID_EMPTY ? 'E' : 'U'),
+               newstate == GRID_EMPTY ? 'E' : 'U'),
                 ui->cur_x, ui->cur_y, 1, 1);
         return dupstr(buf);
     }
@@ -1405,70 +1310,70 @@ static game_state *execute_move(const game_state *from, const char *move)
 
     if (move[0] == 'S' &&
         strlen(move) == from->common->w * from->common->h + 1) {
-	int i;
+    int i;
 
-	ret = dup_game(from);
+    ret = dup_game(from);
 
-	for (i = 0; i < ret->common->w * ret->common->h; i++)
-	    ret->grid[i] = (move[i+1] == '1' ? GRID_FULL : GRID_EMPTY);
+    for (i = 0; i < ret->common->w * ret->common->h; i++)
+        ret->grid[i] = (move[i+1] == '1' ? GRID_FULL : GRID_EMPTY);
 
-	ret->completed = ret->cheated = true;
+    ret->completed = ret->cheated = true;
 
-	return ret;
+    return ret;
     } else if ((move[0] == 'F' || move[0] == 'E' || move[0] == 'U') &&
-	sscanf(move+1, "%d,%d,%d,%d", &x1, &y1, &x2, &y2) == 4 &&
-	x1 >= 0 && x2 >= 0 && x1+x2 <= from->common->w &&
-	y1 >= 0 && y2 >= 0 && y1+y2 <= from->common->h) {
+    sscanf(move+1, "%d,%d,%d,%d", &x1, &y1, &x2, &y2) == 4 &&
+    x1 >= 0 && x2 >= 0 && x1+x2 <= from->common->w &&
+    y1 >= 0 && y2 >= 0 && y1+y2 <= from->common->h) {
 
-	x2 += x1;
-	y2 += y1;
-	val = (move[0] == 'F' ? GRID_FULL :
-		 move[0] == 'E' ? GRID_EMPTY : GRID_UNKNOWN);
+    x2 += x1;
+    y2 += y1;
+    val = (move[0] == 'F' ? GRID_FULL :
+         move[0] == 'E' ? GRID_EMPTY : GRID_UNKNOWN);
 
-	ret = dup_game(from);
-	for (yy = y1; yy < y2; yy++)
-	    for (xx = x1; xx < x2; xx++)
+    ret = dup_game(from);
+    for (yy = y1; yy < y2; yy++)
+        for (xx = x1; xx < x2; xx++)
                 if (!ret->common->immutable[yy * ret->common->w + xx])
                     ret->grid[yy * ret->common->w + xx] = val;
 
-	/*
-	 * An actual change, so check to see if we've completed the
-	 * game.
-	 */
-	if (!ret->completed) {
-	    int *rowdata = snewn(ret->common->rowsize, int);
-	    int i, len;
+    /*
+     * An actual change, so check to see if we've completed the
+     * game.
+     */
+    if (!ret->completed) {
+        int *rowdata = snewn(ret->common->rowsize, int);
+        int i, len;
 
-	    ret->completed = true;
+        ret->completed = true;
 
-	    for (i=0; i<ret->common->w; i++) {
-		len = compute_rowdata(rowdata, ret->grid+i,
+        for (i=0; i<ret->common->w; i++) {
+        len = compute_rowdata(rowdata, ret->grid+i,
                                       ret->common->h, ret->common->w);
-		if (len != ret->common->rowlen[i] ||
-		    memcmp(ret->common->rowdata+i*ret->common->rowsize,
+        if (len != ret->common->rowlen[i] ||
+            memcmp(ret->common->rowdata+i*ret->common->rowsize,
                            rowdata, len * sizeof(int))) {
-		    ret->completed = false;
-		    break;
-		}
-	    }
-	    for (i=0; i<ret->common->h; i++) {
-		len = compute_rowdata(rowdata, ret->grid+i*ret->common->w,
+            ret->completed = false;
+            break;
+        }
+        }
+        for (i=0; i<ret->common->h; i++) {
+        len = compute_rowdata(rowdata, ret->grid+i*ret->common->w,
                                       ret->common->w, 1);
-		if (len != ret->common->rowlen[i+ret->common->w] ||
-		    memcmp(ret->common->rowdata +
+        if (len != ret->common->rowlen[i+ret->common->w] ||
+            memcmp(ret->common->rowdata +
                            (i+ret->common->w)*ret->common->rowsize,
                            rowdata, len * sizeof(int))) {
-		    ret->completed = false;
-		    break;
-		}
-	    }
+            ret->completed = false;
+            break;
+        }
+        }
 
-	    sfree(rowdata);
-	}
+        sfree(rowdata);
+    }
 
-	return ret;
+    return ret;
     } else
-	return NULL;
+    return NULL;
 }
 
 /* ----------------------------------------------------------------------
@@ -1659,19 +1564,16 @@ static float *game_colours(frontend *fe, int *ncolours)
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
 
     for (i = 0; i < 3; i++) {
-        ret[COL_GRID         * 3 + i] = 0.3F;
+        ret[COL_BACKGROUND   * 3 + i] = 1.0F;
+        ret[COL_GRID         * 3 + i] = 0.25F;
         ret[COL_UNKNOWN      * 3 + i] = 0.5F;
         ret[COL_TEXT         * 3 + i] = 0.0F;
         ret[COL_FULL         * 3 + i] = 0.0F;
         ret[COL_EMPTY        * 3 + i] = 1.0F;
         ret[COL_CURSOR_GUIDE * 3 + i] = 0.5F;
+        ret[COL_CURSOR       * 3 + i] = 0.5F;
+        ret[COL_ERROR        * 3 + i] = 0.5F;
     }
-    ret[COL_CURSOR * 3 + 0] = 1.0F;
-    ret[COL_CURSOR * 3 + 1] = 0.25F;
-    ret[COL_CURSOR * 3 + 2] = 0.25F;
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1703,15 +1605,28 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 static void grid_square(drawing *dr, game_drawstate *ds,
                         int y, int x, int state, bool cur)
 {
-    int xl, xr, yt, yb, dx, dy, dw, dh;
+    int xl, xr, yt, yb, dx, dy, dw, dh, i;
 
     draw_rect(dr, TOCOORD(ds->w, x), TOCOORD(ds->h, y),
               TILE_SIZE, TILE_SIZE, COL_GRID);
 
-    xl = (x % 5 == 0 ? 1 : 0);
-    yt = (y % 5 == 0 ? 1 : 0);
-    xr = (x % 5 == 4 || x == ds->w-1 ? 1 : 0);
-    yb = (y % 5 == 4 || y == ds->h-1 ? 1 : 0);
+    xl = xr = yt = yb = 0;
+    for (i=5;i>2;i--) {
+        if (ds->w % i == 0) {
+            xl = (x % i == 0 ? 1 : 0);
+            xr = (x % i == (i-1) || x == ds->w-1 ? 1 : 0);
+            break;
+        }
+    }
+
+    for (i=5;i>2;i--) {
+        if (ds->h % i == 0) {
+            yt = (y % i == 0 ? 1 : 0);
+            yb = (y % i == (i-1) || y == ds->h-1 ? 1 : 0);
+            break;
+        }
+    }
+
 
     dx = TOCOORD(ds->w, x) + 1 + xl;
     dy = TOCOORD(ds->h, y) + 1 + yt;
@@ -1746,11 +1661,11 @@ static void draw_numbers(
         if (i < state->common->w) {
             draw_rect(dr, TOCOORD(state->common->w, i), 0,
                       TILE_SIZE, BORDER + TLBORDER(state->common->h) * TILE_SIZE,
-                      COL_BACKGROUND);
+                      colour);
         } else {
             draw_rect(dr, 0, TOCOORD(state->common->h, i - state->common->w),
                       BORDER + TLBORDER(state->common->w) * TILE_SIZE, TILE_SIZE,
-                      COL_BACKGROUND);
+                      colour);
         }
     }
 
@@ -1782,7 +1697,7 @@ static void draw_numbers(
 
         sprintf(str, "%d", rowdata[j]);
         draw_text(dr, x+TILE_SIZE/2, y+TILE_SIZE/2, FONT_VARIABLE,
-                  TILE_SIZE/2, ALIGN_HCENTRE | ALIGN_VCENTRE, colour, str);
+                  TILE_SIZE/2, ALIGN_HCENTRE | ALIGN_VCENTRE, COL_TEXT, str);
     }
 
     if (i < state->common->w) {
@@ -1822,7 +1737,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         ds->started = true;
 
-	draw_update(dr, 0, 0, SIZE(ds->w), SIZE(ds->h));
+    draw_update(dr, 0, 0, SIZE(ds->w), SIZE(ds->h));
     }
 
     if (ui->dragging) {
@@ -1890,10 +1805,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * indication.
      */
     for (i = 0; i < state->common->w + state->common->h; i++) {
-        int colour = check_errors(state, i) ? COL_ERROR : COL_TEXT;
-        if (colour == COL_TEXT && ((cx >= 0 && i == cx) || (cy >= 0 && i == cy + ds->w))) {
-            colour = COL_CURSOR_GUIDE;
-        }
+        int colour = check_errors(state, i) ? COL_ERROR : COL_BACKGROUND;
         if (ds->numcolours[i] != colour) {
             draw_numbers(dr, ds, state, i, true, colour);
             ds->numcolours[i] = colour;
@@ -1911,7 +1823,7 @@ static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
     if (!oldstate->completed && newstate->completed &&
-	!oldstate->cheated && !newstate->cheated)
+    !oldstate->cheated && !newstate->cheated)
         return FLASH_TIME;
     return 0.0F;
 }
@@ -1924,71 +1836,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /*
-     * I'll use 5mm squares by default.
-     */
-    game_compute_size(params, 500, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w = state->common->w, h = state->common->h;
-    int ink = print_mono_colour(dr, 0);
-    int x, y, i;
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    game_set_size(dr, ds, NULL, tilesize);
-
-    /*
-     * Border.
-     */
-    print_line_width(dr, TILE_SIZE / 16);
-    draw_rect_outline(dr, TOCOORD(w, 0), TOCOORD(h, 0),
-		      w*TILE_SIZE, h*TILE_SIZE, ink);
-
-    /*
-     * Grid.
-     */
-    for (x = 1; x < w; x++) {
-	print_line_width(dr, TILE_SIZE / (x % 5 ? 128 : 24));
-	draw_line(dr, TOCOORD(w, x), TOCOORD(h, 0),
-		  TOCOORD(w, x), TOCOORD(h, h), ink);
-    }
-    for (y = 1; y < h; y++) {
-	print_line_width(dr, TILE_SIZE / (y % 5 ? 128 : 24));
-	draw_line(dr, TOCOORD(w, 0), TOCOORD(h, y),
-		  TOCOORD(w, w), TOCOORD(h, y), ink);
-    }
-
-    /*
-     * Clues.
-     */
-    for (i = 0; i < state->common->w + state->common->h; i++)
-        draw_numbers(dr, ds, state, i, false, ink);
-
-    /*
-     * Solution.
-     */
-    print_line_width(dr, TILE_SIZE / 128);
-    for (y = 0; y < h; y++)
-	for (x = 0; x < w; x++) {
-	    if (state->grid[y*w+x] == GRID_FULL)
-		draw_rect(dr, TOCOORD(w, x), TOCOORD(h, y),
-			  TILE_SIZE, TILE_SIZE, ink);
-	    else if (state->grid[y*w+x] == GRID_EMPTY)
-		draw_circle(dr, TOCOORD(w, x) + TILE_SIZE/2,
-			    TOCOORD(h, y) + TILE_SIZE/2,
-			    TILE_SIZE/12, ink, ink);
-	}
 }
 
 #ifdef COMBINED
@@ -2011,7 +1858,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -2028,257 +1875,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
-    false,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    false,                   /* wants_statusbar */
     false, game_timing_state,
-    REQUIRE_RBUTTON,		       /* flags */
+    REQUIRE_RBUTTON,               /* flags */
 };
 
-#ifdef STANDALONE_SOLVER
-
-int main(int argc, char **argv)
-{
-    game_params *p;
-    game_state *s;
-    char *id = NULL, *desc;
-    const char *err;
-
-    while (--argc > 0) {
-        char *p = *++argv;
-	if (*p == '-') {
-	    if (!strcmp(p, "-v")) {
-		verbose = true;
-	    } else {
-		fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-		return 1;
-	    }
-        } else {
-            id = p;
-        }
-    }
-
-    if (!id) {
-        fprintf(stderr, "usage: %s <game_id>\n", argv[0]);
-        return 1;
-    }
-
-    desc = strchr(id, ':');
-    if (!desc) {
-        fprintf(stderr, "%s: game id expects a colon in it\n", argv[0]);
-        return 1;
-    }
-    *desc++ = '\0';
-
-    p = default_params();
-    decode_params(p, id);
-    err = validate_desc(p, desc);
-    if (err) {
-        fprintf(stderr, "%s: %s\n", argv[0], err);
-        return 1;
-    }
-    s = new_game(NULL, p, desc);
-
-    {
-	int w = p->w, h = p->h, i, j, max, cluewid = 0;
-	unsigned char *matrix, *workspace;
-	unsigned int *changed_h, *changed_w;
-	int *rowdata;
-
-	matrix = snewn(w*h, unsigned char);
-	max = max(w, h);
-	workspace = snewn(max*7, unsigned char);
-	changed_h = snewn(max+1, unsigned int);
-	changed_w = snewn(max+1, unsigned int);
-	rowdata = snewn(max+1, int);
-
-	if (verbose) {
-	    int thiswid;
-	    /*
-	     * Work out the maximum text width of the clue numbers
-	     * in a row or column, so we can print the solver's
-	     * working in a nicely lined up way.
-	     */
-	    for (i = 0; i < (w+h); i++) {
-		char buf[80];
-		for (thiswid = -1, j = 0; j < s->common->rowlen[i]; j++)
-		    thiswid += sprintf
-                        (buf, " %d",
-                         s->common->rowdata[s->common->rowsize*i+j]);
-		if (cluewid < thiswid)
-		    cluewid = thiswid;
-	    }
-	}
-
-	solve_puzzle(s, NULL, w, h, matrix, workspace,
-		     changed_h, changed_w, rowdata, cluewid);
-
-	for (i = 0; i < h; i++) {
-	    for (j = 0; j < w; j++) {
-		int c = (matrix[i*w+j] == UNKNOWN ? '?' :
-			 matrix[i*w+j] == BLOCK ? '#' :
-			 matrix[i*w+j] == DOT ? '.' :
-			 '!');
-		putchar(c);
-	    }
-	    printf("\n");
-	}
-    }
-
-    return 0;
-}
-
-#endif
-
-#ifdef STANDALONE_PICTURE_GENERATOR
-
-/*
- * Main program for the standalone picture generator. To use it,
- * simply provide it with an XBM-format bitmap file (note XBM, not
- * XPM) on standard input, and it will output a game ID in return.
- * For example:
- *
- *   $ ./patternpicture < calligraphic-A.xbm
- *   15x15:2/4/2/2/2/3/3/3.1/3.1/3.1/11/14/12/6/1/2/2/3/4/5/1.3/2.3/1.3/2.3/1.4/9/1.1.3/2.2.3/5.4/3.2
- *
- * That looks easy, of course - all the program has done is to count
- * up the clue numbers! But in fact, it's done more than that: it's
- * also checked that the result is uniquely soluble from just the
- * numbers. If it hadn't been, then it would have also left some
- * filled squares in the playing area as extra clues.
- *
- *   $ ./patternpicture < cube.xbm
- *   15x15:10/2.1/1.1.1/1.1.1/1.1.1/1.1.1/1.1.1/1.1.1/1.1.1/1.10/1.1.1/1.1.1/1.1.1/2.1/10/10/1.2/1.1.1/1.1.1/1.1.1/10.1/1.1.1/1.1.1/1.1.1/1.1.1/1.1.1/1.1.1/1.1.1/1.2/10,TNINzzzzGNzw
- *
- * This enables a reasonably convenient design workflow for coming up
- * with pictorial Pattern puzzles which _are_ uniquely soluble without
- * those inelegant pre-filled squares. Fire up a bitmap editor (X11
- * bitmap(1) is good enough), save a trial .xbm, and then test it by
- * running a command along the lines of
- *
- *   $ ./pattern $(./patternpicture < test.xbm)
- *
- * If the resulting window pops up with some pre-filled squares, then
- * that tells you which parts of the image are giving rise to
- * ambiguities, so try making tweaks in those areas, try the test
- * command again, and see if it helps. Once you have a design for
- * which the Pattern starting grid comes out empty, there's your game
- * ID.
- */
-
-#include <time.h>
-
-int main(int argc, char **argv)
-{
-    game_params *par;
-    char *params, *desc;
-    random_state *rs;
-    time_t seed = time(NULL);
-    char buf[4096];
-    int i;
-    int x, y;
-
-    par = default_params();
-    if (argc > 1)
-	decode_params(par, argv[1]);   /* get difficulty */
-    par->w = par->h = -1;
-
-    /*
-     * Now read an XBM file from standard input. This is simple and
-     * hacky and will do very little error detection, so don't feed
-     * it bogus data.
-     */
-    picture = NULL;
-    x = y = 0;
-    while (fgets(buf, sizeof(buf), stdin)) {
-	buf[strcspn(buf, "\r\n")] = '\0';
-	if (!strncmp(buf, "#define", 7)) {
-	    /*
-	     * Lines starting `#define' give the width and height.
-	     */
-	    char *num = buf + strlen(buf);
-	    char *symend;
-
-	    while (num > buf && isdigit((unsigned char)num[-1]))
-		num--;
-	    symend = num;
-	    while (symend > buf && isspace((unsigned char)symend[-1]))
-		symend--;
-
-	    if (symend-5 >= buf && !strncmp(symend-5, "width", 5))
-		par->w = atoi(num);
-	    else if (symend-6 >= buf && !strncmp(symend-6, "height", 6))
-		par->h = atoi(num);
-	} else {
-	    /*
-	     * Otherwise, break the string up into words and take
-	     * any word of the form `0x' plus hex digits to be a
-	     * byte.
-	     */
-	    char *p, *wordstart;
-
-	    if (!picture) {
-		if (par->w < 0 || par->h < 0) {
-		    printf("failed to read width and height\n");
-		    return 1;
-		}
-		picture = snewn(par->w * par->h, unsigned char);
-		for (i = 0; i < par->w * par->h; i++)
-		    picture[i] = GRID_UNKNOWN;
-	    }
-
-	    p = buf;
-	    while (*p) {
-		while (*p && (*p == ',' || isspace((unsigned char)*p)))
-		    p++;
-		wordstart = p;
-		while (*p && !(*p == ',' || *p == '}' ||
-			       isspace((unsigned char)*p)))
-		    p++;
-		if (*p)
-		    *p++ = '\0';
-
-		if (wordstart[0] == '0' &&
-		    (wordstart[1] == 'x' || wordstart[1] == 'X') &&
-		    !wordstart[2 + strspn(wordstart+2,
-					  "0123456789abcdefABCDEF")]) {
-		    unsigned long byte = strtoul(wordstart+2, NULL, 16);
-		    for (i = 0; i < 8; i++) {
-			int bit = (byte >> i) & 1;
-			if (y < par->h && x < par->w)
-			    picture[y * par->w + x] =
-                                bit ? GRID_FULL : GRID_EMPTY;
-			x++;
-		    }
-
-		    if (x >= par->w) {
-			x = 0;
-			y++;
-		    }
-		}
-	    }
-	}
-    }
-
-    for (i = 0; i < par->w * par->h; i++)
-	if (picture[i] == GRID_UNKNOWN) {
-	    fprintf(stderr, "failed to read enough bitmap data\n");
-	    return 1;
-	}
-
-    rs = random_new((void*)&seed, sizeof(time_t));
-
-    desc = new_game_desc(par, rs, NULL, false);
-    params = encode_params(par, false);
-    printf("%s:%s\n", params, desc);
-
-    sfree(desc);
-    sfree(params);
-    free_params(par);
-    random_free(rs);
-
-    return 0;
-}
-
-#endif
-
-/* vim: set shiftwidth=4 tabstop=8: */

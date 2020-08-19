@@ -62,9 +62,9 @@ struct game_state {
     bool completed, cheated;
 };
 
-#define DEFAULT_PRESET 0
+#define DEFAULT_PRESET 1
 static struct game_params presets[] = {
-    {5, 5, 5}, {8, 6, 6}, {10, 8, 8}, {15, 12, 10}
+    {6, 8, 4}, {5, 5, 5}, {6, 8, 6}, {8, 10, 8}
     /* I definitely want 5x5n5 since that gives "Five Cells" its name.
      * But how about the others?  By which criteria do I choose? */
 };
@@ -863,7 +863,7 @@ struct game_drawstate {
 
 #define TILESIZE (ds->tilesize)
 #define MARGIN (ds->tilesize / 2)
-#define WIDTH (1 + (TILESIZE >= 16) + (TILESIZE >= 32) + (TILESIZE >= 64))
+#define WIDTH (3 + (TILESIZE >= 16) + (TILESIZE >= 32) + (TILESIZE >= 64))
 #define CENTER ((ds->tilesize / 2) + WIDTH/2)
 
 #define FROMCOORD(x) (((x) - MARGIN) / TILESIZE)
@@ -1032,11 +1032,11 @@ static float *game_colours(frontend *fe, int *ncolours)
     game_mkhighlight(fe, ret, COL_BACKGROUND, -1, COL_FLASH);
 
     COLOUR(COL_BACKGROUND, 1.0F, 1.0F, 1.0F);
-    COLOUR(COL_GRID,   0.0F, 0.0F, 0.0F); /* black */
-    COLOUR(COL_ERROR,  0.4F, 0.4F, 0.4F); /* red */
+    COLOUR(COL_GRID,   0.0F, 0.0F, 0.0F);
+    COLOUR(COL_ERROR,  0.25F, 0.25F, 0.25F);
 
-    COLOUR(COL_LINE_MAYBE, 0.6F, 0.6F, 0.6F);
-    COLOUR(COL_LINE_NO,    0.9F, 0.9F, 0.9F);
+    COLOUR(COL_LINE_MAYBE, 0.75F, 0.75F, 0.75F);
+    COLOUR(COL_LINE_NO,    1.0F, 1.0F, 1.0F);
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1077,6 +1077,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 static void draw_tile(drawing *dr, game_drawstate *ds, int r, int c,
                       dsflags flags, int clue)
 {
+    int i;
     int x = MARGIN + TILESIZE * c, y = MARGIN + TILESIZE * r;
 
     clip(dr, x, y, TILESIZE + WIDTH, TILESIZE + WIDTH); /* { */
@@ -1091,6 +1092,10 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int r, int c,
         char buf[2];
         buf[0] = '0' + clue;
         buf[1] = '\0';
+        if (flags & F_ERROR_CLUE) {
+            draw_circle(dr, x + CENTER, y + CENTER, TILESIZE/2-10, COL_ERROR, COL_ERROR);
+            draw_circle(dr, x + CENTER, y + CENTER, TILESIZE/2-15, COL_BACKGROUND, COL_ERROR);
+        }
         draw_text(dr, x + CENTER, y + CENTER, FONT_VARIABLE,
                   TILESIZE / 2, ALIGN_VCENTRE | ALIGN_HCENTRE,
                   (flags & F_ERROR_CLUE ? COL_ERROR : COL_CLUE), buf);
@@ -1099,12 +1104,34 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int r, int c,
 
 #define ts TILESIZE
 #define w WIDTH
-    draw_rect(dr, x + w,  y,      ts - w, w,      COLOUR(BORDER_U));
-    draw_rect(dr, x + ts, y + w,  w,      ts - w, COLOUR(BORDER_R));
-    draw_rect(dr, x + w,  y + ts, ts - w, w,      COLOUR(BORDER_D));
-    draw_rect(dr, x,      y + w,  w,      ts - w, COLOUR(BORDER_L));
+#define STEP 16
+    if (flags & BORDER_ERROR(BORDER_U))
+        for (i=0;i<STEP;i+=2) {
+            draw_rect(dr, x+w+ i   *(ts-w)/STEP, y, (ts-w)/STEP, w, COLOUR(BORDER_U));
+            draw_rect(dr, x+w+(i+1)*(ts-w)/STEP, y, (ts-w)/STEP, w, COL_BACKGROUND);
+        }
+    else draw_rect(dr, x + w,  y,      ts - w, w,      COLOUR(BORDER_U));
+    if (flags & BORDER_ERROR(BORDER_R))
+        for (i=0;i<STEP;i+=2) {
+            draw_rect(dr, x+ts, y+w+i    *(ts-w)/STEP, w, (ts-w)/STEP, COLOUR(BORDER_R));
+            draw_rect(dr, x+ts, y+w+(i+1)*(ts-w)/STEP, w, (ts-w)/STEP, COL_BACKGROUND);
+        }
+    else draw_rect(dr, x + ts, y + w,  w,      ts - w, COLOUR(BORDER_R));
+    if (flags & BORDER_ERROR(BORDER_D))
+        for (i=0;i<STEP;i+=2) {
+            draw_rect(dr, x+w+ i   *(ts-w)/STEP, y+ts, (ts-w)/STEP, w, COLOUR(BORDER_D));
+            draw_rect(dr, x+w+(i+1)*(ts-w)/STEP, y+ts, (ts-w)/STEP, w, COL_BACKGROUND);
+        }
+    else draw_rect(dr, x + w,  y + ts, ts - w, w,      COLOUR(BORDER_D));
+    if (flags & BORDER_ERROR(BORDER_L))
+        for (i=0;i<STEP;i+=2) {
+            draw_rect(dr, x, y+w+ i   *(ts-w)/STEP, w, (ts-w)/STEP, COLOUR(BORDER_L));
+            draw_rect(dr, x, y+w+(i+1)*(ts-w)/STEP, w, (ts-w)/STEP, COL_BACKGROUND);
+        }
+    else draw_rect(dr, x,      y + w,  w,      ts - w, COLOUR(BORDER_L));
 #undef ts
 #undef w
+#undef STEP
 
     unclip(dr); /* } */
     draw_update(dr, x, y, TILESIZE + WIDTH, TILESIZE + WIDTH);
@@ -1220,8 +1247,6 @@ static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate,
                                int dir, game_ui *ui)
 {
-    if (newstate->completed && !newstate->cheated && !oldstate->completed)
-        return FLASH_TIME;
     return 0.0F;
 }
 
@@ -1236,7 +1261,11 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return false;                      /* placate optimiser */
 }
 
-const struct game palisade = {
+#ifdef COMBINED
+#define thegame palisade
+#endif
+
+const struct game thegame = {
     "Palisade", "games.palisade", "palisade",
     default_params,
     game_fetch_preset, NULL,
@@ -1272,5 +1301,5 @@ const struct game palisade = {
     false, false, NULL, NULL,
     true,                                     /* wants_statusbar */
     false, game_timing_state,
-    0,                                         /* flags */
+    REQUIRE_RBUTTON,                                         /* flags */
 };

@@ -94,17 +94,17 @@ struct game_params {
 
 static const struct game_params undead_presets[] = {
     {  4,  4, DIFF_EASY,   false },
-    {  4,  4, DIFF_NORMAL, false },
+    {  4,  4, DIFF_NORMAL, true },
     {  4,  4, DIFF_TRICKY, true },
     {  4,  4, DIFF_HARD,   true },
-    {  5,  5, DIFF_NORMAL, false },
+    {  5,  5, DIFF_NORMAL, true },
     {  5,  5, DIFF_TRICKY, true },
     {  5,  5, DIFF_HARD,   true },
-    {  7,  7, DIFF_NORMAL, false },
+    {  7,  7, DIFF_NORMAL, true },
     {  7,  7, DIFF_TRICKY, true }
 };
 
-#define DEFAULT_PRESET 1
+#define DEFAULT_PRESET 2
 
 static game_params *default_params(void) {
     game_params *ret = snew(game_params);
@@ -2017,52 +2017,6 @@ static char *solve_game(const game_state *state_start, const game_state *currsta
     return move;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int w,h,c,r,xi,g;
-    char *ret;
-    char buf[120];
-
-    ret = snewn(50 + 6*(state->common->params.w +2) +
-                6*(state->common->params.h+2) +
-                3*(state->common->params.w * state->common->params.h), char);
-
-    sprintf(ret,"G: %d V: %d Z: %d\n\n",state->common->num_ghosts,
-            state->common->num_vampires, state->common->num_zombies);
-
-    for (h=0;h<state->common->params.h+2;h++) {
-        for (w=0;w<state->common->params.w+2;w++) {
-            c = state->common->grid[w+h*(state->common->params.w+2)];
-            xi = state->common->xinfo[w+h*(state->common->params.w+2)];
-            r = grid2range(w,h,state->common->params.w,state->common->params.h);
-            if (r != -1) {
-                if (c >= 0) { sprintf(buf,"%2d", c);  strcat(ret,buf); }
-                else        { sprintf(buf,"  "); strcat(ret,buf); }
-            } else if (c == CELL_MIRROR_L) {
-                sprintf(buf," \\"); strcat(ret,buf);
-            } else if (c == CELL_MIRROR_R) {
-                sprintf(buf," /"); strcat(ret,buf);
-            } else if (xi >= 0) {
-                g = state->guess[xi];
-                if (g == 1)      { sprintf(buf," G"); strcat(ret,buf); }
-                else if (g == 2) { sprintf(buf," V"); strcat(ret,buf); }
-                else if (g == 4) { sprintf(buf," Z"); strcat(ret,buf); }
-                else             { sprintf(buf," ."); strcat(ret,buf); }
-            } else {
-                sprintf(buf,"  "); strcat(ret,buf);
-            }
-        }
-        sprintf(buf,"\n"); strcat(ret,buf);
-    }
-
-    return ret;
-}
-
 struct game_ui {
     int hx, hy;                         /* as for solo.c, highlight pos */
     bool hshow, hpencil, hcursor;       /* show state, type, and ?cursor. */
@@ -2222,26 +2176,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (xi >= 0 && !state->common->fixed[xi]) {
             if (button == 'g' || button == 'G' || button == '1') {
                 sprintf(buf,"g%d",xi);
-                if (!ui->hcursor) {
-                    ui->hpencil = false;
-                    ui->hshow = false;
-                }
                 return dupstr(buf);
             }
             if (button == 'v' || button == 'V' || button == '2') {
                 sprintf(buf,"v%d",xi);
-                if (!ui->hcursor) {
-                    ui->hpencil = false;
-                    ui->hshow = false;
-                }
                 return dupstr(buf);
             }
             if (button == 'z' || button == 'Z' || button == '3') {
                 sprintf(buf,"z%d",xi);
-                if (!ui->hcursor) {
-                    ui->hpencil = false;
-                    ui->hshow = false;
-                }
                 return dupstr(buf);
             }
             if (button == 'e' || button == 'E' || button == CURSOR_SELECT2 ||
@@ -2560,45 +2502,21 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
-    frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-
-    ret[COL_GRID * 3 + 0] = 0.0F;
-    ret[COL_GRID * 3 + 1] = 0.0F;
-    ret[COL_GRID * 3 + 2] = 0.0F;
-
-    ret[COL_TEXT * 3 + 0] = 0.0F;
-    ret[COL_TEXT * 3 + 1] = 0.0F;
-    ret[COL_TEXT * 3 + 2] = 0.0F;
-
-    ret[COL_ERROR * 3 + 0] = 0.5F;
-    ret[COL_ERROR * 3 + 1] = 0.5F;
-    ret[COL_ERROR * 3 + 2] = 0.5F;
-
-    ret[COL_HIGHLIGHT * 3 + 0] = 0.78F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_HIGHLIGHT * 3 + 1] = 0.78F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_HIGHLIGHT * 3 + 2] = 0.78F * ret[COL_BACKGROUND * 3 + 2];
-
-    ret[COL_FLASH * 3 + 0] = 1.0F;
-    ret[COL_FLASH * 3 + 1] = 1.0F;
-    ret[COL_FLASH * 3 + 2] = 1.0F;
-
-    ret[COL_GHOST * 3 + 0] = ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_GHOST * 3 + 1] = ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_GHOST * 3 + 2] = ret[COL_BACKGROUND * 3 + 0];
-
-    ret[COL_ZOMBIE * 3 + 0] = ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_ZOMBIE * 3 + 1] = ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_ZOMBIE * 3 + 2] = ret[COL_BACKGROUND * 3 + 0];
-
-    ret[COL_VAMPIRE * 3 + 0] = ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_VAMPIRE * 3 + 1] = ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_VAMPIRE * 3 + 2] = ret[COL_BACKGROUND * 3 + 0];
-
-    ret[COL_DONE * 3 + 0] = 0.8F;
-    ret[COL_DONE * 3 + 1] = 0.8F;
-    ret[COL_DONE * 3 + 2] = 0.8F;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_GRID       * 3 + i] = 0.0F;
+        ret[COL_TEXT       * 3 + i] = 0.0F;
+        ret[COL_ERROR      * 3 + i] = 0.5F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
+        ret[COL_FLASH      * 3 + i] = 1.0F;
+        ret[COL_GHOST      * 3 + i] = 0.9F;
+        ret[COL_VAMPIRE    * 3 + i] = 0.9F;
+        ret[COL_ZOMBIE     * 3 + i] = 0.9F;
+        ret[COL_DONE       * 3 + i] = 0.75F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -2692,48 +2610,46 @@ static void draw_circle_or_point(drawing *dr, int cx, int cy, int radius,
 static void draw_monster(drawing *dr, game_drawstate *ds, int x, int y,
                          int tilesize, bool hflash, int monster)
 {
-    int black = (hflash ? COL_FLASH : COL_TEXT);
+    int black = COL_TEXT;
+    float thl = 3.0;
+    int thc = 3;
 
     if (monster == 1) {                /* ghost */
         int poly[80], i, j;
-
+        int s = 2*tilesize/5;
+        
         clip(dr,x-(tilesize/2)+2,y-(tilesize/2)+2,tilesize-3,tilesize/2+1);
-        draw_circle(dr,x,y,2*tilesize/5, COL_GHOST,black);
+        draw_circle(dr,x,y,s+1, black, black);
+        draw_circle(dr,x,y,s-1, COL_GHOST,black);
         unclip(dr);
-
-        i = 0;
-        poly[i++] = x - 2*tilesize/5;
-        poly[i++] = y-2;
-        poly[i++] = x - 2*tilesize/5;
-        poly[i++] = y + 2*tilesize/5;
-
-        for (j = 0; j < 3; j++) {
-            int total = (2*tilesize/5) * 2;
-            int before = total * j / 3;
-            int after = total * (j+1) / 3;
-            int mid = (before + after) / 2;
-            poly[i++] = x - 2*tilesize/5 + mid;
-            poly[i++] = y + 2*tilesize/5 - (total / 6);
-            poly[i++] = x - 2*tilesize/5 + after;
-            poly[i++] = y + 2*tilesize/5;
-        }
-
-        poly[i++] = x + 2*tilesize/5;
-        poly[i++] = y-2;
 
         clip(dr,x-(tilesize/2)+2,y,tilesize-3,tilesize-(tilesize/2)-1);
-        draw_polygon(dr, poly, i/2, COL_GHOST, black);
+
+        i=0;
+        poly[i++] = x-s      ; poly[i++] = y-2;     poly[i++] = x-s;     ; poly[i++] = y+s;
+        poly[i++] = x-s+0*s/3; poly[i++] = y+s;     poly[i++] = x-s+1*s/3; poly[i++] = y+s-s/3;
+        poly[i++] = x-s+1*s/3; poly[i++] = y+s-s/3; poly[i++] = x-s+2*s/3; poly[i++] = y+s;
+        poly[i++] = x-s+2*s/3; poly[i++] = y+s;     poly[i++] = x-s+3*s/3; poly[i++] = y+s-s/3;
+        poly[i++] = x-s+3*s/3; poly[i++] = y+s-s/3; poly[i++] = x-s+4*s/3; poly[i++] = y+s;
+        poly[i++] = x-s+4*s/3; poly[i++] = y+s;     poly[i++] = x-s+5*s/3; poly[i++] = y+s-s/3;
+        poly[i++] = x-s+5*s/3; poly[i++] = y+s-s/3; poly[i++] = x-s+6*s/3; poly[i++] = y+s;
+        poly[i++] = x+s+1    ; poly[i++] = y+s;     poly[i++] = x+s+1    ; poly[i++] = y-2;
+
+        draw_polygon(dr, poly, i/2, COL_GHOST, COL_GHOST);
+
+        for (j=0;j<i;j+=4)
+            draw_thick_line(dr, thl, poly[j], poly[j+1], poly[j+2], poly[j+3], black);
+
         unclip(dr);
 
-        draw_circle(dr,x-tilesize/6,y-tilesize/12,tilesize/10,
-                    COL_BACKGROUND,black);
-        draw_circle(dr,x+tilesize/6,y-tilesize/12,tilesize/10,
-                    COL_BACKGROUND,black);
+        draw_circle(dr,x-tilesize/6,y-tilesize/12,tilesize/10, black,black);
+        draw_circle(dr,x-tilesize/6,y-tilesize/12,tilesize/10-thc, COL_BACKGROUND,black);
 
-        draw_circle_or_point(dr,x-tilesize/6+1+tilesize/48,y-tilesize/12,
-                             tilesize/48,black);
-        draw_circle_or_point(dr,x+tilesize/6+1+tilesize/48,y-tilesize/12,
-                             tilesize/48,black);
+        draw_circle(dr,x+tilesize/6,y-tilesize/12,tilesize/10, black,black);
+        draw_circle(dr,x+tilesize/6,y-tilesize/12,tilesize/10-thc, COL_BACKGROUND,black);
+
+        draw_circle_or_point(dr,x-tilesize/6+1+tilesize/48,y-tilesize/12, tilesize/48,black);
+        draw_circle_or_point(dr,x+tilesize/6+1+tilesize/48,y-tilesize/12, tilesize/48,black);
 
     } else if (monster == 2) {         /* vampire */
         int poly[80], i;
@@ -2743,76 +2659,71 @@ static void draw_monster(drawing *dr, game_drawstate *ds, int x, int y,
         unclip(dr);
 
         clip(dr,x-(tilesize/2)+2,y-(tilesize/2)+2,tilesize/2+1,tilesize/2);
-        draw_circle(dr,x-tilesize/7,y,2*tilesize/5-tilesize/7,
-                    COL_VAMPIRE,black);
+        draw_circle(dr,x-tilesize/7,y,2*tilesize/5-tilesize/7, black,black);
+        draw_circle(dr,x-tilesize/7,y,2*tilesize/5-tilesize/7-thc, COL_VAMPIRE,black);
         unclip(dr);
         clip(dr,x,y-(tilesize/2)+2,tilesize/2+1,tilesize/2);
-        draw_circle(dr,x+tilesize/7,y,2*tilesize/5-tilesize/7,
-                    COL_VAMPIRE,black);
+        draw_circle(dr,x+tilesize/7,y,2*tilesize/5-tilesize/7, black,black);
+        draw_circle(dr,x+tilesize/7,y,2*tilesize/5-tilesize/7-thc, COL_VAMPIRE,black);
         unclip(dr);
 
         clip(dr,x-(tilesize/2)+2,y,tilesize-3,tilesize/2);
-        draw_circle(dr,x,y,2*tilesize/5, COL_VAMPIRE,black);
+        draw_circle(dr,x,y,2*tilesize/5, black,black);
+        draw_circle(dr,x,y,2*tilesize/5-thc, COL_VAMPIRE,black);
         unclip(dr);
 
-        draw_circle(dr, x-tilesize/7, y-tilesize/16, tilesize/16,
-                    COL_BACKGROUND, black);
-        draw_circle(dr, x+tilesize/7, y-tilesize/16, tilesize/16,
-                    COL_BACKGROUND, black);
-        draw_circle_or_point(dr, x-tilesize/7, y-tilesize/16, tilesize/48,
-                             black);
-        draw_circle_or_point(dr, x+tilesize/7, y-tilesize/16, tilesize/48,
-                             black);
+        draw_circle(dr, x-tilesize/7, y-tilesize/16, tilesize/16+thc, black, black);
+        draw_circle(dr, x-tilesize/7, y-tilesize/16, tilesize/16, COL_BACKGROUND, black);
+
+        draw_circle(dr, x+tilesize/7, y-tilesize/16, tilesize/16+thc, black, black);
+        draw_circle(dr, x+tilesize/7, y-tilesize/16, tilesize/16, COL_BACKGROUND, black);
+
+        draw_circle_or_point(dr, x-tilesize/7, y-tilesize/16, tilesize/48, black);
+        draw_circle_or_point(dr, x+tilesize/7, y-tilesize/16, tilesize/48, black);
 
         clip(dr, x-(tilesize/2)+2, y+tilesize/8, tilesize-3, tilesize/4);
 
         i = 0;
-        poly[i++] = x-3*tilesize/16;
-        poly[i++] = y+1*tilesize/8;
-        poly[i++] = x-2*tilesize/16;
-        poly[i++] = y+7*tilesize/24;
-        poly[i++] = x-1*tilesize/16;
-        poly[i++] = y+1*tilesize/8;
-        draw_polygon(dr, poly, i/2, COL_BACKGROUND, black);
+        poly[i++] = x-3*tilesize/16; poly[i++] = y+1*tilesize/8;
+        poly[i++] = x-2*tilesize/16; poly[i++] = y+7*tilesize/24;
+        poly[i++] = x-1*tilesize/16; poly[i++] = y+1*tilesize/8;
+        draw_polygon(dr, poly, i/2, COL_BACKGROUND, COL_BACKGROUND);
+        draw_thick_line(dr, thl, poly[0], poly[1], poly[2], poly[3], black);
+        draw_thick_line(dr, thl, poly[2], poly[3], poly[4], poly[5], black);
         i = 0;
-        poly[i++] = x+3*tilesize/16;
-        poly[i++] = y+1*tilesize/8;
-        poly[i++] = x+2*tilesize/16;
-        poly[i++] = y+7*tilesize/24;
-        poly[i++] = x+1*tilesize/16;
-        poly[i++] = y+1*tilesize/8;
-        draw_polygon(dr, poly, i/2, COL_BACKGROUND, black);
+        poly[i++] = x+3*tilesize/16; poly[i++] = y+1*tilesize/8;
+        poly[i++] = x+2*tilesize/16; poly[i++] = y+7*tilesize/24;
+        poly[i++] = x+1*tilesize/16; poly[i++] = y+1*tilesize/8;
+        draw_polygon(dr, poly, i/2, COL_BACKGROUND, COL_BACKGROUND);
+        draw_thick_line(dr, thl, poly[0], poly[1], poly[2], poly[3], black);
+        draw_thick_line(dr, thl, poly[2], poly[3], poly[4], poly[5], black);
 
-        draw_circle(dr, x, y-tilesize/5, 2*tilesize/5, COL_VAMPIRE, black);
+        draw_circle(dr, x, y-tilesize/5, 2*tilesize/5, black, black);
+        draw_circle(dr, x, y-tilesize/5, 2*tilesize/5-thc, COL_VAMPIRE, black);
         unclip(dr);
 
     } else if (monster == 4) {         /* zombie */
-        draw_circle(dr,x,y,2*tilesize/5, COL_ZOMBIE,black);
+        draw_circle(dr,x,y,2*tilesize/5, black,black);
+        draw_circle(dr,x,y,2*tilesize/5-thc, COL_ZOMBIE,black);
 
-        draw_line(dr,
-                  x-tilesize/7-tilesize/16, y-tilesize/12-tilesize/16,
-                  x-tilesize/7+tilesize/16, y-tilesize/12+tilesize/16,
-                  black);
-        draw_line(dr,
-                  x-tilesize/7+tilesize/16, y-tilesize/12-tilesize/16,
-                  x-tilesize/7-tilesize/16, y-tilesize/12+tilesize/16,
-                  black);
-        draw_line(dr,
-                  x+tilesize/7-tilesize/16, y-tilesize/12-tilesize/16,
-                  x+tilesize/7+tilesize/16, y-tilesize/12+tilesize/16,
-                  black);
-        draw_line(dr,
-                  x+tilesize/7+tilesize/16, y-tilesize/12-tilesize/16,
-                  x+tilesize/7-tilesize/16, y-tilesize/12+tilesize/16,
-                  black);
+        draw_thick_line(dr, thl, x-tilesize/7-tilesize/16, y-tilesize/12-tilesize/16,
+                      x-tilesize/7+tilesize/16, y-tilesize/12+tilesize/16, black);
+
+        draw_thick_line(dr, thl,x-tilesize/7+tilesize/16, y-tilesize/12-tilesize/16,
+                      x-tilesize/7-tilesize/16, y-tilesize/12+tilesize/16, black);
+
+        draw_thick_line(dr, thl, x+tilesize/7-tilesize/16, y-tilesize/12-tilesize/16,
+                      x+tilesize/7+tilesize/16, y-tilesize/12+tilesize/16, black);
+
+        draw_thick_line(dr, thl, x+tilesize/7+tilesize/16, y-tilesize/12-tilesize/16,
+                      x+tilesize/7-tilesize/16, y-tilesize/12+tilesize/16, black);
 
         clip(dr, x-tilesize/5, y+tilesize/6, 2*tilesize/5+1, tilesize/2);
-        draw_circle(dr, x-tilesize/15, y+tilesize/6, tilesize/12,
-                    COL_BACKGROUND, black);
+        draw_circle(dr, x-tilesize/15, y+tilesize/6, tilesize/12, black, black);
+        draw_circle(dr, x-tilesize/15, y+tilesize/6, tilesize/12-thc, COL_BACKGROUND, black);
         unclip(dr);
 
-        draw_line(dr, x-tilesize/5, y+tilesize/6, x+tilesize/5, y+tilesize/6,
-                  black);
+        draw_thick_line(dr, thl, x-tilesize/5, y+tilesize/6, x+tilesize/5, y+tilesize/6, black);
     }
 
     draw_update(dr,x-(tilesize/2)+2,y-(tilesize/2)+2,tilesize-3,tilesize-3);
@@ -2844,13 +2755,11 @@ static void draw_monster_count(drawing *dr, game_drawstate *ds,
     }
 
     draw_rect(dr, dx-2*TILESIZE/3, dy, 3*TILESIZE/2, TILESIZE,
-              COL_BACKGROUND);
+              (state->count_errors[c] ? COL_ERROR : COL_BACKGROUND));
     draw_monster(dr, ds, dx-TILESIZE/3, dy+TILESIZE/2,
                  2*TILESIZE/3, hflash, 1<<c);
     draw_text(dr, dx, dy+TILESIZE/2, FONT_VARIABLE, TILESIZE/2,
-              ALIGN_HLEFT|ALIGN_VCENTRE,
-              (state->count_errors[c] ? COL_ERROR :
-               hflash ? COL_FLASH : COL_TEXT), buf);
+              ALIGN_HLEFT|ALIGN_VCENTRE, COL_TEXT, buf);
     draw_update(dr, dx-2*TILESIZE/3, dy, 3*TILESIZE/2, TILESIZE);
 
     return;
@@ -2862,11 +2771,7 @@ static void draw_path_hint(drawing *dr, game_drawstate *ds,
     int x, y, color, dx, dy, text_dx, text_dy, text_size;
     char buf[4];
 
-    if (ds->hint_errors[hint_index])
-        color = COL_ERROR;
-    else if (hflash)
-        color = COL_FLASH;
-    else if (ds->hints_done[hint_index])
+    if (ds->hints_done[hint_index])
         color = COL_DONE;
     else
         color = COL_TEXT;
@@ -2885,7 +2790,7 @@ static void draw_path_hint(drawing *dr, game_drawstate *ds,
 
     if (hint >= 0) sprintf(buf,"%d", hint);
     else           sprintf(buf," ");
-    draw_rect(dr, dx, dy, text_size, text_size, COL_BACKGROUND);
+    draw_rect(dr, dx, dy, text_size, text_size, (ds->hint_errors[hint_index]) ? COL_ERROR : COL_BACKGROUND);
     draw_text(dr, text_dx, text_dy, FONT_FIXED, TILESIZE / 2,
               ALIGN_HCENTRE | ALIGN_VCENTRE, color, buf);
     draw_update(dr, dx, dy, text_size, text_size);
@@ -3115,14 +3020,6 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-}
-
 #ifdef COMBINED
 #define thegame undead
 #endif
@@ -3143,7 +3040,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,

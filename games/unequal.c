@@ -1541,8 +1541,8 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
     int i;
     int order = params->order;
     char off = (order > 9) ? '0' : '1';
-    key_label *keys = snewn(order + 1, key_label);
-    *nkeys = order + 1;
+    key_label *keys = snewn(order + 2, key_label);
+    *nkeys = order + 2;
 
     for(i = 0; i < order; i++) {
         if (i==10) off = 'a'-10;
@@ -1551,6 +1551,8 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
     }
     keys[order].button = '\b';
     keys[order].label = NULL;
+    keys[order+1].button = '+';
+    keys[order+1].label = "Add";
 
     return keys;
 }
@@ -1801,7 +1803,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     if (button == 'H' || button == 'h')
         return dupstr("H");
-    if (button == 'M' || button == 'm')
+    if (button == '+')
         return dupstr("M");
 
     return NULL;

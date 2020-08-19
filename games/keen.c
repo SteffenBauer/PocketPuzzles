@@ -1354,12 +1354,10 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
 
         keys[i].label = NULL;
     }
-    keys[w].button = '+';
+    keys[w].button = '\b';
     keys[w].label = NULL;
-
-    keys[w+1].button = '\b';
-    keys[w+1].label = NULL;
-
+    keys[w+1].button = '+';
+    keys[w+1].label = "Add";
 
     return keys;
 }

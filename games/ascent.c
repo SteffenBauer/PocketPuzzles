@@ -219,7 +219,7 @@ static struct preset_menu *game_preset_menu(void)
     int i;
     game_params *params;
     char buf[80];
-    struct preset_menu *menu, *honey, *hex;
+    struct preset_menu *menu;
     menu = preset_menu_new();
 
     for (i = 0; i < lenof(ascent_presets); i++)
@@ -228,7 +228,7 @@ static struct preset_menu *game_preset_menu(void)
         if (params->mode == MODE_HEXAGON)
             sprintf(buf, "%d Hexagon %s", params->w, ascent_diffnames[params->diff]);
         else
-            sprintf(buf, "%dx%d %s %s%s", params->w, params->h, 
+            sprintf(buf, "%dx%d %s %s", params->w, params->h, 
                 params->mode == MODE_EDGES ? "Edges " : 
                 params->mode == MODE_HONEYCOMB ? "Honeycomb" : "", ascent_diffnames[params->diff]);
 
@@ -1982,43 +1982,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     return ret;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return !IS_HEXAGONAL(params->mode);
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int w = state->w, h = state->h;
-    int x, y;
-    int space = w*h >= 100 ? 3 : 2;
-    
-    char *ret = snewn(w*h*(space+1) + 1, char);
-    char *p = ret;
-    number n;
-    
-    for(y = 0; y < h; y++)
-    for(x = 0; x < w; x++)
-    {
-        n = state->grid[y*w+x];
-        if (IS_NUMBER_EDGE(n))
-            n = NUMBER_EDGE(n);
-
-        if(n >= 0)
-            p += sprintf(p, "%*d", space, n+1);
-        else if(n == NUMBER_WALL)
-            p += sprintf(p, "%*s", space, "#");
-        else if (n == NUMBER_BOUND)
-            p += sprintf(p, "%*s", space, " ");
-        else
-            p += sprintf(p, "%*s", space, ".");
-        *p++ = x < w-1 ? ' ' : '\n';
-    }
-    *p++ = '\0';
-    
-    return ret;
-}
-
 /* ************** *
  * User Interface *
  * ************** */
@@ -3194,33 +3157,22 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
     game_mkhighlight(fe, ret, COL_MIDLIGHT, COL_HIGHLIGHT, COL_LOWLIGHT);
 
-    ret[COL_BORDER * 3 + 0] = 0.0F;
-    ret[COL_BORDER * 3 + 1] = 0.0F;
-    ret[COL_BORDER * 3 + 2] = 0.0F;
-    
-    ret[COL_LINE * 3 + 0] = 0.0F;
-    ret[COL_LINE * 3 + 1] = 0.5F;
-    ret[COL_LINE * 3 + 2] = 0.0F;
-
-    ret[COL_IMMUTABLE * 3 + 0] = 0.0F;
-    ret[COL_IMMUTABLE * 3 + 1] = 0.0F;
-    ret[COL_IMMUTABLE * 3 + 2] = 1.0F;
-    
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
-    
-    ret[COL_CURSOR * 3 + 0] = 0.0F;
-    ret[COL_CURSOR * 3 + 1] = 0.7F;
-    ret[COL_CURSOR * 3 + 2] = 0.0F;
-
-    ret[COL_ARROW * 3 + 0] = 1.0F;
-    ret[COL_ARROW * 3 + 1] = 1.0F;
-    ret[COL_ARROW * 3 + 2] = 0.8F;
+    for (i=0;i<3;i++) {
+        ret[COL_MIDLIGHT  * 3 + i] = 1.0F;
+        ret[COL_HIGHLIGHT * 3 + i] = 0.75F;
+        ret[COL_LOWLIGHT  * 3 + i] = 0.5F;
+        ret[COL_BORDER    * 3 + i] = 0.0F;
+        ret[COL_LINE      * 3 + i] = 0.0F;
+        ret[COL_IMMUTABLE * 3 + i] = 0.0F;
+        ret[COL_ERROR     * 3 + i] = 0.25F;
+        ret[COL_CURSOR    * 3 + i] = 0.0F;
+        ret[COL_ARROW     * 3 + i] = 0.75F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -3787,109 +3739,6 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
-/* Using 9mm squares */
-#define PRINT_SQUARE_SIZE 900
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    game_compute_size(params, PRINT_SQUARE_SIZE, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w = state->w;
-    int h = state->h;
-    int tx, ty, tx2, ty2;
-    int offsetx, offsety;
-    cell i, i2;
-    number n;
-    char buf[20];
-    cell *positions = snewn(w*h, cell);
-
-    int ink = print_mono_colour(dr, 0);
-    int grey = print_grey_colour(dr, 0.8f);
-
-    game_set_offsets(h, state->mode, tilesize, &offsetx, &offsety);
-    update_positions(positions, state->grid, w*h);
-
-    print_line_width(dr, tilesize / 5);
-    for(n = 0; n < w*h; n++)
-    {
-        i = positions[n];
-        tx = (i%w) * tilesize + offsetx + (tilesize/2);
-        ty = (i/w) * tilesize + offsety + (tilesize/2);
-
-        if (IS_HEXAGONAL(state->mode))
-            tx += (i/w) * tilesize / 2;
-
-        /* Draw a circle on the beginning and the end of the path */
-        if((n == 0 || n == state->last) && i >= 0)
-            draw_circle(dr, tx, ty, tilesize/4, grey, grey);
-
-        if(n == w*h-1) break;
-
-        i2 = positions[n+1];
-        tx2 = (i2%w) * tilesize + offsetx + (tilesize/2);
-        ty2 = (i2/w) * tilesize + offsety + (tilesize/2);
-
-        if (IS_HEXAGONAL(state->mode))
-            tx2 += (i2/w) * tilesize / 2;
-
-        /* Draw path lines */
-        if(i >= 0 && i2 >= 0 && is_near(i, i2, w, state->mode))
-            draw_line(dr, tx, ty, tx2, ty2, grey);
-    }
-
-    print_line_width(dr, tilesize / 40);
-    for(i = 0; i < w*h; i++)
-    {
-        tx = (i%w) * tilesize + offsetx;
-        ty = (i/w) * tilesize + offsety;
-
-        if (IS_HEXAGONAL(state->mode))
-            tx += (i/w) * tilesize / 2;
-
-        n = state->grid[i];
-        if (n == NUMBER_BOUND)
-            continue;
-
-        /* Draw square border */
-        if (!IS_NUMBER_EDGE(n))
-        {
-            int sqc[8];
-            sqc[0] = tx;
-            sqc[1] = ty;
-            sqc[2] = tx + tilesize;
-            sqc[3] = ty;
-            sqc[4] = tx + tilesize;
-            sqc[5] = ty + tilesize;
-            sqc[6] = tx;
-            sqc[7] = ty + tilesize;
-            draw_polygon(dr, sqc, 4, n == NUMBER_WALL ? ink : -1, ink);
-        }
-        else
-        {
-            n = NUMBER_EDGE(n);
-            ascent_draw_arrow(dr, i, w, h, tx + tilesize/2, ty + tilesize/2, -1, ink, tilesize);
-        }
-
-        /* Draw the number */
-        if(n >= 0)
-        {
-            sprintf(buf, "%d", n+1);
-            
-            draw_text(dr, tx + tilesize/2, ty + tilesize/2,
-                      FONT_VARIABLE, tilesize/2, 
-                      ALIGN_HCENTRE|ALIGN_VCENTRE, ink, buf);
-        }
-    }
-
-    sfree(positions);
-}
-
 #ifdef COMBINED
 #define thegame ascent
 #endif
@@ -3910,7 +3759,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -3927,7 +3776,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false, /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */

@@ -14,16 +14,16 @@
  *
  *  - more solver techniques?
  *     * Inverses: once we know that gh = e, we can immediately
- * 	 deduce hg = e as well; then for any gx=y we can deduce
- * 	 hy=x, and for any xg=y we have yh=x.
+ *      deduce hg = e as well; then for any gx=y we can deduce
+ *      hy=x, and for any xg=y we have yh=x.
  *     * Hard-mode associativity: we currently deduce based on
- * 	 definite numbers in the grid, but we could also winnow
- * 	 based on _possible_ numbers.
+ *      definite numbers in the grid, but we could also winnow
+ *      based on _possible_ numbers.
  *     * My overambitious original thoughts included wondering if we
- * 	 could infer that there must be elements of certain orders
- * 	 (e.g. a group of order divisible by 5 must contain an
- * 	 element of order 5), but I think in fact this is probably
- * 	 silly.
+ *      could infer that there must be elements of certain orders
+ *      (e.g. a group of order divisible by 5 must contain an
+ *      element of order 5), but I think in fact this is probably
+ *      silly.
  */
 
 #include <stdio.h>
@@ -90,7 +90,7 @@ typedef struct group_common {
 struct game_state {
     game_params par;
     digit *grid;
-    int *pencil;		       /* bitmaps using bits 1<<1..1<<n */
+    int *pencil;               /* bitmaps using bits 1<<1..1<<n */
     group_common *common;
     bool completed, cheated;
     digit *sequence;                   /* sequence of group elements shown */
@@ -124,6 +124,7 @@ static game_params *default_params(void)
 }
 
 const static struct game_params group_presets[] = {
+    {  4, DIFF_NORMAL, true },
     {  6, DIFF_NORMAL, true },
     {  6, DIFF_NORMAL, false },
     {  8, DIFF_NORMAL, true },
@@ -145,7 +146,7 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
     *ret = group_presets[i]; /* structure copy */
 
     sprintf(buf, "%dx%d %s%s", ret->w, ret->w, group_diffnames[ret->diff],
-	    ret->id ? "" : ", identity hidden");
+        ret->id ? "" : ", identity hidden");
 
     *name = dupstr(buf);
     *params = ret;
@@ -160,7 +161,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -174,24 +175,24 @@ static void decode_params(game_params *params, char const *string)
     params->id = true;
 
     while (*p) {
-	if (*p == 'd') {
-	    int i;
-	    p++;
-	    params->diff = DIFFCOUNT+1; /* ...which is invalid */
-	    if (*p) {
-		for (i = 0; i < DIFFCOUNT; i++) {
-		    if (*p == group_diffchars[i])
-			params->diff = i;
-		}
-		p++;
-	    }
-	} else if (*p == 'i') {
-	    params->id = false;
-	    p++;
-	} else {
-	    /* unrecognised character */
-	    p++;
-	}
+    if (*p == 'd') {
+        int i;
+        p++;
+        params->diff = DIFFCOUNT+1; /* ...which is invalid */
+        if (*p) {
+        for (i = 0; i < DIFFCOUNT; i++) {
+            if (*p == group_diffchars[i])
+            params->diff = i;
+        }
+        p++;
+        }
+    } else if (*p == 'i') {
+        params->id = false;
+        p++;
+    } else {
+        /* unrecognised character */
+        p++;
+    }
     }
 }
 
@@ -253,25 +254,25 @@ static const char *validate_params(const game_params *params, bool full)
     if (params->diff >= DIFFCOUNT)
         return "Unknown difficulty rating";
     if (!params->id && params->diff == DIFF_TRIVIAL) {
-	/*
-	 * We can't have a Trivial-difficulty puzzle (i.e. latin
-	 * square deductions only) without a clear identity, because
-	 * identityless puzzles always have two rows and two columns
-	 * entirely blank, and no latin-square deduction permits the
-	 * distinguishing of two such rows.
-	 */
-	return "Trivial puzzles must have an identity";
+    /*
+     * We can't have a Trivial-difficulty puzzle (i.e. latin
+     * square deductions only) without a clear identity, because
+     * identityless puzzles always have two rows and two columns
+     * entirely blank, and no latin-square deduction permits the
+     * distinguishing of two such rows.
+     */
+    return "Trivial puzzles must have an identity";
     }
     if (!params->id && params->w == 3) {
-	/*
-	 * We can't have a 3x3 puzzle without an identity either,
-	 * because 3x3 puzzles can't ever be harder than Trivial
-	 * (there are no 3x3 latin squares which aren't also valid
-	 * group tables, so enabling group-based deductions doesn't
-	 * rule out any possible solutions) and - as above - Trivial
-	 * puzzles can't not have an identity.
-	 */
-	return "3x3 puzzles must have an identity";
+    /*
+     * We can't have a 3x3 puzzle without an identity either,
+     * because 3x3 puzzles can't ever be harder than Trivial
+     * (there are no 3x3 latin squares which aren't also valid
+     * group tables, so enabling group-based deductions doesn't
+     * rule out any possible solutions) and - as above - Trivial
+     * puzzles can't not have an identity.
+     */
+    return "3x3 puzzles must have an identity";
     }
     return NULL;
 }
@@ -287,7 +288,7 @@ static int find_identity(struct latin_solver *solver)
     int i, j;
 
     for (i = 0; i < w; i++)
-	for (j = 0; j < w; j++) {
+    for (j = 0; j < w; j++) {
             if (grid[i*w+j] == i+1)
                 return j+1;
             if (grid[i*w+j] == j+1)
@@ -313,67 +314,67 @@ static int solver_normal(struct latin_solver *solver, void *vctx)
      * (ab)c we can fill in a(bc).
      */
     for (i = 0; i < w; i++)
-	for (j = 0; j < w; j++)
-	    for (k = 0; k < w; k++) {
-		if (!grid[i*w+j] || !grid[j*w+k])
-		    continue;
-		if (grid[(grid[i*w+j]-1)*w+k] &&
-		    !grid[i*w+(grid[j*w+k]-1)]) {
-		    int x = grid[j*w+k]-1, y = i;
-		    int n = grid[(grid[i*w+j]-1)*w+k];
+    for (j = 0; j < w; j++)
+        for (k = 0; k < w; k++) {
+        if (!grid[i*w+j] || !grid[j*w+k])
+            continue;
+        if (grid[(grid[i*w+j]-1)*w+k] &&
+            !grid[i*w+(grid[j*w+k]-1)]) {
+            int x = grid[j*w+k]-1, y = i;
+            int n = grid[(grid[i*w+j]-1)*w+k];
 #ifdef STANDALONE_SOLVER
-		    if (solver_show_working) {
-			printf("%*sassociativity on %s,%s,%s: %s*%s = %s*%s\n",
-			       solver_recurse_depth*4, "",
-			       names[i], names[j], names[k],
-			       names[grid[i*w+j]-1], names[k],
-			       names[i], names[grid[j*w+k]-1]);
-			printf("%*s  placing %s at (%d,%d)\n",
-			       solver_recurse_depth*4, "",
-			       names[n-1], x+1, y+1);
-		    }
+            if (solver_show_working) {
+            printf("%*sassociativity on %s,%s,%s: %s*%s = %s*%s\n",
+                   solver_recurse_depth*4, "",
+                   names[i], names[j], names[k],
+                   names[grid[i*w+j]-1], names[k],
+                   names[i], names[grid[j*w+k]-1]);
+            printf("%*s  placing %s at (%d,%d)\n",
+                   solver_recurse_depth*4, "",
+                   names[n-1], x+1, y+1);
+            }
 #endif
-		    if (solver->cube[(x*w+y)*w+n-1]) {
-			latin_solver_place(solver, x, y, n);
-			return 1;
-		    } else {
+            if (solver->cube[(x*w+y)*w+n-1]) {
+            latin_solver_place(solver, x, y, n);
+            return 1;
+            } else {
 #ifdef STANDALONE_SOLVER
-			if (solver_show_working)
-			    printf("%*s  contradiction!\n",
-				   solver_recurse_depth*4, "");
-			return -1;
+            if (solver_show_working)
+                printf("%*s  contradiction!\n",
+                   solver_recurse_depth*4, "");
+            return -1;
 #endif
-		    }
-		}
-		if (!grid[(grid[i*w+j]-1)*w+k] &&
-		    grid[i*w+(grid[j*w+k]-1)]) {
-		    int x = k, y = grid[i*w+j]-1;
-		    int n = grid[i*w+(grid[j*w+k]-1)];
+            }
+        }
+        if (!grid[(grid[i*w+j]-1)*w+k] &&
+            grid[i*w+(grid[j*w+k]-1)]) {
+            int x = k, y = grid[i*w+j]-1;
+            int n = grid[i*w+(grid[j*w+k]-1)];
 #ifdef STANDALONE_SOLVER
-		    if (solver_show_working) {
-			printf("%*sassociativity on %s,%s,%s: %s*%s = %s*%s\n",
-			       solver_recurse_depth*4, "",
-			       names[i], names[j], names[k],
-			       names[grid[i*w+j]-1], names[k],
-			       names[i], names[grid[j*w+k]-1]);
-			printf("%*s  placing %s at (%d,%d)\n",
-			       solver_recurse_depth*4, "",
-			       names[n-1], x+1, y+1);
-		    }
+            if (solver_show_working) {
+            printf("%*sassociativity on %s,%s,%s: %s*%s = %s*%s\n",
+                   solver_recurse_depth*4, "",
+                   names[i], names[j], names[k],
+                   names[grid[i*w+j]-1], names[k],
+                   names[i], names[grid[j*w+k]-1]);
+            printf("%*s  placing %s at (%d,%d)\n",
+                   solver_recurse_depth*4, "",
+                   names[n-1], x+1, y+1);
+            }
 #endif
-		    if (solver->cube[(x*w+y)*w+n-1]) {
-			latin_solver_place(solver, x, y, n);
-			return 1;
-		    } else {
+            if (solver->cube[(x*w+y)*w+n-1]) {
+            latin_solver_place(solver, x, y, n);
+            return 1;
+            } else {
 #ifdef STANDALONE_SOLVER
-			if (solver_show_working)
-			    printf("%*s  contradiction!\n",
-				   solver_recurse_depth*4, "");
-			return -1;
+            if (solver_show_working)
+                printf("%*s  contradiction!\n",
+                   solver_recurse_depth*4, "");
+            return -1;
 #endif
-		    }
-		}
-	    }
+            }
+        }
+        }
 
     /*
      * Fill in the row and column for the group identity, if it's not
@@ -476,7 +477,7 @@ static int solver_hard(struct latin_solver *solver, void *vctx)
         char title[80];
 #endif
 
-	for (j = 0; j < w; j++) {
+    for (j = 0; j < w; j++) {
             if (grid(i,j) && grid(i,j) != j+1) {
 #ifdef STANDALONE_SOLVER
                 if (solver_show_working)
@@ -549,8 +550,8 @@ static bool group_valid(struct latin_solver *solver, void *ctx)
     int i, j, k;
 
     for (i = 0; i < w; i++)
-	for (j = 0; j < w; j++)
-	    for (k = 0; k < w; k++) {
+    for (j = 0; j < w; j++)
+        for (k = 0; k < w; k++) {
                 int ij = grid(i, j) - 1;
                 int jk = grid(j, k) - 1;
                 int ij_k = grid(ij, k) - 1;
@@ -588,17 +589,17 @@ static int solver(const game_params *params, digit *grid, int maxdiff)
     latin_solver_alloc(&solver, grid, w);
 #ifdef STANDALONE_SOLVER
     for (i = 0, p = text; i < w; i++) {
-	names[i] = p;
-	*p++ = TOCHAR(i+1, params->id);
-	*p++ = '\0';
+    names[i] = p;
+    *p++ = TOCHAR(i+1, params->id);
+    *p++ = '\0';
     }
     solver.names = names;
 #endif
 
     ret = latin_solver_main(&solver, maxdiff,
-			    DIFF_TRIVIAL, DIFF_HARD, DIFF_EXTREME,
-			    DIFF_EXTREME, DIFF_UNREASONABLE,
-			    group_solvers, group_valid, NULL, NULL, NULL);
+                DIFF_TRIVIAL, DIFF_HARD, DIFF_EXTREME,
+                DIFF_EXTREME, DIFF_UNREASONABLE,
+                group_solvers, group_valid, NULL, NULL, NULL);
 
     latin_solver_free(&solver);
 
@@ -616,32 +617,32 @@ static char *encode_grid(char *desc, digit *grid, int area)
 
     run = 0;
     for (i = 0; i <= area; i++) {
-	int n = (i < area ? grid[i] : -1);
+    int n = (i < area ? grid[i] : -1);
 
-	if (!n)
-	    run++;
-	else {
-	    if (run) {
-		while (run > 0) {
-		    int c = 'a' - 1 + run;
-		    if (run > 26)
-			c = 'z';
-		    *p++ = c;
-		    run -= c - ('a' - 1);
-		}
-	    } else {
-		/*
-		 * If there's a number in the very top left or
-		 * bottom right, there's no point putting an
-		 * unnecessary _ before or after it.
-		 */
-		if (p > desc && n > 0)
-		    *p++ = '_';
-	    }
-	    if (n > 0)
-		p += sprintf(p, "%d", n);
-	    run = 0;
-	}
+    if (!n)
+        run++;
+    else {
+        if (run) {
+        while (run > 0) {
+            int c = 'a' - 1 + run;
+            if (run > 26)
+            c = 'z';
+            *p++ = c;
+            run -= c - ('a' - 1);
+        }
+        } else {
+        /*
+         * If there's a number in the very top left or
+         * bottom right, there's no point putting an
+         * unnecessary _ before or after it.
+         */
+        if (p > desc && n > 0)
+            *p++ = '_';
+        }
+        if (n > 0)
+        p += sprintf(p, "%d", n);
+        run = 0;
+    }
     }
     return p;
 }
@@ -810,7 +811,7 @@ static const struct groups groups[] = {
 /* ----- data generated by group.gap ends ----- */
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     int w = params->w, a = w*w;
     digit *grid, *soln, *soln2;
@@ -845,13 +846,13 @@ done
      * well as those which should be added.
      */
     if (w < 5 && diff == DIFF_UNREASONABLE)
-	diff--;
+    diff--;
     if ((w < 5 || ((w == 6 || w == 8) && params->id)) && diff == DIFF_EXTREME)
-	diff--;
+    diff--;
     if ((w < 6 || (w == 6 && params->id)) && diff == DIFF_HARD)
-	diff--;
+    diff--;
     if ((w < 4 || (w == 4 && params->id)) && diff == DIFF_NORMAL)
-	diff--;
+    diff--;
 
     grid = snewn(a, digit);
     soln = snewn(a, digit);
@@ -859,110 +860,110 @@ done
     indices = snewn(a, int);
 
     while (1) {
-	/*
-	 * Construct a valid group table, by picking a group from
-	 * the above data table, decompressing it into a full
-	 * representation by BFS, and then randomly permuting its
-	 * non-identity elements.
-	 *
-	 * We build the canonical table in 'soln' (and use 'grid' as
-	 * our BFS queue), then transfer the table into 'grid'
-	 * having shuffled the rows.
-	 */
-	assert(w >= 2);
-	assert(w < lenof(groups));
-	group = groups[w].groups + random_upto(rs, groups[w].ngroups);
-	assert(group->order == w);
-	memset(soln, 0, a);
-	for (i = 0; i < w; i++)
-	    soln[i] = i+1;
-	qh = qt = 0;
-	grid[qt++] = 1;
-	while (qh < qt) {
-	    digit *row, *newrow;
+    /*
+     * Construct a valid group table, by picking a group from
+     * the above data table, decompressing it into a full
+     * representation by BFS, and then randomly permuting its
+     * non-identity elements.
+     *
+     * We build the canonical table in 'soln' (and use 'grid' as
+     * our BFS queue), then transfer the table into 'grid'
+     * having shuffled the rows.
+     */
+    assert(w >= 2);
+    assert(w < lenof(groups));
+    group = groups[w].groups + random_upto(rs, groups[w].ngroups);
+    assert(group->order == w);
+    memset(soln, 0, a);
+    for (i = 0; i < w; i++)
+        soln[i] = i+1;
+    qh = qt = 0;
+    grid[qt++] = 1;
+    while (qh < qt) {
+        digit *row, *newrow;
 
-	    i = grid[qh++];
-	    row = soln + (i-1)*w;
+        i = grid[qh++];
+        row = soln + (i-1)*w;
 
-	    for (j = 0; j < group->ngens; j++) {
-		int nri;
-		const char *gen = group->gens + j*w;
+        for (j = 0; j < group->ngens; j++) {
+        int nri;
+        const char *gen = group->gens + j*w;
 
-		/*
-		 * Apply each group generator to row, constructing a
-		 * new row.
-		 */
-		nri = gen[row[0]-1] - 'A' + 1;   /* which row is it? */
-		newrow = soln + (nri-1)*w;
-		if (!newrow[0]) {   /* not done yet */
-		    for (k = 0; k < w; k++)
-			newrow[k] = gen[row[k]-1] - 'A' + 1;
-		    grid[qt++] = nri;
-		}
-	    }
-	}
-	/* That's got the canonical table. Now shuffle it. */
-	for (i = 0; i < w; i++)
-	    soln2[i] = i;
-	if (params->id)		       /* do we shuffle in the identity? */
-	    shuffle(soln2+1, w-1, sizeof(*soln2), rs);
-	else
-	    shuffle(soln2, w, sizeof(*soln2), rs);
-	for (i = 0; i < w; i++)
-	    for (j = 0; j < w; j++)
-		grid[(soln2[i])*w+(soln2[j])] = soln2[soln[i*w+j]-1]+1;
+        /*
+         * Apply each group generator to row, constructing a
+         * new row.
+         */
+        nri = gen[row[0]-1] - 'A' + 1;   /* which row is it? */
+        newrow = soln + (nri-1)*w;
+        if (!newrow[0]) {   /* not done yet */
+            for (k = 0; k < w; k++)
+            newrow[k] = gen[row[k]-1] - 'A' + 1;
+            grid[qt++] = nri;
+        }
+        }
+    }
+    /* That's got the canonical table. Now shuffle it. */
+    for (i = 0; i < w; i++)
+        soln2[i] = i;
+    if (params->id)               /* do we shuffle in the identity? */
+        shuffle(soln2+1, w-1, sizeof(*soln2), rs);
+    else
+        shuffle(soln2, w, sizeof(*soln2), rs);
+    for (i = 0; i < w; i++)
+        for (j = 0; j < w; j++)
+        grid[(soln2[i])*w+(soln2[j])] = soln2[soln[i*w+j]-1]+1;
 
-	/*
-	 * Remove entries one by one while the puzzle is still
-	 * soluble at the appropriate difficulty level.
-	 */
-	memcpy(soln, grid, a);
-	if (!params->id) {
-	    /*
-	     * Start by blanking the entire identity row and column,
-	     * and also another row and column so that the player
-	     * can't trivially determine which element is the
-	     * identity.
-	     */
+    /*
+     * Remove entries one by one while the puzzle is still
+     * soluble at the appropriate difficulty level.
+     */
+    memcpy(soln, grid, a);
+    if (!params->id) {
+        /*
+         * Start by blanking the entire identity row and column,
+         * and also another row and column so that the player
+         * can't trivially determine which element is the
+         * identity.
+         */
 
-	    j = 1 + random_upto(rs, w-1);  /* pick a second row/col to blank */
-	    for (i = 0; i < w; i++) {
-		grid[(soln2[0])*w+i] = grid[i*w+(soln2[0])] = 0;
-		grid[(soln2[j])*w+i] = grid[i*w+(soln2[j])] = 0;
-	    }
+        j = 1 + random_upto(rs, w-1);  /* pick a second row/col to blank */
+        for (i = 0; i < w; i++) {
+        grid[(soln2[0])*w+i] = grid[i*w+(soln2[0])] = 0;
+        grid[(soln2[j])*w+i] = grid[i*w+(soln2[j])] = 0;
+        }
 
-	    memcpy(soln2, grid, a);
-	    if (solver(params, soln2, diff) > diff)
-		continue;	       /* go round again if that didn't work */
-	}
+        memcpy(soln2, grid, a);
+        if (solver(params, soln2, diff) > diff)
+        continue;           /* go round again if that didn't work */
+    }
 
-	k = 0;
-	for (i = (params->id ? 1 : 0); i < w; i++)
-	    for (j = (params->id ? 1 : 0); j < w; j++)
-		if (grid[i*w+j])
-		    indices[k++] = i*w+j;
-	shuffle(indices, k, sizeof(*indices), rs);
+    k = 0;
+    for (i = (params->id ? 1 : 0); i < w; i++)
+        for (j = (params->id ? 1 : 0); j < w; j++)
+        if (grid[i*w+j])
+            indices[k++] = i*w+j;
+    shuffle(indices, k, sizeof(*indices), rs);
 
-	for (i = 0; i < k; i++) {
-	    memcpy(soln2, grid, a);
-	    soln2[indices[i]] = 0;
-	    if (solver(params, soln2, diff) <= diff)
-		grid[indices[i]] = 0;
-	}
+    for (i = 0; i < k; i++) {
+        memcpy(soln2, grid, a);
+        soln2[indices[i]] = 0;
+        if (solver(params, soln2, diff) <= diff)
+        grid[indices[i]] = 0;
+    }
 
-	/*
-	 * Make sure the puzzle isn't too easy.
-	 */
-	if (diff > 0) {
-	    memcpy(soln2, grid, a);
-	    if (solver(params, soln2, diff-1) < diff)
-		continue;	       /* go round and try again */
-	}
+    /*
+     * Make sure the puzzle isn't too easy.
+     */
+    if (diff > 0) {
+        memcpy(soln2, grid, a);
+        if (solver(params, soln2, diff-1) < diff)
+        continue;           /* go round and try again */
+    }
 
-	/*
-	 * Done.
-	 */
-	break;
+    /*
+     * Done.
+     */
+    break;
     }
 
     /*
@@ -979,7 +980,7 @@ done
     *aux = snewn(a+2, char);
     (*aux)[0] = 'S';
     for (i = 0; i < a; i++)
-	(*aux)[i+1] = TOCHAR(soln[i], params->id);
+    (*aux)[i+1] = TOCHAR(soln[i], params->id);
     (*aux)[a+1] = '\0';
 
     sfree(grid);
@@ -1057,6 +1058,34 @@ static const char *spec_to_grid(const char *desc, digit *grid, int area)
     return desc;
 }
 
+static key_label *game_request_keys(const game_params *params, int *nkeys)
+{
+    int i;
+    int n = params->w;
+    key_label *keys = snewn(n + 2, key_label);
+    *nkeys = n + 2;
+
+    if (params->id) {
+        keys[0].button = 'E';
+        keys[0].label = NULL;
+        for (i=1 ; i < n; i++) {
+            keys[i].button = 'A' + (i-(i<5 ? 1 : 0));
+        }
+    }
+    else {
+        for (i = 0; i < n; i++) {
+            keys[i].button = 'A' + i;
+            keys[i].label = NULL;
+        }
+    }
+    keys[n].button = '\b';
+    keys[n].label = NULL;
+    keys[n+1].button = '+';
+    keys[n+1].label = "Add";
+
+    return keys;
+}
+
 static game_state *new_game(midend *me, const game_params *params,
                             const char *desc)
 {
@@ -1064,28 +1093,28 @@ static game_state *new_game(midend *me, const game_params *params,
     game_state *state = snew(game_state);
     int i;
 
-    state->par = *params;	       /* structure copy */
+    state->par = *params;           /* structure copy */
     state->grid = snewn(a, digit);
     state->common = snew(group_common);
     state->common->refcount = 1;
     state->common->immutable = snewn(a, bool);
     state->pencil = snewn(a, int);
     for (i = 0; i < a; i++) {
-	state->grid[i] = 0;
-	state->common->immutable[i] = false;
-	state->pencil[i] = 0;
+    state->grid[i] = 0;
+    state->common->immutable[i] = false;
+    state->pencil[i] = 0;
     }
     state->sequence = snewn(w, digit);
     state->dividers = snewn(w, int);
     for (i = 0; i < w; i++) {
-	state->sequence[i] = i;
-	state->dividers[i] = -1;
+    state->sequence[i] = i;
+    state->dividers[i] = -1;
     }
 
     desc = spec_to_grid(desc, state->grid, a);
     for (i = 0; i < a; i++)
-	if (state->grid[i] != 0)
-	    state->common->immutable[i] = true;
+    if (state->grid[i] != 0)
+        state->common->immutable[i] = true;
 
     state->completed = false;
     state->cheated = false;
@@ -1098,7 +1127,7 @@ static game_state *dup_game(const game_state *state)
     int w = state->par.w, a = w*w;
     game_state *ret = snew(game_state);
 
-    ret->par = state->par;	       /* structure copy */
+    ret->par = state->par;           /* structure copy */
 
     ret->grid = snewn(a, digit);
     ret->common = state->common;
@@ -1138,7 +1167,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     char *out;
 
     if (aux)
-	return dupstr(aux);
+    return dupstr(aux);
 
     soln = snewn(a, digit);
     memcpy(soln, state->grid, a*sizeof(digit));
@@ -1146,59 +1175,21 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     ret = solver(&state->par, soln, DIFFCOUNT-1);
 
     if (ret == diff_impossible) {
-	*error = "No solution exists for this puzzle";
-	out = NULL;
+    *error = "No solution exists for this puzzle";
+    out = NULL;
     } else if (ret == diff_ambiguous) {
-	*error = "Multiple solutions exist for this puzzle";
-	out = NULL;
+    *error = "Multiple solutions exist for this puzzle";
+    out = NULL;
     } else {
-	out = snewn(a+2, char);
-	out[0] = 'S';
-	for (i = 0; i < a; i++)
-	    out[i+1] = TOCHAR(soln[i], state->par.id);
-	out[a+1] = '\0';
+    out = snewn(a+2, char);
+    out[0] = 'S';
+    for (i = 0; i < a; i++)
+        out[i+1] = TOCHAR(soln[i], state->par.id);
+    out[a+1] = '\0';
     }
 
     sfree(soln);
     return out;
-}
-
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int w = state->par.w;
-    int x, y;
-    char *ret, *p, ch;
-
-    ret = snewn(2*w*w+1, char);	       /* leave room for terminating NUL */
-
-    p = ret;
-    for (y = 0; y < w; y++) {
-	for (x = 0; x < w; x++) {
-	    digit d = state->grid[y*w+x];
-
-            if (d == 0) {
-		ch = '.';
-	    } else {
-		ch = TOCHAR(d, state->par.id);
-	    }
-
-	    *p++ = ch;
-	    if (x == w-1) {
-		*p++ = '\n';
-	    } else {
-		*p++ = ' ';
-	    }
-	}
-    }
-
-    assert(p - ret == 2*w*w);
-    *p = '\0';
-    return ret;
 }
 
 struct game_ui {
@@ -1399,75 +1390,75 @@ static bool check_errors(const game_state *state, long *errors)
      */
 
     if (errors)
-	for (i = 0; i < a; i++)
-	    errors[i] = 0;
+    for (i = 0; i < a; i++)
+        errors[i] = 0;
 
     for (y = 0; y < w; y++) {
-	unsigned long mask = 0, errmask = 0;
-	for (x = 0; x < w; x++) {
-	    unsigned long bit = 1UL << grid[y*w+x];
-	    errmask |= (mask & bit);
-	    mask |= bit;
-	}
+    unsigned long mask = 0, errmask = 0;
+    for (x = 0; x < w; x++) {
+        unsigned long bit = 1UL << grid[y*w+x];
+        errmask |= (mask & bit);
+        mask |= bit;
+    }
 
-	if (mask != (1 << (w+1)) - (1 << 1)) {
-	    errs = true;
-	    errmask &= ~1UL;
-	    if (errors) {
-		for (x = 0; x < w; x++)
-		    if (errmask & (1UL << grid[y*w+x]))
-			errors[y*w+x] |= EF_LATIN;
-	    }
-	}
+    if (mask != (1 << (w+1)) - (1 << 1)) {
+        errs = true;
+        errmask &= ~1UL;
+        if (errors) {
+        for (x = 0; x < w; x++)
+            if (errmask & (1UL << grid[y*w+x]))
+            errors[y*w+x] |= EF_LATIN;
+        }
+    }
     }
 
     for (x = 0; x < w; x++) {
-	unsigned long mask = 0, errmask = 0;
-	for (y = 0; y < w; y++) {
-	    unsigned long bit = 1UL << grid[y*w+x];
-	    errmask |= (mask & bit);
-	    mask |= bit;
-	}
+    unsigned long mask = 0, errmask = 0;
+    for (y = 0; y < w; y++) {
+        unsigned long bit = 1UL << grid[y*w+x];
+        errmask |= (mask & bit);
+        mask |= bit;
+    }
 
-	if (mask != (1 << (w+1)) - (1 << 1)) {
-	    errs = true;
-	    errmask &= ~1UL;
-	    if (errors) {
-		for (y = 0; y < w; y++)
-		    if (errmask & (1UL << grid[y*w+x]))
-			errors[y*w+x] |= EF_LATIN;
-	    }
-	}
+    if (mask != (1 << (w+1)) - (1 << 1)) {
+        errs = true;
+        errmask &= ~1UL;
+        if (errors) {
+        for (y = 0; y < w; y++)
+            if (errmask & (1UL << grid[y*w+x]))
+            errors[y*w+x] |= EF_LATIN;
+        }
+    }
     }
 
     for (i = 1; i < w; i++)
-	for (j = 1; j < w; j++)
-	    for (k = 1; k < w; k++)
-		if (grid[i*w+j] && grid[j*w+k] &&
-		    grid[(grid[i*w+j]-1)*w+k] &&
-		    grid[i*w+(grid[j*w+k]-1)] &&
-		    grid[(grid[i*w+j]-1)*w+k] != grid[i*w+(grid[j*w+k]-1)]) {
-		    if (errors) {
-			int a = i+1, b = j+1, c = k+1;
-			int ab = grid[i*w+j], bc = grid[j*w+k];
-			int left = (ab-1)*w+(c-1), right = (a-1)*w+(bc-1);
-			/*
-			 * If the appropriate error slot is already
-			 * used for one of the squares, we don't
-			 * fill either of them.
-			 */
-			if (!(errors[left] & EF_LEFT_MASK) &&
-			    !(errors[right] & EF_RIGHT_MASK)) {
-			    long err;
-			    err = a;
-			    err = (err << EF_DIGIT_SHIFT) | b;
-			    err = (err << EF_DIGIT_SHIFT) | c;
-			    errors[left] |= err << EF_LEFT_SHIFT;
-			    errors[right] |= err << EF_RIGHT_SHIFT;
-			}
-		    }
-		    errs = true;
-		}
+    for (j = 1; j < w; j++)
+        for (k = 1; k < w; k++)
+        if (grid[i*w+j] && grid[j*w+k] &&
+            grid[(grid[i*w+j]-1)*w+k] &&
+            grid[i*w+(grid[j*w+k]-1)] &&
+            grid[(grid[i*w+j]-1)*w+k] != grid[i*w+(grid[j*w+k]-1)]) {
+            if (errors) {
+            int a = i+1, b = j+1, c = k+1;
+            int ab = grid[i*w+j], bc = grid[j*w+k];
+            int left = (ab-1)*w+(c-1), right = (a-1)*w+(bc-1);
+            /*
+             * If the appropriate error slot is already
+             * used for one of the squares, we don't
+             * fill either of them.
+             */
+            if (!(errors[left] & EF_LEFT_MASK) &&
+                !(errors[right] & EF_RIGHT_MASK)) {
+                long err;
+                err = a;
+                err = (err << EF_DIGIT_SHIFT) | b;
+                err = (err << EF_DIGIT_SHIFT) | c;
+                errors[left] |= err << EF_LEFT_SHIFT;
+                errors[right] |= err << EF_RIGHT_SHIFT;
+            }
+            }
+            errs = true;
+        }
 
     return errs;
 }
@@ -1614,14 +1605,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
 
     if (ui->hshow &&
-	((ISCHAR(button) && FROMCHAR(button, state->par.id) <= w) ||
-	 button == CURSOR_SELECT2 || button == '\b')) {
-	int n = FROMCHAR(button, state->par.id);
-	int i, buflen;
+    ((ISCHAR(button) && FROMCHAR(button, state->par.id) <= w) ||
+     button == CURSOR_SELECT2 || button == '\b')) {
+        int n = FROMCHAR(button, state->par.id);
+        int i, buflen;
         char *movebuf;
 
-	if (button == CURSOR_SELECT2 || button == '\b')
-	    n = 0;
+        if (button == CURSOR_SELECT2 || button == '\b')
+            n = 0;
 
         for (i = 0; i < ui->odn; i++) {
             int x = state->sequence[ui->ohx + i*ui->odx];
@@ -1662,10 +1653,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         if (!ui->hcursor) ui->hshow = false;
 
-	return movebuf;
+    return movebuf;
     }
 
-    if (button == 'M' || button == 'm')
+    if (button == '+')
         return dupstr("M");
 
     return NULL;
@@ -1678,24 +1669,24 @@ static game_state *execute_move(const game_state *from, const char *move)
     int x, y, i, j, n, pos;
 
     if (move[0] == 'S') {
-	ret = dup_game(from);
-	ret->completed = ret->cheated = true;
+    ret = dup_game(from);
+    ret->completed = ret->cheated = true;
 
-	for (i = 0; i < a; i++) {
-	    if (!ISCHAR(move[i+1]) || FROMCHAR(move[i+1], from->par.id) > w) {
-		free_game(ret);
-		return NULL;
-	    }
-	    ret->grid[i] = FROMCHAR(move[i+1], from->par.id);
-	    ret->pencil[i] = 0;
-	}
+    for (i = 0; i < a; i++) {
+        if (!ISCHAR(move[i+1]) || FROMCHAR(move[i+1], from->par.id) > w) {
+        free_game(ret);
+        return NULL;
+        }
+        ret->grid[i] = FROMCHAR(move[i+1], from->par.id);
+        ret->pencil[i] = 0;
+    }
 
-	if (move[a+1] != '\0') {
-	    free_game(ret);
-	    return NULL;
-	}
+    if (move[a+1] != '\0') {
+        free_game(ret);
+        return NULL;
+    }
 
-	return ret;
+    return ret;
     } else if ((move[0] == 'P' || move[0] == 'R') &&
                sscanf(move+1, "%d,%d,%d%n", &x, &y, &n, &pos) == 3 &&
                n >= 0 && n <= w) {
@@ -1732,28 +1723,28 @@ static game_state *execute_move(const game_state *from, const char *move)
         if (!ret->completed && !check_errors(ret, NULL))
             ret->completed = true;
 
-	return ret;
+    return ret;
     } else if (move[0] == 'M') {
-	/*
-	 * Fill in absolutely all pencil marks everywhere. (I
-	 * wouldn't use this for actual play, but it's a handy
-	 * starting point when following through a set of
-	 * diagnostics output by the standalone solver.)
-	 */
-	ret = dup_game(from);
-	for (i = 0; i < a; i++) {
-	    if (!ret->grid[i])
-		ret->pencil[i] = (1 << (w+1)) - (1 << 1);
-	}
-	return ret;
+    /*
+     * Fill in absolutely all pencil marks everywhere. (I
+     * wouldn't use this for actual play, but it's a handy
+     * starting point when following through a set of
+     * diagnostics output by the standalone solver.)
+     */
+    ret = dup_game(from);
+    for (i = 0; i < a; i++) {
+        if (!ret->grid[i])
+        ret->pencil[i] = (1 << (w+1)) - (1 << 1);
+    }
+    return ret;
     } else if (move[0] == 'D' &&
                sscanf(move+1, "%d,%d", &x, &y) == 2) {
-	/*
-	 * Reorder the rows and columns so that digit x is in position
-	 * y.
-	 */
-	ret = dup_game(from);
-	for (i = j = 0; i < w; i++) {
+    /*
+     * Reorder the rows and columns so that digit x is in position
+     * y.
+     */
+    ret = dup_game(from);
+    for (i = j = 0; i < w; i++) {
             if (i == y) {
                 ret->sequence[i] = x;
             } else {
@@ -1761,7 +1752,7 @@ static game_state *execute_move(const game_state *from, const char *move)
                     j++;
                 ret->sequence[i] = from->sequence[j++];
             }
-	}
+    }
         /*
          * Eliminate any obsoleted dividers.
          */
@@ -1771,17 +1762,17 @@ static game_state *execute_move(const game_state *from, const char *move)
             if (ret->dividers[i] != j)
                 ret->dividers[i] = -1;
         }
-	return ret;
+    return ret;
     } else if (move[0] == 'V' &&
                sscanf(move+1, "%d,%d", &i, &j) == 2) {
-	ret = dup_game(from);
+    ret = dup_game(from);
         if (ret->dividers[i] == j)
             ret->dividers[i] = -1;
         else
             ret->dividers[i] = j;
-	return ret;
+    return ret;
     } else
-	return NULL;		       /* couldn't parse move string */
+    return NULL;               /* couldn't parse move string */
 }
 
 /* ----------------------------------------------------------------------
@@ -1808,33 +1799,19 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-
-    ret[COL_GRID * 3 + 0] = 0.0F;
-    ret[COL_GRID * 3 + 1] = 0.0F;
-    ret[COL_GRID * 3 + 2] = 0.0F;
-
-    ret[COL_USER * 3 + 0] = 0.0F;
-    ret[COL_USER * 3 + 1] = 0.6F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_USER * 3 + 2] = 0.0F;
-
-    ret[COL_HIGHLIGHT * 3 + 0] = 0.78F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_HIGHLIGHT * 3 + 1] = 0.78F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_HIGHLIGHT * 3 + 2] = 0.78F * ret[COL_BACKGROUND * 3 + 2];
-
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
-
-    ret[COL_PENCIL * 3 + 0] = 0.5F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_PENCIL * 3 + 1] = 0.5F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_PENCIL * 3 + 2] = ret[COL_BACKGROUND * 3 + 2];
-
-    ret[COL_DIAGONAL * 3 + 0] = 0.95F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_DIAGONAL * 3 + 1] = 0.95F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_DIAGONAL * 3 + 2] = 0.95F * ret[COL_BACKGROUND * 3 + 2];
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_GRID       * 3 + i] = 0.0F;
+        ret[COL_USER       * 3 + i] = 0.0F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
+        ret[COL_ERROR      * 3 + i] = 0.25F;
+        ret[COL_PENCIL     * 3 + i] = 0.25F;
+        ret[COL_DIAGONAL   * 3 + i] = 0.9F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1847,7 +1824,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     int i;
 
     ds->w = w;
-    ds->par = state->par;	       /* structure copy */
+    ds->par = state->par;           /* structure copy */
     ds->tilesize = 0;
     ds->started = false;
     ds->tiles = snewn(a, long);
@@ -1856,9 +1833,9 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->errors = snewn(a, long);
     ds->sequence = snewn(a, digit);
     for (i = 0; i < a; i++)
-	ds->tiles[i] = ds->pencil[i] = -1;
+    ds->tiles[i] = ds->pencil[i] = -1;
     for (i = 0; i < w; i++)
-	ds->legend[i] = -1;
+    ds->legend[i] = -1;
     ds->errtmp = snewn(a, long);
 
     return ds;
@@ -1875,7 +1852,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 }
 
 static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, long tile,
-		      long pencil, long error)
+              long pencil, long error)
 {
     int w = ds->w /* , a = w*w */;
     int tx, ty, tw, th;
@@ -1902,7 +1879,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, long tile,
 
     /* background needs erasing */
     draw_rect(dr, cx, cy, cw, ch,
-	      (tile & DF_HIGHLIGHT) ? COL_HIGHLIGHT :
+          (tile & DF_HIGHLIGHT) ? COL_HIGHLIGHT :
               (x == y) ? COL_DIAGONAL : COL_BACKGROUND);
 
     /* dividers */
@@ -1929,117 +1906,117 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, long tile,
 
     /* new number needs drawing? */
     if (tile & DF_DIGIT_MASK) {
-	str[1] = '\0';
-	str[0] = TOCHAR(tile & DF_DIGIT_MASK, ds->par.id);
-	draw_text(dr, tx + TILESIZE/2, ty + TILESIZE/2,
-		  FONT_VARIABLE, TILESIZE/2, ALIGN_VCENTRE | ALIGN_HCENTRE,
-		  (error & EF_LATIN) ? COL_ERROR :
-		  (tile & DF_IMMUTABLE) ? COL_GRID : COL_USER, str);
+    str[1] = '\0';
+    str[0] = TOCHAR(tile & DF_DIGIT_MASK, ds->par.id);
+    draw_text(dr, tx + TILESIZE/2, ty + TILESIZE/2,
+          FONT_VARIABLE, TILESIZE/2, ALIGN_VCENTRE | ALIGN_HCENTRE,
+          (error & EF_LATIN) ? COL_ERROR :
+          (tile & DF_IMMUTABLE) ? COL_GRID : COL_USER, str);
 
-	if (error & EF_LEFT_MASK) {
-	    int a = (error >> (EF_LEFT_SHIFT+2*EF_DIGIT_SHIFT))&EF_DIGIT_MASK;
-	    int b = (error >> (EF_LEFT_SHIFT+1*EF_DIGIT_SHIFT))&EF_DIGIT_MASK;
-	    int c = (error >> (EF_LEFT_SHIFT                 ))&EF_DIGIT_MASK;
-	    char buf[10];
-	    sprintf(buf, "(%c%c)%c", TOCHAR(a, ds->par.id),
-		    TOCHAR(b, ds->par.id), TOCHAR(c, ds->par.id));
-	    draw_text(dr, tx + TILESIZE/2, ty + TILESIZE/6,
-		      FONT_VARIABLE, TILESIZE/6, ALIGN_VCENTRE | ALIGN_HCENTRE,
-		      COL_ERROR, buf);
-	}
-	if (error & EF_RIGHT_MASK) {
-	    int a = (error >> (EF_RIGHT_SHIFT+2*EF_DIGIT_SHIFT))&EF_DIGIT_MASK;
-	    int b = (error >> (EF_RIGHT_SHIFT+1*EF_DIGIT_SHIFT))&EF_DIGIT_MASK;
-	    int c = (error >> (EF_RIGHT_SHIFT                 ))&EF_DIGIT_MASK;
-	    char buf[10];
-	    sprintf(buf, "%c(%c%c)", TOCHAR(a, ds->par.id),
-		    TOCHAR(b, ds->par.id), TOCHAR(c, ds->par.id));
-	    draw_text(dr, tx + TILESIZE/2, ty + TILESIZE - TILESIZE/6,
-		      FONT_VARIABLE, TILESIZE/6, ALIGN_VCENTRE | ALIGN_HCENTRE,
-		      COL_ERROR, buf);
-	}
+    if (error & EF_LEFT_MASK) {
+        int a = (error >> (EF_LEFT_SHIFT+2*EF_DIGIT_SHIFT))&EF_DIGIT_MASK;
+        int b = (error >> (EF_LEFT_SHIFT+1*EF_DIGIT_SHIFT))&EF_DIGIT_MASK;
+        int c = (error >> (EF_LEFT_SHIFT                 ))&EF_DIGIT_MASK;
+        char buf[10];
+        sprintf(buf, "(%c%c)%c", TOCHAR(a, ds->par.id),
+            TOCHAR(b, ds->par.id), TOCHAR(c, ds->par.id));
+        draw_text(dr, tx + TILESIZE/2, ty + TILESIZE/6,
+              FONT_VARIABLE, TILESIZE/6, ALIGN_VCENTRE | ALIGN_HCENTRE,
+              COL_ERROR, buf);
+    }
+    if (error & EF_RIGHT_MASK) {
+        int a = (error >> (EF_RIGHT_SHIFT+2*EF_DIGIT_SHIFT))&EF_DIGIT_MASK;
+        int b = (error >> (EF_RIGHT_SHIFT+1*EF_DIGIT_SHIFT))&EF_DIGIT_MASK;
+        int c = (error >> (EF_RIGHT_SHIFT                 ))&EF_DIGIT_MASK;
+        char buf[10];
+        sprintf(buf, "%c(%c%c)", TOCHAR(a, ds->par.id),
+            TOCHAR(b, ds->par.id), TOCHAR(c, ds->par.id));
+        draw_text(dr, tx + TILESIZE/2, ty + TILESIZE - TILESIZE/6,
+              FONT_VARIABLE, TILESIZE/6, ALIGN_VCENTRE | ALIGN_HCENTRE,
+              COL_ERROR, buf);
+    }
     } else {
         int i, j, npencil;
-	int pl, pr, pt, pb;
-	float bestsize;
-	int pw, ph, minph, pbest, fontsize;
+    int pl, pr, pt, pb;
+    float bestsize;
+    int pw, ph, minph, pbest, fontsize;
 
         /* Count the pencil marks required. */
         for (i = 1, npencil = 0; i <= w; i++)
             if (pencil & (1 << i))
-		npencil++;
-	if (npencil) {
+        npencil++;
+    if (npencil) {
 
-	    minph = 2;
+        minph = 2;
 
-	    /*
-	     * Determine the bounding rectangle within which we're going
-	     * to put the pencil marks.
-	     */
-	    /* Start with the whole square */
-	    pl = tx + GRIDEXTRA;
-	    pr = pl + TILESIZE - GRIDEXTRA;
-	    pt = ty + GRIDEXTRA;
-	    pb = pt + TILESIZE - GRIDEXTRA;
+        /*
+         * Determine the bounding rectangle within which we're going
+         * to put the pencil marks.
+         */
+        /* Start with the whole square */
+        pl = tx + GRIDEXTRA;
+        pr = pl + TILESIZE - GRIDEXTRA;
+        pt = ty + GRIDEXTRA;
+        pb = pt + TILESIZE - GRIDEXTRA;
 
-	    /*
-	     * We arrange our pencil marks in a grid layout, with
-	     * the number of rows and columns adjusted to allow the
-	     * maximum font size.
-	     *
-	     * So now we work out what the grid size ought to be.
-	     */
-	    bestsize = 0.0;
-	    pbest = 0;
-	    /* Minimum */
-	    for (pw = 3; pw < max(npencil,4); pw++) {
-		float fw, fh, fs;
+        /*
+         * We arrange our pencil marks in a grid layout, with
+         * the number of rows and columns adjusted to allow the
+         * maximum font size.
+         *
+         * So now we work out what the grid size ought to be.
+         */
+        bestsize = 0.0;
+        pbest = 0;
+        /* Minimum */
+        for (pw = 3; pw < max(npencil,4); pw++) {
+        float fw, fh, fs;
 
-		ph = (npencil + pw - 1) / pw;
-		ph = max(ph, minph);
-		fw = (pr - pl) / (float)pw;
-		fh = (pb - pt) / (float)ph;
-		fs = min(fw, fh);
-		if (fs > bestsize) {
-		    bestsize = fs;
-		    pbest = pw;
-		}
-	    }
-	    assert(pbest > 0);
-	    pw = pbest;
-	    ph = (npencil + pw - 1) / pw;
-	    ph = max(ph, minph);
+        ph = (npencil + pw - 1) / pw;
+        ph = max(ph, minph);
+        fw = (pr - pl) / (float)pw;
+        fh = (pb - pt) / (float)ph;
+        fs = min(fw, fh);
+        if (fs > bestsize) {
+            bestsize = fs;
+            pbest = pw;
+        }
+        }
+        assert(pbest > 0);
+        pw = pbest;
+        ph = (npencil + pw - 1) / pw;
+        ph = max(ph, minph);
 
-	    /*
-	     * Now we've got our grid dimensions, work out the pixel
-	     * size of a grid element, and round it to the nearest
-	     * pixel. (We don't want rounding errors to make the
-	     * grid look uneven at low pixel sizes.)
-	     */
-	    fontsize = min((pr - pl) / pw, (pb - pt) / ph);
+        /*
+         * Now we've got our grid dimensions, work out the pixel
+         * size of a grid element, and round it to the nearest
+         * pixel. (We don't want rounding errors to make the
+         * grid look uneven at low pixel sizes.)
+         */
+        fontsize = min((pr - pl) / pw, (pb - pt) / ph);
 
-	    /*
-	     * Centre the resulting figure in the square.
-	     */
-	    pl = tx + (TILESIZE - fontsize * pw) / 2;
-	    pt = ty + (TILESIZE - fontsize * ph) / 2;
+        /*
+         * Centre the resulting figure in the square.
+         */
+        pl = tx + (TILESIZE - fontsize * pw) / 2;
+        pt = ty + (TILESIZE - fontsize * ph) / 2;
 
-	    /*
-	     * Now actually draw the pencil marks.
-	     */
-	    for (i = 1, j = 0; i <= w; i++)
-		if (pencil & (1 << i)) {
-		    int dx = j % pw, dy = j / pw;
+        /*
+         * Now actually draw the pencil marks.
+         */
+        for (i = 1, j = 0; i <= w; i++)
+        if (pencil & (1 << i)) {
+            int dx = j % pw, dy = j / pw;
 
-		    str[1] = '\0';
-		    str[0] = TOCHAR(i, ds->par.id);
-		    draw_text(dr, pl + fontsize * (2*dx+1) / 2,
-			      pt + fontsize * (2*dy+1) / 2,
-			      FONT_VARIABLE, fontsize,
-			      ALIGN_VCENTRE | ALIGN_HCENTRE, COL_PENCIL, str);
-		    j++;
-		}
-	}
+            str[1] = '\0';
+            str[0] = TOCHAR(i, ds->par.id);
+            draw_text(dr, pl + fontsize * (2*dx+1) / 2,
+                  pt + fontsize * (2*dy+1) / 2,
+                  FONT_VARIABLE, fontsize,
+                  ALIGN_VCENTRE | ALIGN_HCENTRE, COL_PENCIL, str);
+            j++;
+        }
+    }
     }
 
     unclip(dr);
@@ -2056,24 +2033,24 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y, i, j;
 
     if (!ds->started) {
-	/*
-	 * The initial contents of the window are not guaranteed and
-	 * can vary with front ends. To be on the safe side, all
-	 * games should start by drawing a big background-colour
-	 * rectangle covering the whole window.
-	 */
-	draw_rect(dr, 0, 0, SIZE(w), SIZE(w), COL_BACKGROUND);
+    /*
+     * The initial contents of the window are not guaranteed and
+     * can vary with front ends. To be on the safe side, all
+     * games should start by drawing a big background-colour
+     * rectangle covering the whole window.
+     */
+    draw_rect(dr, 0, 0, SIZE(w), SIZE(w), COL_BACKGROUND);
 
-	/*
-	 * Big containing rectangle.
-	 */
-	draw_rect(dr, COORD(0) - GRIDEXTRA, COORD(0) - GRIDEXTRA,
-		  w*TILESIZE+1+GRIDEXTRA*2, w*TILESIZE+1+GRIDEXTRA*2,
-		  COL_GRID);
+    /*
+     * Big containing rectangle.
+     */
+    draw_rect(dr, COORD(0) - GRIDEXTRA, COORD(0) - GRIDEXTRA,
+          w*TILESIZE+1+GRIDEXTRA*2, w*TILESIZE+1+GRIDEXTRA*2,
+          COL_GRID);
 
-	draw_update(dr, 0, 0, SIZE(w), SIZE(w));
+    draw_update(dr, 0, 0, SIZE(w), SIZE(w));
 
-	ds->started = true;
+    ds->started = true;
     }
 
     check_errors(state, ds->errtmp);
@@ -2113,17 +2090,17 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
     for (y = 0; y < w; y++) {
         int sy = ds->sequence[y];
-	for (x = 0; x < w; x++) {
-	    long tile = 0L, pencil = 0L, error;
+    for (x = 0; x < w; x++) {
+        long tile = 0L, pencil = 0L, error;
             int sx = ds->sequence[x];
 
-	    if (state->grid[sy*w+sx])
-		tile = state->grid[sy*w+sx];
-	    else
-		pencil = (long)state->pencil[sy*w+sx];
+        if (state->grid[sy*w+sx])
+        tile = state->grid[sy*w+sx];
+        else
+        pencil = (long)state->pencil[sy*w+sx];
 
-	    if (state->common->immutable[sy*w+sx])
-		tile |= DF_IMMUTABLE;
+        if (state->common->immutable[sy*w+sx])
+        tile |= DF_IMMUTABLE;
 
             if ((ui->drag == 5 && ui->dragnum == sy) ||
                 (ui->drag == 6 && ui->dragnum == sx)) {
@@ -2167,17 +2144,17 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             if (x+1 >= w || state->dividers[sx] == ds->sequence[x+1])
                 tile |= DF_DIVIDER_RIGHT;
 
-	    error = ds->errtmp[sy*w+sx];
+        error = ds->errtmp[sy*w+sx];
 
-	    if (ds->tiles[y*w+x] != tile ||
-		ds->pencil[y*w+x] != pencil ||
-		ds->errors[y*w+x] != error) {
-		ds->tiles[y*w+x] = tile;
-		ds->pencil[y*w+x] = pencil;
-		ds->errors[y*w+x] = error;
-		draw_tile(dr, ds, x, y, tile, pencil, error);
-	    }
-	}
+        if (ds->tiles[y*w+x] != tile ||
+        ds->pencil[y*w+x] != pencil ||
+        ds->errors[y*w+x] != error) {
+        ds->tiles[y*w+x] = tile;
+        ds->pencil[y*w+x] = pencil;
+        ds->errors[y*w+x] = error;
+        draw_tile(dr, ds, x, y, tile, pencil, error);
+        }
+    }
     }
 }
 
@@ -2191,7 +2168,7 @@ static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
     if (!oldstate->completed && newstate->completed &&
-	!oldstate->cheated && !newstate->cheated)
+    !oldstate->cheated && !newstate->cheated)
         return FLASH_TIME;
     return 0.0F;
 }
@@ -2204,84 +2181,8 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     if (state->completed)
-	return false;
+    return false;
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /*
-     * We use 9mm squares by default, like Solo.
-     */
-    game_compute_size(params, 900, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w = state->par.w;
-    int ink = print_mono_colour(dr, 0);
-    int x, y;
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    game_set_size(dr, ds, NULL, tilesize);
-
-    /*
-     * Border.
-     */
-    print_line_width(dr, 3 * TILESIZE / 40);
-    draw_rect_outline(dr, BORDER + LEGEND, BORDER + LEGEND,
-		      w*TILESIZE, w*TILESIZE, ink);
-
-    /*
-     * Legend on table.
-     */
-    for (x = 0; x < w; x++) {
-	char str[2];
-	str[1] = '\0';
-	str[0] = TOCHAR(x+1, state->par.id);
-	draw_text(dr, BORDER+LEGEND + x*TILESIZE + TILESIZE/2,
-		  BORDER + TILESIZE/2,
-		  FONT_VARIABLE, TILESIZE/2,
-		  ALIGN_VCENTRE | ALIGN_HCENTRE, ink, str);
-	draw_text(dr, BORDER + TILESIZE/2,
-		  BORDER+LEGEND + x*TILESIZE + TILESIZE/2,
-		  FONT_VARIABLE, TILESIZE/2,
-		  ALIGN_VCENTRE | ALIGN_HCENTRE, ink, str);
-    }
-
-    /*
-     * Main grid.
-     */
-    for (x = 1; x < w; x++) {
-	print_line_width(dr, TILESIZE / 40);
-	draw_line(dr, BORDER+LEGEND+x*TILESIZE, BORDER+LEGEND,
-		  BORDER+LEGEND+x*TILESIZE, BORDER+LEGEND+w*TILESIZE, ink);
-    }
-    for (y = 1; y < w; y++) {
-	print_line_width(dr, TILESIZE / 40);
-	draw_line(dr, BORDER+LEGEND, BORDER+LEGEND+y*TILESIZE,
-		  BORDER+LEGEND+w*TILESIZE, BORDER+LEGEND+y*TILESIZE, ink);
-    }
-
-    /*
-     * Numbers.
-     */
-    for (y = 0; y < w; y++)
-	for (x = 0; x < w; x++)
-	    if (state->grid[y*w+x]) {
-		char str[2];
-		str[1] = '\0';
-		str[0] = TOCHAR(state->grid[y*w+x], state->par.id);
-		draw_text(dr, BORDER+LEGEND + x*TILESIZE + TILESIZE/2,
-			  BORDER+LEGEND + y*TILESIZE + TILESIZE/2,
-			  FONT_VARIABLE, TILESIZE/2,
-			  ALIGN_VCENTRE | ALIGN_HCENTRE, ink, str);
-	    }
 }
 
 #ifdef COMBINED
@@ -2304,12 +2205,12 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
     decode_ui,
-    NULL, /* game_request_keys */
+    game_request_keys, /* game_request_keys */
     game_changed_state,
     interpret_move,
     execute_move,
@@ -2321,8 +2222,8 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
-    false,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    false,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON | REQUIRE_NUMPAD,  /* flags */
 };

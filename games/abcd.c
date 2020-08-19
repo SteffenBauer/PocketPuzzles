@@ -330,8 +330,8 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
     int i;
     int n = params->n;
 
-    key_label *keys = snewn(n + 1, key_label);
-    *nkeys = n + 1;
+    key_label *keys = snewn(n + 2, key_label);
+    *nkeys = n + 2;
 
     for (i = 0; i < n; i++)
     {
@@ -340,6 +340,8 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
     }
     keys[n].button = '\b';
     keys[n].label = NULL;
+    keys[n+1].button = '+';
+    keys[n+1].label = "Add";
 
     return keys;
 }
@@ -1277,7 +1279,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     }
     
     /* Fill the board with marks */
-    if(button == 'M' || button == 'm')
+    if(button == '+')
     {
         int x, y, z;
         char found = false;
@@ -1410,25 +1412,18 @@ static float *game_colours(frontend *fe, int *ncolours)
     
     int i;
     for (i = 0; i < 3; i++) {
+        ret[COL_INNERBG * 3 + i] = 0.75F;
+        ret[COL_OUTERBG * 3 + i] = 1.0F;
+        ret[COL_HIGHLIGHT * 3 + i] = 0.5F;
+        ret[COL_LOWLIGHT * 3 + i] = 1.0F;
+        ret[COL_BORDERLETTER * 3 + i] = 0.0F;
+        ret[COL_GUESS * 3 + i] = 0.0F;
+        ret[COL_ERROR * 3 + i] = 0.5F;
+        ret[COL_PENCIL * 3 + i] = 0.0F;
+
         ret[COL_TEXT * 3 + i] = 0.0F;
         ret[COL_GRID * 3 + i] = 0.5F;
     }
-    
-    ret[COL_BORDERLETTER * 3 + 0] = 0.0F;
-    ret[COL_BORDERLETTER * 3 + 1] = 0.0F;
-    ret[COL_BORDERLETTER * 3 + 2] = 0.6F * ret[COL_OUTERBG * 3 + 1];
-    
-    ret[COL_GUESS * 3 + 0] = 0.0F;
-    ret[COL_GUESS * 3 + 1] = 0.6F * ret[COL_INNERBG * 3 + 1];
-    ret[COL_GUESS * 3 + 2] = 0.0F;
-
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
-
-    ret[COL_PENCIL * 3 + 0] = 0.5F * ret[COL_INNERBG * 3 + 0];
-    ret[COL_PENCIL * 3 + 1] = 0.5F * ret[COL_INNERBG * 3 + 1];
-    ret[COL_PENCIL * 3 + 2] = ret[COL_INNERBG * 3 + 2];
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1586,10 +1581,11 @@ static void abcd_draw_clues(drawing *dr, game_drawstate *ds, const game_state *s
                 {
                     sprintf(buf, "%i", clue);
                     
-                    draw_rect(dr, ox, oy, TILE_SIZE-1, TILE_SIZE-1, COL_OUTERBG);
+                    draw_rect(dr, ox, oy, TILE_SIZE-1, TILE_SIZE-1, 
+                            (ds->cluefs[pos] & FD_ERROR ? COL_ERROR : COL_OUTERBG));
                     draw_text(dr, ox + TILE_SIZE/2, oy + TILE_SIZE/2,
                             FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
-                            (ds->cluefs[pos] & FD_ERROR ? COL_ERROR : COL_TEXT), buf);
+                            COL_TEXT, buf);
                 }
                 draw_update(dr, ox, oy, TILE_SIZE-1, TILE_SIZE-1);
                 ds->oldcluefs[pos] = ds->cluefs[pos];
@@ -1797,7 +1793,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
                 * This could be changed to the exclamation mark symbol which
                 * appears in Map and Tents.
                 */
-                
+                if (fs & FD_ERRMASK) {
+                    draw_circle(dr, tx + (TILE_SIZE/2), ty + (TILE_SIZE/2), TILE_SIZE/2-5, COL_ERROR, COL_ERROR);
+                    draw_circle(dr, tx + (TILE_SIZE/2), ty + (TILE_SIZE/2), TILE_SIZE/2-10, COL_INNERBG, COL_ERROR);
+                }
                 draw_text(dr, tx + TILE_SIZE/2, ty + TILE_SIZE/2,
                         FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
                         (fs & FD_ERRMASK ? COL_ERROR : COL_GUESS),

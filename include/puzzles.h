@@ -261,7 +261,7 @@ void draw_polygon(drawing *dr, int *coords, int npoints,
 void draw_circle(drawing *dr, int cx, int cy, int radius,
                  int fillcolour, int outlinecolour);
 void draw_thick_line(drawing *dr, float thickness,
-		     float x1, float y1, float x2, float y2, int colour);
+             float x1, float y1, float x2, float y2, int colour);
 void clip(drawing *dr, int x, int y, int w, int h);
 void unclip(drawing *dr);
 void start_draw(drawing *dr);
@@ -281,20 +281,20 @@ void blitter_load(drawing *dr, blitter *bl, int x, int y);
 void print_begin_doc(drawing *dr, int pages);
 void print_begin_page(drawing *dr, int number);
 void print_begin_puzzle(drawing *dr, float xm, float xc,
-			float ym, float yc, int pw, int ph, float wmm,
-			float scale);
+            float ym, float yc, int pw, int ph, float wmm,
+            float scale);
 void print_end_puzzle(drawing *dr);
 void print_end_page(drawing *dr, int number);
 void print_end_doc(drawing *dr);
 void print_get_colour(drawing *dr, int colour, bool printing_in_colour,
-		      int *hatch, float *r, float *g, float *b);
+              int *hatch, float *r, float *g, float *b);
 int print_mono_colour(drawing *dr, int grey); /* 0==black, 1==white */
 int print_grey_colour(drawing *dr, float grey);
 int print_hatched_colour(drawing *dr, int hatch);
 int print_rgb_mono_colour(drawing *dr, float r, float g, float b, int mono);
 int print_rgb_grey_colour(drawing *dr, float r, float g, float b, float grey);
 int print_rgb_hatched_colour(drawing *dr, float r, float g, float b,
-			     int hatch);
+                 int hatch);
 void print_line_width(drawing *dr, int width);
 void print_line_dotted(drawing *dr, bool dotted);
 
@@ -302,7 +302,7 @@ void print_line_dotted(drawing *dr, bool dotted);
  * midend.c
  */
 midend *midend_new(frontend *fe, const game *ourgame,
-		   const drawing_api *drapi, void *drhandle);
+           const drawing_api *drapi, void *drhandle);
 void midend_free(midend *me);
 const game *midend_which_game(midend *me);
 void midend_set_params(midend *me, game_params *params);
@@ -385,7 +385,7 @@ void game_mkhighlight(frontend *fe, float *ret,
 /* As above, but starts from a provided background colour rather
  * than the frontend default. */
 void game_mkhighlight_specific(frontend *fe, float *ret,
-			       int background, int highlight, int lowlight);
+                   int background, int highlight, int lowlight);
 
 /* Randomly shuffles an array of items. */
 void shuffle(void *array, int nelts, int eltsize, random_state *rs);
@@ -526,7 +526,7 @@ void SHA_Simple(const void *p, int len, unsigned char *output);
 document *document_new(int pw, int ph, float userscale);
 void document_free(document *doc);
 void document_add_puzzle(document *doc, const game *game, game_params *par,
-			 game_state *st, game_state *st2);
+             game_state *st, game_state *st2);
 int document_npages(const document *doc);
 void document_begin(const document *doc, drawing *dr);
 void document_end(const document *doc, drawing *dr);
@@ -643,7 +643,7 @@ struct game {
     game_params *(*custom_params)(const config_item *cfg);
     const char *(*validate_params)(const game_params *params, bool full);
     char *(*new_desc)(const game_params *params, random_state *rs,
-		      char **aux, bool interactive);
+              char **aux, bool interactive);
     const char *(*validate_desc)(const game_params *params, const char *desc);
     game_state *(*new_game)(midend *me, const game_params *params,
                             const char *desc);
@@ -669,12 +669,12 @@ struct game {
     void (*compute_size)(const game_params *params, int tilesize,
                          int *x, int *y);
     void (*set_size)(drawing *dr, game_drawstate *ds,
-		     const game_params *params, int tilesize);
+             const game_params *params, int tilesize);
     float *(*colours)(frontend *fe, int *ncolours);
     game_drawstate *(*new_drawstate)(drawing *dr, const game_state *state);
     void (*free_drawstate)(drawing *dr, game_drawstate *ds);
     void (*redraw)(drawing *dr, game_drawstate *ds, const game_state *oldstate,
-		   const game_state *newstate, int dir, const game_ui *ui,
+           const game_state *newstate, int dir, const game_ui *ui,
                    float anim_time, float flash_time);
     float (*anim_length)(const game_state *oldstate,
                          const game_state *newstate, int dir, game_ui *ui);
@@ -697,14 +697,14 @@ struct game {
  */
 struct drawing_api {
     void (*draw_text)(void *handle, int x, int y, int fonttype, int fontsize,
-		      int align, int colour, const char *text);
+              int align, int colour, const char *text);
     void (*draw_rect)(void *handle, int x, int y, int w, int h, int colour);
     void (*draw_line)(void *handle, int x1, int y1, int x2, int y2,
-		      int colour);
+              int colour);
     void (*draw_polygon)(void *handle, int *coords, int npoints,
-			 int fillcolour, int outlinecolour);
+             int fillcolour, int outlinecolour);
     void (*draw_circle)(void *handle, int cx, int cy, int radius,
-			int fillcolour, int outlinecolour);
+            int fillcolour, int outlinecolour);
     void (*draw_update)(void *handle, int x, int y, int w, int h);
     void (*clip)(void *handle, int x, int y, int w, int h);
     void (*unclip)(void *handle);
@@ -718,17 +718,17 @@ struct drawing_api {
     void (*begin_doc)(void *handle, int pages);
     void (*begin_page)(void *handle, int number);
     void (*begin_puzzle)(void *handle, float xm, float xc,
-			 float ym, float yc, int pw, int ph, float wmm);
+             float ym, float yc, int pw, int ph, float wmm);
     void (*end_puzzle)(void *handle);
     void (*end_page)(void *handle, int number);
     void (*end_doc)(void *handle);
     void (*line_width)(void *handle, float width);
     void (*line_dotted)(void *handle, bool dotted);
     char *(*text_fallback)(void *handle, const char *const *strings,
-			   int nstrings);
+               int nstrings);
     void (*draw_thick_line)(void *handle, float thickness,
-			    float x1, float y1, float x2, float y2,
-			    int colour);
+                float x1, float y1, float x2, float y2,
+                int colour);
 };
 
 /*
