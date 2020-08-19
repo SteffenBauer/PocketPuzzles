@@ -3620,11 +3620,11 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
 
         keys[i].label = NULL;
     }
-    keys[cr].button = '+';
+    keys[cr].button = '\b';
     keys[cr].label = NULL;
-    keys[cr+1].button = '-';
+    keys[cr+1].button = '+';
     keys[cr+1].label = NULL;
-    keys[cr+2].button = '\b';
+    keys[cr+2].button = '-';
     keys[cr+2].label = NULL;
 
     return keys;

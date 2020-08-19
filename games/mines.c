@@ -104,14 +104,12 @@ static game_params *default_params(void)
 }
 
 static const struct game_params mines_presets[] = {
-  {9, 9, 10, true},
-  {9, 9, 35, true},
-  {16, 16, 40, true},
-  {16, 16, 99, true},
-#ifndef SMALL_SCREEN
-  {30, 16, 99, true},
-  {30, 16, 170, true},
-#endif
+  {9, 10, 10, true},
+  {9, 10, 35, true},
+  {12, 15, 20, true},
+  {12, 15, 50, true},
+  {16, 18, 40, true},
+  {16, 18, 99, true},
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)

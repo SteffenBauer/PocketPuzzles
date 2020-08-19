@@ -1,13 +1,12 @@
 ### ToDo for individual games
 
-- [ ] Boats: Change error for incomplete boats, adjacent boats, and wrong boat numbers
+- [X] Boats: Change error for incomplete boats, adjacent boats, and wrong boat numbers
 - [ ] Loopy: Add dotted line draw for line errors
-- [ ] Undead: Stronger monster outlines
-- [ ] Tents: Change error for tree without tent
+- [X] Undead: Stronger monster outlines
+- [X] Tents: Change error for tree without tent
 - [ ] Range: Change error for adjacent black squares
-- [ ] Palisade: Thicker lines
+- [X] Palisade: Thicker lines / dotted lines on error
 - [ ] Bridges: Add path button
-- [ ] Mines: Left-click highlights tile vicinity. Substitute by right-click?
 - [ ] Guess: Change blitter drag to Highlight color by click -> Fill peg by click
 - [ ] Guess: Add color fill pattern
 - [ ] Untangle: Change drag to Highlight vertex by click -> click on target coordinates

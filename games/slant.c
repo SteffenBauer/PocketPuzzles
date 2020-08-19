@@ -41,6 +41,7 @@ enum {
     COL_ERROR,
     COL_CURSOR,
     COL_FILLEDSQUARE,
+    COL_CREEK_UNDEF,
     COL_CREEK_FILLED,
     COL_CREEK_EMPTY,
     COL_CURSOR_CREEK,
@@ -109,25 +110,24 @@ static game_params *default_params(void)
 {
     game_params *ret = snew(game_params);
 
-    ret->w = ret->h = 8;
-    ret->diff = DIFF_EASY;
+    ret->w = 8;
+    ret->h = 10;
+    ret->diff = DIFF_TRICKY;
     ret->mode = MODE_SLANT;
     return ret;
 }
 
 static const struct game_params slant_presets[] = {
-    { 5,  5, DIFF_EASY,   MODE_SLANT},
-    { 5,  5, DIFF_TRICKY, MODE_SLANT},
-    { 5,  5, DIFF_EASY,   MODE_CREEK},
-    { 5,  5, DIFF_TRICKY, MODE_CREEK},
-    { 5,  5, DIFF_HARD,   MODE_CREEK},
-    { 8,  8, DIFF_EASY,   MODE_SLANT},
-    { 8,  8, DIFF_TRICKY, MODE_SLANT},
-    { 8,  8, DIFF_EASY,   MODE_CREEK},
-    { 8,  8, DIFF_TRICKY, MODE_CREEK},
-    { 8,  8, DIFF_HARD,   MODE_CREEK},
-    {12, 10, DIFF_EASY,   MODE_SLANT},
-    {12, 10, DIFF_EASY,   MODE_CREEK}
+    { 5,  6, DIFF_EASY,   MODE_SLANT},
+    { 5,  6, DIFF_EASY,   MODE_CREEK},
+    { 5,  6, DIFF_TRICKY, MODE_SLANT},
+    { 5,  6, DIFF_TRICKY, MODE_CREEK},
+    { 5,  6, DIFF_HARD,   MODE_CREEK},
+    { 8, 10, DIFF_TRICKY, MODE_SLANT},
+    { 8, 10, DIFF_TRICKY, MODE_CREEK},
+    { 8, 10, DIFF_HARD,   MODE_CREEK},
+    {10, 12, DIFF_TRICKY, MODE_SLANT},
+    {10, 12, DIFF_TRICKY, MODE_CREEK}
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -873,7 +873,7 @@ static int slant_solve(int w, int h, const signed char *clues,
                         printf("need %d / %d lines around clue point at %d,%d!\n",
                                nl, nu, x, y);
 #endif
-                    return 0;	       /* impossible */
+                    return 0;           /* impossible */
                 }
 
                 if (nu > 0 && (nl == 0 || nl == nu)) {
@@ -2403,72 +2403,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     return move;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int w = state->p.w, h = state->p.h, W = w+1, H = h+1;
-    int x, y, len;
-    char *ret, *p;
-    bool slant_mode = (state->p.mode == 0);
-
-    /*
-     * There are h+H rows of w+W columns.
-     */
-    len = slant_mode ? (h+H) * (w+W+1) + 1 : (h+H) * (2*w+W+1) + 1;
-    ret = snewn(len, char);
-    p = ret;
-
-    for (y = 0; y < H; y++) {
-        for (x = 0; x < W; x++) {
-            if (state->clues->clues[y*W+x] >= 0)
-                *p++ = state->clues->clues[y*W+x] + '0';
-            else
-                *p++ = '+';
-            if (x < w) {
-                if (slant_mode)
-                    *p++ = '-' ;
-                else {
-                    *p++ = '-' ;
-                    *p++ = '-' ;
-                }
-            }
-        }
-        *p++ = '\n';
-        if (y < h) {
-            for (x = 0; x < W; x++) {
-                *p++ = '|';
-                if (x < w) {
-                    if (slant_mode) {
-                        if (state->soln[y*w+x] != 0)
-                            *p++ = (state->soln[y*w+x] < 0 ? '\\' : '/');
-                        else
-                            *p++ = ' ';
-                    }
-                    else {
-                        if (state->soln[y*w+x] != 0) {
-                            *p++ = (state->soln[y*w+x] < 0 ? ' ' : '#');
-                            *p++ = (state->soln[y*w+x] < 0 ? ' ' : '#');
-                        }
-                        else {
-                            *p++ = '.';
-                            *p++ = '.';
-                        }
-                    }
-                }
-            }
-            *p++ = '\n';
-        }
-    }
-    *p++ = '\0';
-
-    assert(p - ret == len);
-    return ret;
-}
-
 struct game_ui {
     int cur_x, cur_y;
     bool cur_visible;
@@ -2698,46 +2632,24 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
     /* CURSOR colour is a background highlight. */
     game_mkhighlight(fe, ret, COL_BACKGROUND, COL_CURSOR, -1);
-
-    ret[COL_FILLEDSQUARE * 3 + 0] = ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_FILLEDSQUARE * 3 + 1] = ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_FILLEDSQUARE * 3 + 2] = ret[COL_BACKGROUND * 3 + 2];
-
-    ret[COL_GRID * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] * 0.7F;
-    ret[COL_GRID * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] * 0.7F;
-    ret[COL_GRID * 3 + 2] = ret[COL_BACKGROUND * 3 + 2] * 0.7F;
-
-    ret[COL_INK * 3 + 0] = 0.0F;
-    ret[COL_INK * 3 + 1] = 0.0F;
-    ret[COL_INK * 3 + 2] = 0.0F;
-
-    ret[COL_SLANT1 * 3 + 0] = 0.0F;
-    ret[COL_SLANT1 * 3 + 1] = 0.0F;
-    ret[COL_SLANT1 * 3 + 2] = 0.0F;
-
-    ret[COL_SLANT2 * 3 + 0] = 0.0F;
-    ret[COL_SLANT2 * 3 + 1] = 0.0F;
-    ret[COL_SLANT2 * 3 + 2] = 0.0F;
-
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
-
-    ret[COL_CREEK_FILLED * 3 + 0] = 0.0F;
-    ret[COL_CREEK_FILLED * 3 + 1] = 0.0F;
-    ret[COL_CREEK_FILLED * 3 + 2] = 0.0F;
-
-    ret[COL_CREEK_EMPTY * 3 + 0] = 1.0F;
-    ret[COL_CREEK_EMPTY * 3 + 1] = 1.0F;
-    ret[COL_CREEK_EMPTY * 3 + 2] = 1.0F;
-
-    ret[COL_CURSOR_CREEK * 3 + 0] = 0.3F;
-    ret[COL_CURSOR_CREEK * 3 + 1] = 0.3F;
-    ret[COL_CURSOR_CREEK * 3 + 2] = 0.3F;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND   * 3 + i] = 1.0F;
+        ret[COL_FILLEDSQUARE * 3 + i] = 0.9F;
+        ret[COL_GRID         * 3 + i] = 0.25F;
+        ret[COL_INK          * 3 + i] = 0.0F;
+        ret[COL_SLANT1       * 3 + i] = 0.0F;
+        ret[COL_SLANT2       * 3 + i] = 0.0F;
+        ret[COL_ERROR        * 3 + i] = 0.5F;
+        ret[COL_CREEK_UNDEF  * 3 + i] = 0.75F;
+        ret[COL_CREEK_FILLED * 3 + i] = 0.0F;
+        ret[COL_CREEK_EMPTY  * 3 + i] = 1.0F;
+        ret[COL_CURSOR_CREEK * 3 + i] = 0.5F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -2754,7 +2666,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->grid = snewn((w+2)*(h+2), long);
     ds->todraw = snewn((w+2)*(h+2), long);
     for (i = 0; i < (w+2)*(h+2); i++)
-	ds->grid[i] = ds->todraw[i] = -1;
+    ds->grid[i] = ds->todraw[i] = -1;
 
     return ds;
 }
@@ -2770,8 +2682,8 @@ static void draw_clue(drawing *dr, game_drawstate *ds,
                       int x, int y, long v, bool err, int bg, int colour)
 {
     char p[2];
-    int ccol = colour >= 0 ? colour : ((x ^ y) & 1) ? COL_SLANT1 : COL_SLANT2;
-    int tcol = colour >= 0 ? colour : err ? COL_ERROR : COL_INK;
+    int ccol = colour >= 0 ? colour : err ? COL_ERROR : COL_BACKGROUND;
+    int tcol = colour >= 0 ? colour : err ? COL_BACKGROUND : COL_INK;
 
     if (v < 0)
         return;
@@ -2779,7 +2691,7 @@ static void draw_clue(drawing *dr, game_drawstate *ds,
     p[0] = (char)v + '0';
     p[1] = '\0';
     draw_circle(dr, COORD(x), COORD(y), CLUE_RADIUS,
-                bg >= 0 ? bg : COL_BACKGROUND, ccol);
+                ccol, COL_INK);
     draw_text(dr, COORD(x), COORD(y), FONT_VARIABLE,
               CLUE_TEXTSIZE, ALIGN_VCENTRE|ALIGN_HCENTRE, tcol, p);
 }
@@ -2797,8 +2709,9 @@ static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
     draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE,
               (v & FLASH) ? COL_GRID :
               (v & CURSOR) ? COL_CURSOR :
+              (v & ERRSLASH) ? COL_ERROR : 
               (v & (BACKSLASH | FORWSLASH)) ? COL_FILLEDSQUARE :
-              COL_BACKGROUND);
+               COL_BACKGROUND);
 
     /*
      * Draw the grid lines.
@@ -2824,14 +2737,14 @@ static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
      * Draw the slash.
      */
     if (v & BACKSLASH) {
-        int scol = (v & ERRSLASH) ? COL_ERROR : bscol;
+        int scol = bscol;
         draw_line(dr, COORD(x), COORD(y), COORD(x+1), COORD(y+1), scol);
         draw_line(dr, COORD(x)+1, COORD(y), COORD(x+1), COORD(y+1)-1,
                   scol);
         draw_line(dr, COORD(x), COORD(y)+1, COORD(x+1)-1, COORD(y+1),
                   scol);
     } else if (v & FORWSLASH) {
-        int scol = (v & ERRSLASH) ? COL_ERROR : fscol;
+        int scol = fscol;
         draw_line(dr, COORD(x+1), COORD(y), COORD(x), COORD(y+1), scol);
         draw_line(dr, COORD(x+1)-1, COORD(y), COORD(x), COORD(y+1)-1,
                   scol);
@@ -2889,7 +2802,7 @@ static void draw_tile_creek(drawing *dr, game_drawstate *ds, game_clues *clues,
           (v & CURSOR)   ? COL_CURSOR_CREEK :
           (v & CR_BLACK) ? COL_CREEK_FILLED :
           (v & CR_WHITE) ? COL_CREEK_EMPTY :
-                           COL_BACKGROUND);
+                           (x<0 || x==w || y<0 || y==h) ? COL_BACKGROUND : COL_CREEK_UNDEF);
 
     if (v & CR_ERR)
         draw_circle(dr, COORD(x) + (ds->tilesize)/2, COORD(y) + (ds->tilesize)/2, (9+ ds->tilesize) / 20, COL_ERROR, COL_GRID);
@@ -3106,77 +3019,6 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /*
-     * I'll use 6mm squares by default.
-     */
-    game_compute_size(params, 600, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w = state->p.w, h = state->p.h, W = w+1;
-    int ink = print_mono_colour(dr, 0);
-    int paper = print_mono_colour(dr, 1);
-    int x, y;
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    game_set_size(dr, ds, NULL, tilesize);
-
-    /*
-     * Border.
-     */
-    print_line_width(dr, TILESIZE / 16);
-    draw_rect_outline(dr, COORD(0), COORD(0), w*TILESIZE, h*TILESIZE, ink);
-
-    /*
-     * Grid.
-     */
-    print_line_width(dr, TILESIZE / 24);
-    for (x = 1; x < w; x++)
-        draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h), ink);
-    for (y = 1; y < h; y++)
-        draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y), ink);
-
-    /*
-     * Solution.
-     */
-    print_line_width(dr, TILESIZE / 12);
-    for (y = 0; y < h; y++)
-        for (x = 0; x < w; x++)
-            if (state->soln[y*w+x]) {
-                int ly, ry;
-                /*
-                 * To prevent nasty line-ending artefacts at
-                 * corners, I'll do something slightly cunning
-                 * here.
-                 */
-                clip(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
-                if (state->soln[y*w+x] < 0)
-                    ly = y-1, ry = y+2;
-                else
-                    ry = y-1, ly = y+2;
-                draw_line(dr, COORD(x-1), COORD(ly), COORD(x+2), COORD(ry),
-                          ink);
-                unclip(dr);
-            }
-
-    /*
-     * Clues.
-     */
-    print_line_width(dr, TILESIZE / 24);
-    for (y = 0; y <= h; y++)
-        for (x = 0; x <= w; x++)
-            draw_clue(dr, ds, x, y, state->clues->clues[y*W+x],
-                     false, paper, ink);
-}
-
 #ifdef COMBINED
 #define thegame slant
 #endif
@@ -3197,7 +3039,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -3214,102 +3056,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false,                             /* wants_statusbar */
     false, game_timing_state,
-    0,                                 /* flags */
+    REQUIRE_RBUTTON,                                 /* flags */
 };
 
-#ifdef STANDALONE_SOLVER
-
-#include <stdarg.h>
-
-int main(int argc, char **argv)
-{
-    game_params *p;
-    game_state *s;
-    char *id = NULL, *desc;
-    const char *err;
-    bool grade = false;
-    int ret, diff;
-    bool really_verbose = false;
-    struct solver_scratch *sc;
-
-    while (--argc > 0) {
-        char *p = *++argv;
-        if (!strcmp(p, "-v")) {
-            really_verbose = true;
-        } else if (!strcmp(p, "-g")) {
-            grade = true;
-        } else if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-            return 1;
-        } else {
-            id = p;
-        }
-    }
-
-    if (!id) {
-        fprintf(stderr, "usage: %s [-g | -v] <game_id>\n", argv[0]);
-        return 1;
-    }
-
-    desc = strchr(id, ':');
-    if (!desc) {
-        fprintf(stderr, "%s: game id expects a colon in it\n", argv[0]);
-        return 1;
-    }
-    *desc++ = '\0';
-
-    p = default_params();
-    decode_params(p, id);
-    err = validate_desc(p, desc);
-    if (err) {
-        fprintf(stderr, "%s: %s\n", argv[0], err);
-        return 1;
-    }
-    s = new_game(NULL, p, desc);
-
-    sc = new_scratch(p->w, p->h);
-
-    /*
-     * When solving an Easy puzzle, we don't want to bother the
-     * user with Hard-level deductions. For this reason, we grade
-     * the puzzle internally before doing anything else.
-     */
-    ret = -1;                      /* placate optimiser */
-    for (diff = 0; diff < DIFFCOUNT; diff++) {
-        ret = slant_solve(p->w, p->h, s->clues->clues,
-                          s->soln, sc, diff);
-        if (ret < 2)
-            break;
-    }
-
-    if (diff == DIFFCOUNT) {
-        if (grade)
-            printf("Difficulty rating: harder than Hard, or ambiguous\n");
-        else
-            printf("Unable to find a unique solution\n");
-    } else {
-        if (grade) {
-            if (ret == 0)
-                printf("Difficulty rating: impossible (no solution exists)\n");
-            else if (ret == 1)
-                printf("Difficulty rating: %s\n", slant_diffnames[diff]);
-        } else {
-            verbose = really_verbose;
-            ret = slant_solve(p->w, p->h, s->clues->clues,
-                              s->soln, sc, diff);
-            if (ret == 0)
-                printf("Puzzle is inconsistent\n");
-            else
-                fputs(game_text_format(s), stdout);
-        }
-    }
-
-    return 0;
-}
-
-#endif
-
-/* vim: set shiftwidth=4 tabstop=8: */
