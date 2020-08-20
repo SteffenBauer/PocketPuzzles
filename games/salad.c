@@ -99,17 +99,16 @@ struct game_state {
 #define DEFAULT_PRESET 0
 
 static const struct game_params salad_presets[] = {
-    {4, 3, GAMEMODE_LETTERS, DIFF_EASY},
-    {5, 3, GAMEMODE_LETTERS, DIFF_EASY},
-    {5, 3, GAMEMODE_NUMBERS, DIFF_EASY},
-    {5, 4, GAMEMODE_LETTERS, DIFF_EASY},
-    {6, 3, GAMEMODE_NUMBERS, DIFF_EASY},
-    {6, 4, GAMEMODE_LETTERS, DIFF_EASY},
-    {6, 4, GAMEMODE_NUMBERS, DIFF_EASY},
-    {7, 4, GAMEMODE_LETTERS, DIFF_EASY},
-    {7, 4, GAMEMODE_NUMBERS, DIFF_EASY},
-    {8, 5, GAMEMODE_LETTERS, DIFF_EASY},
-    {8, 5, GAMEMODE_NUMBERS, DIFF_EASY},
+    {5, 3, GAMEMODE_LETTERS, DIFF_HARD},
+    {5, 3, GAMEMODE_NUMBERS, DIFF_HARD},
+    {5, 4, GAMEMODE_LETTERS, DIFF_HARD},
+    {6, 3, GAMEMODE_NUMBERS, DIFF_HARD},
+    {6, 4, GAMEMODE_LETTERS, DIFF_HARD},
+    {6, 4, GAMEMODE_NUMBERS, DIFF_HARD},
+    {7, 4, GAMEMODE_LETTERS, DIFF_HARD},
+    {7, 4, GAMEMODE_NUMBERS, DIFF_HARD},
+    {8, 5, GAMEMODE_LETTERS, DIFF_HARD},
+    {8, 5, GAMEMODE_NUMBERS, DIFF_HARD},
 };
 
 static game_params *default_params(void)
@@ -134,9 +133,9 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
     *params = ret;
     
     if(ret->mode == GAMEMODE_LETTERS)
-        sprintf(buf, "Letters: %dx%d A~%c", ret->order, ret->order, ret->nums + 'A' - 1);
+        sprintf(buf, "Letters: %dx%d A~%c %s", ret->order, ret->order, ret->nums + 'A' - 1, ret->diff == 0 ? "Easy" : "Hard");
     else
-        sprintf(buf, "Numbers: %dx%d 1~%c", ret->order, ret->order, ret->nums + '0');
+        sprintf(buf, "Numbers: %dx%d 1~%c %s", ret->order, ret->order, ret->nums + '0', ret->diff == 0 ? "Easy" : "Hard");
     *name = dupstr(buf);
     
     return true;
@@ -686,88 +685,6 @@ static int salad_letters_solver(struct latin_solver *solver, struct solver_ctx *
     return nchanged;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int o = state->params->order;
-    int mode = state->params->mode;
-    int i, j;
-    int lr = 8 + (o*2);
-    int s = (lr * (o+4));
-    char c;
-    digit d;
-    char hole;
-    
-    char *ret = snewn(s + 1, char);
-    memset(ret, ' ', s * sizeof(char));
-    ret[s] = '\0';
-    
-    /* Place newlines */
-    for(i = 1; i <= o+4; i++)
-    {
-        ret[lr*i - 1] = '\n';
-    }
-    
-    /* Draw corners */
-    ret[lr + 2] = '+';
-    ret[lr*2 - 4] = '+';
-    ret[lr*(o+2) + 2] = '+';
-    ret[lr*(o+3) - 4] = '+';
-    
-    /* Draw horizontal border */
-    for(i = 3; i < lr-4; i++)
-    {
-        ret[i + lr] = '-';
-        ret[i + (lr*(o+2))] = '-';
-    }
-    
-    /* Draw vertical border */
-    for(i = 2; i < 2+o; i++)
-    {
-        ret[i*lr + 2] = '|';
-        ret[i*lr + (o*2) + 4] = '|';
-    }
-    
-    /* Draw grid */
-    for(i = 0; i < o; i++)
-        for(j = 0; j < o; j++)
-        {
-            d = state->grid[i*o+j];
-            hole = state->holes[i*o+j];
-            if(hole == LATINH_CROSS)
-                c = 'x';
-            else if(!d)
-                c = hole == LATINH_CIRCLE ? 'O' : '.';
-            else
-                c = mode == GAMEMODE_LETTERS ? 'A' + d - 1 : '0' + d;
-            
-            ret[(i+2)*lr + 2*j + 4] = c;
-        }
-    
-    /* Draw border clues */
-    for(i = 0; i < o; i++)
-    {
-        /* Top */
-        if(state->borderclues[i])
-            ret[(i*2)+4] = state->borderclues[i] + 'A' - 1;
-        /* Left */
-        if(state->borderclues[i + o])
-            ret[((i+2)*lr)] = state->borderclues[i + o] + 'A' - 1;
-        /* Bottom */
-        if(state->borderclues[i + (o*2)])
-            ret[(i*2)+4+(lr*(o+3))] = state->borderclues[i + (o*2)] + 'A' - 1;
-        /* Right */
-        if(state->borderclues[i + (o*3)])
-            ret[((i+3)*lr)-2] = state->borderclues[i + (o*3)] + 'A' - 1;
-    }
-    
-    return ret;
-}
-
 static game_state *load_game(const game_params *params, const char *desc, char **fail)
 {
     int o = params->order;
@@ -1090,10 +1007,11 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
 {
     int i;
     int n = params->nums;
+    int addkeys = params->mode == GAMEMODE_LETTERS ? 3 : 4;
     char base = params->mode == GAMEMODE_LETTERS ? 'A' : '1';
 
-    key_label *keys = snewn(n + 4, key_label);
-    *nkeys = n + 4;
+    key_label *keys = snewn(n + addkeys, key_label);
+    *nkeys = n + addkeys;
 
     for (i = 0; i < n; i++)
     {
@@ -1102,13 +1020,20 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
     }
     keys[n].button = 'X';
     keys[n].label = "None";
-    keys[n+1].button = 'O';
-    keys[n+1].label = "Any";
-    keys[n+2].button = '\b';
-    keys[n+2].label = NULL;
-    keys[n+3].button = '+';
-    keys[n+3].label = "Add";
-
+    if (params->mode == GAMEMODE_LETTERS) {
+        keys[n+1].button = '\b';
+        keys[n+1].label = NULL;
+        keys[n+2].button = '+';
+        keys[n+2].label = "Add";
+    }
+    else {
+        keys[n+1].button = 'O';
+        keys[n+1].label = "Any";
+        keys[n+2].button = '\b';
+        keys[n+2].label = NULL;
+        keys[n+3].button = '+';
+        keys[n+3].label = "Add";
+    }
     return keys;
 }
 
@@ -1790,70 +1715,28 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
-    frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-    
-    ret[COL_BORDER*3 + 0] = 0.0F;
-    ret[COL_BORDER*3 + 1] = 0.0F;
-    ret[COL_BORDER*3 + 2] = 0.0F;
-    
-    ret[COL_BORDERCLUE*3 + 0] = 0.0F;
-    ret[COL_BORDERCLUE*3 + 1] = 0.0F;
-    ret[COL_BORDERCLUE*3 + 2] = 0.0F;
-    
-    ret[COL_PENCIL * 3 + 0] = 0.5F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_PENCIL * 3 + 1] = 0.5F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_PENCIL * 3 + 2] = ret[COL_BACKGROUND * 3 + 2];
-    
-    /* Immutable colors */
-    ret[COL_I_NUM*3 + 0] = 0.0F;
-    ret[COL_I_NUM*3 + 1] = 0.0F;
-    ret[COL_I_NUM*3 + 2] = 0.0F;
-    
-    ret[COL_I_HOLE*3 + 0] = 0.0F;
-    ret[COL_I_HOLE*3 + 1] = 0.0F;
-    ret[COL_I_HOLE*3 + 2] = 0.0F;
-    
-    ret[COL_I_BALL*3 + 0] = 0.0F;
-    ret[COL_I_BALL*3 + 1] = 0.0F;
-    ret[COL_I_BALL*3 + 2] = 0.0F;
-
-    ret[COL_I_BALLBG*3 + 0] = 1.0F;
-    ret[COL_I_BALLBG*3 + 1] = 1.0F;
-    ret[COL_I_BALLBG*3 + 2] = 1.0F;
-    
-    /* Guess colors */
-    ret[COL_G_NUM*3 + 0] = 0.0F;
-    ret[COL_G_NUM*3 + 1] = 0.5F;
-    ret[COL_G_NUM*3 + 2] = 0.0F;
-    
-    ret[COL_G_HOLE*3 + 0] = 0.0F;
-    ret[COL_G_HOLE*3 + 1] = 0.25F;
-    ret[COL_G_HOLE*3 + 2] = 0.0F;
-    
-    ret[COL_G_BALL*3 + 0] = 0.0F;
-    ret[COL_G_BALL*3 + 1] = 0.1F;
-    ret[COL_G_BALL*3 + 2] = 0.0F;
-
-    ret[COL_G_BALLBG*3 + 0] = 0.95F;
-    ret[COL_G_BALLBG*3 + 1] = 1.0F;
-    ret[COL_G_BALLBG*3 + 2] = 0.95F;
-    
-    /* Error colors */
-    ret[COL_E_BORDERCLUE*3 + 0] = 1.0F;
-    ret[COL_E_BORDERCLUE*3 + 1] = 0.0F;
-    ret[COL_E_BORDERCLUE*3 + 2] = 0.0F;
-    
-    ret[COL_E_NUM*3 + 0] = 1.0F;
-    ret[COL_E_NUM*3 + 1] = 0.0F;
-    ret[COL_E_NUM*3 + 2] = 0.0F;
-    
-    ret[COL_E_HOLE*3 + 0] = 1.0F;
-    ret[COL_E_HOLE*3 + 1] = 0.0F;
-    ret[COL_E_HOLE*3 + 2] = 0.0F;
-    
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND   * 3 + i] = 1.0F;
+        ret[COL_HIGHLIGHT    * 3 + i] = 0.75F;
+        ret[COL_LOWLIGHT     * 3 + i] = 0.75F;
+        ret[COL_BORDER       * 3 + i] = 0.0F;
+        ret[COL_BORDERCLUE   * 3 + i] = 0.0F;
+        ret[COL_PENCIL       * 3 + i] = 0.0F;
+        ret[COL_I_NUM        * 3 + i] = 0.0F;
+        ret[COL_I_HOLE       * 3 + i] = 0.0F;
+        ret[COL_I_BALL       * 3 + i] = 0.0F;
+        ret[COL_I_BALLBG     * 3 + i] = 1.0F;
+        ret[COL_G_NUM        * 3 + i] = 0.0F;
+        ret[COL_G_HOLE       * 3 + i] = 0.0F;
+        ret[COL_G_BALL       * 3 + i] = 0.0F;
+        ret[COL_G_BALLBG     * 3 + i] = 0.9F;
+        ret[COL_E_BORDERCLUE * 3 + i] = 0.5F;
+        ret[COL_E_NUM        * 3 + i] = 0.5F;
+        ret[COL_E_HOLE       * 3 + i] = 0.5F;
+    }
     *ncolours = NCOLOURS;
     return ret;
 }
@@ -2063,9 +1946,7 @@ static void salad_draw_balls(drawing *dr, game_drawstate *ds, int x, int y, int 
     
     /* Draw ball background */
     if(mode == GAMEMODE_NUMBERS)
-        bgcolor = ((x+y) % 3 == flash ? COL_BACKGROUND :
-                    (x+y+1) % 3 == flash ? COL_LOWLIGHT : 
-                    state->gridclues[i] ? COL_I_BALLBG : COL_G_BALLBG);
+        bgcolor = COL_I_BALLBG;
     else /* Transparent */
         bgcolor = (ds->gridfs[i] & FD_CURSOR ? COL_LOWLIGHT : COL_BACKGROUND);
     color = (state->gridclues[i] ? COL_I_BALL : COL_G_BALL);
@@ -2084,8 +1965,7 @@ static void salad_draw_cross(drawing *dr, game_drawstate *ds, int x, int y, doub
     tx = (x+1)*TILE_SIZE;
     ty = (y+1)*TILE_SIZE;
     
-    color = (state->gridclues[i] ? COL_I_HOLE : 
-        ds->gridfs[i] & FD_ERROR ? COL_E_HOLE : COL_G_HOLE);
+    color = (state->gridclues[i] ? COL_I_HOLE : COL_G_HOLE);
     draw_thick_line(dr, thick,
         tx + (TILE_SIZE*0.2), ty + (TILE_SIZE*0.2),
         tx + (TILE_SIZE*0.8), ty + (TILE_SIZE*0.8),
@@ -2150,16 +2030,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             
             draw_update(dr, tx, ty, TILE_SIZE, TILE_SIZE);
             
-            /* Draw cursor */
-            if(mode == GAMEMODE_LETTERS && flash >= 0)
-            {
-                color = (x+y) % 3 == flash ? COL_BACKGROUND :
-                        (x+y+1) % 3 == flash ? COL_LOWLIGHT : COL_HIGHLIGHT;
-                
-                draw_rect(dr, tx, ty, TILE_SIZE, TILE_SIZE, color);
-            }
-            else
-                draw_rect(dr, tx, ty, TILE_SIZE, TILE_SIZE, COL_BACKGROUND);
+            draw_rect(dr, tx, ty, TILE_SIZE, TILE_SIZE, 
+                ds->gridfs[i] & FD_ERROR ? COL_E_NUM : COL_BACKGROUND);
             
             if(flash == -1 && ds->gridfs[y*o+x] & FD_PENCIL)
             {
@@ -2229,14 +2101,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
         j = i;
         if(state->borderclues[j] != 0 && ds->borderfs[j] != ds->oldborderfs[j])
         {
-            color = ds->borderfs[j] & FD_ERROR ? COL_E_BORDERCLUE : COL_BORDERCLUE;
+            color = ds->borderfs[j] & FD_ERROR ? COL_E_BORDERCLUE : COL_BACKGROUND;
             tx = (i+1)*TILE_SIZE;
             ty = 0;
-            draw_rect(dr, tx, ty, TILE_SIZE-1, TILE_SIZE-1, COL_BACKGROUND);
+            draw_rect(dr, tx, ty, TILE_SIZE-1, TILE_SIZE-1, color);
             draw_update(dr, tx, ty, tx+TILE_SIZE-1, ty+TILE_SIZE-1);
             buf[0] = state->borderclues[j] + base;
             draw_text(dr, tx + TILE_SIZE/2, ty + TILE_SIZE/2,
-                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, color,
+                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, COL_BORDERCLUE,
                 buf);
             ds->oldborderfs[j] = ds->borderfs[j];
         }
@@ -2244,14 +2116,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
         j = i+o;
         if(state->borderclues[j] != 0 && ds->borderfs[j] != ds->oldborderfs[j])
         {
-            color = ds->borderfs[j] & FD_ERROR ? COL_E_BORDERCLUE : COL_BORDERCLUE;
+            color = ds->borderfs[j] & FD_ERROR ? COL_E_BORDERCLUE : COL_BACKGROUND;
             tx = 0;
             ty = (i+1)*TILE_SIZE;
-            draw_rect(dr, tx, ty, TILE_SIZE-1, TILE_SIZE-1, COL_BACKGROUND);
+            draw_rect(dr, tx, ty, TILE_SIZE-1, TILE_SIZE-1, color);
             draw_update(dr, tx, ty, tx+TILE_SIZE-1, ty+TILE_SIZE-1);
             buf[0] = state->borderclues[j] + base;
             draw_text(dr, tx + TILE_SIZE/2, ty + TILE_SIZE/2,
-                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, color,
+                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, COL_BORDERCLUE,
                 buf);
             ds->oldborderfs[j] = ds->borderfs[j];
         }
@@ -2259,14 +2131,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
         j = i+(o*2);
         if(state->borderclues[j] != 0 && ds->borderfs[j] != ds->oldborderfs[j])
         {
-            color = ds->borderfs[j] & FD_ERROR ? COL_E_BORDERCLUE : COL_BORDERCLUE;
+            color = ds->borderfs[j] & FD_ERROR ? COL_E_BORDERCLUE : COL_BACKGROUND;
             tx = (i+1)*TILE_SIZE;
             ty = (o+1)*TILE_SIZE;
-            draw_rect(dr, tx, ty, TILE_SIZE-1, TILE_SIZE-1, COL_BACKGROUND);
+            draw_rect(dr, tx, ty, TILE_SIZE-1, TILE_SIZE-1, color);
             draw_update(dr, tx, ty, tx+TILE_SIZE-1, ty+TILE_SIZE-1);
             buf[0] = state->borderclues[j] + base;
             draw_text(dr, tx + TILE_SIZE/2, ty + TILE_SIZE/2,
-                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, color,
+                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, COL_BORDERCLUE,
                 buf);
             ds->oldborderfs[j] = ds->borderfs[j];
         }
@@ -2274,14 +2146,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
         j = i+(o*3);
         if(state->borderclues[j] != 0 && ds->borderfs[j] != ds->oldborderfs[j])
         {
-            color = ds->borderfs[j] & FD_ERROR ? COL_E_BORDERCLUE : COL_BORDERCLUE;
+            color = ds->borderfs[j] & FD_ERROR ? COL_E_BORDERCLUE : COL_BACKGROUND;
             tx = (o+1)*TILE_SIZE;
             ty = (i+1)*TILE_SIZE;
-            draw_rect(dr, tx+1, ty+1, TILE_SIZE-2, TILE_SIZE-2, COL_BACKGROUND);
+            draw_rect(dr, tx+1, ty+1, TILE_SIZE-2, TILE_SIZE-2, color);
             draw_update(dr, tx+1, ty+1, tx+TILE_SIZE-2, ty+TILE_SIZE-2);
             buf[0] = state->borderclues[j] + base;
             draw_text(dr, tx + TILE_SIZE/2, ty + TILE_SIZE/2,
-                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, color,
+                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, COL_BORDERCLUE,
                 buf);
             ds->oldborderfs[j] = ds->borderfs[j];
         }
@@ -2300,9 +2172,6 @@ static float game_anim_length(const game_state *oldstate, const game_state *news
 static float game_flash_length(const game_state *oldstate, const game_state *newstate,
                    int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-            !oldstate->cheated && !newstate->cheated)
-        return FLASH_TIME;
     return 0.0F;
 }
 
@@ -2314,137 +2183,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-/* Using 8mm squares */
-#define PRINT_SQUARE_SIZE 800
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /* Add an extra line for the character range 
-     (which would normally be in the statusbar) */
-    game_compute_size(params, PRINT_SQUARE_SIZE, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = (ph+PRINT_SQUARE_SIZE) / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int o = state->params->order;
-    int mode = state->params->mode;
-    char base = mode == GAMEMODE_LETTERS ? 'A' - 1 : '0';
-    int i, x, y, tx, ty;
-    
-    int ink = print_mono_colour(dr, 0);
-    int paper = print_mono_colour(dr, 1);
-    
-    char buf[80];
-    
-    /* Draw character range */
-    tx = tilesize/2;
-    ty = ((o+1) * tilesize) + tilesize/2;
-    sprintf(buf, "%c~%c", base + 1, base + state->params->nums);
-    draw_text(dr, tx + tilesize/2, ty + tilesize/2,
-        FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
-        ink, buf);
-    
-    buf[1] = '\0';
-
-    /* Draw border clues */
-    for(i = 0; i < o; i++)
-    {
-        /* Top */
-        if(state->borderclues[i] != 0)
-        {
-            tx = (i+1)*tilesize;
-            ty = 0;
-            buf[0] = state->borderclues[i] + base;
-            draw_text(dr, tx, ty,
-                FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE, ink,
-                buf);
-        }
-        /* Left */
-        if(state->borderclues[i+o] != 0)
-        {
-            tx = 0;
-            ty = (i+1)*tilesize;
-            buf[0] = state->borderclues[i+o] + base;
-            draw_text(dr, tx, ty,
-                FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE, ink,
-                buf);
-        }
-        /* Bottom */
-        if(state->borderclues[i+(o*2)] != 0)
-        {
-            tx = (i+1)*tilesize;
-            ty = (o+1)*tilesize;
-            buf[0] = state->borderclues[i+(o*2)] + base;
-            draw_text(dr, tx, ty,
-                FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE, ink,
-                buf);
-        }
-        /* Right */
-        if(state->borderclues[i+(o*3)] != 0)
-        {
-            tx = (o+1)*tilesize;
-            ty = (i+1)*tilesize;
-            buf[0] = state->borderclues[i+(o*3)] + base;
-            draw_text(dr, tx, ty,
-                FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE, ink,
-                buf);
-        }
-    }
-    
-    /* Draw grid */
-    for (x = 0; x < o; x++)
-        for (y = 0; y < o; y++)
-        {
-            int tx = x*tilesize + (tilesize/2);
-            int ty = y*tilesize + (tilesize/2);
-            
-            /* Draw the border */
-            int coords[8];
-            coords[0] = tx;
-            coords[1] = ty - 1;
-            coords[2] = tx + tilesize;
-            coords[3] = ty - 1;
-            coords[4] = tx + tilesize;
-            coords[5] = ty + tilesize - 1;
-            coords[6] = tx;
-            coords[7] = ty + tilesize - 1;
-            draw_polygon(dr, coords, 4, -1, ink);
-            
-            /* Draw cross */
-            if(state->gridclues[y*o+x] == LATINH_CROSS)
-            {
-                draw_thick_line(dr, 2.5,
-                    tx + (tilesize*0.2), ty + (tilesize*0.2),
-                    tx + (tilesize*0.8), ty + (tilesize*0.8),
-                    ink);
-                draw_thick_line(dr, 2.5,
-                    tx + (tilesize*0.2), ty + (tilesize*0.8),
-                    tx + (tilesize*0.8), ty + (tilesize*0.2),
-                    ink);
-            }
-            /* Draw circle */
-            if(state->gridclues[y*o+x] == LATINH_CIRCLE ||
-                (mode != GAMEMODE_LETTERS && state->holes[y*o+x] == LATINH_CIRCLE))
-            {
-                draw_circle(dr, tx+ (tilesize/2), ty+ (tilesize/2), tilesize*0.4, ink, ink);
-                draw_circle(dr, tx+ (tilesize/2), ty+ (tilesize/2), tilesize*0.38, paper, ink);
-            }
-            
-            /* Draw character */
-            if (state->grid[y*o+x] != 0)
-            {
-                buf[0] = state->grid[y*o+x] + base;
-                
-                draw_text(dr, tx + tilesize/2, ty + tilesize/2,
-                        FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
-                        ink, buf);
-            }
-        }
 }
 
 #ifdef COMBINED
@@ -2467,7 +2205,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -2484,7 +2222,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */

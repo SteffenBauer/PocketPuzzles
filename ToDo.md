@@ -1,12 +1,28 @@
 ### ToDo for individual games
 
 - [X] Boats: Change error for incomplete boats, adjacent boats, and wrong boat numbers
-- [ ] Loopy: Add dotted line draw for line errors
+- [ ] Dominosa: Error coloring, thicker line
+- [ ] Filling: Error coloring
+- [ ] Keen: Persist pencil marker, error circle 
+- [X] Loopy: Add dotted line draw for line errors, diagonal dotted line, better presets
+- [ ] Magnets: Better presets
+- [ ] Pattern: Black-white-neutral circling on click
+- [ ] Pearl: Colors, Dashed error line
+- [ ] Range: Circle error & ! error for adjacent squares
+- [X] Salad: Colors, no O in letters
+- [ ] Singles: Show ! mark on adjacent black squares error
+- [X] Solo: Lighter activation pencil mark, better presets
+- [ ] Spokes: Better error display
+- [ ] Towers: Persist pencil marker
+- [ ] Tracks: Background color on circular error
+- [ ] Undead: Ghost lines, Different monster colors
 - [X] Undead: Stronger monster outlines
 - [X] Tents: Change error for tree without tent
-- [ ] Range: Change error for adjacent black squares
 - [X] Palisade: Thicker lines / dotted lines on error
-- [ ] Bridges: Add path button
+- [ ] Unequal: Coloring, <> polygon error, pencil marker persistence, adjacent error display, error circles, presets with Kropki mode
+- [ ] Unruly: Coloring
+- [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
+- [ ] Bridges: Add path button, game colors
 - [ ] Guess: Change blitter drag to Highlight color by click -> Fill peg by click
 - [ ] Guess: Add color fill pattern
 - [ ] Untangle: Change drag to Highlight vertex by click -> click on target coordinates
