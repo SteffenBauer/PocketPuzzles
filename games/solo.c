@@ -89,11 +89,6 @@
 #include <ctype.h>
 #include <math.h>
 
-#ifdef STANDALONE_SOLVER
-#include <stdarg.h>
-int solver_show_working, solver_recurse_depth;
-#endif
-
 #include "puzzles.h"
 
 /*
@@ -237,19 +232,6 @@ struct block_structure {
      */
     int *whichblock, **blocks, *nr_squares, *blocks_data;
     int nr_blocks, max_nr_squares;
-
-#ifdef STANDALONE_SOLVER
-    /*
-     * Textual descriptions of each block. For normal Sudoku these
-     * are of the form "(1,3)"; for jigsaw they are "starting at
-     * (5,7)". So the sensible usage in both cases is to say
-     * "elimination within block %s" with one of these strings.
-     * 
-     * Only blocknames itself needs individually freeing; it's all
-     * one block.
-     */
-    char **blocknames;
-#endif
 };
 
 struct game_state {
@@ -278,9 +260,9 @@ static game_params *default_params(void)
     ret->c = ret->r = 3;
     ret->xtype = false;
     ret->killer = false;
-    ret->symm = SYMM_ROT2;           /* a plausible default */
-    ret->diff = DIFF_BLOCK;           /* so is this */
-    ret->kdiff = DIFF_KINTERSECT;      /* so is this */
+    ret->symm = SYMM_NONE;           /* a plausible default */
+    ret->diff = DIFF_INTERSECT;           /* so is this */
+    ret->kdiff = DIFF_KMINMAX;      /* so is this */
 
     return ret;
 }
@@ -303,17 +285,15 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
         const char *title;
         game_params params;
     } const presets[] = {
-        { "3x3 Trivial", { 3, 3, SYMM_ROT2, DIFF_BLOCK, DIFF_KMINMAX, false, false } },
-        { "3x3 Basic", { 3, 3, SYMM_ROT2, DIFF_SIMPLE, DIFF_KMINMAX, false, false } },
-        { "3x3 Basic X", { 3, 3, SYMM_ROT2, DIFF_SIMPLE, DIFF_KMINMAX, true } },
-        { "3x3 Intermediate", { 3, 3, SYMM_ROT2, DIFF_INTERSECT, DIFF_KMINMAX, false, false } },
-        { "3x3 Advanced", { 3, 3, SYMM_ROT2, DIFF_SET, DIFF_KMINMAX, false, false } },
-        { "3x3 Advanced X", { 3, 3, SYMM_ROT2, DIFF_SET, DIFF_KMINMAX, true } },
-        { "3x3 Extreme", { 3, 3, SYMM_ROT2, DIFF_EXTREME, DIFF_KMINMAX, false, false } },
-        { "3x3 Unreasonable", { 3, 3, SYMM_ROT2, DIFF_RECURSIVE, DIFF_KMINMAX, false, false } },
-        { "9 Jigsaw Basic", { 9, 1, SYMM_ROT2, DIFF_SIMPLE, DIFF_KMINMAX, false, false } },
-        { "9 Jigsaw Basic X", { 9, 1, SYMM_ROT2, DIFF_SIMPLE, DIFF_KMINMAX, true } },
-        { "9 Jigsaw Advanced", { 9, 1, SYMM_ROT2, DIFF_SET, DIFF_KMINMAX, false, false } },
+        { "3x3 Basic", { 3, 3, SYMM_NONE, DIFF_SIMPLE, DIFF_KMINMAX, false, false } },
+        { "3x3 Intermediate", { 3, 3, SYMM_NONE, DIFF_INTERSECT, DIFF_KMINMAX, false, false } },
+        { "3x3 Advanced", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, false, false } },
+        { "3x3 Advanced X", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, true, false } },
+        { "3x3 Extreme", { 3, 3, SYMM_NONE, DIFF_EXTREME, DIFF_KMINMAX, false, false } },
+        { "6 Jigsaw Intermediate", { 6, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KMINMAX, false, false } },
+        { "6 Jigsaw Advanced", { 6, 1, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, false, false } },
+        { "9 Jigsaw Intermediate", { 9, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KMINMAX, false, false } },
+        { "9 Jigsaw Advanced", { 9, 1, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, false, false } },
     };
 
     if (i < 0 || i >= lenof(presets))
@@ -535,11 +515,6 @@ static struct block_structure *alloc_block_structure(int c, int r, int area,
     for (i = 0; i < nr_blocks; i++)
     b->blocks[i] = b->blocks_data + i*max_nr_squares;
 
-#ifdef STANDALONE_SOLVER
-    b->blocknames = (char **)smalloc(c*r*(sizeof(char *)+80));
-    for (i = 0; i < c * r; i++)
-    b->blocknames[i] = NULL;
-#endif
     return b;
 }
 
@@ -549,9 +524,6 @@ static void free_block_structure(struct block_structure *b)
     sfree(b->whichblock);
     sfree(b->blocks);
     sfree(b->blocks_data);
-#ifdef STANDALONE_SOLVER
-    sfree(b->blocknames);
-#endif
     sfree(b->nr_squares);
     sfree(b);
     }
@@ -571,17 +543,6 @@ static struct block_structure *dup_block_structure(struct block_structure *b)
     for (i = 0; i < b->nr_blocks; i++)
     nb->blocks[i] = nb->blocks_data + i*nb->max_nr_squares;
 
-#ifdef STANDALONE_SOLVER
-    memcpy(nb->blocknames, b->blocknames, b->c * b->r *(sizeof(char *)+80));
-    {
-    int i;
-    for (i = 0; i < b->c * b->r; i++)
-        if (b->blocknames[i] == NULL)
-        nb->blocknames[i] = NULL;
-        else
-        nb->blocknames[i] = ((char *)nb->blocknames) + (b->blocknames[i] - (char *)b->blocknames);
-    }
-#endif
     return nb;
 }
 
@@ -820,31 +781,7 @@ static void solver_place(struct solver_usage *usage, int x, int y, int n)
     }
 }
 
-#if defined STANDALONE_SOLVER && defined __GNUC__
-/*
- * Forward-declare the functions taking printf-like format arguments
- * with __attribute__((format)) so as to ensure the argument syntax
- * gets debugged.
- */
-struct solver_scratch;
-static int solver_elim(struct solver_usage *usage, int *indices,
-                       const char *fmt, ...)
-    __attribute__((format(printf,3,4)));
-static int solver_intersect(struct solver_usage *usage,
-                            int *indices1, int *indices2, const char *fmt, ...)
-    __attribute__((format(printf,4,5)));
-static int solver_set(struct solver_usage *usage,
-                      struct solver_scratch *scratch,
-                      int *indices, const char *fmt, ...)
-    __attribute__((format(printf,4,5)));
-#endif
-
-static int solver_elim(struct solver_usage *usage, int *indices
-#ifdef STANDALONE_SOLVER
-                       , const char *fmt, ...
-#endif
-                       )
-{
+static int solver_elim(struct solver_usage *usage, int *indices) {
     int cr = usage->cr;
     int fpos, m, i;
 
@@ -870,32 +807,10 @@ static int solver_elim(struct solver_usage *usage, int *indices
     x %= cr;
 
         if (!usage->grid[y*cr+x]) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-                va_list ap;
-        printf("%*s", solver_recurse_depth*4, "");
-                va_start(ap, fmt);
-                vprintf(fmt, ap);
-                va_end(ap);
-                printf(":\n%*s  placing %d at (%d,%d)\n",
-                       solver_recurse_depth*4, "", n, 1+x, 1+y);
-            }
-#endif
             solver_place(usage, x, y, n);
             return +1;
         }
     } else if (m == 0) {
-#ifdef STANDALONE_SOLVER
-    if (solver_show_working) {
-        va_list ap;
-        printf("%*s", solver_recurse_depth*4, "");
-        va_start(ap, fmt);
-        vprintf(fmt, ap);
-        va_end(ap);
-        printf(":\n%*s  no possibilities available\n",
-           solver_recurse_depth*4, "");
-    }
-#endif
         return -1;
     }
 
@@ -904,9 +819,6 @@ static int solver_elim(struct solver_usage *usage, int *indices
 
 static int solver_intersect(struct solver_usage *usage,
                             int *indices1, int *indices2
-#ifdef STANDALONE_SOLVER
-                            , const char *fmt, ...
-#endif
                             )
 {
     int cr = usage->cr;
@@ -918,14 +830,14 @@ static int solver_intersect(struct solver_usage *usage,
      */
     for (i = j = 0; i < cr; i++) {
         int p = indices1[i];
-    while (j < cr && indices2[j] < p)
-        j++;
+        while (j < cr && indices2[j] < p)
+            j++;
         if (usage->cube[p]) {
-        if (j < cr && indices2[j] == p)
-        continue;           /* both domains contain this index */
-        else
-        return 0;           /* there is, so we can't deduce */
-    }
+            if (j < cr && indices2[j] == p)
+                continue;           /* both domains contain this index */
+            else
+                return 0;           /* there is, so we can't deduce */
+        }
     }
 
     /*
@@ -937,31 +849,9 @@ static int solver_intersect(struct solver_usage *usage,
     ret = 0;
     for (i = j = 0; i < cr; i++) {
         int p = indices2[i];
-    while (j < cr && indices1[j] < p)
-        j++;
+        while (j < cr && indices1[j] < p)
+            j++;
         if (usage->cube[p] && (j >= cr || indices1[j] != p)) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-                int px, py, pn;
-
-                if (!ret) {
-                    va_list ap;
-            printf("%*s", solver_recurse_depth*4, "");
-                    va_start(ap, fmt);
-                    vprintf(fmt, ap);
-                    va_end(ap);
-                    printf(":\n");
-                }
-
-                pn = 1 + p % cr;
-                px = p / cr;
-                py = px / cr;
-                px %= cr;
-
-                printf("%*s  ruling out %d at (%d,%d)\n",
-                       solver_recurse_depth*4, "", pn, 1+px, 1+py);
-            }
-#endif
             ret = +1;               /* we did something */
             usage->cube[p] = false;
         }
@@ -974,17 +864,11 @@ struct solver_scratch {
     unsigned char *grid, *rowidx, *colidx, *set;
     int *neighbours, *bfsqueue;
     int *indexlist, *indexlist2;
-#ifdef STANDALONE_SOLVER
-    int *bfsprev;
-#endif
 };
 
 static int solver_set(struct solver_usage *usage,
                       struct solver_scratch *scratch,
                       int *indices
-#ifdef STANDALONE_SOLVER
-                      , const char *fmt, ...
-#endif
                       )
 {
     int cr = usage->cr;
@@ -1013,18 +897,6 @@ static int solver_set(struct solver_usage *usage,
      * the puzzle is internally inconsistent.
      */
         if (count == 0) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-                va_list ap;
-                printf("%*s", solver_recurse_depth*4,
-                       "");
-                va_start(ap, fmt);
-                vprintf(fmt, ap);
-                va_end(ap);
-                printf(":\n%*s  solver_set: impossible on entry\n",
-                       solver_recurse_depth*4, "");
-            }
-#endif
             return -1;
         }
         if (count == 1)
@@ -1093,20 +965,8 @@ static int solver_set(struct solver_usage *usage,
              * even a bogus clue.
              */
             if (rows > n - count) {
-#ifdef STANDALONE_SOLVER
-        if (solver_show_working) {
-            va_list ap;
-            printf("%*s", solver_recurse_depth*4,
-               "");
-            va_start(ap, fmt);
-            vprintf(fmt, ap);
-            va_end(ap);
-            printf(":\n%*s  contradiction reached\n",
-               solver_recurse_depth*4, "");
-        }
-#endif
-        return -1;
-        }
+                return -1;
+            }
 
             if (rows >= n - count) {
                 bool progress = false;
@@ -1133,30 +993,6 @@ static int solver_set(struct solver_usage *usage,
                         for (j = 0; j < n; j++)
                             if (!set[j] && grid[i*cr+j]) {
                                 int fpos = indices[rowidx[i]*cr+colidx[j]];
-#ifdef STANDALONE_SOLVER
-                                if (solver_show_working) {
-                                    int px, py, pn;
-
-                                    if (!progress) {
-                                        va_list ap;
-                    printf("%*s", solver_recurse_depth*4,
-                           "");
-                                        va_start(ap, fmt);
-                                        vprintf(fmt, ap);
-                                        va_end(ap);
-                                        printf(":\n");
-                                    }
-
-                                    pn = 1 + fpos % cr;
-                                    px = fpos / cr;
-                                    py = px / cr;
-                                    px %= cr;
-
-                                    printf("%*s  ruling out %d at (%d,%d)\n",
-                       solver_recurse_depth*4, "",
-                                           pn, 1+px, 1+py);
-                                }
-#endif
                                 progress = true;
                                 usage->cube[fpos] = false;
                             }
@@ -1226,9 +1062,6 @@ static int solver_forcing(struct solver_usage *usage,
 {
     int cr = usage->cr;
     int *bfsqueue = scratch->bfsqueue;
-#ifdef STANDALONE_SOLVER
-    int *bfsprev = scratch->bfsprev;
-#endif
     unsigned char *number = scratch->grid;
     int *neighbours = scratch->neighbours;
     int x, y;
@@ -1267,9 +1100,6 @@ static int solver_forcing(struct solver_usage *usage,
                     memset(number, cr+1, cr*cr);
                     head = tail = 0;
                     bfsqueue[tail++] = y*cr+x;
-#ifdef STANDALONE_SOLVER
-                    bfsprev[y*cr+x] = -1;
-#endif
                     number[y*cr+x] = t - n;
 
                     while (head < tail) {
@@ -1340,9 +1170,6 @@ static int solver_forcing(struct solver_usage *usage,
                                     cc++, tt += nn;
                             if (cc == 2) {
                                 bfsqueue[tail++] = yt*cr+xt;
-#ifdef STANDALONE_SOLVER
-                                bfsprev[yt*cr+xt] = yy*cr+xx;
-#endif
                                 number[yt*cr+xt] = tt - currn;
                             }
 
@@ -1358,29 +1185,6 @@ static int solver_forcing(struct solver_usage *usage,
                                  (usage->blocks->whichblock[yt*cr+xt] == usage->blocks->whichblock[y*cr+x]) ||
                  (usage->diag && ((ondiag0(yt*cr+xt) && ondiag0(y*cr+x)) ||
                           (ondiag1(yt*cr+xt) && ondiag1(y*cr+x)))))) {
-#ifdef STANDALONE_SOLVER
-                                if (solver_show_working) {
-                                    const char *sep = "";
-                                    int xl, yl;
-                                    printf("%*sforcing chain, %d at ends of ",
-                                           solver_recurse_depth*4, "", orign);
-                                    xl = xx;
-                                    yl = yy;
-                                    while (1) {
-                                        printf("%s(%d,%d)", sep, 1+xl,
-                                               1+yl);
-                                        xl = bfsprev[yl*cr+xl];
-                                        if (xl < 0)
-                                            break;
-                                        yl = xl / cr;
-                                        xl %= cr;
-                                        sep = "-";
-                                    }
-                                    printf("\n%*s  ruling out %d at (%d,%d)\n",
-                                           solver_recurse_depth*4, "",
-                                           orign, 1+xt, 1+yt);
-                                }
-#endif
                                 cube(xt, yt, orign) = false;
                                 return 1;
                             }
@@ -1395,9 +1199,6 @@ static int solver_forcing(struct solver_usage *usage,
 static int solver_killer_minmax(struct solver_usage *usage,
                 struct block_structure *cages, digit *clues,
                 int b
-#ifdef STANDALONE_SOLVER
-                , const char *extra
-#endif
                 )
 {
     int cr = usage->cr;
@@ -1413,44 +1214,32 @@ static int solver_killer_minmax(struct solver_usage *usage,
 
     for (n = 1; n <= cr; n++)
         if (cube2(x, n)) {
-        int maxval = 0, minval = 0;
-        int j;
-        for (j = 0; j < nsquares; j++) {
-            int m;
-            int y = cages->blocks[b][j];
-            if (i == j)
-            continue;
-            for (m = 1; m <= cr; m++)
-            if (cube2(y, m)) {
-                minval += m;
-                break;
+            int maxval = 0, minval = 0;
+            int j;
+            for (j = 0; j < nsquares; j++) {
+                int m;
+                int y = cages->blocks[b][j];
+                if (i == j)
+                    continue;
+                for (m = 1; m <= cr; m++)
+                    if (cube2(y, m)) {
+                        minval += m;
+                        break;
+                    }
+                for (m = cr; m > 0; m--)
+                    if (cube2(y, m)) {
+                        maxval += m;
+                        break;
+                    }
             }
-            for (m = cr; m > 0; m--)
-            if (cube2(y, m)) {
-                maxval += m;
-                break;
+            if (maxval + n < clues[b]) {
+                cube2(x, n) = false;
+                ret = 1;
             }
-        }
-        if (maxval + n < clues[b]) {
-            cube2(x, n) = false;
-            ret = 1;
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working)
-            printf("%*s  ruling out %d at (%d,%d) as too low %s\n",
-                   solver_recurse_depth*4, "killer minmax analysis",
-                   n, 1 + x%cr, 1 + x/cr, extra);
-#endif
-        }
-        if (minval + n > clues[b]) {
-            cube2(x, n) = false;
-            ret = 1;
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working)
-            printf("%*s  ruling out %d at (%d,%d) as too high %s\n",
-                   solver_recurse_depth*4, "killer minmax analysis",
-                   n, 1 + x%cr, 1 + x/cr, extra);
-#endif
-        }
+            if (minval + n > clues[b]) {
+                cube2(x, n) = false;
+                ret = 1;
+            }
         }
     }
     return ret;
@@ -1459,9 +1248,6 @@ static int solver_killer_minmax(struct solver_usage *usage,
 static int solver_killer_sums(struct solver_usage *usage, int b,
                   struct block_structure *cages, int clue,
                   bool cage_is_region
-#ifdef STANDALONE_SOLVER
-                  , const char *cage_type
-#endif
                   )
 {
     int cr = usage->cr;
@@ -1470,31 +1256,26 @@ static int solver_killer_sums(struct solver_usage *usage, int b,
     unsigned long *sumbits, possible_addends;
 
     if (clue == 0) {
-    assert(nsquares == 0);
-    return 0;
+        assert(nsquares == 0);
+        return 0;
     }
     if (nsquares == 0) {
-#ifdef STANDALONE_SOLVER
-        if (solver_show_working)
-            printf("%*skiller: cage has no usable squares left\n",
-                   solver_recurse_depth*4, "");
-#endif
         return -1;
     }
 
     if (nsquares < 2 || nsquares > 4)
-    return 0;
+        return 0;
 
     if (!cage_is_region) {
-    int known_row = -1, known_col = -1, known_block = -1;
+        int known_row = -1, known_col = -1, known_block = -1;
     /*
      * Verify that the cage lies entirely within one region,
      * so that using the precomputed sums is valid.
      */
-    for (i = 0; i < nsquares; i++) {
-        int x = cages->blocks[b][i];
+        for (i = 0; i < nsquares; i++) {
+            int x = cages->blocks[b][i];
 
-        assert(usage->grid[x] == 0);
+            assert(usage->grid[x] == 0);
 
         if (i == 0) {
         known_row = x/cr;
@@ -1513,14 +1294,14 @@ static int solver_killer_sums(struct solver_usage *usage, int b,
         return 0;
     }
     if (nsquares == 2) {
-    if (clue < 3 || clue > 17)
-        return -1;
+        if (clue < 3 || clue > 17)
+            return -1;
 
-    sumbits = sum_bits2[clue];
-    max_sums = MAX_2SUMS;
+        sumbits = sum_bits2[clue];
+        max_sums = MAX_2SUMS;
     } else if (nsquares == 3) {
-    if (clue < 6 || clue > 24)
-        return -1;
+        if (clue < 6 || clue > 24)
+            return -1;
 
     sumbits = sum_bits3[clue];
     max_sums = MAX_3SUMS;
@@ -1569,26 +1350,16 @@ static int solver_killer_sums(struct solver_usage *usage, int b,
 
     ret = 0;
     for (i = 0; i < nsquares; i++) {
-    int n;
-    int x = cages->blocks[b][i];
-    for (n = 1; n <= cr; n++) {
-        if (!cube2(x, n))
-        continue;
-        if ((possible_addends & (1 << n)) == 0) {
-        cube2(x, n) = false;
-        ret = 1;
-#ifdef STANDALONE_SOLVER
-        if (solver_show_working) {
-            printf("%*s  using %s\n",
-               solver_recurse_depth*4, "killer sums analysis",
-               cage_type);
-            printf("%*s  ruling out %d at (%d,%d) due to impossible %d-sum\n",
-               solver_recurse_depth*4, "",
-               n, 1 + x%cr, 1 + x/cr, nsquares);
+        int n;
+        int x = cages->blocks[b][i];
+        for (n = 1; n <= cr; n++) {
+            if (!cube2(x, n))
+                continue;
+            if ((possible_addends & (1 << n)) == 0) {
+                cube2(x, n) = false;
+                ret = 1;
+            }
         }
-#endif
-        }
-    }
     }
     return ret;
 }
@@ -1659,9 +1430,6 @@ static struct solver_scratch *solver_new_scratch(struct solver_usage *usage)
     scratch->set = snewn(cr, unsigned char);
     scratch->neighbours = snewn(5*cr, int);
     scratch->bfsqueue = snewn(cr*cr, int);
-#ifdef STANDALONE_SOLVER
-    scratch->bfsprev = snewn(cr*cr, int);
-#endif
     scratch->indexlist = snewn(cr*cr, int);   /* used for set elimination */
     scratch->indexlist2 = snewn(cr, int);   /* only used for intersect() */
     return scratch;
@@ -1669,9 +1437,6 @@ static struct solver_scratch *solver_new_scratch(struct solver_usage *usage)
 
 static void solver_free_scratch(struct solver_scratch *scratch)
 {
-#ifdef STANDALONE_SOLVER
-    sfree(scratch->bfsprev);
-#endif
     sfree(scratch->bfsqueue);
     sfree(scratch->neighbours);
     sfree(scratch->set);
@@ -1819,13 +1584,7 @@ static void solver(int cr, struct block_structure *blocks,
         if (!usage->blk[b*cr+n-1]) {
             for (i = 0; i < cr; i++)
             scratch->indexlist[i] = cubepos2(usage->blocks->blocks[b][i],n);
-            ret = solver_elim(usage, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                      , "positional elimination,"
-                      " %d in block %s", n,
-                      usage->blocks->blocknames[b]
-#endif
-                      );
+            ret = solver_elim(usage, scratch->indexlist);
             if (ret < 0) {
             diff = DIFF_IMPOSSIBLE;
             goto got_result;
@@ -1886,13 +1645,6 @@ static void solver(int cr, struct block_structure *blocks,
             }
             solver_place(usage, x, y, v);
 
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-            printf("%*s  placing %d at (%d,%d)\n",
-                   solver_recurse_depth*4, "killer single-square cage",
-                   v, 1 + x%cr, 1 + x/cr);
-            }
-#endif
             changed = true;
         }
         }
@@ -1949,13 +1701,6 @@ static void solver(int cr, struct block_structure *blocks,
             }
             solver_place(usage, x, y, sum);
             changed = true;
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-                printf("%*s  placing %d at (%d,%d)\n",
-                   solver_recurse_depth*4, "killer single-square deduced cage",
-                   sum, 1 + x, 1 + y);
-            }
-#endif
             }
 
             b = usage->kblocks->whichblock[extra_list[0]];
@@ -1995,11 +1740,7 @@ static void solver(int cr, struct block_structure *blocks,
         bool changed = false;
         for (b = 0; b < usage->kblocks->nr_blocks; b++) {
         int ret = solver_killer_minmax(usage, usage->kblocks,
-                           usage->kclues, b
-#ifdef STANDALONE_SOLVER
-                         , ""
-#endif
-                           );
+                           usage->kclues, b);
         if (ret < 0) {
             diff = DIFF_IMPOSSIBLE;
             goto got_result;
@@ -2008,11 +1749,7 @@ static void solver(int cr, struct block_structure *blocks,
         }
         for (b = 0; b < usage->extra_cages->nr_blocks; b++) {
         int ret = solver_killer_minmax(usage, usage->extra_cages,
-                           usage->extra_clues, b
-#ifdef STANDALONE_SOLVER
-                           , "using deduced cages"
-#endif
-                           );
+                           usage->extra_clues, b);
         if (ret < 0) {
             diff = DIFF_IMPOSSIBLE;
             goto got_result;
@@ -2035,11 +1772,7 @@ static void solver(int cr, struct block_structure *blocks,
 
         for (b = 0; b < usage->kblocks->nr_blocks; b++) {
         int ret = solver_killer_sums(usage, b, usage->kblocks,
-                         usage->kclues[b], true
-#ifdef STANDALONE_SOLVER
-                         , "regular clues"
-#endif
-                         );
+                         usage->kclues[b], true);
         if (ret > 0) {
             changed = true;
             kdiff = max(kdiff, DIFF_KSUMS);
@@ -2051,11 +1784,7 @@ static void solver(int cr, struct block_structure *blocks,
 
         for (b = 0; b < usage->extra_cages->nr_blocks; b++) {
         int ret = solver_killer_sums(usage, b, usage->extra_cages,
-                         usage->extra_clues[b], false
-#ifdef STANDALONE_SOLVER
-                         , "deduced clues"
-#endif
-                         );
+                         usage->extra_clues[b], false);
         if (ret > 0) {
             changed = true;
             kdiff = max(kdiff, DIFF_KSUMS);
@@ -2080,12 +1809,7 @@ static void solver(int cr, struct block_structure *blocks,
         if (!usage->row[y*cr+n-1]) {
             for (x = 0; x < cr; x++)
             scratch->indexlist[x] = cubepos(x, y, n);
-            ret = solver_elim(usage, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                      , "positional elimination,"
-                      " %d in row %d", n, 1+y
-#endif
-                      );
+            ret = solver_elim(usage, scratch->indexlist);
             if (ret < 0) {
             diff = DIFF_IMPOSSIBLE;
             goto got_result;
@@ -2102,12 +1826,7 @@ static void solver(int cr, struct block_structure *blocks,
         if (!usage->col[x*cr+n-1]) {
             for (y = 0; y < cr; y++)
             scratch->indexlist[y] = cubepos(x, y, n);
-            ret = solver_elim(usage, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                      , "positional elimination,"
-                      " %d in column %d", n, 1+x
-#endif
-                      );
+            ret = solver_elim(usage, scratch->indexlist);
             if (ret < 0) {
             diff = DIFF_IMPOSSIBLE;
             goto got_result;
@@ -2115,7 +1834,7 @@ static void solver(int cr, struct block_structure *blocks,
             diff = max(diff, DIFF_SIMPLE);
             goto cont;
             }
-                }
+        }
 
     /*
      * X-diagonal positional elimination.
@@ -2125,12 +1844,7 @@ static void solver(int cr, struct block_structure *blocks,
         if (!usage->diag[n-1]) {
             for (i = 0; i < cr; i++)
             scratch->indexlist[i] = cubepos2(diag0(i), n);
-            ret = solver_elim(usage, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                      , "positional elimination,"
-                      " %d in \\-diagonal", n
-#endif
-                      );
+            ret = solver_elim(usage, scratch->indexlist);
             if (ret < 0) {
             diff = DIFF_IMPOSSIBLE;
             goto got_result;
@@ -2143,12 +1857,7 @@ static void solver(int cr, struct block_structure *blocks,
         if (!usage->diag[cr+n-1]) {
             for (i = 0; i < cr; i++)
             scratch->indexlist[i] = cubepos2(diag1(i), n);
-            ret = solver_elim(usage, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                      , "positional elimination,"
-                      " %d in /-diagonal", n
-#endif
-                      );
+            ret = solver_elim(usage, scratch->indexlist);
             if (ret < 0) {
             diff = DIFF_IMPOSSIBLE;
             goto got_result;
@@ -2156,7 +1865,7 @@ static void solver(int cr, struct block_structure *blocks,
             diff = max(diff, DIFF_SIMPLE);
             goto cont;
             }
-                }
+        }
     }
 
     /*
@@ -2166,61 +1875,41 @@ static void solver(int cr, struct block_structure *blocks,
         for (y = 0; y < cr; y++)
         if (!usage->grid[y*cr+x]) {
             for (n = 1; n <= cr; n++)
-            scratch->indexlist[n-1] = cubepos(x, y, n);
-            ret = solver_elim(usage, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                      , "numeric elimination at (%d,%d)",
-                      1+x, 1+y
-#endif
-                      );
+                scratch->indexlist[n-1] = cubepos(x, y, n);
+            ret = solver_elim(usage, scratch->indexlist);
             if (ret < 0) {
-            diff = DIFF_IMPOSSIBLE;
-            goto got_result;
+                diff = DIFF_IMPOSSIBLE;
+                goto got_result;
             } else if (ret > 0) {
-            diff = max(diff, DIFF_SIMPLE);
-            goto cont;
+                diff = max(diff, DIFF_SIMPLE);
+                goto cont;
             }
-                }
+        }
 
     if (dlev->maxdiff <= DIFF_SIMPLE)
         break;
 
-        /*
-         * Intersectional analysis, rows vs blocks.
-         */
-        for (y = 0; y < cr; y++)
-            for (b = 0; b < cr; b++)
-                for (n = 1; n <= cr; n++) {
-                    if (usage->row[y*cr+n-1] ||
-                        usage->blk[b*cr+n-1])
-            continue;
-            for (i = 0; i < cr; i++) {
-            scratch->indexlist[i] = cubepos(i, y, n);
-            scratch->indexlist2[i] = cubepos2(usage->blocks->blocks[b][i], n);
-            }
+    /*
+     * Intersectional analysis, rows vs blocks.
+     */
+    for (y = 0; y < cr; y++)
+    for (b = 0; b < cr; b++)
+    for (n = 1; n <= cr; n++) {
+                if (usage->row[y*cr+n-1] || usage->blk[b*cr+n-1])
+                    continue;
+                for (i = 0; i < cr; i++) {
+                    scratch->indexlist[i] = cubepos(i, y, n);
+                    scratch->indexlist2[i] = cubepos2(usage->blocks->blocks[b][i], n);
+                }
             /*
              * solver_intersect() never returns -1.
              */
-            if (solver_intersect(usage, scratch->indexlist,
-                     scratch->indexlist2
-#ifdef STANDALONE_SOLVER
-                                          , "intersectional analysis,"
-                                          " %d in row %d vs block %s",
-                                          n, 1+y, usage->blocks->blocknames[b]
-#endif
-                                          ) ||
-                         solver_intersect(usage, scratch->indexlist2,
-                     scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                                          , "intersectional analysis,"
-                                          " %d in block %s vs row %d",
-                                          n, usage->blocks->blocknames[b], 1+y
-#endif
-                                          )) {
-                        diff = max(diff, DIFF_INTERSECT);
-                        goto cont;
-                    }
-        }
+                if (solver_intersect(usage, scratch->indexlist, scratch->indexlist2) ||
+                    solver_intersect(usage, scratch->indexlist2, scratch->indexlist)) {
+                    diff = max(diff, DIFF_INTERSECT);
+                    goto cont;
+                }
+            }
 
         /*
          * Intersectional analysis, columns vs blocks.
@@ -2236,21 +1925,9 @@ static void solver(int cr, struct block_structure *blocks,
             scratch->indexlist2[i] = cubepos2(usage->blocks->blocks[b][i], n);
             }
             if (solver_intersect(usage, scratch->indexlist,
-                     scratch->indexlist2
-#ifdef STANDALONE_SOLVER
-                                          , "intersectional analysis,"
-                                          " %d in column %d vs block %s",
-                                          n, 1+x, usage->blocks->blocknames[b]
-#endif
-                                          ) ||
+                     scratch->indexlist2) ||
                          solver_intersect(usage, scratch->indexlist2,
-                     scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                                          , "intersectional analysis,"
-                                          " %d in block %s vs column %d",
-                                          n, usage->blocks->blocknames[b], 1+x
-#endif
-                                          )) {
+                     scratch->indexlist)) {
                         diff = max(diff, DIFF_INTERSECT);
                         goto cont;
                     }
@@ -2270,21 +1947,9 @@ static void solver(int cr, struct block_structure *blocks,
             scratch->indexlist2[i] = cubepos2(usage->blocks->blocks[b][i], n);
             }
             if (solver_intersect(usage, scratch->indexlist,
-                     scratch->indexlist2
-#ifdef STANDALONE_SOLVER
-                                          , "intersectional analysis,"
-                                          " %d in \\-diagonal vs block %s",
-                                          n, usage->blocks->blocknames[b]
-#endif
-                                          ) ||
+                     scratch->indexlist2) ||
                          solver_intersect(usage, scratch->indexlist2,
-                     scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                                          , "intersectional analysis,"
-                                          " %d in block %s vs \\-diagonal",
-                                          n, usage->blocks->blocknames[b]
-#endif
-                                          )) {
+                     scratch->indexlist)) {
                         diff = max(diff, DIFF_INTERSECT);
                         goto cont;
                     }
@@ -2303,21 +1968,9 @@ static void solver(int cr, struct block_structure *blocks,
             scratch->indexlist2[i] = cubepos2(usage->blocks->blocks[b][i], n);
             }
             if (solver_intersect(usage, scratch->indexlist,
-                     scratch->indexlist2
-#ifdef STANDALONE_SOLVER
-                                          , "intersectional analysis,"
-                                          " %d in /-diagonal vs block %s",
-                                          n, usage->blocks->blocknames[b]
-#endif
-                                          ) ||
+                     scratch->indexlist2) ||
                          solver_intersect(usage, scratch->indexlist2,
-                     scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                                          , "intersectional analysis,"
-                                          " %d in block %s vs /-diagonal",
-                                          n, usage->blocks->blocknames[b]
-#endif
-                                          )) {
+                     scratch->indexlist)) {
                         diff = max(diff, DIFF_INTERSECT);
                         goto cont;
                     }
@@ -2334,12 +1987,7 @@ static void solver(int cr, struct block_structure *blocks,
         for (i = 0; i < cr; i++)
         for (n = 1; n <= cr; n++)
             scratch->indexlist[i*cr+n-1] = cubepos2(usage->blocks->blocks[b][i], n);
-        ret = solver_set(usage, scratch, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                 , "set elimination, block %s",
-                 usage->blocks->blocknames[b]
-#endif
-                 );
+        ret = solver_set(usage, scratch, scratch->indexlist);
         if (ret < 0) {
         diff = DIFF_IMPOSSIBLE;
         goto got_result;
@@ -2356,11 +2004,7 @@ static void solver(int cr, struct block_structure *blocks,
         for (x = 0; x < cr; x++)
         for (n = 1; n <= cr; n++)
             scratch->indexlist[x*cr+n-1] = cubepos(x, y, n);
-        ret = solver_set(usage, scratch, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                 , "set elimination, row %d", 1+y
-#endif
-                 );
+        ret = solver_set(usage, scratch, scratch->indexlist);
         if (ret < 0) {
         diff = DIFF_IMPOSSIBLE;
         goto got_result;
@@ -2377,17 +2021,13 @@ static void solver(int cr, struct block_structure *blocks,
         for (y = 0; y < cr; y++)
         for (n = 1; n <= cr; n++)
             scratch->indexlist[y*cr+n-1] = cubepos(x, y, n);
-            ret = solver_set(usage, scratch, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                 , "set elimination, column %d", 1+x
-#endif
-                 );
+        ret = solver_set(usage, scratch, scratch->indexlist);
         if (ret < 0) {
-        diff = DIFF_IMPOSSIBLE;
-        goto got_result;
+            diff = DIFF_IMPOSSIBLE;
+            goto got_result;
         } else if (ret > 0) {
-        diff = max(diff, DIFF_SET);
-        goto cont;
+            diff = max(diff, DIFF_SET);
+            goto cont;
         }
     }
 
@@ -2398,17 +2038,13 @@ static void solver(int cr, struct block_structure *blocks,
         for (i = 0; i < cr; i++)
         for (n = 1; n <= cr; n++)
             scratch->indexlist[i*cr+n-1] = cubepos2(diag0(i), n);
-            ret = solver_set(usage, scratch, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                 , "set elimination, \\-diagonal"
-#endif
-                 );
+        ret = solver_set(usage, scratch, scratch->indexlist);
         if (ret < 0) {
-        diff = DIFF_IMPOSSIBLE;
-        goto got_result;
+            diff = DIFF_IMPOSSIBLE;
+            goto got_result;
         } else if (ret > 0) {
-        diff = max(diff, DIFF_SET);
-        goto cont;
+            diff = max(diff, DIFF_SET);
+            goto cont;
         }
 
         /*
@@ -2417,17 +2053,13 @@ static void solver(int cr, struct block_structure *blocks,
         for (i = 0; i < cr; i++)
         for (n = 1; n <= cr; n++)
             scratch->indexlist[i*cr+n-1] = cubepos2(diag1(i), n);
-            ret = solver_set(usage, scratch, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                 , "set elimination, /-diagonal"
-#endif
-                 );
+        ret = solver_set(usage, scratch, scratch->indexlist);
         if (ret < 0) {
-        diff = DIFF_IMPOSSIBLE;
-        goto got_result;
+            diff = DIFF_IMPOSSIBLE;
+            goto got_result;
         } else if (ret > 0) {
-        diff = max(diff, DIFF_SET);
-        goto cont;
+            diff = max(diff, DIFF_SET);
+            goto cont;
         }
     }
 
@@ -2441,17 +2073,13 @@ static void solver(int cr, struct block_structure *blocks,
         for (y = 0; y < cr; y++)
         for (x = 0; x < cr; x++)
             scratch->indexlist[y*cr+x] = cubepos(x, y, n);
-            ret = solver_set(usage, scratch, scratch->indexlist
-#ifdef STANDALONE_SOLVER
-                 , "positional set elimination, number %d", n
-#endif
-                 );
+        ret = solver_set(usage, scratch, scratch->indexlist);
         if (ret < 0) {
-        diff = DIFF_IMPOSSIBLE;
-        goto got_result;
+            diff = DIFF_IMPOSSIBLE;
+            goto got_result;
         } else if (ret > 0) {
-        diff = max(diff, DIFF_EXTREME);
-        goto cont;
+            diff = max(diff, DIFF_EXTREME);
+            goto cont;
         }
     }
 
@@ -2531,19 +2159,6 @@ static void solver(int cr, struct block_structure *blocks,
         if (cube(x,y,n))
             list[j++] = n;
 
-#ifdef STANDALONE_SOLVER
-        if (solver_show_working) {
-        const char *sep = "";
-        printf("%*srecursing on (%d,%d) [",
-               solver_recurse_depth*4, "", x + 1, y + 1);
-        for (i = 0; i < j; i++) {
-            printf("%s%d", sep, list[i]);
-            sep = " or ";
-        }
-        printf("]\n");
-        }
-#endif
-
         /*
          * And step along the list, recursing back into the
          * main solver at every stage.
@@ -2552,22 +2167,7 @@ static void solver(int cr, struct block_structure *blocks,
         memcpy(outgrid, ingrid, cr * cr);
         outgrid[y*cr+x] = list[i];
 
-#ifdef STANDALONE_SOLVER
-        if (solver_show_working)
-            printf("%*sguessing %d at (%d,%d)\n",
-               solver_recurse_depth*4, "", list[i], x + 1, y + 1);
-        solver_recurse_depth++;
-#endif
-
         solver(cr, blocks, kblocks, xtype, outgrid, kgrid, dlev);
-
-#ifdef STANDALONE_SOLVER
-        solver_recurse_depth--;
-        if (solver_show_working) {
-            printf("%*sretracting %d at (%d,%d)\n",
-               solver_recurse_depth*4, "", list[i], x + 1, y + 1);
-        }
-#endif
 
         /*
          * If we have our first solution, copy it into the
@@ -2616,15 +2216,6 @@ static void solver(int cr, struct block_structure *blocks,
     got_result:
     dlev->diff = diff;
     dlev->kdiff = kdiff;
-
-#ifdef STANDALONE_SOLVER
-    if (solver_show_working)
-    printf("%*s%s found\n",
-           solver_recurse_depth*4, "",
-           diff == DIFF_IMPOSSIBLE ? "no solution" :
-           diff == DIFF_AMBIGUOUS ? "multiple solutions" :
-           "one solution");
-#endif
 
     sfree(usage->sq2region);
     sfree(usage->regions);
@@ -3097,14 +2688,14 @@ static bool check_valid(int cr, struct block_structure *blocks,
         memset(used, 0, cr * sizeof(bool));
     for (i = 0; i < cr; i++)
         if (grid[diag0(i)] > 0 && grid[diag0(i)] <= cr)
-        used[grid[diag0(i)]-1] = true;
+            used[grid[diag0(i)]-1] = true;
     for (n = 0; n < cr; n++)
         if (!used[n]) {
-        sfree(used);
-        return false;
+            sfree(used);
+            return false;
         }
 
-        memset(used, 0, cr * sizeof(bool));
+    memset(used, 0, cr * sizeof(bool));
     for (i = 0; i < cr; i++)
         if (grid[diag1(i)] > 0 && grid[diag1(i)] <= cr)
         used[grid[diag1(i)]-1] = true;
@@ -3666,10 +3257,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     kblocks = NULL;
     kgrid = (params->killer) ? snewn(area, digit) : NULL;
 
-#ifdef STANDALONE_SOLVER
-    assert(!"This should never happen, so we don't need to create blocknames");
-#endif
-
     /*
      * Loop until we get a grid of the required difficulty. This is
      * nasty, but it seems to be unpleasantly hard to generate
@@ -4191,36 +3778,6 @@ static game_state *new_game(midend *me, const game_params *params,
     }
     assert(!*desc);
 
-#ifdef STANDALONE_SOLVER
-    /*
-     * Set up the block names for solver diagnostic output.
-     */
-    {
-    char *p = (char *)(state->blocks->blocknames + cr);
-
-    if (r == 1) {
-        for (i = 0; i < area; i++) {
-        int j = state->blocks->whichblock[i];
-        if (!state->blocks->blocknames[j]) {
-            state->blocks->blocknames[j] = p;
-            p += 1 + sprintf(p, "starting at (%d,%d)",
-                     1 + i%cr, 1 + i/cr);
-        }
-        }
-    } else {
-        int bx, by;
-        for (by = 0; by < r; by++)
-        for (bx = 0; bx < c; bx++) {
-            state->blocks->blocknames[by*c+bx] = p;
-            p += 1 + sprintf(p, "(%d,%d)", bx+1, by+1);
-        }
-    }
-    assert(p - (char *)state->blocks->blocknames < (int)(cr*(sizeof(char *)+80)));
-    for (i = 0; i < cr; i++)
-        assert(state->blocks->blocknames[i]);
-    }
-#endif
-
     return state;
 }
 
@@ -4491,7 +4048,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         n = button - 'a' + 10;
     if (button == CURSOR_SELECT2 || button == '\b')
         n = 0;
-        ui->hhint = 0;
+    ui->hhint = 0;
 
         /*
          * Can't overwrite this square. This can only happen here
@@ -4504,8 +4061,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
          * Can't make pencil marks in a filled square. Again, this
          * can only become highlighted if we're using cursor keys.
          */
-        if (ui->hpencil && state->grid[ui->hy*cr+ui->hx])
-            return NULL;
+    if (ui->hpencil && state->grid[ui->hy*cr+ui->hx])
+        return NULL;
 
     sprintf(buf, "%c%d,%d,%d",
         (char)(ui->hpencil && n > 0 ? 'P' : 'R'), ui->hx, ui->hy, n);
@@ -4684,45 +4241,22 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-
-    ret[COL_XDIAGONALS * 3 + 0] = 0.75F;
-    ret[COL_XDIAGONALS * 3 + 1] = 0.75F;
-    ret[COL_XDIAGONALS * 3 + 2] = 0.75F;
-
-    ret[COL_GRID * 3 + 0] = 0.0F;
-    ret[COL_GRID * 3 + 1] = 0.0F;
-    ret[COL_GRID * 3 + 2] = 0.0F;
-
-    ret[COL_CLUE * 3 + 0] = 0.0F;
-    ret[COL_CLUE * 3 + 1] = 0.0F;
-    ret[COL_CLUE * 3 + 2] = 0.0F;
-
-    ret[COL_USER * 3 + 0] = 0.0F;
-    ret[COL_USER * 3 + 1] = 0.0F;
-    ret[COL_USER * 3 + 2] = 0.0F;
-
-    ret[COL_HIGHLIGHT * 3 + 0] = 0.5F;
-    ret[COL_HIGHLIGHT * 3 + 1] = 0.5F;
-    ret[COL_HIGHLIGHT * 3 + 2] = 0.5F;
-
-    ret[COL_NUMHIGHLIGHT * 3 + 0] = 0.75F;
-    ret[COL_NUMHIGHLIGHT * 3 + 1] = 0.75F;
-    ret[COL_NUMHIGHLIGHT * 3 + 2] = 0.75F;
-
-    ret[COL_ERROR * 3 + 0] = 0.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
-
-    ret[COL_PENCIL * 3 + 0] = 0.0F;
-    ret[COL_PENCIL * 3 + 1] = 0.0F;
-    ret[COL_PENCIL * 3 + 2] = 0.0F;
-
-    ret[COL_KILLER * 3 + 0] = 0.5F;
-    ret[COL_KILLER * 3 + 1] = 0.5F;
-    ret[COL_KILLER * 3 + 2] = 0.5F;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND   * 3 + i] = 1.0F;
+        ret[COL_XDIAGONALS   * 3 + i] = 0.8F;
+        ret[COL_GRID         * 3 + i] = 0.0F;
+        ret[COL_CLUE         * 3 + i] = 0.0F;
+        ret[COL_USER         * 3 + i] = 0.0F;
+        ret[COL_HIGHLIGHT    * 3 + i] = 0.65F;
+        ret[COL_NUMHIGHLIGHT * 3 + i] = 0.5F;
+        ret[COL_ERROR        * 3 + i] = 0.0F;
+        ret[COL_PENCIL       * 3 + i] = 0.0F;
+        ret[COL_KILLER       * 3 + i] = 0.25F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -5186,9 +4720,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-    !oldstate->cheated && !newstate->cheated)
-        return FLASH_TIME;
     return 0.0F;
 }
 
@@ -5203,176 +4734,6 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return false;
     return true;
 }
-
-/*
- * Subfunction to draw the thick lines between cells. In order to do
- * this using the line-drawing rather than rectangle-drawing API (so
- * as to get line thicknesses to scale correctly) and yet have
- * correctly mitred joins between lines, we must do this by tracing
- * the boundary of each sub-block and drawing it in one go as a
- * single polygon.
- *
- * This subfunction is also reused with thinner dotted lines to
- * outline the Killer cages, this time offsetting the outline toward
- * the interior of the affected squares.
- */
-static void outline_block_structure(drawing *dr, game_drawstate *ds,
-                    const game_state *state,
-                    struct block_structure *blocks,
-                    int ink, int inset)
-{
-    int cr = state->cr;
-    int *coords;
-    int bi, i, n;
-    int x, y, dx, dy, sx, sy, sdx, sdy;
-
-    /*
-     * Maximum perimeter of a k-omino is 2k+2. (Proof: start
-     * with k unconnected squares, with total perimeter 4k.
-     * Now repeatedly join two disconnected components
-     * together into a larger one; every time you do so you
-     * remove at least two unit edges, and you require k-1 of
-     * these operations to create a single connected piece, so
-     * you must have at most 4k-2(k-1) = 2k+2 unit edges left
-     * afterwards.)
-     */
-    coords = snewn(4*cr+4, int);   /* 2k+2 points, 2 coords per point */
-
-    /*
-     * Iterate over all the blocks.
-     */
-    for (bi = 0; bi < blocks->nr_blocks; bi++) {
-    if (blocks->nr_squares[bi] == 0)
-        continue;
-
-    /*
-     * For each block, find a starting square within it
-     * which has a boundary at the left.
-     */
-    for (i = 0; i < cr; i++) {
-        int j = blocks->blocks[bi][i];
-        if (j % cr == 0 || blocks->whichblock[j-1] != bi)
-        break;
-    }
-    assert(i < cr); /* every block must have _some_ leftmost square */
-    x = blocks->blocks[bi][i] % cr;
-    y = blocks->blocks[bi][i] / cr;
-    dx = -1;
-    dy = 0;
-
-    /*
-     * Now begin tracing round the perimeter. At all
-     * times, (x,y) describes some square within the
-     * block, and (x+dx,y+dy) is some adjacent square
-     * outside it; so the edge between those two squares
-     * is always an edge of the block.
-     */
-    sx = x, sy = y, sdx = dx, sdy = dy;   /* save starting position */
-    n = 0;
-    do {
-        int cx, cy, tx, ty, nin;
-
-        /*
-         * Advance to the next edge, by looking at the two
-         * squares beyond it. If they're both outside the block,
-         * we turn right (by leaving x,y the same and rotating
-         * dx,dy clockwise); if they're both inside, we turn
-         * left (by rotating dx,dy anticlockwise and contriving
-         * to leave x+dx,y+dy unchanged); if one of each, we go
-         * straight on (and may enforce by assertion that
-         * they're one of each the _right_ way round).
-         */
-        nin = 0;
-        tx = x - dy + dx;
-        ty = y + dx + dy;
-        nin += (tx >= 0 && tx < cr && ty >= 0 && ty < cr &&
-            blocks->whichblock[ty*cr+tx] == bi);
-        tx = x - dy;
-        ty = y + dx;
-        nin += (tx >= 0 && tx < cr && ty >= 0 && ty < cr &&
-            blocks->whichblock[ty*cr+tx] == bi);
-        if (nin == 0) {
-        /*
-         * Turn right.
-         */
-        int tmp;
-        tmp = dx;
-        dx = -dy;
-        dy = tmp;
-        } else if (nin == 2) {
-        /*
-         * Turn left.
-         */
-        int tmp;
-
-        x += dx;
-        y += dy;
-
-        tmp = dx;
-        dx = dy;
-        dy = -tmp;
-
-        x -= dx;
-        y -= dy;
-        } else {
-        /*
-         * Go straight on.
-         */
-        x -= dy;
-        y += dx;
-        }
-
-        /*
-         * Now enforce by assertion that we ended up
-         * somewhere sensible.
-         */
-        assert(x >= 0 && x < cr && y >= 0 && y < cr &&
-           blocks->whichblock[y*cr+x] == bi);
-        assert(x+dx < 0 || x+dx >= cr || y+dy < 0 || y+dy >= cr ||
-           blocks->whichblock[(y+dy)*cr+(x+dx)] != bi);
-
-        /*
-         * Record the point we just went past at one end of the
-         * edge. To do this, we translate (x,y) down and right
-         * by half a unit (so they're describing a point in the
-         * _centre_ of the square) and then translate back again
-         * in a manner rotated by dy and dx.
-         */
-        assert(n < 2*cr+2);
-        cx = ((2*x+1) + dy + dx) / 2;
-        cy = ((2*y+1) - dx + dy) / 2;
-        coords[2*n+0] = BORDER + cx * TILE_SIZE;
-        coords[2*n+1] = BORDER + cy * TILE_SIZE;
-        coords[2*n+0] -= dx * inset;
-        coords[2*n+1] -= dy * inset;
-        if (nin == 0) {
-        /*
-         * We turned right, so inset this corner back along
-         * the edge towards the centre of the square.
-         */
-        coords[2*n+0] -= dy * inset;
-        coords[2*n+1] += dx * inset;
-        } else if (nin == 2) {
-        /*
-         * We turned left, so inset this corner further
-         * _out_ along the edge into the next square.
-         */
-        coords[2*n+0] += dy * inset;
-        coords[2*n+1] -= dx * inset;
-        }
-        n++;
-
-    } while (x != sx || y != sy || dx != sdx || dy != sdy);
-
-    /*
-     * That's our polygon; now draw it.
-     */
-    draw_polygon(dr, coords, n, -1, ink);
-    }
-
-    sfree(coords);
-}
-
 
 #ifdef COMBINED
 #define thegame solo

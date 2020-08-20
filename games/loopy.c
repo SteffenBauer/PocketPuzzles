@@ -26,31 +26,31 @@
  *    faces, you figure out the state of the line between a pair
  *    once their relative insideness is known.
  *     + The way I envisage this working is simply to keep an edsf
- * 	 of all _faces_, which indicates whether they're on
- * 	 opposite sides of the loop from one another. We also
- * 	 include a special entry in the edsf for the infinite
- * 	 exterior "face".
+ *      of all _faces_, which indicates whether they're on
+ *      opposite sides of the loop from one another. We also
+ *      include a special entry in the edsf for the infinite
+ *      exterior "face".
  *     + So, the simple way to do this is to just go through the
- * 	 edges: every time we see an edge in a state other than
- * 	 LINE_UNKNOWN which separates two faces that aren't in the
- * 	 same edsf class, we can rectify that by merging the
- * 	 classes. Then, conversely, an edge in LINE_UNKNOWN state
- * 	 which separates two faces that _are_ in the same edsf
- * 	 class can immediately have its state determined.
+ *      edges: every time we see an edge in a state other than
+ *      LINE_UNKNOWN which separates two faces that aren't in the
+ *      same edsf class, we can rectify that by merging the
+ *      classes. Then, conversely, an edge in LINE_UNKNOWN state
+ *      which separates two faces that _are_ in the same edsf
+ *      class can immediately have its state determined.
  *     + But you can go one better, if you're prepared to loop
- * 	 over all _pairs_ of edges. Suppose we have edges A and B,
- * 	 which respectively separate faces A1,A2 and B1,B2.
- * 	 Suppose that A,B are in the same edge-edsf class and that
- * 	 A1,B1 (wlog) are in the same face-edsf class; then we can
- * 	 immediately place A2,B2 into the same face-edsf class (as
- * 	 each other, not as A1 and A2) one way round or the other.
- * 	 And conversely again, if A1,B1 are in the same face-edsf
- * 	 class and so are A2,B2, then we can put A,B into the same
- * 	 face-edsf class.
- * 	  * Of course, this deduction requires a quadratic-time
- * 	    loop over all pairs of edges in the grid, so it should
- * 	    be reserved until there's nothing easier left to be
- * 	    done.
+ *      over all _pairs_ of edges. Suppose we have edges A and B,
+ *      which respectively separate faces A1,A2 and B1,B2.
+ *      Suppose that A,B are in the same edge-edsf class and that
+ *      A1,B1 (wlog) are in the same face-edsf class; then we can
+ *      immediately place A2,B2 into the same face-edsf class (as
+ *      each other, not as A1 and A2) one way round or the other.
+ *      And conversely again, if A1,B1 are in the same face-edsf
+ *      class and so are A2,B2, then we can put A,B into the same
+ *      face-edsf class.
+ *       * Of course, this deduction requires a quadratic-time
+ *         loop over all pairs of edges in the grid, so it should
+ *         be reserved until there's nothing easier left to be
+ *         done.
  * 
  *  - The generalised grid support has made me (SGT) notice a
  *    possible extension to the loop-avoidance code. When you have
@@ -480,14 +480,9 @@ static game_params *default_params(void)
 {
     game_params *ret = snew(game_params);
 
-#ifdef SLOW_SYSTEM
     ret->h = 7;
-    ret->w = 7;
-#else
-    ret->h = 10;
-    ret->w = 10;
-#endif
-    ret->diff = DIFF_EASY;
+    ret->w = 6;
+    ret->diff = DIFF_NORMAL;
     ret->type = 0;
 
     return ret;
@@ -502,15 +497,19 @@ static game_params *dup_params(const game_params *params)
 }
 
 static const game_params loopy_presets_top[] = {
-    {  7,  7, DIFF_EASY,   LOOPY_GRID_SQUARE },
-    { 10, 10, DIFF_EASY,   LOOPY_GRID_SQUARE },
-    {  7,  7, DIFF_NORMAL, LOOPY_GRID_SQUARE },
-    { 10, 10, DIFF_NORMAL, LOOPY_GRID_SQUARE },
-    {  7,  7, DIFF_HARD,   LOOPY_GRID_SQUARE },
-    { 10, 10, DIFF_HARD,   LOOPY_GRID_SQUARE },
-    {  7,  7, DIFF_HARD,   LOOPY_GRID_HONEYCOMB },
-    {  9,  9, DIFF_HARD,   LOOPY_GRID_CAIRO },
-    {  5,  5, DIFF_HARD,   LOOPY_GRID_FLORET },
+    {  6,  7, DIFF_EASY,   LOOPY_GRID_SQUARE },
+    {  6,  7, DIFF_NORMAL, LOOPY_GRID_SQUARE },
+    {  6,  7, DIFF_HARD,   LOOPY_GRID_SQUARE },
+    {  6,  6, DIFF_NORMAL, LOOPY_GRID_HONEYCOMB },
+    {  6,  6, DIFF_HARD,   LOOPY_GRID_HONEYCOMB },
+    {  4,  5, DIFF_NORMAL, LOOPY_GRID_CAIRO },
+    {  4,  5, DIFF_HARD,   LOOPY_GRID_CAIRO },
+    {  8, 10, DIFF_NORMAL, LOOPY_GRID_SQUARE },
+    {  8, 10, DIFF_HARD,   LOOPY_GRID_SQUARE },
+    {  8,  8, DIFF_NORMAL, LOOPY_GRID_HONEYCOMB },
+    {  8,  8, DIFF_HARD,   LOOPY_GRID_HONEYCOMB },
+    {  6,  7, DIFF_NORMAL, LOOPY_GRID_CAIRO },
+    {  6,  7, DIFF_HARD,   LOOPY_GRID_CAIRO },
 };
 
 
@@ -531,7 +530,7 @@ static void preset_menu_add_preset_with_title(struct preset_menu *menu,
 
 static struct preset_menu *game_preset_menu(void)
 {
-    struct preset_menu *top, *more;
+    struct preset_menu *top;
     int i;
 
     top = preset_menu_new();
@@ -630,10 +629,10 @@ static const char *validate_params(const game_params *params, bool full)
     if (params->type < 0 || params->type >= NUM_GRID_TYPES)
         return "Illegal grid type";
     if (params->w < grid_size_limits[params->type].amin ||
-	params->h < grid_size_limits[params->type].amin)
+    params->h < grid_size_limits[params->type].amin)
         return grid_size_limits[params->type].aerr;
     if (params->w < grid_size_limits[params->type].omin &&
-	params->h < grid_size_limits[params->type].omin)
+    params->h < grid_size_limits[params->type].omin)
         return grid_size_limits[params->type].oerr;
 
     /*
@@ -782,12 +781,12 @@ static char *encode_solve_move(const game_state *state)
 
     for (i = 0; i < num_edges; i++) {
         switch (state->lines[i]) {
-	  case LINE_YES:
-	    p += sprintf(p, "%dy", i);
-	    break;
-	  case LINE_NO:
-	    p += sprintf(p, "%dn", i);
-	    break;
+      case LINE_YES:
+        p += sprintf(p, "%dy", i);
+        break;
+      case LINE_NO:
+        p += sprintf(p, "%dn", i);
+        break;
         }
     }
 
@@ -843,43 +842,20 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
 
-    ret[COL_FOREGROUND * 3 + 0] = 0.0F;
-    ret[COL_FOREGROUND * 3 + 1] = 0.0F;
-    ret[COL_FOREGROUND * 3 + 2] = 0.0F;
-
-    /*
-     * We want COL_LINEUNKNOWN to be a yellow which is a bit darker
-     * than the background. (I previously set it to 0.8,0.8,0, but
-     * found that this went badly with the 0.8,0.8,0.8 favoured as a
-     * background by the Java frontend.)
-     */
-    ret[COL_LINEUNKNOWN * 3 + 0] = 0.8F;
-    ret[COL_LINEUNKNOWN * 3 + 1] = 0.8F;
-    ret[COL_LINEUNKNOWN * 3 + 2] = 0.8F;
-
-    ret[COL_HIGHLIGHT * 3 + 0] = 1.0F;
-    ret[COL_HIGHLIGHT * 3 + 1] = 1.0F;
-    ret[COL_HIGHLIGHT * 3 + 2] = 1.0F;
-
-    ret[COL_MISTAKE * 3 + 0] = 0.5F;
-    ret[COL_MISTAKE * 3 + 1] = 0.5F;
-    ret[COL_MISTAKE * 3 + 2] = 0.5F;
-
-    ret[COL_SATISFIED * 3 + 0] = 0.0F;
-    ret[COL_SATISFIED * 3 + 1] = 0.0F;
-    ret[COL_SATISFIED * 3 + 2] = 0.0F;
-
-    /* We want the faint lines to be a bit darker than the background.
-     * Except if the background is pretty dark already; then it ought to be a
-     * bit lighter.  Oy vey.
-     */
-    ret[COL_FAINT * 3 + 0] = 0.9F;
-    ret[COL_FAINT * 3 + 1] = 0.9F;
-    ret[COL_FAINT * 3 + 2] = 0.9F;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND  * 3 + i] = 1.0F;
+        ret[COL_FOREGROUND  * 3 + i] = 0.0F;
+        ret[COL_LINEUNKNOWN * 3 + i] = 0.75F;
+        ret[COL_HIGHLIGHT   * 3 + i] = 1.0F;
+        ret[COL_MISTAKE     * 3 + i] = 0.25F;
+        ret[COL_SATISFIED   * 3 + i] = 0.9F;
+        ret[COL_FAINT       * 3 + i] = 1.0F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -929,10 +905,6 @@ static float game_anim_length(const game_state *oldstate,
                               const game_state *newstate, int dir, game_ui *ui)
 {
     return 0.0F;
-}
-
-static bool game_can_format_as_text_now(const game_params *params) {
-    return false;
 }
 
 /* ----------------------------------------------------------------------
@@ -1313,7 +1285,7 @@ static game_state *new_game(midend *me, const game_params *params,
         n2 = *dp - 'A' + 10;
         if (n >= 0 && n < 10) {
             state->clues[i] = n;
-	} else if (n2 >= 10 && n2 < 36) {
+    } else if (n2 >= 10 && n2 < 36) {
             state->clues[i] = n2;
         } else {
             n = *dp - 'a' + 1;
@@ -1781,17 +1753,17 @@ static int parity_deductions(solver_state *sstate,
         can[2] = edsf_canonify(linedsf, e[2], inv+2);
         if (can[0] == can[1]) {
             if (solver_set_line(sstate, e[2], (total_parity^inv[0]^inv[1]) ?
-				LINE_YES : LINE_NO))
+                LINE_YES : LINE_NO))
                 diff = min(diff, DIFF_EASY);
         }
         if (can[0] == can[2]) {
             if (solver_set_line(sstate, e[1], (total_parity^inv[0]^inv[2]) ?
-				LINE_YES : LINE_NO))
+                LINE_YES : LINE_NO))
                 diff = min(diff, DIFF_EASY);
         }
         if (can[1] == can[2]) {
             if (solver_set_line(sstate, e[0], (total_parity^inv[1]^inv[2]) ?
-				LINE_YES : LINE_NO))
+                LINE_YES : LINE_NO))
                 diff = min(diff, DIFF_EASY);
         }
     } else if (unknown_count == 4) {
@@ -2425,7 +2397,7 @@ static int linedsf_deductions(solver_state *sstate)
             }
             /* Infer linedsf from dline flags */
             if (is_atmostone(dlines, dline_index)
-		&& is_atleastone(dlines, dline_index)) {
+        && is_atleastone(dlines, dline_index)) {
                 if (merge_lines(sstate, line1_index, line2_index, true))
                     diff = min(diff, DIFF_HARD);
             }
@@ -2583,7 +2555,7 @@ static int loop_deductions(solver_state *sstate)
                     sm1_nearby++;
             }
             if (sm1clues == sm1_nearby &&
-		sm1clues + satclues == clues) {
+        sm1clues + satclues == clues) {
                 val = LINE_YES;  /* loop is good! */
             }
         }
@@ -2748,40 +2720,40 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     switch (button) {
       case LEFT_BUTTON:
-	switch (old_state) {
-	  case LINE_UNKNOWN:
-	    button_char = 'y';
-	    break;
-	  case LINE_YES:
+    switch (old_state) {
+      case LINE_UNKNOWN:
+        button_char = 'y';
+        break;
+      case LINE_YES:
 #ifdef STYLUS_BASED
-	    button_char = 'n';
-	    break;
+        button_char = 'n';
+        break;
 #endif
-	  case LINE_NO:
-	    button_char = 'u';
-	    break;
-	}
-	break;
+      case LINE_NO:
+        button_char = 'u';
+        break;
+    }
+    break;
       case MIDDLE_BUTTON:
-	button_char = 'u';
-	break;
+    button_char = 'u';
+    break;
       case RIGHT_BUTTON:
-	switch (old_state) {
-	  case LINE_UNKNOWN:
-	    button_char = 'n';
-	    break;
-	  case LINE_NO:
+    switch (old_state) {
+      case LINE_UNKNOWN:
+        button_char = 'n';
+        break;
+      case LINE_NO:
 #ifdef STYLUS_BASED
-	    button_char = 'y';
-	    break;
+        button_char = 'y';
+        break;
 #endif
-	  case LINE_YES:
-	    button_char = 'u';
-	    break;
-	}
-	break;
+      case LINE_YES:
+        button_char = 'u';
+        break;
+    }
+    break;
       default:
-	return NULL;
+    return NULL;
     }
 
     movelen = 0;
@@ -2879,17 +2851,17 @@ static game_state *execute_move(const game_state *state, const char *move)
             goto fail;
         move += strspn(move, "1234567890");
         switch (*(move++)) {
-	  case 'y':
-	    newstate->lines[i] = LINE_YES;
-	    break;
-	  case 'n':
-	    newstate->lines[i] = LINE_NO;
-	    break;
-	  case 'u':
-	    newstate->lines[i] = LINE_UNKNOWN;
-	    break;
-	  default:
-	    goto fail;
+      case 'y':
+        newstate->lines[i] = LINE_YES;
+        break;
+      case 'n':
+        newstate->lines[i] = LINE_NO;
+        break;
+      case 'u':
+        newstate->lines[i] = LINE_UNKNOWN;
+        break;
+      default:
+        goto fail;
         }
     }
 
@@ -2967,7 +2939,7 @@ static void face_text_bbox(game_drawstate *ds, grid *g, grid_face *f,
 }
 
 static void game_redraw_clue(drawing *dr, game_drawstate *ds,
-			     const game_state *state, int i)
+                 const game_state *state, int i)
 {
     grid *g = state->game_grid;
     grid_face *f = g->faces + i;
@@ -2977,11 +2949,16 @@ static void game_redraw_clue(drawing *dr, game_drawstate *ds,
     sprintf(c, "%d", state->clues[i]);
 
     face_text_pos(ds, g, f, &x, &y);
+
+    draw_rect(dr, x-ds->tilesize/4, y-ds->tilesize/4, ds->tilesize/2, ds->tilesize/2, 
+            ds->clue_error[i]     ? COL_MISTAKE : 
+            ds->clue_satisfied[i] ? COL_SATISFIED: 
+                                    COL_BACKGROUND);
     draw_text(dr, x, y,
-	      FONT_VARIABLE, ds->tilesize/2,
-	      ALIGN_VCENTRE | ALIGN_HCENTRE,
-	      ds->clue_error[i] ? COL_MISTAKE :
-	      ds->clue_satisfied[i] ? COL_SATISFIED : COL_FOREGROUND, c);
+          FONT_VARIABLE, ds->tilesize/2,
+          ALIGN_VCENTRE | ALIGN_HCENTRE,
+          ds->clue_error[i] ? COL_BACKGROUND :
+          ds->clue_satisfied[i] ? COL_FOREGROUND : COL_FOREGROUND, c);
 }
 
 static void edge_bbox(game_drawstate *ds, grid *g, grid_edge *e,
@@ -3025,12 +3002,46 @@ static const int loopy_line_redraw_phases[] = {
 };
 #define NPHASES lenof(loopy_line_redraw_phases)
 
+static void draw_dotted_vertical_line(drawing *dr, int x, int y, int w, int h, int colour) {
+    int i;
+    int STEP=8;
+
+    for (i=0;i<STEP;i+=2) {
+        draw_rect(dr, x, y+ i   *h/STEP, w, h/STEP, colour);
+        draw_rect(dr, x, y+(i+1)*h/STEP, w, h/STEP, COL_BACKGROUND);
+    }
+}
+static void draw_dotted_horizontal_line(drawing *dr, int x, int y, int w, int h, int colour) {
+    int i;
+    int STEP=8;
+
+    for (i=0;i<STEP;i+=2) {
+        draw_rect(dr, x+ i   *w/STEP, y, w/STEP, h, colour);
+        draw_rect(dr, x+(i+1)*w/STEP, y, w/STEP, h, COL_BACKGROUND);
+    }
+}
+
+static void draw_dotted_line(drawing *dr, int x1, int y1, int x2, int y2, int colour) {
+    int i, w, h;
+    int STEP=8;
+    float ws, hs;
+
+    w = x2-x1;
+    h = y2-y1;
+    ws = (int)((float)w/(float)STEP);
+    hs = (int)((float)h/(float)STEP);
+    for (i=0;i<STEP;i+=2) {
+        draw_thick_line(dr, 5.0, x1+ i   *ws, y1+ i   * hs, x1+(i+1)*ws, y1+(i+1)*hs, colour);
+        draw_thick_line(dr, 5.0, x1+(i+1)*ws, y1+(i+1)* hs, x1+(i+2)*ws, y1+(i+2)*hs, COL_BACKGROUND);
+    }
+}
+
 static void game_redraw_line(drawing *dr, game_drawstate *ds,
-			     const game_state *state, int i, int phase)
+                 const game_state *state, int i, int phase)
 {
     grid *g = state->game_grid;
     grid_edge *e = g->edges + i;
-    int x1, x2, y1, y2, j;
+    int x1, x2, y1, y2;
     int line_colour;
 
     if (state->line_errors[i])                line_colour = COL_MISTAKE;
@@ -3050,22 +3061,40 @@ static void game_redraw_line(drawing *dr, game_drawstate *ds,
     } 
     else {
         if (x1 == x2) {
-            for (j=-2;j<3;j++) {
-                draw_line(dr, x1+j, y1, x2+j, y2, line_colour);
-            }
+            if (y1 < y2)
+                if (state->line_errors[i])
+                    draw_dotted_vertical_line(dr, x1-2, y1, 5, y2-y1, line_colour); 
+                else
+                    draw_rect(dr, x1-2, y1, 5, y2-y1, line_colour);
+            else
+                if (state->line_errors[i])
+                    draw_dotted_vertical_line(dr, x1-2, y2, 5, y1-y2, line_colour); 
+                else
+                    draw_rect(dr, x1-2, y2, 5, y1-y2, line_colour);
         }
         else if (y1 == y2) {
-            for (j=-2;j<3;j++) {
-                draw_line(dr, x1, y1+j, x2, y2+j, line_colour);
-            }
+            if (x1 < x2)
+                if (state->line_errors[i])
+                    draw_dotted_horizontal_line(dr, x1, y1-2, x2-x1, 5, line_colour);
+                else
+                    draw_rect(dr, x1, y1-2, x2-x1, 5, line_colour);
+            else
+                if (state->line_errors[i])
+                    draw_dotted_horizontal_line(dr, x2, y1-2, x1-x2, 5, line_colour);    
+                else
+                    draw_rect(dr, x2, y1-2, x1-x2, 5, line_colour);
         }
-        else
-            draw_thick_line(dr, 5.0, x1 + 0.5, y1 + 0.5, x2 + 0.5, y2 + 0.5, line_colour);
+        else {
+            if (state->line_errors[i])
+                draw_dotted_line(dr, x1, y1, x2, y2, line_colour);
+            else
+                draw_thick_line(dr, 5.0, x1 + 0.5, y1 + 0.5, x2 + 0.5, y2 + 0.5, line_colour);
+        }
     }
 }
 
 static void game_redraw_dot(drawing *dr, game_drawstate *ds,
-			    const game_state *state, int i)
+                const game_state *state, int i)
 {
     grid *g = state->game_grid;
     grid_dot *d = g->dots + i;
@@ -3126,7 +3155,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime)
 {
-#define REDRAW_OBJECTS_LIMIT 16		/* Somewhat arbitrary tradeoff */
+#define REDRAW_OBJECTS_LIMIT 16        /* Somewhat arbitrary tradeoff */
 
     grid *g = state->game_grid;
     int border = BORDER(ds->tilesize);
@@ -3163,7 +3192,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      */
 
     if (!ds->started) {
-	redraw_everything = true;
+    redraw_everything = true;
         /*
          * But we must still go through the upcoming loops, so that we
          * set up stuff in ds correctly for the initial redraw.
@@ -3269,23 +3298,23 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                             0, 0, w + 2*border + 1, h + 2*border + 1);
     } else {
 
-	/* Right.  Now we roll up our sleeves. */
+    /* Right.  Now we roll up our sleeves. */
 
-	for (i = 0; i < nfaces; i++) {
-	    grid_face *f = g->faces + faces[i];
-	    int x, y, w, h;
+    for (i = 0; i < nfaces; i++) {
+        grid_face *f = g->faces + faces[i];
+        int x, y, w, h;
 
             face_text_bbox(ds, g, f, &x, &y, &w, &h);
             game_redraw_in_rect(dr, ds, state, x, y, w, h);
-	}
+    }
 
-	for (i = 0; i < nedges; i++) {
-	    grid_edge *e = g->edges + edges[i];
+    for (i = 0; i < nedges; i++) {
+        grid_edge *e = g->edges + edges[i];
             int x, y, w, h;
 
             edge_bbox(ds, g, e, &x, &y, &w, &h);
             game_redraw_in_rect(dr, ds, state, x, y, w, h);
-	}
+    }
     }
 
     ds->started = true;
@@ -3342,6 +3371,6 @@ const struct game thegame = {
     false, false, NULL, NULL,
     false /* wants_statusbar */,
     false, game_timing_state,
-    0,                                       /* mouse_priorities */
+    REQUIRE_RBUTTON,                                       /* mouse_priorities */
 };
 
