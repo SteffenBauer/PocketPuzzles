@@ -5,6 +5,7 @@
 
 #include "inkview.h"
 #include "frontend/chooser.h"
+#include "frontend/gamelist.h"
 
 void chooserTap(int x, int y) {
     init_tap_x = x;
@@ -139,6 +140,8 @@ static void chooserSetupChooserButtons() {
     int col = chooser_cols;
     int row = chooser_rows;
 
+    btn_chooser = malloc(num_games * sizeof(BUTTON));
+
     for(i=0;i<num_games;i++) {
         p = i / (col*row);
         pi = i % (col*row);
@@ -148,6 +151,8 @@ static void chooserSetupChooserButtons() {
         btn_chooser[i].posy = 50 + chooserlayout.maincanvas.starty + r*(20+32+chooserlayout.chooser_size);
         btn_chooser[i].page = p;
         btn_chooser[i].size = chooserlayout.chooser_size;
+        btn_chooser[i].bitmap = mygames[i].bitmap;
+        btn_chooser[i].thegame = mygames[i].thegame;
     }
 }
 
@@ -184,7 +189,7 @@ void chooserShowPage() {
 void chooserInit() {
     num_games = 0;
     while (true) {
-        if (btn_chooser[num_games].type == BTN_NULL) break;
+        if (mygames[num_games].thegame == NULL) break;
         num_games++;
     }
     current_chooserpage = 0;
