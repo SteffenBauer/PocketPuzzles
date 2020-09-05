@@ -53,6 +53,11 @@ typedef struct button {
     const struct game *thegame;
 } BUTTON;
 
+typedef struct gameinfo {
+    ibitmap *bitmap;
+    const struct game *thegame;
+} GAMEINFO;
+
 bool coord_in_button(int x, int y, BUTTON *button);
 bool release_button(int x, int y, BUTTON *button);
 void button_to_normal(BUTTON *button, bool update);
