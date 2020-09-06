@@ -28,7 +28,7 @@ mkdir build
 make
 ```
 
-When everything compiles successfully, you find `build/puzzles.app` in the build directory. Copy this to the folder `/applications` on your device. Reboot if necessary after transfer.
+When everything compiles successfully, you find `build/SGTPuzzles.app` in the build directory. Copy this to the folder `/applications` on your device. Reboot if necessary after transfer.
 
 Tested only on the **PocketBook Touch HD 3**, because that is the device I own. Could possibly also work on other devices with firmware 5 or higher.
 
@@ -56,10 +56,10 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 - [ ] Implement help screen
 - [ ] Ability to mark games as favorite
 - [ ] Screen orientation handling
-- [ ] Better color palette for greyscale screen
-- [ ] Better error visualization suitable for greyscale screen
+- [ ] Better color palette for greyscale screen (see ToDo.md)
+- [ ] Better error visualization suitable for greyscale screen (see ToDo.md)
 - [X] Handling of physical device buttons
-- [ ] Modify games with dragging for better handling of eInk screen limitations
+- [ ] Modify games with dragging for better handling of eInk screen limitations (see ToDo.md)
 - [ ] Implement left->right->empty cycle on left-click for all games
 
 ### MIT License

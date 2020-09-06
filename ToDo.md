@@ -30,7 +30,8 @@
 - [ ] Flip: Remove animation
 - [ ] Fifteen: Remove animation
 - [ ] Flood: Add color fill pattern
-- [ ] Inertia: Remove animation
+- [X] Inertia: Remove animation
+- [ ] Inertia: Adjust colors, thicker grid lines, modify gem icons
 - [ ] Map: Remove drag animation
 - [ ] Map: Color fill pattern?
 - [ ] Net: Remove animation

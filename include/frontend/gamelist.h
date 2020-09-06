@@ -42,7 +42,7 @@ static GAMEINFO mygames[] = {
     { &game_group,    &group},
 //    { &game_guess,    &guess},
 
-//    { &game_inertia,  &inertia},
+    { &game_inertia,  &inertia},
     { &game_keen,     &keen},
     { &game_lightup,  &lightup},
     { &game_loopy,    &loopy},
