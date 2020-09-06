@@ -13,7 +13,7 @@
 
 #define PREFERRED_TILE_SIZE 48
 #define TILE_SIZE (ds->tilesize)
-#define BLITTER_SIZE TILE_SIZE
+/* #define BLITTER_SIZE TILE_SIZE */
 #define BORDER    (TILE_SIZE / 2)
 
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
@@ -43,7 +43,6 @@ struct game_params {
 };
 
 enum { DIR_N = 0, DIR_NE, DIR_E, DIR_SE, DIR_S, DIR_SW, DIR_W, DIR_NW, DIR_MAX };
-static const char *dirstrings[8] = { "N ", "NE", "E ", "SE", "S ", "SW", "W ", "NW" };
 
 static const int dxs[DIR_MAX] = {  0,  1, 1, 1, 0, -1, -1, -1 };
 static const int dys[DIR_MAX] = { -1, -1, 0, 1, 1,  1,  0, -1 };
@@ -198,76 +197,6 @@ static void makelink(game_state *state, int from, int to)
     state->prev[to] = from;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    if (params->w * params->h >= 100) return false;
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int len = state->h * 2 * (4*state->w + 1) + state->h + 2;
-    int x, y, i, num, n, set;
-    char *ret, *p;
-
-    p = ret = snewn(len, char);
-
-    for (y = 0; y < state->h; y++) {
-        for (x = 0; x < state->h; x++) {
-            i = y*state->w+x;
-            *p++ = dirstrings[state->dirs[i]][0];
-            *p++ = dirstrings[state->dirs[i]][1];
-            *p++ = (state->flags[i] & FLAG_IMMUTABLE) ? 'I' : ' ';
-            *p++ = ' ';
-        }
-        *p++ = '\n';
-        for (x = 0; x < state->h; x++) {
-            i = y*state->w+x;
-            num = state->nums[i];
-            if (num == 0) {
-                *p++ = ' ';
-                *p++ = ' ';
-                *p++ = ' ';
-            } else {
-                n = num % (state->n+1);
-                set = num / (state->n+1);
-
-                assert(n <= 99); /* two digits only! */
-
-                if (set != 0)
-                    *p++ = set+'a'-1;
-
-                *p++ = (n >= 10) ? ('0' + (n/10)) : ' ';
-                *p++ = '0' + (n%10);
-
-                if (set == 0)
-                    *p++ = ' ';
-            }
-            *p++ = ' ';
-        }
-        *p++ = '\n';
-        *p++ = '\n';
-    }
-    *p++ = '\0';
-
-    return ret;
-}
-
-static void debug_state(const char *desc, game_state *state)
-{
-#ifdef DEBUGGING
-    char *dbg;
-    if (state->n >= 100) {
-        debug(("[ no game_text_format for this size ]"));
-        return;
-    }
-    dbg = game_text_format(state);
-    debug(("%s\n%s", desc, dbg));
-    sfree(dbg);
-#endif
-}
-
-
 static void strip_nums(game_state *state) {
     int i;
     for (i = 0; i < state->n; i++) {
@@ -303,7 +232,8 @@ static bool check_nums(game_state *orig, game_state *copy, bool only_immutable)
 static game_params *default_params(void)
 {
     game_params *ret = snew(game_params);
-    ret->w = ret->h = 4;
+    ret->w = 4;
+    ret->h = 5;
     ret->force_corner_start = true;
 
     return ret;
@@ -311,11 +241,12 @@ static game_params *default_params(void)
 
 static const struct game_params signpost_presets[] = {
   { 4, 4, 1 },
-  { 4, 4, 0 },
-  { 5, 5, 1 },
-  { 5, 5, 0 },
-  { 6, 6, 1 },
-  { 7, 7, 1 }
+  { 4, 5, 1 },
+  { 4, 5, 0 },
+  { 5, 6, 1 },
+  { 5, 6, 0 },
+  { 6, 7, 0 },
+  { 7, 8, 0 }
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -345,7 +276,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -422,9 +353,9 @@ static const char *validate_params(const game_params *params, bool full)
     if (params->w < 1) return "Width must be at least one";
     if (params->h < 1) return "Height must be at least one";
     if (full && params->w == 1 && params->h == 1)
-	/* The UI doesn't let us move these from unsolved to solved,
-	 * so we disallow generating (but not playing) them. */
-	return "Width and height cannot both be one";
+    /* The UI doesn't let us move these from unsolved to solved,
+     * so we disallow generating (but not playing) them. */
+    return "Width and height cannot both be one";
     return NULL;
 }
 
@@ -639,7 +570,7 @@ static bool new_game_fill(game_state *state, random_state *rs,
             an = cell_adj(state, headi, aidx, adir);
         } while (an == 1);
 
-	if (nfilled == state->n) break;
+    if (nfilled == state->n) break;
 
         /* Try and expand _to_ taili; keep going if there's only one
          * place to go to. */
@@ -756,7 +687,6 @@ static bool new_game_strip(game_state *state, random_state *rs)
         copy->nums[j] = state->nums[j];
         copy->flags[j] |= FLAG_IMMUTABLE;
         state->flags[j] |= FLAG_IMMUTABLE;
-        debug_state("Copy of state: ", copy);
         strip_nums(copy);
         if (solve_state(copy) > 0) goto solved;
         assert(check_nums(state, copy, true));
@@ -799,7 +729,7 @@ done:
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     game_state *state = blank_game(params->w, params->h);
     char *ret;
@@ -823,8 +753,6 @@ generate:
             } while (headi == taili);
         }
     } while (!new_game_fill(state, rs, headi, taili));
-
-    debug_state("Filled game:", state);
 
     assert(state->nums[headi] <= state->n);
     assert(state->nums[taili] <= state->n);
@@ -1320,8 +1248,6 @@ static int solve_state(game_state *state)
     game_state *copy = dup_game(state);
     int *scratch = snewn(state->n, int), ret;
 
-    debug_state("Before solver: ", state);
-
     while (1) {
         update_numbers(state);
 
@@ -1338,7 +1264,6 @@ static int solve_state(game_state *state)
     ret = state->impossible ? -1 : check_completion(state, false);
     debug(("Solver finished: %s",
            ret < 0 ? "impossible" : ret > 0 ? "solved" : "not solved"));
-    debug_state("After solver: ", state);
     return ret;
 }
 
@@ -1429,9 +1354,9 @@ struct game_drawstate {
     unsigned int *f;
     double angle_offset;
 
-    bool dragging;
+/*    bool dragging;
     int dx, dy;
-    blitter *dragb;
+    blitter *dragb; */
 };
 
 static char *interpret_move(const game_state *state, game_ui *ui,
@@ -1441,40 +1366,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     int x = FROMCOORD(mx), y = FROMCOORD(my), w = state->w;
     char buf[80];
 
-    if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->cx, &ui->cy, state->w, state->h, false);
-        ui->cshow = true;
-        if (ui->dragging) {
-            ui->dx = COORD(ui->cx) + TILE_SIZE/2;
-            ui->dy = COORD(ui->cy) + TILE_SIZE/2;
-        }
-        return UI_UPDATE;
-    } else if (IS_CURSOR_SELECT(button)) {
-        if (!ui->cshow)
-            ui->cshow = true;
-        else if (ui->dragging) {
-            ui->dragging = false;
-            if (ui->sx == ui->cx && ui->sy == ui->cy) return UI_UPDATE;
-            if (ui->drag_is_from) {
-                if (!isvalidmove(state, false, ui->sx, ui->sy, ui->cx, ui->cy))
-                    return UI_UPDATE;
-                sprintf(buf, "L%d,%d-%d,%d", ui->sx, ui->sy, ui->cx, ui->cy);
-            } else {
-                if (!isvalidmove(state, false, ui->cx, ui->cy, ui->sx, ui->sy))
-                    return UI_UPDATE;
-                sprintf(buf, "L%d,%d-%d,%d", ui->cx, ui->cy, ui->sx, ui->sy);
-            }
-            return dupstr(buf);
-        } else {
-            ui->dragging = true;
-            ui->sx = ui->cx;
-            ui->sy = ui->cy;
-            ui->dx = COORD(ui->cx) + TILE_SIZE/2;
-            ui->dy = COORD(ui->cy) + TILE_SIZE/2;
-            ui->drag_is_from = (button == CURSOR_SELECT);
-        }
-        return UI_UPDATE;
-    }
     if (IS_MOUSE_DOWN(button)) {
         if (ui->cshow) {
             ui->cshow = false;
@@ -1483,20 +1374,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         assert(!ui->dragging);
         if (!INGRID(state, x, y)) return NULL;
 
-        if (button == LEFT_BUTTON) {
-            /* disallow dragging from the final number. */
-            if ((state->nums[y*w+x] == state->n) &&
-                (state->flags[y*w+x] & FLAG_IMMUTABLE))
-                return NULL;
-        } else if (button == RIGHT_BUTTON) {
-            /* disallow dragging to the first number. */
-            if ((state->nums[y*w+x] == 1) &&
-                (state->flags[y*w+x] & FLAG_IMMUTABLE))
-                return NULL;
-        }
-
         ui->dragging = true;
-        ui->drag_is_from = (button == LEFT_BUTTON);
+        ui->drag_is_from = true;
         ui->sx = x;
         ui->sy = y;
         ui->dx = mx;
@@ -1571,9 +1450,9 @@ static game_state *execute_move(const game_state *state, const char *move)
 
     if (move[0] == 'S') {
         game_params p;
-	game_state *tmp;
+        game_state *tmp;
         const char *valid;
-	int i;
+        int i;
 
         p.w = state->w; p.h = state->h;
         valid = validate_desc(&p, move+1);
@@ -1581,13 +1460,13 @@ static game_state *execute_move(const game_state *state, const char *move)
             debug(("execute_move: move not valid: %s", valid));
             return NULL;
         }
-	ret = dup_game(state);
+        ret = dup_game(state);
         tmp = new_game(NULL, &p, move+1);
-	for (i = 0; i < state->n; i++) {
-	    ret->prev[i] = tmp->prev[i];
-	    ret->next[i] = tmp->next[i];
-	}
-	free_game(tmp);
+        for (i = 0; i < state->n; i++) {
+            ret->prev[i] = tmp->prev[i];
+            ret->next[i] = tmp->next[i];
+        }
+        free_game(tmp);
         ret->used_solve = true;
     } else if (sscanf(move, "L%d,%d-%d,%d", &sx, &sy, &ex, &ey) == 4) {
         if (!isvalidmove(state, false, sx, sy, ex, ey)) return NULL;
@@ -1657,8 +1536,8 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
     ds->tilesize = tilesize;
     assert(TILE_SIZE > 0);
 
-    assert(!ds->dragb);
-    ds->dragb = blitter_new(dr, BLITTER_SIZE, BLITTER_SIZE);
+/*    assert(!ds->dragb);
+    ds->dragb = blitter_new(dr, BLITTER_SIZE, BLITTER_SIZE); */
 }
 
 /* Colours chosen from the webby palette to work as a background to black text,
@@ -1666,14 +1545,14 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
  * between consecutive pairs to give another 8 (and then the drawing routine
  * will reuse backgrounds). */
 static const unsigned long bgcols[8] = {
-    0xffffff, /* white */
-    0xffa07a, /* lightsalmon */
-    0x98fb98, /* green */
-    0x7fffd4, /* aquamarine */
-    0x9370db, /* medium purple */
-    0xffa500, /* orange */
-    0x87cefa, /* lightskyblue */
-    0xffff00, /* yellow */
+    0xeeeeee,
+    0x999999,
+    0xbbbbbb,
+    0x777777,
+    0xcccccc,
+    0x666666,
+    0xaaaaaa,
+    0x888888,
 };
 
 static float *game_colours(frontend *fe, int *ncolours)
@@ -1684,22 +1563,23 @@ static float *game_colours(frontend *fe, int *ncolours)
     game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
 
     for (i = 0; i < 3; i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
         ret[COL_NUMBER * 3 + i] = 0.0F;
         ret[COL_ARROW * 3 + i] = 0.0F;
         ret[COL_CURSOR * 3 + i] = ret[COL_BACKGROUND * 3 + i] / 2.0F;
-        ret[COL_GRID * 3 + i] = ret[COL_BACKGROUND * 3 + i] / 1.3F;
+        ret[COL_GRID * 3 + i] = 0.25F;
     }
-    ret[COL_NUMBER_SET * 3 + 0] = 0.0F;
-    ret[COL_NUMBER_SET * 3 + 1] = 0.0F;
-    ret[COL_NUMBER_SET * 3 + 2] = 0.9F;
+    ret[COL_NUMBER_SET * 3 + 0] = 0.25F;
+    ret[COL_NUMBER_SET * 3 + 1] = 0.25F;
+    ret[COL_NUMBER_SET * 3 + 2] = 0.25F;
 
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
+    ret[COL_ERROR * 3 + 0] = 0.8F;
+    ret[COL_ERROR * 3 + 1] = 0.8F;
+    ret[COL_ERROR * 3 + 2] = 0.8F;
 
-    ret[COL_DRAG_ORIGIN * 3 + 0] = 0.2F;
-    ret[COL_DRAG_ORIGIN * 3 + 1] = 1.0F;
-    ret[COL_DRAG_ORIGIN * 3 + 2] = 0.2F;
+    ret[COL_DRAG_ORIGIN * 3 + 0] = 0.75F;
+    ret[COL_DRAG_ORIGIN * 3 + 1] = 0.75F;
+    ret[COL_DRAG_ORIGIN * 3 + 2] = 0.75F;
 
     for (c = 0; c < 8; c++) {
          ret[(COL_B0 + c) * 3 + 0] = (float)((bgcols[c] & 0xff0000) >> 16) / 256.0F;
@@ -1715,16 +1595,16 @@ static float *game_colours(frontend *fe, int *ncolours)
 
 #define average(r,a,b,w) do { \
     for (i = 0; i < 3; i++) \
-	ret[(r)*3+i] = ret[(a)*3+i] + w * (ret[(b)*3+i] - ret[(a)*3+i]); \
+    ret[(r)*3+i] = ret[(a)*3+i] + w * (ret[(b)*3+i] - ret[(a)*3+i]); \
 } while (0)
     average(COL_ARROW_BG_DIM, COL_BACKGROUND, COL_ARROW, 0.1F);
     average(COL_NUMBER_SET_MID, COL_B0, COL_NUMBER_SET, 0.3F);
     for (c = 0; c < NBACKGROUNDS; c++) {
-	/* I assume here that COL_ARROW and COL_NUMBER are the same.
-	 * Otherwise I'd need two sets of COL_M*. */
-	average(COL_M0 + c, COL_B0 + c, COL_NUMBER, 0.3F);
-	average(COL_D0 + c, COL_B0 + c, COL_NUMBER, 0.1F);
-	average(COL_X0 + c, COL_BACKGROUND, COL_B0 + c, 0.5F);
+    /* I assume here that COL_ARROW and COL_NUMBER are the same.
+     * Otherwise I'd need two sets of COL_M*. */
+    average(COL_M0 + c, COL_B0 + c, COL_NUMBER, 0.3F);
+    average(COL_D0 + c, COL_B0 + c, COL_NUMBER, 0.1F);
+    average(COL_X0 + c, COL_BACKGROUND, COL_B0 + c, 0.5F);
     }
 
     *ncolours = NCOLOURS;
@@ -1753,11 +1633,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     }
 
     ds->angle_offset = 0.0F;
-
-    ds->dragging = false;
-    ds->dx = ds->dy = 0;
-    ds->dragb = NULL;
-
     return ds;
 }
 
@@ -1766,7 +1641,6 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
     sfree(ds->nums);
     sfree(ds->dirp);
     sfree(ds->f);
-    if (ds->dragb) blitter_free(dr, ds->dragb);
 
     sfree(ds);
 }
@@ -1776,7 +1650,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 static void draw_arrow(drawing *dr, int cx, int cy, int sz, double ang,
                        int cfill, int cout)
 {
-    int coords[14];
+    int coords[8];
     int xdx, ydx, xdy, ydy, xdx3, xdy3;
     double s = sin(ang), c = cos(ang);
 
@@ -1787,23 +1661,23 @@ static void draw_arrow(drawing *dr, int cx, int cy, int sz, double ang,
     ydx = -xdy;
     ydy = xdx;
 
-
     coords[2*0 + 0] = cx - ydx;
     coords[2*0 + 1] = cy - ydy;
     coords[2*1 + 0] = cx + xdx;
     coords[2*1 + 1] = cy + xdy;
-    coords[2*2 + 0] = cx + xdx3;
-    coords[2*2 + 1] = cy + xdy3;
-    coords[2*3 + 0] = cx + xdx3 + ydx;
-    coords[2*3 + 1] = cy + xdy3 + ydy;
-    coords[2*4 + 0] = cx - xdx3 + ydx;
-    coords[2*4 + 1] = cy - xdy3 + ydy;
-    coords[2*5 + 0] = cx - xdx3;
-    coords[2*5 + 1] = cy - xdy3;
-    coords[2*6 + 0] = cx - xdx;
-    coords[2*6 + 1] = cy - xdy;
+    coords[2*2 + 0] = cx - xdx;
+    coords[2*2 + 1] = cy - xdy;
+    draw_polygon(dr, coords, 3, cfill, cout);
 
-    draw_polygon(dr, coords, 7, cfill, cout);
+    coords[2*0 + 0] = cx + xdx3;
+    coords[2*0 + 1] = cy + xdy3;
+    coords[2*1 + 0] = cx + xdx3 + ydx;
+    coords[2*1 + 1] = cy + xdy3 + ydy;
+    coords[2*2 + 0] = cx - xdx3 + ydx;
+    coords[2*2 + 1] = cy - xdy3 + ydy;
+    coords[2*3 + 0] = cx - xdx3;
+    coords[2*3 + 1] = cy - xdy3;
+    draw_polygon(dr, coords, 4, cfill, cout);
 }
 
 static void draw_arrow_dir(drawing *dr, int cx, int cy, int sz, int dir,
@@ -1822,17 +1696,34 @@ static void draw_star(drawing *dr, int cx, int cy, int rad, int npoints,
 
     assert(npoints > 0);
 
-    coords = snewn(npoints * 2 * 2, int);
+    coords = snewn(npoints * 2, int);
 
-    for (n = 0; n < npoints * 2; n++) {
-        a = 2.0 * PI * ((double)n / ((double)npoints * 2.0)) + angle_offset;
-        r = (n % 2) ? (double)rad/2.0 : (double)rad;
-
-        /* We're rotating the point at (0, -r) by a degrees */
+    for (n = 0; n < npoints; n++) {
+        a = 2.0 * PI * ((double)n / ((double)npoints)) + angle_offset;
+        r = (double)rad/2.0;
         coords[2*n+0] = cx + (int)( r * sin(a));
         coords[2*n+1] = cy + (int)(-r * cos(a));
     }
-    draw_polygon(dr, coords, npoints*2, cfill, cout);
+    draw_polygon(dr, coords, npoints, cfill, cout);
+
+    for (n = 0; n < npoints; n++) {
+        a = 2.0 * PI * ((double)n / ((double)npoints)) + angle_offset;
+        r = (double)rad;
+        coords[0] = cx + (int)( r * sin(a));
+        coords[1] = cy + (int)(-r * cos(a));
+
+        a = 2.0 * PI * ((double)(n-1) / ((double)npoints)) + angle_offset;
+        r = (double)rad/2.0;
+        coords[2] = cx + (int)( r * sin(a));
+        coords[3] = cy + (int)(-r * cos(a));
+
+        a = 2.0 * PI * ((double)(n+1) / ((double)npoints)) + angle_offset;
+        r = (double)rad/2.0;
+        coords[4] = cx + (int)( r * sin(a));
+        coords[5] = cy + (int)(-r * cos(a));
+        draw_polygon(dr, coords, 3, cfill, cout);
+    }
+
     sfree(coords);
 }
 
@@ -1879,14 +1770,14 @@ static void tile_redraw(drawing *dr, game_drawstate *ds, int tx, int ty,
     /* Calculate colours. */
 
     if (print_ink >= 0) {
-	/*
-	 * We're printing, so just do everything in black.
-	 */
-	arrowcol = textcol = print_ink;
-	setcol = sarrowcol = -1;       /* placate optimiser */
+    /*
+     * We're printing, so just do everything in black.
+     */
+    arrowcol = textcol = print_ink;
+    setcol = sarrowcol = -1;       /* placate optimiser */
     } else {
 
-	setcol = empty ? COL_BACKGROUND : num2col(ds, num);
+    setcol = empty ? COL_BACKGROUND : num2col(ds, num);
 
 #define dim(fg,bg) ( \
       (bg)==COL_BACKGROUND ? COL_ARROW_BG_DIM : \
@@ -1903,31 +1794,31 @@ static void tile_redraw(drawing *dr, game_drawstate *ds, int tx, int ty,
       (bg) + COL_X0 - COL_B0 \
     )
 
-	if (f & F_DRAG_SRC) arrowcol = COL_DRAG_ORIGIN;
-	else if (f & F_DIM) arrowcol = dim(COL_ARROW, setcol);
-	else if (f & F_ARROW_POINT) arrowcol = mid(COL_ARROW, setcol);
-	else arrowcol = COL_ARROW;
+    if (f & F_DRAG_SRC) arrowcol = COL_DRAG_ORIGIN;
+    else if (f & F_DIM) arrowcol = dim(COL_ARROW, setcol);
+    else if (f & F_ARROW_POINT) arrowcol = mid(COL_ARROW, setcol);
+    else arrowcol = COL_ARROW;
 
-	if ((f & F_ERROR) && !(f & F_IMMUTABLE)) textcol = COL_ERROR;
-	else {
-	    if (f & F_IMMUTABLE) textcol = COL_NUMBER_SET;
-	    else textcol = COL_NUMBER;
+    if ((f & F_ERROR) && !(f & F_IMMUTABLE)) textcol = COL_ERROR;
+    else {
+        if (f & F_IMMUTABLE) textcol = COL_NUMBER;
+        else textcol = COL_NUMBER;
 
-	    if (f & F_DIM) textcol = dim(textcol, setcol);
-	    else if (((f & F_ARROW_POINT) || num==ds->n) &&
-		     ((f & F_ARROW_INPOINT) || num==1))
-		textcol = mid(textcol, setcol);
-	}
+        if (f & F_DIM) textcol = dim(textcol, setcol);
+        else if (((f & F_ARROW_POINT) || num==ds->n) &&
+             ((f & F_ARROW_INPOINT) || num==1))
+        textcol = mid(textcol, setcol);
+    }
 
-	if (f & F_DIM) sarrowcol = dim(COL_ARROW, setcol);
-	else sarrowcol = COL_ARROW;
+    if (f & F_DIM) sarrowcol = dim(COL_ARROW, setcol);
+    else sarrowcol = COL_ARROW;
     }
 
     /* Clear tile background */
 
     if (print_ink < 0) {
-	draw_rect(dr, tx, ty, TILE_SIZE, TILE_SIZE,
-		  (f & F_DIM) ? dimbg(setcol) : setcol);
+        draw_rect(dr, tx, ty, TILE_SIZE, TILE_SIZE,
+          (f & F_DIM) ? dimbg(setcol) : setcol);
     }
 
     /* Draw large (outwards-pointing) arrow. */
@@ -1946,12 +1837,12 @@ static void tile_redraw(drawing *dr, game_drawstate *ds, int tx, int ty,
     /* Draw dot iff this tile requires a predecessor and doesn't have one. */
 
     if (print_ink < 0) {
-	acx = tx+TILE_SIZE/2-asz;
-	acy = ty+TILE_SIZE/2+asz;
+    acx = tx+TILE_SIZE/2-asz;
+    acy = ty+TILE_SIZE/2+asz;
 
-	if (!(f & F_ARROW_INPOINT) && num != 1) {
-	    draw_circle(dr, acx, acy, asz / 4, sarrowcol, sarrowcol);
-	}
+    if (!(f & F_ARROW_INPOINT) && num != 1) {
+        draw_circle(dr, acx, acy, asz / 4, sarrowcol, sarrowcol);
+    }
     }
 
     /* Draw text (number or set). */
@@ -1986,80 +1877,27 @@ static void tile_redraw(drawing *dr, game_drawstate *ds, int tx, int ty,
     }
 
     if (print_ink < 0) {
-	draw_rect_outline(dr, tx, ty, TILE_SIZE, TILE_SIZE, COL_GRID);
-	draw_update(dr, tx, ty, TILE_SIZE, TILE_SIZE);
+    draw_rect_outline(dr, tx, ty, TILE_SIZE, TILE_SIZE, COL_GRID);
+    draw_update(dr, tx, ty, TILE_SIZE, TILE_SIZE);
     }
 }
-
-static void draw_drag_indicator(drawing *dr, game_drawstate *ds,
-                                const game_state *state, const game_ui *ui,
-                                bool validdrag)
-{
-    int dir, w = ds->w, acol = COL_ARROW;
-    int fx = FROMCOORD(ui->dx), fy = FROMCOORD(ui->dy);
-    double ang;
-
-    if (validdrag) {
-        /* If we could move here, lock the arrow to the appropriate direction. */
-        dir = ui->drag_is_from ? state->dirs[ui->sy*w+ui->sx] : state->dirs[fy*w+fx];
-
-        ang = (2.0 * PI * dir) / 8.0; /* similar to calculation in draw_arrow_dir. */
-    } else {
-        /* Draw an arrow pointing away from/towards the origin cell. */
-        int ox = COORD(ui->sx) + TILE_SIZE/2, oy = COORD(ui->sy) + TILE_SIZE/2;
-        double tana, offset;
-        double xdiff = abs(ox - ui->dx), ydiff = abs(oy - ui->dy);
-
-        if (xdiff == 0) {
-            ang = (oy > ui->dy) ? 0.0F : PI;
-        } else if (ydiff == 0) {
-            ang = (ox > ui->dx) ? 3.0F*PI/2.0F : PI/2.0F;
-        } else {
-            if (ui->dx > ox && ui->dy < oy) {
-                tana = xdiff / ydiff;
-                offset = 0.0F;
-            } else if (ui->dx > ox && ui->dy > oy) {
-                tana = ydiff / xdiff;
-                offset = PI/2.0F;
-            } else if (ui->dx < ox && ui->dy > oy) {
-                tana = xdiff / ydiff;
-                offset = PI;
-            } else {
-                tana = ydiff / xdiff;
-                offset = 3.0F * PI / 2.0F;
-            }
-            ang = atan(tana) + offset;
-        }
-
-        if (!ui->drag_is_from) ang += PI; /* point to origin, not away from. */
-
-    }
-    draw_arrow(dr, ui->dx, ui->dy, ARROW_HALFSZ, ang, acol, acol);
-}
-
 static void game_redraw(drawing *dr, game_drawstate *ds,
                         const game_state *oldstate, const game_state *state,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime)
 {
-    int x, y, i, w = ds->w, dirp;
+    int x, y, xd, yd, i, w = ds->w, dirp;
     bool force = false;
     unsigned int f;
     double angle_offset = 0.0;
     game_state *postdrop = NULL;
+    xd = FROMCOORD(ui->dx); yd = FROMCOORD(ui->dy);
 
     if (flashtime > 0.0F)
         angle_offset = 2.0 * PI * (flashtime / FLASH_SPIN);
     if (angle_offset != ds->angle_offset) {
         ds->angle_offset = angle_offset;
         force = true;
-    }
-
-    if (ds->dragging) {
-        assert(ds->dragb);
-        blitter_load(dr, ds->dragb, ds->dx, ds->dy);
-        draw_update(dr, ds->dx, ds->dy, BLITTER_SIZE, BLITTER_SIZE);
-        ds->dragging = false;
     }
 
     /* If an in-progress drag would make a valid move if finished, we
@@ -2097,11 +1935,11 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             if (ui->dragging) {
                 if (x == ui->sx && y == ui->sy)
                     f |= F_DRAG_SRC;
-                else if (ui->drag_is_from) {
-                    if (!ispointing(state, ui->sx, ui->sy, x, y))
+                else if (ui->drag_is_from && !(x == xd && y == yd)) {
+                    if (!ispointing(state, x, y, ui->sx, ui->sy)) 
                         f |= F_DIM;
                 } else {
-                    if (!ispointing(state, x, y, ui->sx, ui->sy))
+                    if (!ispointing(state, ui->sx, ui->sy, x, y)) 
                         f |= F_DIM;
                 }
             }
@@ -2159,14 +1997,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             }
         }
     }
-    if (ui->dragging) {
-        ds->dragging = true;
-        ds->dx = ui->dx - BLITTER_SIZE/2;
-        ds->dy = ui->dy - BLITTER_SIZE/2;
-        blitter_save(dr, ds->dragb, ds->dx, ds->dy);
 
-        draw_drag_indicator(dr, ds, state, ui, postdrop != NULL);
-    }
     if (postdrop) free_game(postdrop);
     if (!ds->started) ds->started = true;
 }
@@ -2180,11 +2011,7 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed &&
-        newstate->completed && !newstate->used_solve)
-        return FLASH_SPIN;
-    else
-        return 0.0F;
+    return 0.0F;
 }
 
 static int game_status(const game_state *state)
@@ -2195,47 +2022,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    game_compute_size(params, 1300, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int ink = print_mono_colour(dr, 0);
-    int x, y;
-
-    /* Fake up just enough of a drawstate */
-    game_drawstate ads, *ds = &ads;
-    ds->tilesize = tilesize;
-    ds->n = state->n;
-
-    /*
-     * Border and grid.
-     */
-    print_line_width(dr, TILE_SIZE / 40);
-    for (x = 1; x < state->w; x++)
-	draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(state->h), ink);
-    for (y = 1; y < state->h; y++)
-	draw_line(dr, COORD(0), COORD(y), COORD(state->w), COORD(y), ink);
-    print_line_width(dr, 2*TILE_SIZE / 40);
-    draw_rect_outline(dr, COORD(0), COORD(0), TILE_SIZE*state->w,
-		      TILE_SIZE*state->h, ink);
-
-    /*
-     * Arrows and numbers.
-     */
-    print_line_width(dr, 0);
-    for (y = 0; y < state->h; y++)
-	for (x = 0; x < state->w; x++)
-	    tile_redraw(dr, ds, COORD(x), COORD(y), state->dirs[y*state->w+x],
-			0, state->nums[y*state->w+x], 0, 0.0, ink);
 }
 
 #ifdef COMBINED
@@ -2258,7 +2044,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -2275,9 +2061,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
-    false,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    false,                 /* wants_statusbar */
     false, game_timing_state,
-    REQUIRE_RBUTTON,		       /* flags */
+    0,       /* flags */
 };
 

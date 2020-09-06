@@ -15,7 +15,7 @@
 - [ ] Spokes: Better error display
 - [ ] Towers: Persist pencil marker
 - [ ] Tracks: Background color on circular error
-- [ ] Undead: Ghost lines, Different monster colors
+- [X] Undead: Ghost lines, Different monster colors, fix ghost polygon error
 - [X] Undead: Stronger monster outlines
 - [X] Tents: Change error for tree without tent
 - [X] Palisade: Thicker lines / dotted lines on error
@@ -39,7 +39,7 @@
 - [ ] Pegs: Remove blitter drag
 - [ ] Rome: Change to highlight / highlight clue; add up/down/left/right buttons
 - [ ] Samegame: Add color fill pattern
-- [ ] Signpost: Remove blitter drag
+- [X] Signpost: Remove blitter drag. Adjust colors. Modify left/right click behavior. Fix polygon error.
 - [ ] Sixteen: Remove animation
 - [ ] Twiddle: Remove animation
 

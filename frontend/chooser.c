@@ -39,12 +39,14 @@ void chooserRelease(int x, int y) {
     for (i=0;i<num_games;i++) {
         if (coord_in_button(init_tap_x, init_tap_y, &btn_chooser[i])) {
             button_to_normal(&btn_chooser[i], true);
-            switchToGame(btn_chooser[i].thegame);
+            gameInit(btn_chooser[i].thegame);
+            showGameScreen();
             return;
         }
     }
 
     if (release_button(x, y, &btn_home)) {
+        chooserExit();
         exitApp();
     }
     else if (release_button(x, y, &btn_draw)) {
@@ -77,11 +79,9 @@ void chooserNext() {
 }
 
 static void chooserDrawChooserButtons(int page) {
-    ifont *font;
     int i;
     FillArea(0, chooserlayout.maincanvas.starty, ScreenWidth(), chooserlayout.maincanvas.height, 0x00FFFFFF);
-    font = OpenFont("LiberationSans-Bold", 32, 0);
-    SetFont(font, BLACK);
+    SetFont(chooserfont, BLACK);
     for(i=0;i<num_games;i++) {
         if (btn_chooser[i].page == page) {
             btn_chooser[i].active = true;
@@ -95,7 +95,6 @@ static void chooserDrawChooserButtons(int page) {
             btn_chooser[i].active = false;
         }
     }
-    CloseFont(font);
 }
 
 static void chooserDrawControlButtons(int page) {
@@ -121,17 +120,14 @@ static void chooserDrawControlButtons(int page) {
 }
 
 static void chooserDrawMenu() {
-    ifont *font;
     FillArea(0, chooserlayout.menu.starty, ScreenWidth(), chooserlayout.menu.height, 0x00FFFFFF);
     FillArea(0, chooserlayout.menu.starty + chooserlayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
     button_to_normal(&btn_home, false);
     button_to_normal(&btn_draw, false);
 
-    font = OpenFont("LiberationSans-Bold", 32, 0);
-    SetFont(font, BLACK);
+    SetFont(chooserfont, BLACK);
     DrawTextRect(0, (chooserlayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, "PUZZLES", ALIGN_CENTER);
-    CloseFont(font);
 }
 
 static void chooserSetupChooserButtons() {
@@ -187,6 +183,8 @@ void chooserShowPage() {
 }
 
 void chooserInit() {
+    chooserfont = OpenFont("LiberationSans-Bold", 32, 0);
+
     num_games = 0;
     while (true) {
         if (mygames[num_games].thegame == NULL) break;
@@ -204,4 +202,7 @@ void chooserInit() {
     chooserSetupControlButtons();
 }
 
-
+void chooserExit() {
+    free(btn_chooser);
+    CloseFont(chooserfont);
+}

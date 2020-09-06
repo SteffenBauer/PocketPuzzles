@@ -6,7 +6,7 @@
 #include "inkview.h"
 #include "frontend/main.h"
 
-void switchToChooser() {
+void showChooserScreen() {
     SCREEN.currentScreen = SCREEN_CHOOSER;
     SCREEN.tap           = &chooserTap;
     SCREEN.long_tap      = &chooserLongTap;
@@ -18,7 +18,7 @@ void switchToChooser() {
     chooserShowPage();
 }
 
-void switchToGame(const struct game *thegame) {
+void showGameScreen() {
     SCREEN.currentScreen = SCREEN_GAME;
     SCREEN.tap           = &gameTap;
     SCREEN.long_tap      = &gameLongTap;
@@ -27,7 +27,6 @@ void switchToGame(const struct game *thegame) {
     SCREEN.prev          = &gamePrev;
     SCREEN.next          = &gameNext;
 
-    gameInit(thegame);
     gameShowPage();
     FullUpdate();
 }
@@ -35,7 +34,7 @@ void switchToGame(const struct game *thegame) {
 static void setupApp() {
     SetPanelType(PANEL_ENABLED);
     chooserInit();
-    switchToChooser();
+    showChooserScreen();
 }
 
 void exitApp() {

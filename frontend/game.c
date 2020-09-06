@@ -306,7 +306,7 @@ void gameMenuHandler(int index) {
             Message(ICON_WARNING, "", "Help not implemented yet!", 3000);
             break;
         case 199:
-            gameExitPage();
+            gameExit();
             exitApp();
             break;
         default:
@@ -465,8 +465,8 @@ void gameRelease(int x, int y) {
     }
 
     if (release_button(x, y, &btn_back)) {
-        gameExitPage();
-        switchToChooser();
+        gameExit();
+        showChooserScreen();
         return;
     }
     else if (release_button(x, y, &btn_draw)) {
@@ -530,14 +530,11 @@ void gameNext() {
 }
 
 static void gameDrawStatusBar() {
-    ifont *font;
     char buf[256];
     gameSetupStatusBar();
     sprintf(buf, "%s                               ", fe->statustext);
-    font = OpenFont("LiberationSans-Bold", 32, 0);
-    SetFont(font, BLACK);
+    SetFont(gamefont, BLACK);
     DrawString(10, fe->gamelayout.statusbar.starty+8, buf);
-    CloseFont(font);
 }
 
 static void gameDrawControlButtons() {
@@ -554,7 +551,6 @@ static void gameDrawControlButtons() {
 }
 
 static void gameDrawMenu() {
-    ifont *font;
     FillArea(0, fe->gamelayout.menu.starty, ScreenWidth(), fe->gamelayout.menu.height, 0x00FFFFFF);
     FillArea(0, fe->gamelayout.menu.starty + fe->gamelayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
@@ -563,10 +559,8 @@ static void gameDrawMenu() {
     button_to_normal(&btn_game, false);
     button_to_normal(&btn_type, false);
 
-    font = OpenFont("LiberationSans-Bold", 32, 0);
-    SetFont(font, BLACK);
+    SetFont(gamefont, BLACK);
     DrawTextRect(0, (fe->gamelayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, currentgame->name, ALIGN_CENTER);
-    CloseFont(font);
 }
 static void gameSetupStatusBar() {
     FillArea(0, fe->gamelayout.statusbar.starty, ScreenWidth(), fe->gamelayout.statusbar.height, 0x00FFFFFF);
@@ -629,7 +623,8 @@ static void gameSetupControlButtons() {
     }
 }
 
-static void gameExitPage() {
+static void gameExit() {
+    CloseFont(gamefont);
     SetClipRect(&fe->cliprect);
     deactivate_timer(fe);
     free(typeMenu);
@@ -666,6 +661,7 @@ void gameShowPage() {
 }
 
 void gameInit(const struct game *thegame) {
+    gamefont = OpenFont("LiberationSans-Bold", 32, 0);
     currentgame = thegame;
     fe = snew(frontend);
     me = midend_new(fe, thegame, &ink_drawing, fe);

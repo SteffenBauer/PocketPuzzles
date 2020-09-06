@@ -2512,9 +2512,9 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_ERROR      * 3 + i] = 0.5F;
         ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
         ret[COL_FLASH      * 3 + i] = 1.0F;
-        ret[COL_GHOST      * 3 + i] = 0.9F;
+        ret[COL_GHOST      * 3 + i] = 1.0F;
         ret[COL_VAMPIRE    * 3 + i] = 0.9F;
-        ret[COL_ZOMBIE     * 3 + i] = 0.9F;
+        ret[COL_ZOMBIE     * 3 + i] = 0.7F;
         ret[COL_DONE       * 3 + i] = 0.75F;
     }
 
@@ -2615,30 +2615,55 @@ static void draw_monster(drawing *dr, game_drawstate *ds, int x, int y,
     int thc = 3;
 
     if (monster == 1) {                /* ghost */
-        int poly[80], i, j;
+        int poly[80], i;
         int s = 2*tilesize/5;
         
         clip(dr,x-(tilesize/2)+2,y-(tilesize/2)+2,tilesize-3,tilesize/2+1);
-        draw_circle(dr,x,y,s+1, black, black);
+        draw_circle(dr,x,y,s+2, black, black);
         draw_circle(dr,x,y,s-1, COL_GHOST,black);
         unclip(dr);
 
         clip(dr,x-(tilesize/2)+2,y,tilesize-3,tilesize-(tilesize/2)-1);
 
         i=0;
-        poly[i++] = x-s      ; poly[i++] = y-2;     poly[i++] = x-s;     ; poly[i++] = y+s;
-        poly[i++] = x-s+0*s/3; poly[i++] = y+s;     poly[i++] = x-s+1*s/3; poly[i++] = y+s-s/3;
-        poly[i++] = x-s+1*s/3; poly[i++] = y+s-s/3; poly[i++] = x-s+2*s/3; poly[i++] = y+s;
-        poly[i++] = x-s+2*s/3; poly[i++] = y+s;     poly[i++] = x-s+3*s/3; poly[i++] = y+s-s/3;
-        poly[i++] = x-s+3*s/3; poly[i++] = y+s-s/3; poly[i++] = x-s+4*s/3; poly[i++] = y+s;
-        poly[i++] = x-s+4*s/3; poly[i++] = y+s;     poly[i++] = x-s+5*s/3; poly[i++] = y+s-s/3;
-        poly[i++] = x-s+5*s/3; poly[i++] = y+s-s/3; poly[i++] = x-s+6*s/3; poly[i++] = y+s;
-        poly[i++] = x+s+1    ; poly[i++] = y+s;     poly[i++] = x+s+1    ; poly[i++] = y-2;
-
+        poly[i++] = x-s      ; poly[i++] = y-2;
+        poly[i++] = x-s;     ; poly[i++] = y+s-s/3;
+        poly[i++] = x+s+1    ; poly[i++] = y+s-s/3;
+        poly[i++] = x+s+1    ; poly[i++] = y-2;
         draw_polygon(dr, poly, i/2, COL_GHOST, COL_GHOST);
 
-        for (j=0;j<i;j+=4)
-            draw_thick_line(dr, thl, poly[j], poly[j+1], poly[j+2], poly[j+3], black);
+        i=0;
+        poly[i++] = x-s;     ; poly[i++] = y+s-s/3;
+        poly[i++] = x-s;     ; poly[i++] = y+s;
+        poly[i++] = x-s+1*s/3; poly[i++] = y+s-s/3;
+        draw_polygon(dr, poly, i/2, COL_GHOST, COL_GHOST);
+
+        i=0;
+        poly[i++] = x-s+1*s/3; poly[i++] = y+s-s/3;
+        poly[i++] = x-s+2*s/3; poly[i++] = y+s;
+        poly[i++] = x-s+3*s/3; poly[i++] = y+s-s/3;
+        draw_polygon(dr, poly, i/2, COL_GHOST, COL_GHOST);
+
+        i=0;
+        poly[i++] = x-s+3*s/3; poly[i++] = y+s-s/3;
+        poly[i++] = x-s+4*s/3; poly[i++] = y+s;
+        poly[i++] = x-s+5*s/3; poly[i++] = y+s-s/3;
+        draw_polygon(dr, poly, i/2, COL_GHOST, COL_GHOST);
+
+        i=0;
+        poly[i++] = x-s+5*s/3; poly[i++] = y+s-s/3;
+        poly[i++] = x-s+6*s/3; poly[i++] = y+s;
+        poly[i++] = x+s+1;     poly[i++] = y-2;
+        draw_polygon(dr, poly, i/2, COL_GHOST, COL_GHOST);
+        
+        draw_thick_line(dr, thl+0.5, x-s, y-2, x-s, y+s, black);
+        draw_thick_line(dr, thl+0.5, x-s,       y+s,     x-s+1*s/3, y+s-s/3, black);
+        draw_thick_line(dr, thl+0.5, x-s+1*s/3, y+s-s/3, x-s+2*s/3, y+s, black);
+        draw_thick_line(dr, thl+0.5, x-s+2*s/3, y+s,     x-s+3*s/3, y+s-s/3, black);
+        draw_thick_line(dr, thl+0.5, x-s+3*s/3, y+s-s/3, x-s+4*s/3, y+s, black);
+        draw_thick_line(dr, thl+0.5, x-s+4*s/3, y+s,     x-s+5*s/3, y+s-s/3, black);
+        draw_thick_line(dr, thl+0.5, x-s+5*s/3, y+s-s/3, x-s+6*s/3, y+s, black);
+        draw_thick_line(dr, thl+0.5, x-s+6*s/3, y+s,     x+s+1,     y-2, black);
 
         unclip(dr);
 
