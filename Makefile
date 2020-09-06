@@ -17,10 +17,10 @@ FRONTENDHDRS := $(wildcard include/frontend/*.h)
 
 HEADERS := $(wildcard include /*.h)
 
-all: build/puzzles.app
+all: build/SGTPuzzles.app
 
-build/puzzles.app: icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS)
-	LC_ALL=C $(CC) -s icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS) -I./include -o build/puzzles.app $(CFLAGS)
+build/SGTPuzzles.app: icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS)
+	LC_ALL=C $(CC) -s icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS) -I./include -o build/SGTPuzzles.app $(CFLAGS)
 
 icons/icons.c: ./icons/*.bmp
 	LC_ALL=C $(PBRES) -c ./icons/icons.c -4 ./icons/*.bmp
