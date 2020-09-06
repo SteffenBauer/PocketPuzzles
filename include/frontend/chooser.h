@@ -13,6 +13,7 @@ static int control_num = 2;
 static int control_padding;
 static int chooser_padding;
 
+ifont *chooserfont;
 extern ibitmap icon_home, icon_home_tap, icon_redraw, icon_redraw_tap,
                bt_prev, bt_next;
 
@@ -32,7 +33,10 @@ static void chooserDrawMenu();
 static void chooserDrawChooserButtons(int page);
 static void chooserDrawControlButtons(int page);
 
+extern void gameInit(const struct game *thegame);
+
 void chooserInit();
+void chooserExit();
 void chooserShowPage();
 
 void chooserTap(int x, int y);

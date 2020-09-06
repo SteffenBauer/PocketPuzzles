@@ -47,6 +47,7 @@ static midend *me;
 static drawing *dr;
 struct preset_menu *presets;
 
+ifont *gamefont;
 extern ibitmap icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,
                icon_game, icon_game_tap, icon_type, icon_type_tap,
                menu_exit, menu_help, menu_new, menu_restart, menu_solve,
@@ -93,11 +94,11 @@ static void gameDrawMenu();
 static void gameDrawControlButtons();
 static void gameDrawStatusBar();
 
-static void gameExitPage();
 static void checkGameEnd();
 static bool coord_in_gamecanvas(int x, int y);
 
 void gameInit(const struct game *thegame);
+static void gameExit();
 void gameShowPage();
 void gamePrepare();
 LAYOUTTYPE gameGetLayout();

@@ -84,13 +84,13 @@ struct game_state {
     bool completed, used_solve;
 };
 
-#define DEFAULT_PRESET 0
+#define DEFAULT_PRESET 1
 static const struct game_params walls_presets[] = {
-    {5, 5,  DIFF_NORMAL},
-    {5, 5,  DIFF_TRICKY},
-    {7, 7,  DIFF_TRICKY},
-    {9, 9,  DIFF_TRICKY},
-    {12, 12,  DIFF_TRICKY}
+    {4, 5,  DIFF_EASY},
+    {5, 6,  DIFF_TRICKY},
+    {7, 8,  DIFF_TRICKY},
+    {8, 9,  DIFF_TRICKY},
+    {9, 10,  DIFF_TRICKY},
 };
 
 static game_params *default_params(void) {

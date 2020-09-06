@@ -12,7 +12,6 @@ extern void chooserRelease(int x, int y);
 extern void chooserPrev();
 extern void chooserNext();
 
-extern void gameInit();
 extern void gameShowPage();
 extern void gameTap(int x, int y);
 extern void gameLongTap(int x, int y);
@@ -38,8 +37,8 @@ struct screen {
     void (*next)();
 } SCREEN;
 
-void switchToChooser();
-void switchToGame(const struct game *thegame);
+void showChooserScreen();
+void showGameScreen();
 
 static void setupApp();
 void exitApp();

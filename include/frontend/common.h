@@ -71,8 +71,8 @@ int init_tap_y;
 
 struct layout getLayout(LAYOUTTYPE screenlayout);
 
-extern void switchToChooser();
-extern void switchToGame(const struct game *thegame);
+extern void showChooserScreen();
+extern void showGameScreen();
 extern void exitApp();
 
 #endif
