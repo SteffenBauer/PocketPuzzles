@@ -14,7 +14,7 @@
 #define PREFERRED_TILE_SIZE 48
 #define TILE_SIZE (ds->tilesize)
 #define BORDER    (TILE_SIZE / 2)
-#define HIGHLIGHT_WIDTH (TILE_SIZE / 20)
+#define HIGHLIGHT_WIDTH (TILE_SIZE / 10)
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILE_SIZE) / TILE_SIZE - 1 )
 
@@ -35,6 +35,7 @@ enum {
     COL_TEXT,
     COL_HIGHLIGHT,
     COL_LOWLIGHT,
+    COL_HINT,
     NCOLOURS
 };
 
@@ -49,6 +50,7 @@ struct game_state {
     int completed;             /* move count at time of completion */
     bool used_solve;           /* used to suppress completion flash */
     int movecount;
+    int hx, hy;                /* hint coordinates */
 };
 
 static game_params *default_params(void)
@@ -59,13 +61,25 @@ static game_params *default_params(void)
 
     return ret;
 }
-
+static void decode_params(game_params *ret, char const *string);
 static bool game_fetch_preset(int i, char **name, game_params **params)
 {
-    if (i == 0) {
-	*params = default_params();
-	*name = dupstr("4x4");
-	return true;
+    if (i == 1) {
+        *params = default_params();
+        *name = dupstr("4x4");
+        return true;
+    }
+    else if (i==0) {
+        *name = dupstr("3x3");
+        *params = snew(game_params);
+        (*params)->w = (*params)->h = 3;
+        return true;
+    }
+    else if (i==2) {
+        *name = dupstr("5x5");
+        *params = snew(game_params);
+        (*params)->w = (*params)->h = 5;
+        return true;
     }
     return false;
 }
@@ -78,7 +92,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -137,7 +151,7 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 2 || params->h < 2)
-	return "Width and height must both be at least two";
+    return "Width and height must both be at least two";
 
     return NULL;
 }
@@ -157,7 +171,7 @@ static int perm_parity(int *perm, int n)
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     int gap, n, i, x;
     int x1, x2, p1, p2, parity;
@@ -226,8 +240,8 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      * Determine the required parity of the overall permutation.
      * This is the XOR of:
      * 
-     * 	- The chessboard parity ((x^y)&1) of the gap square. The
-     * 	  bottom right counts as even.
+     *     - The chessboard parity ((x^y)&1) of the gap square. The
+     *       bottom right counts as even.
      * 
      *  - The parity of n. (The target permutation is 1,...,n-1,0
      *    rather than 0,...,n-1; this is a cyclic permutation of
@@ -284,38 +298,38 @@ static const char *validate_desc(const game_params *params, const char *desc)
 
     used = snewn(area, bool);
     for (i = 0; i < area; i++)
-	used[i] = false;
+    used[i] = false;
 
     for (i = 0; i < area; i++) {
-	const char *q = p;
-	int n;
+    const char *q = p;
+    int n;
 
-	if (*p < '0' || *p > '9') {
-	    err = "Not enough numbers in string";
-	    goto leave;
-	}
-	while (*p >= '0' && *p <= '9')
-	    p++;
-	if (i < area-1 && *p != ',') {
-	    err = "Expected comma after number";
-	    goto leave;
-	}
-	else if (i == area-1 && *p) {
-	    err = "Excess junk at end of string";
-	    goto leave;
-	}
-	n = atoi(q);
-	if (n < 0 || n >= area) {
-	    err = "Number out of range";
-	    goto leave;
-	}
-	if (used[n]) {
-	    err = "Number used twice";
-	    goto leave;
-	}
-	used[n] = true;
+    if (*p < '0' || *p > '9') {
+        err = "Not enough numbers in string";
+        goto leave;
+    }
+    while (*p >= '0' && *p <= '9')
+        p++;
+    if (i < area-1 && *p != ',') {
+        err = "Expected comma after number";
+        goto leave;
+    }
+    else if (i == area-1 && *p) {
+        err = "Excess junk at end of string";
+        goto leave;
+    }
+    n = atoi(q);
+    if (n < 0 || n >= area) {
+        err = "Number out of range";
+        goto leave;
+    }
+    if (used[n]) {
+        err = "Number used twice";
+        goto leave;
+    }
+    used[n] = true;
 
-	if (*p) p++;		       /* eat comma */
+    if (*p) p++;               /* eat comma */
     }
 
     leave:
@@ -352,7 +366,7 @@ static game_state *new_game(midend *me, const game_params *params,
 
     state->completed = state->movecount = 0;
     state->used_solve = false;
-
+    state->hx = state->hy = -1;
     return state;
 }
 
@@ -369,7 +383,8 @@ static game_state *dup_game(const game_state *state)
     ret->completed = state->completed;
     ret->movecount = state->movecount;
     ret->used_solve = state->used_solve;
-
+    ret->hx = state->hx;
+    ret->hy = state->hy;
     return ret;
 }
 
@@ -383,53 +398,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
                         const char *aux, const char **error)
 {
     return dupstr("S");
-}
-
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    char *ret, *p, buf[80];
-    int x, y, col, maxlen;
-
-    /*
-     * First work out how many characters we need to display each
-     * number.
-     */
-    col = sprintf(buf, "%d", state->n-1);
-
-    /*
-     * Now we know the exact total size of the grid we're going to
-     * produce: it's got h rows, each containing w lots of col, w-1
-     * spaces and a trailing newline.
-     */
-    maxlen = state->h * state->w * (col+1);
-
-    ret = snewn(maxlen+1, char);
-    p = ret;
-
-    for (y = 0; y < state->h; y++) {
-	for (x = 0; x < state->w; x++) {
-	    int v = state->tiles[state->w*y+x];
-	    if (v == 0)
-		sprintf(buf, "%*s", col, "");
-	    else
-		sprintf(buf, "%*d", col, v);
-	    memcpy(p, buf, col);
-	    p += col;
-	    if (x+1 == state->w)
-		*p++ = '\n';
-	    else
-		*p++ = ' ';
-	}
-    }
-
-    assert(p - ret == maxlen);
-    *p = '\0';
-    return ret;
 }
 
 static game_ui *new_ui(const game_state *state)
@@ -457,7 +425,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 
 struct game_drawstate {
     bool started;
-    int w, h, bgcolour;
+    int w, h;
     int *tiles;
     int tilesize;
 };
@@ -708,7 +676,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         button = flip_cursor(button); /* the default */
         if (invert_cursor)
             button = flip_cursor(button); /* undoes the first flip */
-	move_cursor(button, &nx, &ny, state->w, state->h, false);
+        move_cursor(button, &nx, &ny, state->w, state->h, false);
     } else if ((button == 'h' || button == 'H') && !state->completed) {
         if (!compute_hint(state, &nx, &ny))
             return NULL; /* shouldn't happen, since ^^we^^checked^^ */
@@ -720,8 +688,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
      * in _precisely_ one coordinate.
      */
     if ((cx == nx) ^ (cy == ny)) {
-	sprintf(buf, "M%d,%d", nx, ny);
-	return dupstr(buf);
+        sprintf(buf, "M%d,%d", nx, ny);
+        return dupstr(buf);
     }
 
     return NULL;
@@ -729,38 +697,29 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
 static game_state *execute_move(const game_state *from, const char *move)
 {
-    int gx, gy, dx, dy, ux, uy, up, p;
+    int gx, gy, dx, dy, ux, uy, up, p, nx, ny;
     game_state *ret;
 
     if (!strcmp(move, "S")) {
-	int i;
-
-	ret = dup_game(from);
-
-	/*
-	 * Simply replace the grid with a solved one. For this game,
-	 * this isn't a useful operation for actually telling the user
-	 * what they should have done, but it is useful for
-	 * conveniently being able to get hold of a clean state from
-	 * which to practise manoeuvres.
-	 */
-	for (i = 0; i < ret->n; i++)
-	    ret->tiles[i] = (i+1) % ret->n;
-	ret->gap_pos = ret->n-1;
-	ret->used_solve = true;
-	ret->completed = ret->movecount = 1;
-
-	return ret;
+        ret = dup_game(from);
+        ret->used_solve = true;
+        if (compute_hint(ret, &nx, &ny)) {
+            ret->hx = nx; ret->hy = ny;
+        }
+        else {
+            ret->hx = -1; ret->hy = -1;
+        }
+        return ret;
     }
 
     gx = X(from, from->gap_pos);
     gy = Y(from, from->gap_pos);
 
     if (move[0] != 'M' ||
-	sscanf(move+1, "%d,%d", &dx, &dy) != 2 ||
-	(dx == gx && dy == gy) || (dx != gx && dy != gy) ||
-	dx < 0 || dx >= from->w || dy < 0 || dy >= from->h)
-	return NULL;
+        sscanf(move+1, "%d,%d", &dx, &dy) != 2 ||
+        (dx == gx && dy == gy) || (dx != gx && dy != gy) ||
+        dx < 0 || dx >= from->w || dy < 0 || dy >= from->h)
+    return NULL;
 
     /*
      * Find the unit displacement from the original gap
@@ -780,7 +739,7 @@ static game_state *execute_move(const game_state *from, const char *move)
     for (p = from->gap_pos; p != ret->gap_pos; p += up) {
         assert(p >= 0 && p < from->n);
         ret->tiles[p] = from->tiles[p + up];
-	ret->movecount++;
+    ret->movecount++;
     }
 
     /*
@@ -791,6 +750,15 @@ static game_state *execute_move(const game_state *from, const char *move)
         for (p = 0; p < ret->n; p++)
             if (ret->tiles[p] != (p < ret->n-1 ? p+1 : 0))
                 ret->completed = 0;
+    }
+
+    if (ret->used_solve) {
+        if (compute_hint(ret, &nx, &ny)) {
+            ret->hx = nx; ret->hy = ny;
+        }
+        else {
+            ret->hx = -1; ret->hy = -1;
+        }
     }
 
     return ret;
@@ -822,11 +790,13 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-
-    for (i = 0; i < 3; i++)
-        ret[COL_TEXT * 3 + i] = 0.0;
-
+    for (i = 0; i < 3; i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.8;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.4;
+        ret[COL_TEXT       * 3 + i] = 0.0;
+        ret[COL_HINT       * 3 + i] = 0.6;
+    }
     *ncolours = NCOLOURS;
     return ret;
 }
@@ -839,7 +809,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->started = false;
     ds->w = state->w;
     ds->h = state->h;
-    ds->bgcolour = COL_BACKGROUND;
     ds->tiles = snewn(ds->w*ds->h, int);
     ds->tilesize = 0;                  /* haven't decided yet */
     for (i = 0; i < ds->w*ds->h; i++)
@@ -855,11 +824,11 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 }
 
 static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
-                      int x, int y, int tile, int flash_colour)
+                      int x, int y, int tile, int colour)
 {
     if (tile == 0) {
         draw_rect(dr, x, y, TILE_SIZE, TILE_SIZE,
-                  flash_colour);
+                  colour);
     } else {
         int coords[6];
         char str[40];
@@ -878,7 +847,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
 
         draw_rect(dr, x + HIGHLIGHT_WIDTH, y + HIGHLIGHT_WIDTH,
                   TILE_SIZE - 2*HIGHLIGHT_WIDTH, TILE_SIZE - 2*HIGHLIGHT_WIDTH,
-                  flash_colour);
+                  colour);
 
         sprintf(str, "%d", tile);
         draw_text(dr, x + TILE_SIZE/2, y + TILE_SIZE/2,
@@ -893,23 +862,17 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime)
 {
-    int i, pass, bgcolour;
-
-    if (flashtime > 0) {
-        int frame = (int)(flashtime / FLASH_FRAME);
-        bgcolour = (frame % 2 ? COL_LOWLIGHT : COL_HIGHLIGHT);
-    } else
-        bgcolour = COL_BACKGROUND;
+    int i;
 
     if (!ds->started) {
         int coords[10];
 
-	draw_rect(dr, 0, 0,
-		  TILE_SIZE * state->w + 2 * BORDER,
-		  TILE_SIZE * state->h + 2 * BORDER, COL_BACKGROUND);
-	draw_update(dr, 0, 0,
-		    TILE_SIZE * state->w + 2 * BORDER,
-		    TILE_SIZE * state->h + 2 * BORDER);
+        draw_rect(dr, 0, 0,
+                  TILE_SIZE * state->w + 2 * BORDER,
+                  TILE_SIZE * state->h + 2 * BORDER, COL_BACKGROUND);
+        draw_update(dr, 0, 0,
+                    TILE_SIZE * state->w + 2 * BORDER,
+                    TILE_SIZE * state->h + 2 * BORDER);
 
         /*
          * Recessed area containing the whole puzzle.
@@ -933,98 +896,24 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         ds->started = true;
     }
 
-    /*
-     * Now draw each tile. We do this in two passes to make
-     * animation easy.
-     */
-    for (pass = 0; pass < 2; pass++) {
-        for (i = 0; i < state->n; i++) {
-            int t, t0;
-            /*
-             * Figure out what should be displayed at this
-             * location. It's either a simple tile, or it's a
-             * transition between two tiles (in which case we say
-             * -1 because it must always be drawn).
-             */
-
-            if (oldstate && oldstate->tiles[i] != state->tiles[i])
-                t = -1;
-            else
-                t = state->tiles[i];
-
-            t0 = t;
-
-            if (ds->bgcolour != bgcolour ||   /* always redraw when flashing */
-                ds->tiles[i] != t || ds->tiles[i] == -1 || t == -1) {
-                int x, y;
-
-                /*
-                 * Figure out what to _actually_ draw, and where to
-                 * draw it.
-                 */
-                if (t == -1) {
-                    int x0, y0, x1, y1;
-                    int j;
-
-                    /*
-                     * On the first pass, just blank the tile.
-                     */
-                    if (pass == 0) {
-                        x = COORD(X(state, i));
-                        y = COORD(Y(state, i));
-                        t = 0;
-                    } else {
-                        float c;
-
-                        t = state->tiles[i];
-
-                        /*
-                         * Don't bother moving the gap; just don't
-                         * draw it.
-                         */
-                        if (t == 0)
-                            continue;
-
-                        /*
-                         * Find the coordinates of this tile in the old and
-                         * new states.
-                         */
-                        x1 = COORD(X(state, i));
-                        y1 = COORD(Y(state, i));
-                        for (j = 0; j < oldstate->n; j++)
-                            if (oldstate->tiles[j] == state->tiles[i])
-                                break;
-                        assert(j < oldstate->n);
-                        x0 = COORD(X(state, j));
-                        y0 = COORD(Y(state, j));
-
-                        c = (animtime / ANIM_TIME);
-                        if (c < 0.0F) c = 0.0F;
-                        if (c > 1.0F) c = 1.0F;
-
-                        x = x0 + (int)(c * (x1 - x0));
-                        y = y0 + (int)(c * (y1 - y0));
-                    }
-
-                } else {
-                    if (pass == 0)
-                        continue;
-                    x = COORD(X(state, i));
-                    y = COORD(Y(state, i));
-                }
-
-                draw_tile(dr, ds, state, x, y, t, bgcolour);
-            }
-            ds->tiles[i] = t0;
-        }
+    for (i = 0; i < state->n; i++) {
+        int t, t0, x, y;
+        t = state->tiles[i];
+        t0 = t;
+        x = COORD(X(state, i));
+        y = COORD(Y(state, i));
+        if (state->used_solve && (state->hx == X(state, i)) && (state->hy == Y(state, i)))
+            draw_tile(dr, ds, state, x, y, t, COL_HINT);
+        else
+            draw_tile(dr, ds, state, x, y, t, COL_BACKGROUND);
+        ds->tiles[i] = t0;
     }
-    ds->bgcolour = bgcolour;
 
     /*
      * Update the status bar.
      */
     {
-	char statusbuf[256];
+        char statusbuf[256];
 
         /*
          * Don't show the new status until we're also showing the
@@ -1033,32 +922,28 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         if (oldstate)
             state = oldstate;
 
-	if (state->used_solve)
-	    sprintf(statusbuf, "Moves since auto-solve: %d",
-		    state->movecount - state->completed);
-	else
-	    sprintf(statusbuf, "%sMoves: %d",
-		    (state->completed ? "COMPLETED! " : ""),
-		    (state->completed ? state->completed : state->movecount));
+        if (state->used_solve)
+            sprintf(statusbuf, "Moves since auto-solve: %d",
+                state->movecount - state->completed);
+        else
+            sprintf(statusbuf, "%sMoves: %d",
+                (state->completed ? "COMPLETED! " : ""),
+                (state->completed ? state->completed : state->movecount));
 
-	status_bar(dr, statusbuf);
+        status_bar(dr, statusbuf);
     }
 }
 
 static float game_anim_length(const game_state *oldstate,
                               const game_state *newstate, int dir, game_ui *ui)
 {
-    return ANIM_TIME;
+    return 0.0F;
 }
 
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-	!oldstate->used_solve && !newstate->used_solve)
-        return 2 * FLASH_FRAME;
-    else
-        return 0.0F;
+    return 0.0F;
 }
 
 static int game_status(const game_state *state)
@@ -1069,14 +954,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
 }
 
 #ifdef COMBINED
@@ -1099,7 +976,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -1116,100 +993,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
-    true,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    true,                   /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    0,                       /* flags */
 };
 
-#ifdef STANDALONE_SOLVER
-
-int main(int argc, char **argv)
-{
-    game_params *params;
-    game_state *state;
-    char *id = NULL, *desc;
-    const char *err;
-    bool grade = false;
-    char *progname = argv[0];
-
-    char buf[80];
-    int limit, x, y;
-    bool solvable;
-
-    while (--argc > 0) {
-        char *p = *++argv;
-        if (!strcmp(p, "-v")) {
-            /* solver_show_working = true; */
-        } else if (!strcmp(p, "-g")) {
-            grade = true;
-        } else if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", progname, p);
-            return 1;
-        } else {
-            id = p;
-        }
-    }
-
-    if (!id) {
-        fprintf(stderr, "usage: %s [-g | -v] <game_id>\n", argv[0]);
-        return 1;
-    }
-
-    desc = strchr(id, ':');
-    if (!desc) {
-        fprintf(stderr, "%s: game id expects a colon in it\n", argv[0]);
-        return 1;
-    }
-    *desc++ = '\0';
-
-    params = default_params();
-    decode_params(params, id);
-    err = validate_desc(params, desc);
-    if (err) {
-        free_params(params);
-        fprintf(stderr, "%s: %s\n", argv[0], err);
-        return 1;
-    }
-
-    state = new_game(NULL, params, desc);
-    free_params(params);
-
-    solvable = (PARITY_S(state) == perm_parity(state->tiles, state->n));
-    if (grade || !solvable) {
-        free_game(state);
-        fputs(solvable ? "Game is solvable" : "Game is unsolvable",
-              grade ? stdout : stderr);
-        return !grade;
-    }
-
-    for (limit = 5 * state->n * state->n * state->n; limit; --limit) {
-        game_state *next_state;
-        if (!compute_hint(state, &x, &y)) {
-            fprintf(stderr, "couldn't compute next move while solving %s:%s",
-                    id, desc);
-            return 1;
-        }
-        printf("Move the space to (%d, %d), moving %d into the space\n",
-               x + 1, y + 1, state->tiles[C(state, x, y)]);
-        sprintf(buf, "M%d,%d", x, y);
-        next_state = execute_move(state, buf);
-
-        free_game(state);
-        if (!next_state) {
-            fprintf(stderr, "invalid move when solving %s:%s\n", id, desc);
-            return 1;
-        }
-        state = next_state;
-        if (next_state->completed) {
-            free_game(state);
-            return 0;
-        }
-    }
-
-    free_game(state);
-    fprintf(stderr, "ran out of moves for %s:%s\n", id, desc);
-    return 1;
-}
-
-#endif

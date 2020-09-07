@@ -110,7 +110,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -345,7 +345,7 @@ static void addneighbours(tree234 *t, int w, int h, int cx, int cy,
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     int w = params->w, h = params->h, wh = w * h;
     int i, j;
@@ -666,7 +666,7 @@ static void rowxor(unsigned char *row1, unsigned char *row2, int len)
 {
     int i;
     for (i = 0; i < len; i++)
-	row1[i] ^= row2[i];
+    row1[i] ^= row2[i];
 }
 
 static char *solve_game(const game_state *state, const game_state *currstate,
@@ -685,9 +685,9 @@ static char *solve_game(const game_state *state, const game_state *currstate,
      */
     equations = snewn((wh + 1) * wh, unsigned char);
     for (i = 0; i < wh; i++) {
-	for (j = 0; j < wh; j++)
-	    equations[i * (wh+1) + j] = currstate->matrix->matrix[j*wh+i];
-	equations[i * (wh+1) + wh] = currstate->grid[i] & 1;
+    for (j = 0; j < wh; j++)
+        equations[i * (wh+1) + j] = currstate->matrix->matrix[j*wh+i];
+    equations[i * (wh+1) + wh] = currstate->grid[i] & 1;
     }
 
     /*
@@ -697,69 +697,69 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     nund = 0;
     und = snewn(wh, int);
     do {
-	/*
-	 * Find the leftmost column which has a 1 in it somewhere
-	 * outside the first `rowsdone' rows.
-	 */
-	j = -1;
-	for (i = colsdone; i < wh; i++) {
-	    for (j = rowsdone; j < wh; j++)
-		if (equations[j * (wh+1) + i])
-		    break;
-	    if (j < wh)
-		break;		       /* found one */
-	    /*
-	     * This is a column which will not have an equation
-	     * controlling it. Mark it as undetermined.
-	     */
-	    und[nund++] = i;
-	}
+    /*
+     * Find the leftmost column which has a 1 in it somewhere
+     * outside the first `rowsdone' rows.
+     */
+    j = -1;
+    for (i = colsdone; i < wh; i++) {
+        for (j = rowsdone; j < wh; j++)
+        if (equations[j * (wh+1) + i])
+            break;
+        if (j < wh)
+        break;               /* found one */
+        /*
+         * This is a column which will not have an equation
+         * controlling it. Mark it as undetermined.
+         */
+        und[nund++] = i;
+    }
 
-	/*
-	 * If there wasn't one, then we've finished: all remaining
-	 * equations are of the form 0 = constant. Check to see if
-	 * any of them wants 0 to be equal to 1; this is the
-	 * condition which indicates an insoluble problem
-	 * (therefore _hopefully_ one typed in by a user!).
-	 */
-	if (i == wh) {
-	    for (j = rowsdone; j < wh; j++)
-		if (equations[j * (wh+1) + wh]) {
-		    *error = "No solution exists for this position";
-		    sfree(equations);
-		    sfree(und);
-		    return NULL;
-		}
-	    break;
-	}
+    /*
+     * If there wasn't one, then we've finished: all remaining
+     * equations are of the form 0 = constant. Check to see if
+     * any of them wants 0 to be equal to 1; this is the
+     * condition which indicates an insoluble problem
+     * (therefore _hopefully_ one typed in by a user!).
+     */
+    if (i == wh) {
+        for (j = rowsdone; j < wh; j++)
+        if (equations[j * (wh+1) + wh]) {
+            *error = "No solution exists for this position";
+            sfree(equations);
+            sfree(und);
+            return NULL;
+        }
+        break;
+    }
 
-	/*
-	 * We've found a 1. It's in column i, and the topmost 1 in
-	 * that column is in row j. Do a row-XOR to move it up to
-	 * the topmost row if it isn't already there.
-	 */
-	assert(j != -1);
-	if (j > rowsdone)
-	    rowxor(equations + rowsdone*(wh+1), equations + j*(wh+1), wh+1);
+    /*
+     * We've found a 1. It's in column i, and the topmost 1 in
+     * that column is in row j. Do a row-XOR to move it up to
+     * the topmost row if it isn't already there.
+     */
+    assert(j != -1);
+    if (j > rowsdone)
+        rowxor(equations + rowsdone*(wh+1), equations + j*(wh+1), wh+1);
 
-	/*
-	 * Do row-XORs to eliminate that 1 from all rows below the
-	 * topmost row.
-	 */
-	for (j = rowsdone + 1; j < wh; j++)
-	    if (equations[j*(wh+1) + i])
-		rowxor(equations + j*(wh+1),
-		       equations + rowsdone*(wh+1), wh+1);
+    /*
+     * Do row-XORs to eliminate that 1 from all rows below the
+     * topmost row.
+     */
+    for (j = rowsdone + 1; j < wh; j++)
+        if (equations[j*(wh+1) + i])
+        rowxor(equations + j*(wh+1),
+               equations + rowsdone*(wh+1), wh+1);
 
-	/*
-	 * Mark this row and column as done.
-	 */
-	rowsdone++;
-	colsdone = i+1;
+    /*
+     * Mark this row and column as done.
+     */
+    rowsdone++;
+    colsdone = i+1;
 
-	/*
-	 * If we've done all the rows, terminate.
-	 */
+    /*
+     * If we've done all the rows, terminate.
+     */
     } while (rowsdone < wh);
 
     /*
@@ -774,63 +774,63 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     memset(solution, 0, wh);
     bestlen = wh + 1;
     while (1) {
-	/*
-	 * Find a solution based on the current values of the
-	 * undetermined variables.
-	 */
-	for (j = rowsdone; j-- ;) {
-	    int v;
+    /*
+     * Find a solution based on the current values of the
+     * undetermined variables.
+     */
+    for (j = rowsdone; j-- ;) {
+        int v;
 
-	    /*
-	     * Find the leftmost set bit in this equation.
-	     */
-	    for (i = 0; i < wh; i++)
-		if (equations[j * (wh+1) + i])
-		    break;
-	    assert(i < wh);		       /* there must have been one! */
+        /*
+         * Find the leftmost set bit in this equation.
+         */
+        for (i = 0; i < wh; i++)
+        if (equations[j * (wh+1) + i])
+            break;
+        assert(i < wh);               /* there must have been one! */
 
-	    /*
-	     * Compute this variable using the rest.
-	     */
-	    v = equations[j * (wh+1) + wh];
-	    for (k = i+1; k < wh; k++)
-		if (equations[j * (wh+1) + k])
-		    v ^= solution[k];
+        /*
+         * Compute this variable using the rest.
+         */
+        v = equations[j * (wh+1) + wh];
+        for (k = i+1; k < wh; k++)
+        if (equations[j * (wh+1) + k])
+            v ^= solution[k];
 
-	    solution[i] = v;
-	}
+        solution[i] = v;
+    }
 
-	/*
-	 * Compare this solution to the current best one, and
-	 * replace the best one if this one is shorter.
-	 */
-	len = 0;
-	for (i = 0; i < wh; i++)
-	    if (solution[i])
-		len++;
-	if (len < bestlen) {
-	    bestlen = len;
-	    memcpy(shortest, solution, wh);
-	}
+    /*
+     * Compare this solution to the current best one, and
+     * replace the best one if this one is shorter.
+     */
+    len = 0;
+    for (i = 0; i < wh; i++)
+        if (solution[i])
+        len++;
+    if (len < bestlen) {
+        bestlen = len;
+        memcpy(shortest, solution, wh);
+    }
 
-	/*
-	 * Now increment the binary number given by the
-	 * undetermined variables: turn all 1s into 0s until we see
-	 * a 0, at which point we turn it into a 1.
-	 */
-	for (i = 0; i < nund; i++) {
-	    solution[und[i]] = !solution[und[i]];
-	    if (solution[und[i]])
-		break;
-	}
+    /*
+     * Now increment the binary number given by the
+     * undetermined variables: turn all 1s into 0s until we see
+     * a 0, at which point we turn it into a 1.
+     */
+    for (i = 0; i < nund; i++) {
+        solution[und[i]] = !solution[und[i]];
+        if (solution[und[i]])
+        break;
+    }
 
-	/*
-	 * If we didn't find a 0 at any point, we have wrapped
-	 * round and are back at the start, i.e. we have enumerated
-	 * all solutions.
-	 */
-	if (i == nund)
-	    break;
+    /*
+     * If we didn't find a 0 at any point, we have wrapped
+     * round and are back at the start, i.e. we have enumerated
+     * all solutions.
+     */
+    if (i == nund)
+        break;
     }
 
     /*
@@ -840,7 +840,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     ret = snewn(wh + 2, char);
     ret[0] = 'S';
     for (i = 0; i < wh; i++)
-	ret[i+1] = shortest[i] ? '1' : '0';
+    ret[i+1] = shortest[i] ? '1' : '0';
     ret[wh+1] = '\0';
 
     sfree(shortest);
@@ -850,51 +850,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
     return ret;
 }
-
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-#define RIGHT 1
-#define DOWN gw
-
-static char *game_text_format(const game_state *state)
-{
-    int w = state->w, h = state->h, wh = w*h, r, c, dx, dy;
-    int cw = 4, ch = 4, gw = w * cw + 2, gh = h * ch + 1, len = gw * gh;
-    char *board = snewn(len + 1, char);
-
-    memset(board, ' ', len - 1);
-
-    for (r = 0; r < h; ++r) {
-	for (c = 0; c < w; ++c) {
-	    int cell = r*ch*gw + c*cw, center = cell+(ch/2)*DOWN + cw/2*RIGHT;
-	    char flip = (state->grid[r*w + c] & 1) ? '#' : '.';
-	    for (dy = -1 + (r == 0); dy <= 1 - (r == h - 1); ++dy)
-		for (dx = -1 + (c == 0); dx <= 1 - (c == w - 1); ++dx)
-		    if (state->matrix->matrix[(r*w+c)*wh + ((r+dy)*w + c+dx)])
-			board[center + dy*DOWN + dx*RIGHT] = flip;
-	    board[cell] = '+';
-	    for (dx = 1; dx < cw; ++dx) board[cell+dx*RIGHT] = '-';
-	    for (dy = 1; dy < ch; ++dy) board[cell+dy*DOWN] = '|';
-	}
-	board[r*ch*gw + gw - 2] = '+';
-	board[r*ch*gw + gw - 1] = '\n';
-	for (dy = 1; dy < ch; ++dy) {
-	    board[r*ch*gw + gw - 2 + dy*DOWN] = '|';
-	    board[r*ch*gw + gw - 1 + dy*DOWN] = '\n';
-	}
-    }
-    memset(board + len - gw, '-', gw - 2);
-    for (c = 0; c <= w; ++c) board[len - gw + cw*c] = '+';
-    board[len - 1] = '\n';
-    board[len] = '\0';
-    return board;
-}
-
-#undef RIGHT
-#undef DOWN
 
 struct game_ui {
     int cx, cy;
@@ -999,45 +954,45 @@ static game_state *execute_move(const game_state *from, const char *move)
     int x, y;
 
     if (move[0] == 'S' && strlen(move) == wh+1) {
-	int i;
+    int i;
 
-	ret = dup_game(from);
-	ret->hints_active = true;
-	ret->cheated = true;
-	for (i = 0; i < wh; i++) {
-	    ret->grid[i] &= ~2;
-	    if (move[i+1] != '0')
-		ret->grid[i] |= 2;
-	}
-	return ret;
+    ret = dup_game(from);
+    ret->hints_active = true;
+    ret->cheated = true;
+    for (i = 0; i < wh; i++) {
+        ret->grid[i] &= ~2;
+        if (move[i+1] != '0')
+        ret->grid[i] |= 2;
+    }
+    return ret;
     } else if (move[0] == 'M' &&
-	       sscanf(move+1, "%d,%d", &x, &y) == 2 &&
-	x >= 0 && x < w && y >= 0 && y < h) {
-	int i, j;
+           sscanf(move+1, "%d,%d", &x, &y) == 2 &&
+    x >= 0 && x < w && y >= 0 && y < h) {
+    int i, j;
         bool done;
 
-	ret = dup_game(from);
+    ret = dup_game(from);
 
-	if (!ret->completed)
-	    ret->moves++;
+    if (!ret->completed)
+        ret->moves++;
 
-	i = y * w + x;
+    i = y * w + x;
 
-	done = true;
-	for (j = 0; j < wh; j++) {
-	    ret->grid[j] ^= ret->matrix->matrix[i*wh+j];
-	    if (ret->grid[j] & 1)
-		done = false;
-	}
-	ret->grid[i] ^= 2;	       /* toggle hint */
-	if (done) {
-	    ret->completed = true;
-	    ret->hints_active = false;
-	}
+    done = true;
+    for (j = 0; j < wh; j++) {
+        ret->grid[j] ^= ret->matrix->matrix[i*wh+j];
+        if (ret->grid[j] & 1)
+        done = false;
+    }
+    ret->grid[i] ^= 2;           /* toggle hint */
+    if (done) {
+        ret->completed = true;
+        ret->hints_active = false;
+    }
 
-	return ret;
+    return ret;
     } else
-	return NULL;		       /* can't parse move string */
+    return NULL;               /* can't parse move string */
 }
 
 /* ----------------------------------------------------------------------
@@ -1063,33 +1018,20 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
 
-    ret[COL_WRONG * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] / 3;
-    ret[COL_WRONG * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] / 3;
-    ret[COL_WRONG * 3 + 2] = ret[COL_BACKGROUND * 3 + 2] / 3;
-
-    ret[COL_RIGHT * 3 + 0] = 1.0F;
-    ret[COL_RIGHT * 3 + 1] = 1.0F;
-    ret[COL_RIGHT * 3 + 2] = 1.0F;
-
-    ret[COL_GRID * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] / 1.5F;
-    ret[COL_GRID * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] / 1.5F;
-    ret[COL_GRID * 3 + 2] = ret[COL_BACKGROUND * 3 + 2] / 1.5F;
-
-    ret[COL_DIAG * 3 + 0] = ret[COL_GRID * 3 + 0];
-    ret[COL_DIAG * 3 + 1] = ret[COL_GRID * 3 + 1];
-    ret[COL_DIAG * 3 + 2] = ret[COL_GRID * 3 + 2];
-
-    ret[COL_HINT * 3 + 0] = 1.0F;
-    ret[COL_HINT * 3 + 1] = 0.0F;
-    ret[COL_HINT * 3 + 2] = 0.0F;
-
-    ret[COL_CURSOR * 3 + 0] = 0.8F;
-    ret[COL_CURSOR * 3 + 1] = 0.0F;
-    ret[COL_CURSOR * 3 + 2] = 0.0F;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_WRONG      * 3 + i] = 0.3F;
+        ret[COL_RIGHT      * 3 + i] = 1.0F;
+        ret[COL_GRID       * 3 + i] = 0.0F;
+        ret[COL_DIAG       * 3 + i] = 0.0F;
+        ret[COL_HINT       * 3 + i] = 0.5F;
+        ret[COL_CURSOR     * 3 + i] = 0.8F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1124,73 +1066,54 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
     int bx = x * TILE_SIZE + BORDER, by = y * TILE_SIZE + BORDER;
     int i, j, dcol = (tile & 4) ? COL_CURSOR : COL_DIAG;
 
-    clip(dr, bx+1, by+1, TILE_SIZE-1, TILE_SIZE-1);
+    clip(dr, bx+2, by+2, TILE_SIZE-3, TILE_SIZE-3);
 
-    draw_rect(dr, bx+1, by+1, TILE_SIZE-1, TILE_SIZE-1,
-              anim ? COL_BACKGROUND : tile & 1 ? COL_WRONG : COL_RIGHT);
-    if (anim) {
-	/*
-	 * Draw a polygon indicating that the square is diagonally
-	 * flipping over.
-	 */
-	int coords[8], colour;
-
-	coords[0] = bx + TILE_SIZE;
-	coords[1] = by;
-	coords[2] = bx + (int)((float)TILE_SIZE * animtime);
-	coords[3] = by + (int)((float)TILE_SIZE * animtime);
-	coords[4] = bx;
-	coords[5] = by + TILE_SIZE;
-	coords[6] = bx + TILE_SIZE - (int)((float)TILE_SIZE * animtime);
-	coords[7] = by + TILE_SIZE - (int)((float)TILE_SIZE * animtime);
-
-	colour = (tile & 1 ? COL_WRONG : COL_RIGHT);
-	if (animtime < 0.5)
-	    colour = COL_WRONG + COL_RIGHT - colour;
-
-	draw_polygon(dr, coords, 4, colour, COL_GRID);
-    }
+    draw_rect(dr, bx+2, by+2, TILE_SIZE-3, TILE_SIZE-3,
+              tile & 1 ? COL_WRONG : COL_RIGHT);
 
     /*
      * Draw a little diagram in the tile which indicates which
      * surrounding tiles flip when this one is clicked.
      */
     for (i = 0; i < h; i++)
-	for (j = 0; j < w; j++)
-	    if (state->matrix->matrix[(y*w+x)*wh + i*w+j]) {
-		int ox = j - x, oy = i - y;
-		int td = TILE_SIZE / 16;
-		int cx = (bx + TILE_SIZE/2) + (2 * ox - 1) * td;
-		int cy = (by + TILE_SIZE/2) + (2 * oy - 1) * td;
-		if (ox == 0 && oy == 0)
-                    draw_rect(dr, cx, cy, 2*td+1, 2*td+1, dcol);
-                else {
-                    draw_line(dr, cx, cy, cx+2*td, cy, dcol);
-                    draw_line(dr, cx, cy+2*td, cx+2*td, cy+2*td, dcol);
-                    draw_line(dr, cx, cy, cx, cy+2*td, dcol);
-                    draw_line(dr, cx+2*td, cy, cx+2*td, cy+2*td, dcol);
-                }
-	    }
+    for (j = 0; j < w; j++)
+        if (state->matrix->matrix[(y*w+x)*wh + i*w+j]) {
+        int ox = j - x, oy = i - y;
+        int td = TILE_SIZE / 16;
+        int cx = (bx + TILE_SIZE/2) + (2 * ox - 1) * td;
+        int cy = (by + TILE_SIZE/2) + (2 * oy - 1) * td;
+        if (ox == 0 && oy == 0)
+            draw_rect(dr, cx, cy, 2*td, 2*td, dcol);
+        else {
+            draw_rect(dr, cx, cy, 2*td, 2*td, dcol);
+            draw_rect(dr, cx+3, cy+3, 2*td-6, 2*td-6, COL_BACKGROUND);
+
+/*            draw_line(dr, cx, cy, cx+2*td, cy, dcol);
+            draw_line(dr, cx, cy+2*td, cx+2*td, cy+2*td, dcol);
+            draw_line(dr, cx, cy, cx, cy+2*td, dcol);
+            draw_line(dr, cx+2*td, cy, cx+2*td, cy+2*td, dcol); */
+        }
+    }
 
     /*
      * Draw a hint rectangle if required.
      */
     if (tile & 2) {
-	int x1 = bx + TILE_SIZE / 20, x2 = bx + TILE_SIZE - TILE_SIZE / 20;
-	int y1 = by + TILE_SIZE / 20, y2 = by + TILE_SIZE - TILE_SIZE / 20;
-	int i = 3;
-	while (i--) {
-	    draw_line(dr, x1, y1, x2, y1, COL_HINT);
-	    draw_line(dr, x1, y2, x2, y2, COL_HINT);
-	    draw_line(dr, x1, y1, x1, y2, COL_HINT);
-	    draw_line(dr, x2, y1, x2, y2, COL_HINT);
-	    x1++, y1++, x2--, y2--;
-	}
+    int x1 = bx + TILE_SIZE / 20, x2 = bx + TILE_SIZE - TILE_SIZE / 20;
+    int y1 = by + TILE_SIZE / 20, y2 = by + TILE_SIZE - TILE_SIZE / 20;
+    int i = TILE_SIZE/10;
+    while (i--) {
+        draw_line(dr, x1, y1, x2, y1, COL_HINT);
+        draw_line(dr, x1, y2, x2, y2, COL_HINT);
+        draw_line(dr, x1, y1, x1, y2, COL_HINT);
+        draw_line(dr, x2, y1, x2, y2, COL_HINT);
+        x1++, y1++, x2--, y2--;
+    }
     }
 
     unclip(dr);
 
-    draw_update(dr, bx+1, by+1, TILE_SIZE-1, TILE_SIZE-1);
+    draw_update(dr, bx+2, by+2, TILE_SIZE-2, TILE_SIZE-2);
 }
 
 static void game_redraw(drawing *dr, game_drawstate *ds,
@@ -1199,7 +1122,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         float animtime, float flashtime)
 {
     int w = ds->w, h = ds->h, wh = w * h;
-    int i, flashframe;
+    int i;
 
     if (!ds->started) {
         draw_rect(dr, 0, 0, TILE_SIZE * w + 2 * BORDER,
@@ -1208,53 +1131,50 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         /*
          * Draw the grid lines.
          */
-        for (i = 0; i <= w; i++)
+        for (i = 0; i <= w; i++) {
+            draw_line(dr, i * TILE_SIZE + BORDER - 1, BORDER,
+                      i * TILE_SIZE + BORDER - 1, h * TILE_SIZE + BORDER,
+                      COL_GRID);
             draw_line(dr, i * TILE_SIZE + BORDER, BORDER,
                       i * TILE_SIZE + BORDER, h * TILE_SIZE + BORDER,
                       COL_GRID);
-        for (i = 0; i <= h; i++)
+            draw_line(dr, i * TILE_SIZE + BORDER + 1, BORDER,
+                      i * TILE_SIZE + BORDER + 1, h * TILE_SIZE + BORDER,
+                      COL_GRID);
+        }
+        for (i = 0; i <= h; i++) {
+            draw_line(dr, BORDER, i * TILE_SIZE + BORDER - 1,
+                      w * TILE_SIZE + BORDER, i * TILE_SIZE + BORDER - 1,
+                      COL_GRID);
             draw_line(dr, BORDER, i * TILE_SIZE + BORDER,
                       w * TILE_SIZE + BORDER, i * TILE_SIZE + BORDER,
                       COL_GRID);
-
+            draw_line(dr, BORDER, i * TILE_SIZE + BORDER + 1,
+                      w * TILE_SIZE + BORDER, i * TILE_SIZE + BORDER + 1,
+                      COL_GRID);
+        }
         draw_update(dr, 0, 0, TILE_SIZE * w + 2 * BORDER,
                     TILE_SIZE * h + 2 * BORDER);
 
         ds->started = true;
     }
 
-    if (flashtime)
-	flashframe = (int)(flashtime / FLASH_FRAME);
-    else
-	flashframe = -1;
-
-    animtime /= ANIM_TIME;	       /* scale it so it goes from 0 to 1 */
+    animtime /= ANIM_TIME;           /* scale it so it goes from 0 to 1 */
 
     for (i = 0; i < wh; i++) {
         int x = i % w, y = i / w;
-	int fx, fy, fd;
-	int v = state->grid[i];
-	int vv;
+        int v = state->grid[i];
+        int vv;
 
-	if (flashframe >= 0) {
-	    fx = (w+1)/2 - min(x+1, w-x);
-	    fy = (h+1)/2 - min(y+1, h-y);
-	    fd = max(fx, fy);
-	    if (fd == flashframe)
-		v |= 1;
-	    else if (fd == flashframe - 1)
-		v &= ~1;
-	}
-
-	if (!state->hints_active)
-	    v &= ~2;
+        if (!state->hints_active)
+            v &= ~2;
         if (ui->cdraw && ui->cx == x && ui->cy == y)
             v |= 4;
 
-	if (oldstate && ((state->grid[i] ^ oldstate->grid[i]) &~ 2))
-	    vv = 255;		       /* means `animated' */
-	else
-	    vv = v;
+        if (oldstate && ((state->grid[i] ^ oldstate->grid[i]) &~ 2))
+            vv = 255;               /* means `animated' */
+        else
+            vv = v;
 
         if (ds->tiles[i] == 255 || vv == 255 || ds->tiles[i] != vv) {
             draw_tile(dr, ds, state, x, y, v, vv == 255, animtime);
@@ -1263,30 +1183,27 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     }
 
     {
-	char buf[256];
+    char buf[256];
 
-	sprintf(buf, "%sMoves: %d",
-		(state->completed ? 
-		 (state->cheated ? "Auto-solved. " : "COMPLETED! ") :
-		 (state->cheated ? "Auto-solver used. " : "")),
-		state->moves);
+    sprintf(buf, "%sMoves: %d",
+        (state->completed ? 
+         (state->cheated ? "Auto-solved. " : "COMPLETED! ") :
+         (state->cheated ? "Auto-solver used. " : "")),
+        state->moves);
 
-	status_bar(dr, buf);
+    status_bar(dr, buf);
     }
 }
 
 static float game_anim_length(const game_state *oldstate,
                               const game_state *newstate, int dir, game_ui *ui)
 {
-    return ANIM_TIME;
+    return 0.0F;
 }
 
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed)
-        return FLASH_FRAME * (max((newstate->w+1)/2, (newstate->h+1)/2)+1);
-
     return 0.0F;
 }
 
@@ -1298,14 +1215,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
 }
 
 #ifdef COMBINED
@@ -1328,7 +1237,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -1345,8 +1254,8 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
-    true,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    true,                   /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    0,                       /* flags */
 };

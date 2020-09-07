@@ -31,12 +31,12 @@ static GAMEINFO mygames[] = {
     { &game_bridges,  &bridges},
 
     { &game_clusters, &clusters},
-//    { &game_cube,     &cube},
+    { &game_cube,     &cube},
     { &game_dominosa, &dominosa},
-//    { &game_fifteen,  &fifteen},
+    { &game_fifteen,  &fifteen},
     { &game_filling,  &filling},
 
-//    { &game_flip,     &flip},
+    { &game_flip,     &flip},
 //    { &game_flood,    &flood},
     { &game_galaxies, &galaxies},
     { &game_group,    &group},
@@ -51,7 +51,7 @@ static GAMEINFO mygames[] = {
 //    { &game_map,      &map},
     { &game_mathrax,  &mathrax},
     { &game_mines,    &mines},
-//    { &game_net,      &net},
+    { &game_net,      &net},
 //    { &game_netslide, &netslide},
 
     { &game_palisade, &palisade},

@@ -26,15 +26,15 @@
 - [ ] Guess: Change blitter drag to Highlight color by click -> Fill peg by click
 - [ ] Guess: Add color fill pattern
 - [ ] Untangle: Change drag to Highlight vertex by click -> click on target coordinates
-- [ ] Cube: Remove animation
-- [ ] Flip: Remove animation
-- [ ] Fifteen: Remove animation
+- [X] Cube: Remove animation. Adjust colors.
+- [X] Flip: Remove animation. Adjust colors.
+- [X] Fifteen: Remove animation. Adjust colors. Add solver hint mechanism.
 - [ ] Flood: Add color fill pattern
 - [X] Inertia: Remove animation
 - [ ] Inertia: Adjust colors, thicker grid lines, modify gem icons
 - [ ] Map: Remove drag animation
 - [ ] Map: Color fill pattern?
-- [ ] Net: Remove animation
+- [X] Net: Remove animation. Adjust colors.
 - [ ] Net: Add shuffle button
 - [ ] Netslide: Remove animation
 - [ ] Pegs: Remove blitter drag
