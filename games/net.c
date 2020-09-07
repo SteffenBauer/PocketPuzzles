@@ -45,8 +45,8 @@
 #define C(x) ( (((x) & 0x0E) >> 1) | (((x) & 0x01) << 3) )
 #define F(x) ( (((x) & 0x0C) >> 2) | (((x) & 0x03) << 2) )
 #define ROT(x, n) ( ((n)&3) == 0 ? (x) : \
-		    ((n)&3) == 1 ? A(x) : \
-		    ((n)&3) == 2 ? F(x) : C(x) )
+            ((n)&3) == 1 ? A(x) : \
+            ((n)&3) == 2 ? F(x) : C(x) )
 
 /* X and Y displacements */
 #define X(x) ( (x) == R ? +1 : (x) == L ? -1 : 0 )
@@ -54,19 +54,19 @@
 
 /* Bit count */
 #define COUNT(x) ( (((x) & 0x08) >> 3) + (((x) & 0x04) >> 2) + \
-		   (((x) & 0x02) >> 1) + ((x) & 0x01) )
+           (((x) & 0x02) >> 1) + ((x) & 0x01) )
 
 #define PREFERRED_TILE_SIZE 32
 #define TILE_SIZE (ds->tilesize)
-#define LINE_THICK ((TILE_SIZE+47)/48)
+#define LINE_THICK ((TILE_SIZE+128)/48)
 #ifdef SMALL_SCREEN
 #define WINDOW_OFFSET 4
 #else
 #define WINDOW_OFFSET 16
 #endif
 
-#define ROTATE_TIME 0.13F
-#define FLASH_FRAME 0.07F
+#define ROTATE_TIME 0.0F
+#define FLASH_FRAME 0.0F
 
 enum {
     COL_BACKGROUND,
@@ -107,7 +107,7 @@ struct game_state {
       (y2) = ((y1) + height + Y((dir))) % height)
 
 #define OFFSET(x2,y2,x1,y1,dir,state) \
-	OFFSETWH(x2,y2,x1,y1,dir,(state)->width,(state)->height)
+    OFFSETWH(x2,y2,x1,y1,dir,(state)->width,(state)->height)
 
 #define index(state, a, x, y) ( a[(y) * (state)->width + (x)] )
 #define tile(state, x, y)     index(state, (state)->tiles, x, y)
@@ -121,17 +121,17 @@ static int xyd_cmp(const void *av, const void *bv) {
     const struct xyd *a = (const struct xyd *)av;
     const struct xyd *b = (const struct xyd *)bv;
     if (a->x < b->x)
-	return -1;
+    return -1;
     if (a->x > b->x)
-	return +1;
+    return +1;
     if (a->y < b->y)
-	return -1;
+    return -1;
     if (a->y > b->y)
-	return +1;
+    return +1;
     if (a->direction < b->direction)
-	return -1;
+    return -1;
     if (a->direction > b->direction)
-	return +1;
+    return +1;
     return 0;
 }
 
@@ -206,7 +206,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -227,16 +227,16 @@ static void decode_params(game_params *ret, char const *string)
     while (*p) {
         if (*p == 'w') {
             p++;
-	    ret->wrapping = true;
-	} else if (*p == 'b') {
-	    p++;
+        ret->wrapping = true;
+    } else if (*p == 'b') {
+        p++;
             ret->barrier_probability = (float)atof(p);
-	    while (*p && (*p == '.' || isdigit((unsigned char)*p))) p++;
-	} else if (*p == 'a') {
+        while (*p && (*p == '.' || isdigit((unsigned char)*p))) p++;
+    } else if (*p == 'a') {
             p++;
-	    ret->unique = false;
-	} else
-	    p++;		       /* skip any other gunk */
+        ret->unique = false;
+    } else
+        p++;               /* skip any other gunk */
     }
 }
 
@@ -310,13 +310,13 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->width <= 0 || params->height <= 0)
-	return "Width and height must both be greater than zero";
+    return "Width and height must both be greater than zero";
     if (params->width <= 1 && params->height <= 1)
-	return "At least one of width and height must be greater than one";
+    return "At least one of width and height must be greater than one";
     if (params->barrier_probability < 0)
-	return "Barrier probability may not be negative";
+    return "Barrier probability may not be negative";
     if (params->barrier_probability > 1)
-	return "Barrier probability may not be greater than 1";
+    return "Barrier probability may not be greater than 1";
 
     /*
      * Specifying either grid dimension as 2 in a wrapping puzzle
@@ -424,21 +424,21 @@ static void todo_free(struct todo *todo)
 static void todo_add(struct todo *todo, int index)
 {
     if (todo->marked[index])
-	return;			       /* already on the list */
+    return;                   /* already on the list */
     todo->marked[index] = true;
     todo->buffer[todo->tail++] = index;
     if (todo->tail == todo->buflen)
-	todo->tail = 0;
+    todo->tail = 0;
 }
 
 static int todo_get(struct todo *todo) {
     int ret;
 
     if (todo->head == todo->tail)
-	return -1;		       /* list is empty */
+    return -1;               /* list is empty */
     ret = todo->buffer[todo->head++];
     if (todo->head == todo->buflen)
-	todo->head = 0;
+    todo->head = 0;
     todo->marked[ret] = false;
 
     return ret;
@@ -450,7 +450,7 @@ static int todo_get(struct todo *todo) {
  * fully.
  */
 static int net_solver(int w, int h, unsigned char *tiles,
-		      unsigned char *barriers, bool wrapping)
+              unsigned char *barriers, bool wrapping)
 {
     unsigned char *tilestate;
     unsigned char *edgestate;
@@ -481,16 +481,16 @@ static int net_solver(int w, int h, unsigned char *tiles,
     tilestate = snewn(w * h * 4, unsigned char);
     area = 0;
     for (i = 0; i < w*h; i++) {
-	tilestate[i * 4] = tiles[i] & 0xF;
-	for (j = 1; j < 4; j++) {
-	    if (tilestate[i * 4 + j - 1] == 255 ||
-		A(tilestate[i * 4 + j - 1]) == tilestate[i * 4])
-		tilestate[i * 4 + j] = 255;
-	    else
-		tilestate[i * 4 + j] = A(tilestate[i * 4 + j - 1]);
-	}
-	if (tiles[i] != 0)
-	    area++;
+    tilestate[i * 4] = tiles[i] & 0xF;
+    for (j = 1; j < 4; j++) {
+        if (tilestate[i * 4 + j - 1] == 255 ||
+        A(tilestate[i * 4 + j - 1]) == tilestate[i * 4])
+        tilestate[i * 4 + j] = 255;
+        else
+        tilestate[i * 4 + j] = A(tilestate[i * 4 + j - 1]);
+    }
+    if (tiles[i] != 0)
+        area++;
     }
 
     /*
@@ -518,7 +518,7 @@ static int net_solver(int w, int h, unsigned char *tiles,
      */
     deadends = snewn((w * h - 1) * 5 + 9, int);
     for (i = 0; i < (w * h - 1) * 5 + 9; i++)
-	deadends[i] = area+1;
+    deadends[i] = area+1;
 
     /*
      * equivalence tracks which sets of tiles are known to be
@@ -547,12 +547,12 @@ static int net_solver(int w, int h, unsigned char *tiles,
      * round the edge are closed.
      */
     if (!wrapping) {
-	for (i = 0; i < w; i++) {
-	    edgestate[i * 5 + 2] = edgestate[((h-1) * w + i) * 5 + 8] = 2;
-	}
-	for (i = 0; i < h; i++) {
-	    edgestate[(i * w + w-1) * 5 + 1] = edgestate[(i * w) * 5 + 4] = 2;
-	}
+    for (i = 0; i < w; i++) {
+        edgestate[i * 5 + 2] = edgestate[((h-1) * w + i) * 5 + 8] = 2;
+    }
+    for (i = 0; i < h; i++) {
+        edgestate[(i * w + w-1) * 5 + 1] = edgestate[(i * w) * 5 + 4] = 2;
+    }
     }
 
     /*
@@ -560,23 +560,23 @@ static int net_solver(int w, int h, unsigned char *tiles,
      * closed too.
      */
     if (barriers) {
-	for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
-	    int d;
-	    for (d = 1; d <= 8; d += d) {
-		if (barriers[y*w+x] & d) {
-		    int x2, y2;
-		    /*
-		     * In principle the barrier list should already
-		     * contain each barrier from each side, but
-		     * let's not take chances with our internal
-		     * consistency.
-		     */
-		    OFFSETWH(x2, y2, x, y, d, w, h);
-		    edgestate[(y*w+x) * 5 + d] = 2;
-		    edgestate[(y2*w+x2) * 5 + F(d)] = 2;
-		}
-	    }
-	}
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+        int d;
+        for (d = 1; d <= 8; d += d) {
+        if (barriers[y*w+x] & d) {
+            int x2, y2;
+            /*
+             * In principle the barrier list should already
+             * contain each barrier from each side, but
+             * let's not take chances with our internal
+             * consistency.
+             */
+            OFFSETWH(x2, y2, x, y, d, w, h);
+            edgestate[(y*w+x) * 5 + d] = 2;
+            edgestate[(y2*w+x2) * 5 + F(d)] = 2;
+        }
+        }
+    }
     }
 
     /*
@@ -592,216 +592,216 @@ static int net_solver(int w, int h, unsigned char *tiles,
     /*
      * Main deductive loop.
      */
-    done_something = true;	       /* prevent instant termination! */
+    done_something = true;           /* prevent instant termination! */
     while (1) {
-	int index;
+    int index;
 
-	/*
-	 * Take a tile index off the todo list and process it.
-	 */
-	index = todo_get(todo);
-	if (index == -1) {
-	    /*
-	     * If we have run out of immediate things to do, we
-	     * have no choice but to scan the whole grid for
-	     * longer-range things we've missed. Hence, I now add
-	     * every square on the grid back on to the to-do list.
-	     * I also set `done_something' to false at this point;
-	     * if we later come back here and find it still false,
-	     * we will know we've scanned the entire grid without
-	     * finding anything new to do, and we can terminate.
-	     */
-	    if (!done_something)
-		break;
-	    for (i = 0; i < w*h; i++)
-		todo_add(todo, i);
-	    done_something = false;
+    /*
+     * Take a tile index off the todo list and process it.
+     */
+    index = todo_get(todo);
+    if (index == -1) {
+        /*
+         * If we have run out of immediate things to do, we
+         * have no choice but to scan the whole grid for
+         * longer-range things we've missed. Hence, I now add
+         * every square on the grid back on to the to-do list.
+         * I also set `done_something' to false at this point;
+         * if we later come back here and find it still false,
+         * we will know we've scanned the entire grid without
+         * finding anything new to do, and we can terminate.
+         */
+        if (!done_something)
+        break;
+        for (i = 0; i < w*h; i++)
+        todo_add(todo, i);
+        done_something = false;
 
-	    index = todo_get(todo);
-	}
+        index = todo_get(todo);
+    }
 
-	y = index / w;
-	x = index % w;
-	{
-	    int d, ourclass = dsf_canonify(equivalence, y*w+x);
-	    int deadendmax[9];
+    y = index / w;
+    x = index % w;
+    {
+        int d, ourclass = dsf_canonify(equivalence, y*w+x);
+        int deadendmax[9];
 
-	    deadendmax[1] = deadendmax[2] = deadendmax[4] = deadendmax[8] = 0;
+        deadendmax[1] = deadendmax[2] = deadendmax[4] = deadendmax[8] = 0;
 
-	    for (i = j = 0; i < 4 && tilestate[(y*w+x) * 4 + i] != 255; i++) {
-		bool valid;
-		int nnondeadends, nondeadends[4], deadendtotal;
-		int nequiv, equiv[5];
-		int val = tilestate[(y*w+x) * 4 + i];
+        for (i = j = 0; i < 4 && tilestate[(y*w+x) * 4 + i] != 255; i++) {
+        bool valid;
+        int nnondeadends, nondeadends[4], deadendtotal;
+        int nequiv, equiv[5];
+        int val = tilestate[(y*w+x) * 4 + i];
 
-		valid = true;
-		nnondeadends = deadendtotal = 0;
-		equiv[0] = ourclass;
-		nequiv = 1;
-		for (d = 1; d <= 8; d += d) {
-		    /*
-		     * Immediately rule out this orientation if it
-		     * conflicts with any known edge.
-		     */
-		    if ((edgestate[(y*w+x) * 5 + d] == 1 && !(val & d)) ||
-			(edgestate[(y*w+x) * 5 + d] == 2 && (val & d)))
-			valid = false;
+        valid = true;
+        nnondeadends = deadendtotal = 0;
+        equiv[0] = ourclass;
+        nequiv = 1;
+        for (d = 1; d <= 8; d += d) {
+            /*
+             * Immediately rule out this orientation if it
+             * conflicts with any known edge.
+             */
+            if ((edgestate[(y*w+x) * 5 + d] == 1 && !(val & d)) ||
+            (edgestate[(y*w+x) * 5 + d] == 2 && (val & d)))
+            valid = false;
 
-		    if (val & d) {
-			/*
-			 * Count up the dead-end statistics.
-			 */
-			if (deadends[(y*w+x) * 5 + d] <= area) {
-			    deadendtotal += deadends[(y*w+x) * 5 + d];
-			} else {
-			    nondeadends[nnondeadends++] = d;
-			}
+            if (val & d) {
+            /*
+             * Count up the dead-end statistics.
+             */
+            if (deadends[(y*w+x) * 5 + d] <= area) {
+                deadendtotal += deadends[(y*w+x) * 5 + d];
+            } else {
+                nondeadends[nnondeadends++] = d;
+            }
 
-			/*
-			 * Ensure we aren't linking to any tiles,
-			 * through edges not already known to be
-			 * open, which create a loop.
-			 */
-			if (edgestate[(y*w+x) * 5 + d] == 0) {
-			    int c, k, x2, y2;
-			    
-			    OFFSETWH(x2, y2, x, y, d, w, h);
-			    c = dsf_canonify(equivalence, y2*w+x2);
-			    for (k = 0; k < nequiv; k++)
-				if (c == equiv[k])
-				    break;
-			    if (k == nequiv)
-				equiv[nequiv++] = c;
-			    else
-				valid = false;
-			}
-		    }
-		}
+            /*
+             * Ensure we aren't linking to any tiles,
+             * through edges not already known to be
+             * open, which create a loop.
+             */
+            if (edgestate[(y*w+x) * 5 + d] == 0) {
+                int c, k, x2, y2;
+                
+                OFFSETWH(x2, y2, x, y, d, w, h);
+                c = dsf_canonify(equivalence, y2*w+x2);
+                for (k = 0; k < nequiv; k++)
+                if (c == equiv[k])
+                    break;
+                if (k == nequiv)
+                equiv[nequiv++] = c;
+                else
+                valid = false;
+            }
+            }
+        }
 
-		if (nnondeadends == 0) {
-		    /*
-		     * If this orientation links together dead-ends
-		     * with a total area of less than the entire
-		     * grid, it is invalid.
-		     *
-		     * (We add 1 to deadendtotal because of the
-		     * tile itself, of course; one tile linking
-		     * dead ends of size 2 and 3 forms a subnetwork
-		     * with a total area of 6, not 5.)
-		     */
-		    if (deadendtotal > 0 && deadendtotal+1 < area)
-			valid = false;
-		} else if (nnondeadends == 1) {
-		    /*
-		     * If this orientation links together one or
-		     * more dead-ends with precisely one
-		     * non-dead-end, then we may have to mark that
-		     * non-dead-end as a dead end going the other
-		     * way. However, it depends on whether all
-		     * other orientations share the same property.
-		     */
-		    deadendtotal++;
-		    if (deadendmax[nondeadends[0]] < deadendtotal)
-			deadendmax[nondeadends[0]] = deadendtotal;
-		} else {
-		    /*
-		     * If this orientation links together two or
-		     * more non-dead-ends, then we can rule out the
-		     * possibility of putting in new dead-end
-		     * markings in those directions.
-		     */
-		    int k;
-		    for (k = 0; k < nnondeadends; k++)
-			deadendmax[nondeadends[k]] = area+1;
-		}
+        if (nnondeadends == 0) {
+            /*
+             * If this orientation links together dead-ends
+             * with a total area of less than the entire
+             * grid, it is invalid.
+             *
+             * (We add 1 to deadendtotal because of the
+             * tile itself, of course; one tile linking
+             * dead ends of size 2 and 3 forms a subnetwork
+             * with a total area of 6, not 5.)
+             */
+            if (deadendtotal > 0 && deadendtotal+1 < area)
+            valid = false;
+        } else if (nnondeadends == 1) {
+            /*
+             * If this orientation links together one or
+             * more dead-ends with precisely one
+             * non-dead-end, then we may have to mark that
+             * non-dead-end as a dead end going the other
+             * way. However, it depends on whether all
+             * other orientations share the same property.
+             */
+            deadendtotal++;
+            if (deadendmax[nondeadends[0]] < deadendtotal)
+            deadendmax[nondeadends[0]] = deadendtotal;
+        } else {
+            /*
+             * If this orientation links together two or
+             * more non-dead-ends, then we can rule out the
+             * possibility of putting in new dead-end
+             * markings in those directions.
+             */
+            int k;
+            for (k = 0; k < nnondeadends; k++)
+            deadendmax[nondeadends[k]] = area+1;
+        }
 
-		if (valid)
-		    tilestate[(y*w+x) * 4 + j++] = val;
+        if (valid)
+            tilestate[(y*w+x) * 4 + j++] = val;
 #ifdef SOLVER_DIAGNOSTICS
-		else
-		    printf("ruling out orientation %x at %d,%d\n", val, x, y);
+        else
+            printf("ruling out orientation %x at %d,%d\n", val, x, y);
 #endif
-	    }
+        }
 
-	    if (j == 0) {
+        if (j == 0) {
                 /* If we've ruled out all possible orientations for a
                  * tile, then our puzzle has no solution at all. */
                 return -1;
             }
 
-	    if (j < i) {
-		done_something = true;
+        if (j < i) {
+        done_something = true;
 
-		/*
-		 * We have ruled out at least one tile orientation.
-		 * Make sure the rest are blanked.
-		 */
-		while (j < 4)
-		    tilestate[(y*w+x) * 4 + j++] = 255;
-	    }
+        /*
+         * We have ruled out at least one tile orientation.
+         * Make sure the rest are blanked.
+         */
+        while (j < 4)
+            tilestate[(y*w+x) * 4 + j++] = 255;
+        }
 
-	    /*
-	     * Now go through the tile orientations again and see
-	     * if we've deduced anything new about any edges.
-	     */
-	    {
-		int a, o;
-		a = 0xF; o = 0;
+        /*
+         * Now go through the tile orientations again and see
+         * if we've deduced anything new about any edges.
+         */
+        {
+        int a, o;
+        a = 0xF; o = 0;
 
-		for (i = 0; i < 4 && tilestate[(y*w+x) * 4 + i] != 255; i++) {
-		    a &= tilestate[(y*w+x) * 4 + i];
-		    o |= tilestate[(y*w+x) * 4 + i];
-		}
-		for (d = 1; d <= 8; d += d)
-		    if (edgestate[(y*w+x) * 5 + d] == 0) {
-			int x2, y2, d2;
-			OFFSETWH(x2, y2, x, y, d, w, h);
-			d2 = F(d);
-			if (a & d) {
-			    /* This edge is open in all orientations. */
+        for (i = 0; i < 4 && tilestate[(y*w+x) * 4 + i] != 255; i++) {
+            a &= tilestate[(y*w+x) * 4 + i];
+            o |= tilestate[(y*w+x) * 4 + i];
+        }
+        for (d = 1; d <= 8; d += d)
+            if (edgestate[(y*w+x) * 5 + d] == 0) {
+            int x2, y2, d2;
+            OFFSETWH(x2, y2, x, y, d, w, h);
+            d2 = F(d);
+            if (a & d) {
+                /* This edge is open in all orientations. */
 #ifdef SOLVER_DIAGNOSTICS
-			    printf("marking edge %d,%d:%d open\n", x, y, d);
+                printf("marking edge %d,%d:%d open\n", x, y, d);
 #endif
-			    edgestate[(y*w+x) * 5 + d] = 1;
-			    edgestate[(y2*w+x2) * 5 + d2] = 1;
-			    dsf_merge(equivalence, y*w+x, y2*w+x2);
-			    done_something = true;
-			    todo_add(todo, y2*w+x2);
-			} else if (!(o & d)) {
-			    /* This edge is closed in all orientations. */
+                edgestate[(y*w+x) * 5 + d] = 1;
+                edgestate[(y2*w+x2) * 5 + d2] = 1;
+                dsf_merge(equivalence, y*w+x, y2*w+x2);
+                done_something = true;
+                todo_add(todo, y2*w+x2);
+            } else if (!(o & d)) {
+                /* This edge is closed in all orientations. */
 #ifdef SOLVER_DIAGNOSTICS
-			    printf("marking edge %d,%d:%d closed\n", x, y, d);
+                printf("marking edge %d,%d:%d closed\n", x, y, d);
 #endif
-			    edgestate[(y*w+x) * 5 + d] = 2;
-			    edgestate[(y2*w+x2) * 5 + d2] = 2;
-			    done_something = true;
-			    todo_add(todo, y2*w+x2);
-			}
-		    }
+                edgestate[(y*w+x) * 5 + d] = 2;
+                edgestate[(y2*w+x2) * 5 + d2] = 2;
+                done_something = true;
+                todo_add(todo, y2*w+x2);
+            }
+            }
 
-	    }
+        }
 
-	    /*
-	     * Now check the dead-end markers and see if any of
-	     * them has lowered from the real ones.
-	     */
-	    for (d = 1; d <= 8; d += d) {
-		int x2, y2, d2;
-		OFFSETWH(x2, y2, x, y, d, w, h);
-		d2 = F(d);
-		if (deadendmax[d] > 0 &&
-		    deadends[(y2*w+x2) * 5 + d2] > deadendmax[d]) {
+        /*
+         * Now check the dead-end markers and see if any of
+         * them has lowered from the real ones.
+         */
+        for (d = 1; d <= 8; d += d) {
+        int x2, y2, d2;
+        OFFSETWH(x2, y2, x, y, d, w, h);
+        d2 = F(d);
+        if (deadendmax[d] > 0 &&
+            deadends[(y2*w+x2) * 5 + d2] > deadendmax[d]) {
 #ifdef SOLVER_DIAGNOSTICS
-		    printf("setting dead end value %d,%d:%d to %d\n",
-			   x2, y2, d2, deadendmax[d]);
+            printf("setting dead end value %d,%d:%d to %d\n",
+               x2, y2, d2, deadendmax[d]);
 #endif
-		    deadends[(y2*w+x2) * 5 + d2] = deadendmax[d];
-		    done_something = true;
-		    todo_add(todo, y2*w+x2);
-		}
-	    }
+            deadends[(y2*w+x2) * 5 + d2] = deadendmax[d];
+            done_something = true;
+            todo_add(todo, y2*w+x2);
+        }
+        }
 
-	}
+    }
     }
 
     /*
@@ -809,13 +809,13 @@ static int net_solver(int w, int h, unsigned char *tiles,
      */
     j = +1;
     for (i = 0; i < w*h; i++) {
-	if (tilestate[i * 4 + 1] == 255) {
-	    assert(tilestate[i * 4 + 0] != 255);
-	    tiles[i] = tilestate[i * 4] | LOCKED;
-	} else {
-	    tiles[i] &= ~LOCKED;
-	    j = 0;
-	}
+    if (tilestate[i * 4 + 1] == 255) {
+        assert(tilestate[i * 4 + 0] != 255);
+        tiles[i] = tilestate[i * 4] | LOCKED;
+    } else {
+        tiles[i] &= ~LOCKED;
+        j = 0;
+    }
     }
 
     /*
@@ -839,7 +839,7 @@ static int net_solver(int w, int h, unsigned char *tiles,
  * attempt to ensure unique solvability.
  */
 static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
-		    random_state *rs, int startx, int starty, int startd)
+            random_state *rs, int startx, int starty, int startd)
 {
     struct xyd *perimeter, *perim2, *loop[2], looppos[2];
     int nperim, perimsize, nloop[2], loopsize[2];
@@ -860,49 +860,49 @@ static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
     printf("perturb %d,%d:%d\n", x, y, d);
 #endif
     do {
-	int x2, y2, d2;
+    int x2, y2, d2;
 
-	if (nperim >= perimsize) {
-	    perimsize = perimsize * 3 / 2 + 32;
-	    perimeter = sresize(perimeter, perimsize, struct xyd);
-	}
-	perimeter[nperim].x = x;
-	perimeter[nperim].y = y;
-	perimeter[nperim].direction = d;
-	nperim++;
+    if (nperim >= perimsize) {
+        perimsize = perimsize * 3 / 2 + 32;
+        perimeter = sresize(perimeter, perimsize, struct xyd);
+    }
+    perimeter[nperim].x = x;
+    perimeter[nperim].y = y;
+    perimeter[nperim].direction = d;
+    nperim++;
 #ifdef PERTURB_DIAGNOSTICS
-	printf("perimeter: %d,%d:%d\n", x, y, d);
+    printf("perimeter: %d,%d:%d\n", x, y, d);
 #endif
 
-	/*
-	 * First, see if we can simply turn left from where we are
-	 * and find another locked square.
-	 */
-	d2 = A(d);
-	OFFSETWH(x2, y2, x, y, d2, w, h);
-	if ((!wrapping && (abs(x2-x) > 1 || abs(y2-y) > 1)) ||
-	    (tiles[y2*w+x2] & LOCKED)) {
-	    d = d2;
-	} else {
-	    /*
-	     * Failing that, step left into the new square and look
-	     * in front of us.
-	     */
-	    x = x2;
-	    y = y2;
-	    OFFSETWH(x2, y2, x, y, d, w, h);
-	    if ((wrapping || (abs(x2-x) <= 1 && abs(y2-y) <= 1)) &&
-		!(tiles[y2*w+x2] & LOCKED)) {
-		/*
-		 * And failing _that_, we're going to have to step
-		 * forward into _that_ square and look right at the
-		 * same locked square as we started with.
-		 */
-		x = x2;
-		y = y2;
-		d = C(d);
-	    }
-	}
+    /*
+     * First, see if we can simply turn left from where we are
+     * and find another locked square.
+     */
+    d2 = A(d);
+    OFFSETWH(x2, y2, x, y, d2, w, h);
+    if ((!wrapping && (abs(x2-x) > 1 || abs(y2-y) > 1)) ||
+        (tiles[y2*w+x2] & LOCKED)) {
+        d = d2;
+    } else {
+        /*
+         * Failing that, step left into the new square and look
+         * in front of us.
+         */
+        x = x2;
+        y = y2;
+        OFFSETWH(x2, y2, x, y, d, w, h);
+        if ((wrapping || (abs(x2-x) <= 1 && abs(y2-y) <= 1)) &&
+        !(tiles[y2*w+x2] & LOCKED)) {
+        /*
+         * And failing _that_, we're going to have to step
+         * forward into _that_ square and look right at the
+         * same locked square as we started with.
+         */
+        x = x2;
+        y = y2;
+        d = C(d);
+        }
+    }
 
     } while (x != startx || y != starty || d != startd);
 
@@ -920,39 +920,39 @@ static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
     /* Shuffle the perimeter, so as to search it without directional bias. */
     shuffle(perim2, nperim, sizeof(*perim2), rs);
     for (i = 0; i < nperim; i++) {
-	int x2, y2;
+    int x2, y2;
 
-	x = perim2[i].x;
-	y = perim2[i].y;
-	d = perim2[i].direction;
+    x = perim2[i].x;
+    y = perim2[i].y;
+    d = perim2[i].direction;
 
-	OFFSETWH(x2, y2, x, y, d, w, h);
-	if (!wrapping && (abs(x2-x) > 1 || abs(y2-y) > 1))
-	    continue;            /* can't link across non-wrapping border */
-	if (tiles[y*w+x] & d)
-	    continue;		       /* already linked in this direction! */
-	if (((tiles[y*w+x] | d) & 15) == 15)
-	    continue;		       /* can't turn this tile into a cross */
-	if (((tiles[y2*w+x2] | F(d)) & 15) == 15)
-	    continue;		       /* can't turn other tile into a cross */
+    OFFSETWH(x2, y2, x, y, d, w, h);
+    if (!wrapping && (abs(x2-x) > 1 || abs(y2-y) > 1))
+        continue;            /* can't link across non-wrapping border */
+    if (tiles[y*w+x] & d)
+        continue;               /* already linked in this direction! */
+    if (((tiles[y*w+x] | d) & 15) == 15)
+        continue;               /* can't turn this tile into a cross */
+    if (((tiles[y2*w+x2] | F(d)) & 15) == 15)
+        continue;               /* can't turn other tile into a cross */
 
-	/*
-	 * We've found the point at which we're going to make a new
-	 * link.
-	 */
-#ifdef PERTURB_DIAGNOSTICS	
-	printf("linking %d,%d:%d\n", x, y, d);
+    /*
+     * We've found the point at which we're going to make a new
+     * link.
+     */
+#ifdef PERTURB_DIAGNOSTICS    
+    printf("linking %d,%d:%d\n", x, y, d);
 #endif
-	tiles[y*w+x] |= d;
-	tiles[y2*w+x2] |= F(d);
+    tiles[y*w+x] |= d;
+    tiles[y2*w+x2] |= F(d);
 
-	break;
+    break;
     }
     sfree(perim2);
 
     if (i == nperim) {
         sfree(perimeter);
-	return;			       /* nothing we can do! */
+    return;                   /* nothing we can do! */
     }
 
     /*
@@ -968,101 +968,101 @@ static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
      * them gets back to its starting point, I abandon the other.
      */
     for (i = 0; i < 2; i++) {
-	loopsize[i] = nloop[i] = 0;
-	loop[i] = NULL;
-	looppos[i].x = x;
-	looppos[i].y = y;
-	looppos[i].direction = d;
+    loopsize[i] = nloop[i] = 0;
+    loop[i] = NULL;
+    looppos[i].x = x;
+    looppos[i].y = y;
+    looppos[i].direction = d;
     }
     while (1) {
-	for (i = 0; i < 2; i++) {
-	    int x2, y2, j;
+    for (i = 0; i < 2; i++) {
+        int x2, y2, j;
 
-	    x = looppos[i].x;
-	    y = looppos[i].y;
-	    d = looppos[i].direction;
+        x = looppos[i].x;
+        y = looppos[i].y;
+        d = looppos[i].direction;
 
-	    OFFSETWH(x2, y2, x, y, d, w, h);
+        OFFSETWH(x2, y2, x, y, d, w, h);
 
-	    /*
-	     * Add this path segment to the loop, unless it exactly
-	     * reverses the previous one on the loop in which case
-	     * we take it away again.
-	     */
+        /*
+         * Add this path segment to the loop, unless it exactly
+         * reverses the previous one on the loop in which case
+         * we take it away again.
+         */
 #ifdef PERTURB_DIAGNOSTICS
-	    printf("looppos[%d] = %d,%d:%d\n", i, x, y, d);
+        printf("looppos[%d] = %d,%d:%d\n", i, x, y, d);
 #endif
-	    if (nloop[i] > 0 &&
-		loop[i][nloop[i]-1].x == x2 &&
-		loop[i][nloop[i]-1].y == y2 &&
-		loop[i][nloop[i]-1].direction == F(d)) {
+        if (nloop[i] > 0 &&
+        loop[i][nloop[i]-1].x == x2 &&
+        loop[i][nloop[i]-1].y == y2 &&
+        loop[i][nloop[i]-1].direction == F(d)) {
 #ifdef PERTURB_DIAGNOSTICS
-		printf("removing path segment %d,%d:%d from loop[%d]\n",
-		       x2, y2, F(d), i);
+        printf("removing path segment %d,%d:%d from loop[%d]\n",
+               x2, y2, F(d), i);
 #endif
-		nloop[i]--;
-	    } else {
-		if (nloop[i] >= loopsize[i]) {
-		    loopsize[i] = loopsize[i] * 3 / 2 + 32;
-		    loop[i] = sresize(loop[i], loopsize[i], struct xyd);
-		}
+        nloop[i]--;
+        } else {
+        if (nloop[i] >= loopsize[i]) {
+            loopsize[i] = loopsize[i] * 3 / 2 + 32;
+            loop[i] = sresize(loop[i], loopsize[i], struct xyd);
+        }
 #ifdef PERTURB_DIAGNOSTICS
-		printf("adding path segment %d,%d:%d to loop[%d]\n",
-		       x, y, d, i);
+        printf("adding path segment %d,%d:%d to loop[%d]\n",
+               x, y, d, i);
 #endif
-		loop[i][nloop[i]++] = looppos[i];
-	    }
+        loop[i][nloop[i]++] = looppos[i];
+        }
 
 #ifdef PERTURB_DIAGNOSTICS
-	    printf("tile at new location is %x\n", tiles[y2*w+x2] & 0xF);
+        printf("tile at new location is %x\n", tiles[y2*w+x2] & 0xF);
 #endif
-	    d = F(d);
-	    for (j = 0; j < 4; j++) {
-		if (i == 0)
-		    d = A(d);
-		else
-		    d = C(d);
+        d = F(d);
+        for (j = 0; j < 4; j++) {
+        if (i == 0)
+            d = A(d);
+        else
+            d = C(d);
 #ifdef PERTURB_DIAGNOSTICS
-		printf("trying dir %d\n", d);
+        printf("trying dir %d\n", d);
 #endif
-		if (tiles[y2*w+x2] & d) {
-		    looppos[i].x = x2;
-		    looppos[i].y = y2;
-		    looppos[i].direction = d;
-		    break;
-		}
-	    }
+        if (tiles[y2*w+x2] & d) {
+            looppos[i].x = x2;
+            looppos[i].y = y2;
+            looppos[i].direction = d;
+            break;
+        }
+        }
 
-	    assert(j < 4);
-	    assert(nloop[i] > 0);
+        assert(j < 4);
+        assert(nloop[i] > 0);
 
-	    if (looppos[i].x == loop[i][0].x &&
-		looppos[i].y == loop[i][0].y &&
-		looppos[i].direction == loop[i][0].direction) {
+        if (looppos[i].x == loop[i][0].x &&
+        looppos[i].y == loop[i][0].y &&
+        looppos[i].direction == loop[i][0].direction) {
 #ifdef PERTURB_DIAGNOSTICS
-		printf("loop %d finished tracking\n", i);
+        printf("loop %d finished tracking\n", i);
 #endif
 
-		/*
-		 * Having found our loop, we now sever it at a
-		 * randomly chosen point - absolutely any will do -
-		 * which is not the one we joined it at to begin
-		 * with. Conveniently, the one we joined it at is
-		 * loop[i][0], so we just avoid that one.
-		 */
-		j = random_upto(rs, nloop[i]-1) + 1;
-		x = loop[i][j].x;
-		y = loop[i][j].y;
-		d = loop[i][j].direction;
-		OFFSETWH(x2, y2, x, y, d, w, h);
-		tiles[y*w+x] &= ~d;
-		tiles[y2*w+x2] &= ~F(d);
+        /*
+         * Having found our loop, we now sever it at a
+         * randomly chosen point - absolutely any will do -
+         * which is not the one we joined it at to begin
+         * with. Conveniently, the one we joined it at is
+         * loop[i][0], so we just avoid that one.
+         */
+        j = random_upto(rs, nloop[i]-1) + 1;
+        x = loop[i][j].x;
+        y = loop[i][j].y;
+        d = loop[i][j].direction;
+        OFFSETWH(x2, y2, x, y, d, w, h);
+        tiles[y*w+x] &= ~d;
+        tiles[y2*w+x2] &= ~F(d);
 
-		break;
-	    }
-	}
-	if (i < 2)
-	    break;
+        break;
+        }
+    }
+    if (i < 2)
+        break;
     }
     sfree(loop[0]);
     sfree(loop[1]);
@@ -1081,46 +1081,46 @@ static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
     qsort(perimeter, nperim, sizeof(struct xyd), xyd_cmp);
     x = y = -1;
     for (i = 0; i <= nperim; i++) {
-	if (i == nperim || perimeter[i].x > x) {
-	    /*
-	     * Fill in everything from the last Up edge to the
-	     * bottom of the grid, if necessary.
-	     */
-	    if (x != -1) {
-		while (y < h) {
+    if (i == nperim || perimeter[i].x > x) {
+        /*
+         * Fill in everything from the last Up edge to the
+         * bottom of the grid, if necessary.
+         */
+        if (x != -1) {
+        while (y < h) {
 #ifdef PERTURB_DIAGNOSTICS
-		    printf("resolved: locking tile %d,%d\n", x, y);
+            printf("resolved: locking tile %d,%d\n", x, y);
 #endif
-		    tiles[y * w + x] |= LOCKED;
-		    y++;
-		}
-		x = y = -1;
-	    }
+            tiles[y * w + x] |= LOCKED;
+            y++;
+        }
+        x = y = -1;
+        }
 
-	    if (i == nperim)
-		break;
+        if (i == nperim)
+        break;
 
-	    x = perimeter[i].x;
-	    y = 0;
-	}
+        x = perimeter[i].x;
+        y = 0;
+    }
 
-	if (perimeter[i].direction == U) {
-	    x = perimeter[i].x;
-	    y = perimeter[i].y;
-	} else if (perimeter[i].direction == D) {
-	    /*
-	     * Fill in everything from the last Up edge to here.
-	     */
-	    assert(x == perimeter[i].x && y <= perimeter[i].y);
-	    while (y <= perimeter[i].y) {
+    if (perimeter[i].direction == U) {
+        x = perimeter[i].x;
+        y = perimeter[i].y;
+    } else if (perimeter[i].direction == D) {
+        /*
+         * Fill in everything from the last Up edge to here.
+         */
+        assert(x == perimeter[i].x && y <= perimeter[i].y);
+        while (y <= perimeter[i].y) {
 #ifdef PERTURB_DIAGNOSTICS
-		printf("resolved: locking tile %d,%d\n", x, y);
+        printf("resolved: locking tile %d,%d\n", x, y);
 #endif
-		tiles[y * w + x] |= LOCKED;
-		y++;
-	    }
-	    x = y = -1;
-	}
+        tiles[y * w + x] |= LOCKED;
+        y++;
+        }
+        x = y = -1;
+    }
     }
 
     sfree(perimeter);
@@ -1131,7 +1131,7 @@ static int *compute_loops_inner(int w, int h, bool wrapping,
                                 const unsigned char *barriers);
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     tree234 *possibilities, *barriertree;
     int w, h, x, y, cx, cy, nbarriers;
@@ -1197,183 +1197,183 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     possibilities = newtree234(xyd_cmp_nc);
 
     if (cx+1 < w)
-	add234(possibilities, new_xyd(cx, cy, R));
+    add234(possibilities, new_xyd(cx, cy, R));
     if (cy-1 >= 0)
-	add234(possibilities, new_xyd(cx, cy, U));
+    add234(possibilities, new_xyd(cx, cy, U));
     if (cx-1 >= 0)
-	add234(possibilities, new_xyd(cx, cy, L));
+    add234(possibilities, new_xyd(cx, cy, L));
     if (cy+1 < h)
-	add234(possibilities, new_xyd(cx, cy, D));
+    add234(possibilities, new_xyd(cx, cy, D));
 
     while (count234(possibilities) > 0) {
-	int i;
-	struct xyd *xyd;
-	int x1, y1, d1, x2, y2, d2, d;
+    int i;
+    struct xyd *xyd;
+    int x1, y1, d1, x2, y2, d2, d;
 
-	/*
-	 * Extract a randomly chosen possibility from the list.
-	 */
-	i = random_upto(rs, count234(possibilities));
-	xyd = delpos234(possibilities, i);
-	x1 = xyd->x;
-	y1 = xyd->y;
-	d1 = xyd->direction;
-	sfree(xyd);
+    /*
+     * Extract a randomly chosen possibility from the list.
+     */
+    i = random_upto(rs, count234(possibilities));
+    xyd = delpos234(possibilities, i);
+    x1 = xyd->x;
+    y1 = xyd->y;
+    d1 = xyd->direction;
+    sfree(xyd);
 
-	OFFSET(x2, y2, x1, y1, d1, params);
-	d2 = F(d1);
+    OFFSET(x2, y2, x1, y1, d1, params);
+    d2 = F(d1);
 #ifdef GENERATION_DIAGNOSTICS
-	printf("picked (%d,%d,%c) <-> (%d,%d,%c)\n",
-	       x1, y1, "0RU3L567D9abcdef"[d1], x2, y2, "0RU3L567D9abcdef"[d2]);
+    printf("picked (%d,%d,%c) <-> (%d,%d,%c)\n",
+           x1, y1, "0RU3L567D9abcdef"[d1], x2, y2, "0RU3L567D9abcdef"[d2]);
 #endif
 
-	/*
-	 * Make the connection. (We should be moving to an as yet
-	 * unused tile.)
-	 */
-	index(params, tiles, x1, y1) |= d1;
-	assert(index(params, tiles, x2, y2) == 0);
-	index(params, tiles, x2, y2) |= d2;
+    /*
+     * Make the connection. (We should be moving to an as yet
+     * unused tile.)
+     */
+    index(params, tiles, x1, y1) |= d1;
+    assert(index(params, tiles, x2, y2) == 0);
+    index(params, tiles, x2, y2) |= d2;
 
-	/*
-	 * If we have created a T-piece, remove its last
-	 * possibility.
-	 */
-	if (COUNT(index(params, tiles, x1, y1)) == 3) {
-	    struct xyd xyd1, *xydp;
+    /*
+     * If we have created a T-piece, remove its last
+     * possibility.
+     */
+    if (COUNT(index(params, tiles, x1, y1)) == 3) {
+        struct xyd xyd1, *xydp;
 
-	    xyd1.x = x1;
-	    xyd1.y = y1;
-	    xyd1.direction = 0x0F ^ index(params, tiles, x1, y1);
+        xyd1.x = x1;
+        xyd1.y = y1;
+        xyd1.direction = 0x0F ^ index(params, tiles, x1, y1);
 
-	    xydp = find234(possibilities, &xyd1, NULL);
+        xydp = find234(possibilities, &xyd1, NULL);
 
-	    if (xydp) {
+        if (xydp) {
 #ifdef GENERATION_DIAGNOSTICS
-		printf("T-piece; removing (%d,%d,%c)\n",
-		       xydp->x, xydp->y, "0RU3L567D9abcdef"[xydp->direction]);
+        printf("T-piece; removing (%d,%d,%c)\n",
+               xydp->x, xydp->y, "0RU3L567D9abcdef"[xydp->direction]);
 #endif
-		del234(possibilities, xydp);
-		sfree(xydp);
-	    }
-	}
+        del234(possibilities, xydp);
+        sfree(xydp);
+        }
+    }
 
-	/*
-	 * Remove all other possibilities that were pointing at the
-	 * tile we've just moved into.
-	 */
-	for (d = 1; d < 0x10; d <<= 1) {
-	    int x3, y3, d3;
-	    struct xyd xyd1, *xydp;
+    /*
+     * Remove all other possibilities that were pointing at the
+     * tile we've just moved into.
+     */
+    for (d = 1; d < 0x10; d <<= 1) {
+        int x3, y3, d3;
+        struct xyd xyd1, *xydp;
 
-	    OFFSET(x3, y3, x2, y2, d, params);
-	    d3 = F(d);
+        OFFSET(x3, y3, x2, y2, d, params);
+        d3 = F(d);
 
-	    xyd1.x = x3;
-	    xyd1.y = y3;
-	    xyd1.direction = d3;
+        xyd1.x = x3;
+        xyd1.y = y3;
+        xyd1.direction = d3;
 
-	    xydp = find234(possibilities, &xyd1, NULL);
+        xydp = find234(possibilities, &xyd1, NULL);
 
-	    if (xydp) {
+        if (xydp) {
 #ifdef GENERATION_DIAGNOSTICS
-		printf("Loop avoidance; removing (%d,%d,%c)\n",
-		       xydp->x, xydp->y, "0RU3L567D9abcdef"[xydp->direction]);
+        printf("Loop avoidance; removing (%d,%d,%c)\n",
+               xydp->x, xydp->y, "0RU3L567D9abcdef"[xydp->direction]);
 #endif
-		del234(possibilities, xydp);
-		sfree(xydp);
-	    }
-	}
+        del234(possibilities, xydp);
+        sfree(xydp);
+        }
+    }
 
-	/*
-	 * Add new possibilities to the list for moving _out_ of
-	 * the tile we have just moved into.
-	 */
-	for (d = 1; d < 0x10; d <<= 1) {
-	    int x3, y3;
+    /*
+     * Add new possibilities to the list for moving _out_ of
+     * the tile we have just moved into.
+     */
+    for (d = 1; d < 0x10; d <<= 1) {
+        int x3, y3;
 
-	    if (d == d2)
-		continue;	       /* we've got this one already */
+        if (d == d2)
+        continue;           /* we've got this one already */
 
-	    if (!params->wrapping) {
-		if (d == U && y2 == 0)
-		    continue;
-		if (d == D && y2 == h-1)
-		    continue;
-		if (d == L && x2 == 0)
-		    continue;
-		if (d == R && x2 == w-1)
-		    continue;
-	    }
+        if (!params->wrapping) {
+        if (d == U && y2 == 0)
+            continue;
+        if (d == D && y2 == h-1)
+            continue;
+        if (d == L && x2 == 0)
+            continue;
+        if (d == R && x2 == w-1)
+            continue;
+        }
 
-	    OFFSET(x3, y3, x2, y2, d, params);
+        OFFSET(x3, y3, x2, y2, d, params);
 
-	    if (index(params, tiles, x3, y3))
-		continue;	       /* this would create a loop */
+        if (index(params, tiles, x3, y3))
+        continue;           /* this would create a loop */
 
 #ifdef GENERATION_DIAGNOSTICS
-	    printf("New frontier; adding (%d,%d,%c)\n",
-		   x2, y2, "0RU3L567D9abcdef"[d]);
+        printf("New frontier; adding (%d,%d,%c)\n",
+           x2, y2, "0RU3L567D9abcdef"[d]);
 #endif
-	    add234(possibilities, new_xyd(x2, y2, d));
-	}
+        add234(possibilities, new_xyd(x2, y2, d));
+    }
     }
     /* Having done that, we should have no possibilities remaining. */
     assert(count234(possibilities) == 0);
     freetree234(possibilities);
 
     if (params->unique) {
-	int prevn = -1;
+    int prevn = -1;
 
-	/*
-	 * Run the solver to check unique solubility.
-	 */
-	while (net_solver(w, h, tiles, NULL, params->wrapping) != 1) {
-	    int n = 0;
+    /*
+     * Run the solver to check unique solubility.
+     */
+    while (net_solver(w, h, tiles, NULL, params->wrapping) != 1) {
+        int n = 0;
 
-	    /*
-	     * We expect (in most cases) that most of the grid will
-	     * be uniquely specified already, and the remaining
-	     * ambiguous sections will be small and separate. So
-	     * our strategy is to find each individual such
-	     * section, and perform a perturbation on the network
-	     * in that area.
-	     */
-	    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
-		if (x+1 < w && ((tiles[y*w+x] ^ tiles[y*w+x+1]) & LOCKED)) {
-		    n++;
-		    if (tiles[y*w+x] & LOCKED)
-			perturb(w, h, tiles, params->wrapping, rs, x+1, y, L);
-		    else
-			perturb(w, h, tiles, params->wrapping, rs, x, y, R);
-		}
-		if (y+1 < h && ((tiles[y*w+x] ^ tiles[(y+1)*w+x]) & LOCKED)) {
-		    n++;
-		    if (tiles[y*w+x] & LOCKED)
-			perturb(w, h, tiles, params->wrapping, rs, x, y+1, U);
-		    else
-			perturb(w, h, tiles, params->wrapping, rs, x, y, D);
-		}
-	    }
+        /*
+         * We expect (in most cases) that most of the grid will
+         * be uniquely specified already, and the remaining
+         * ambiguous sections will be small and separate. So
+         * our strategy is to find each individual such
+         * section, and perform a perturbation on the network
+         * in that area.
+         */
+        for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+        if (x+1 < w && ((tiles[y*w+x] ^ tiles[y*w+x+1]) & LOCKED)) {
+            n++;
+            if (tiles[y*w+x] & LOCKED)
+            perturb(w, h, tiles, params->wrapping, rs, x+1, y, L);
+            else
+            perturb(w, h, tiles, params->wrapping, rs, x, y, R);
+        }
+        if (y+1 < h && ((tiles[y*w+x] ^ tiles[(y+1)*w+x]) & LOCKED)) {
+            n++;
+            if (tiles[y*w+x] & LOCKED)
+            perturb(w, h, tiles, params->wrapping, rs, x, y+1, U);
+            else
+            perturb(w, h, tiles, params->wrapping, rs, x, y, D);
+        }
+        }
 
-	    /*
-	     * Now n counts the number of ambiguous sections we
-	     * have fiddled with. If we haven't managed to decrease
-	     * it from the last time we ran the solver, give up and
-	     * regenerate the entire grid.
-	     */
-	    if (prevn != -1 && prevn <= n)
-		goto begin_generation; /* (sorry) */
+        /*
+         * Now n counts the number of ambiguous sections we
+         * have fiddled with. If we haven't managed to decrease
+         * it from the last time we ran the solver, give up and
+         * regenerate the entire grid.
+         */
+        if (prevn != -1 && prevn <= n)
+        goto begin_generation; /* (sorry) */
 
-	    prevn = n;
-	}
+        prevn = n;
+    }
 
-	/*
-	 * The solver will have left a lot of LOCKED bits lying
-	 * around in the tiles array. Remove them.
-	 */
-	for (x = 0; x < w*h; x++)
-	    tiles[x] &= ~LOCKED;
+    /*
+     * The solver will have left a lot of LOCKED bits lying
+     * around in the tiles array. Remove them.
+     */
+    for (x = 0; x < w*h; x++)
+        tiles[x] &= ~LOCKED;
     }
 
     /*
@@ -1381,30 +1381,30 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      */
     barriertree = newtree234(xyd_cmp_nc);
     for (y = 0; y < h; y++) {
-	for (x = 0; x < w; x++) {
+    for (x = 0; x < w; x++) {
 
-	    if (!(index(params, tiles, x, y) & R) &&
+        if (!(index(params, tiles, x, y) & R) &&
                 (params->wrapping || x < w-1))
-		add234(barriertree, new_xyd(x, y, R));
-	    if (!(index(params, tiles, x, y) & D) &&
+        add234(barriertree, new_xyd(x, y, R));
+        if (!(index(params, tiles, x, y) & D) &&
                 (params->wrapping || y < h-1))
-		add234(barriertree, new_xyd(x, y, D));
-	}
+        add234(barriertree, new_xyd(x, y, D));
+    }
     }
 
     /*
      * Save the unshuffled grid in aux.
      */
     {
-	char *solution;
+    char *solution;
         int i;
 
-	solution = snewn(w * h + 1, char);
+    solution = snewn(w * h + 1, char);
         for (i = 0; i < w * h; i++)
             solution[i] = "0123456789abcdef"[tiles[i] & 0xF];
         solution[w*h] = '\0';
 
-	*aux = solution;
+    *aux = solution;
     }
 
     /*
@@ -1521,42 +1521,42 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     assert(nbarriers >= 0 && nbarriers <= count234(barriertree));
 
     while (nbarriers > 0) {
-	int i;
-	struct xyd *xyd;
-	int x1, y1, d1, x2, y2, d2;
+    int i;
+    struct xyd *xyd;
+    int x1, y1, d1, x2, y2, d2;
 
-	/*
-	 * Extract a randomly chosen barrier from the list.
-	 */
-	i = random_upto(rs, count234(barriertree));
-	xyd = delpos234(barriertree, i);
+    /*
+     * Extract a randomly chosen barrier from the list.
+     */
+    i = random_upto(rs, count234(barriertree));
+    xyd = delpos234(barriertree, i);
 
-	assert(xyd != NULL);
+    assert(xyd != NULL);
 
-	x1 = xyd->x;
-	y1 = xyd->y;
-	d1 = xyd->direction;
-	sfree(xyd);
+    x1 = xyd->x;
+    y1 = xyd->y;
+    d1 = xyd->direction;
+    sfree(xyd);
 
-	OFFSET(x2, y2, x1, y1, d1, params);
-	d2 = F(d1);
+    OFFSET(x2, y2, x1, y1, d1, params);
+    d2 = F(d1);
 
-	index(params, barriers, x1, y1) |= d1;
-	index(params, barriers, x2, y2) |= d2;
+    index(params, barriers, x1, y1) |= d1;
+    index(params, barriers, x2, y2) |= d2;
 
-	nbarriers--;
+    nbarriers--;
     }
 
     /*
      * Clean up the rest of the barrier list.
      */
     {
-	struct xyd *xyd;
+    struct xyd *xyd;
 
-	while ( (xyd = delpos234(barriertree, 0)) != NULL)
-	    sfree(xyd);
+    while ( (xyd = delpos234(barriertree, 0)) != NULL)
+        sfree(xyd);
 
-	freetree234(barriertree);
+    freetree234(barriertree);
     }
 
     /*
@@ -1682,14 +1682,14 @@ static game_state *new_game(midend *me, const game_params *params,
      * Set up border barriers if this is a non-wrapping game.
      */
     if (!state->wrapping) {
-	for (x = 0; x < state->width; x++) {
-	    barrier(state, x, 0) |= U;
-	    barrier(state, x, state->height-1) |= D;
-	}
-	for (y = 0; y < state->height; y++) {
-	    barrier(state, 0, y) |= L;
-	    barrier(state, state->width-1, y) |= R;
-	}
+    for (x = 0; x < state->width; x++) {
+        barrier(state, x, 0) |= U;
+        barrier(state, x, state->height-1) |= D;
+    }
+    for (y = 0; y < state->height; y++) {
+        barrier(state, 0, y) |= L;
+        barrier(state, state->width-1, y) |= R;
+    }
     } else {
         /*
          * We check whether this is de-facto a non-wrapping game
@@ -1753,14 +1753,14 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     tiles = snewn(state->width * state->height, unsigned char);
 
     if (!aux) {
-	/*
-	 * Run the internal solver on the provided grid. This might
-	 * not yield a complete solution.
-	 */
+    /*
+     * Run the internal solver on the provided grid. This might
+     * not yield a complete solution.
+     */
         int solver_result;
 
-	memcpy(tiles, state->tiles, state->width * state->height);
-	solver_result = net_solver(state->width, state->height, tiles,
+    memcpy(tiles, state->tiles, state->width * state->height);
+    solver_result = net_solver(state->width, state->height, tiles,
                                    state->imm->barriers, state->wrapping);
 
         if (solver_result < 0) {
@@ -1779,7 +1779,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
             else if (c >= 'A' && c <= 'F')
                 tiles[i] = c - 'A' + 10;
 
-	    tiles[i] |= LOCKED;
+        tiles[i] |= LOCKED;
         }
     }
 
@@ -1793,47 +1793,47 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     ret[retlen++] = 'S';
 
     for (i = 0; i < state->width * state->height; i++) {
-	int from = currstate->tiles[i], to = tiles[i];
-	int ft = from & (R|L|U|D), tt = to & (R|L|U|D);
-	int x = i % state->width, y = i / state->width;
-	int chr = '\0';
-	char buf[80], *p = buf;
+    int from = currstate->tiles[i], to = tiles[i];
+    int ft = from & (R|L|U|D), tt = to & (R|L|U|D);
+    int x = i % state->width, y = i / state->width;
+    int chr = '\0';
+    char buf[80], *p = buf;
 
-	if (from == to)
-	    continue;		       /* nothing needs doing at all */
+    if (from == to)
+        continue;               /* nothing needs doing at all */
 
-	/*
-	 * To transform this tile into the desired tile: first
-	 * unlock the tile if it's locked, then rotate it if
-	 * necessary, then lock it if necessary.
-	 */
-	if (from & LOCKED)
-	    p += sprintf(p, ";L%d,%d", x, y);
+    /*
+     * To transform this tile into the desired tile: first
+     * unlock the tile if it's locked, then rotate it if
+     * necessary, then lock it if necessary.
+     */
+    if (from & LOCKED)
+        p += sprintf(p, ";L%d,%d", x, y);
 
-	if (tt == A(ft))
-	    chr = 'A';
-	else if (tt == C(ft))
-	    chr = 'C';
-	else if (tt == F(ft))
-	    chr = 'F';
-	else {
-	    assert(tt == ft);
-	    chr = '\0';
-	}
-	if (chr)
-	    p += sprintf(p, ";%c%d,%d", chr, x, y);
+    if (tt == A(ft))
+        chr = 'A';
+    else if (tt == C(ft))
+        chr = 'C';
+    else if (tt == F(ft))
+        chr = 'F';
+    else {
+        assert(tt == ft);
+        chr = '\0';
+    }
+    if (chr)
+        p += sprintf(p, ";%c%d,%d", chr, x, y);
 
-	if (to & LOCKED)
-	    p += sprintf(p, ";L%d,%d", x, y);
+    if (to & LOCKED)
+        p += sprintf(p, ";L%d,%d", x, y);
 
-	if (p > buf) {
-	    if (retlen + (p - buf) >= retsize) {
-		retsize = retlen + (p - buf) + 512;
-		ret = sresize(ret, retsize, char);
-	    }
-	    memcpy(ret+retlen, buf, p - buf);
-	    retlen += p - buf;
-	}
+    if (p > buf) {
+        if (retlen + (p - buf) >= retsize) {
+        retsize = retlen + (p - buf) + 512;
+        ret = sresize(ret, retsize, char);
+        }
+        memcpy(ret+retlen, buf, p - buf);
+        retlen += p - buf;
+    }
     }
 
     assert(retlen < retsize);
@@ -1843,16 +1843,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     sfree(tiles);
 
     return ret;
-}
-
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    return NULL;
 }
 
 /* ----------------------------------------------------------------------
@@ -1884,30 +1874,30 @@ static unsigned char *compute_active(const game_state *state, int cx, int cy)
     add234(todo, new_xyd(cx, cy, 0));
 
     while ( (xyd = delpos234(todo, 0)) != NULL) {
-	int x1, y1, d1, x2, y2, d2;
+    int x1, y1, d1, x2, y2, d2;
 
-	x1 = xyd->x;
-	y1 = xyd->y;
-	sfree(xyd);
+    x1 = xyd->x;
+    y1 = xyd->y;
+    sfree(xyd);
 
-	for (d1 = 1; d1 < 0x10; d1 <<= 1) {
-	    OFFSET(x2, y2, x1, y1, d1, state);
-	    d2 = F(d1);
+    for (d1 = 1; d1 < 0x10; d1 <<= 1) {
+        OFFSET(x2, y2, x1, y1, d1, state);
+        d2 = F(d1);
 
-	    /*
-	     * If the next tile in this direction is connected to
-	     * us, and there isn't a barrier in the way, and it
-	     * isn't already marked active, then mark it active and
-	     * add it to the to-examine list.
-	     */
-	    if ((tile(state, x1, y1) & d1) &&
-		(tile(state, x2, y2) & d2) &&
-		!(barrier(state, x1, y1) & d1) &&
-		!index(state, active, x2, y2)) {
-		index(state, active, x2, y2) = ACTIVE;
-		add234(todo, new_xyd(x2, y2, 0));
-	    }
-	}
+        /*
+         * If the next tile in this direction is connected to
+         * us, and there isn't a barrier in the way, and it
+         * isn't already marked active, then mark it active and
+         * add it to the to-examine list.
+         */
+        if ((tile(state, x1, y1) & d1) &&
+        (tile(state, x2, y2) & d2) &&
+        !(barrier(state, x1, y1) & d1) &&
+        !index(state, active, x2, y2)) {
+        index(state, active, x2, y2) = ACTIVE;
+        add234(todo, new_xyd(x2, y2, 0));
+        }
+    }
     }
     /* Now we expect the todo list to have shrunk to zero size. */
     assert(count234(todo) == 0);
@@ -2045,7 +2035,7 @@ static char *encode_ui(const game_ui *ui)
 static void decode_ui(game_ui *ui, const char *encoding)
 {
     sscanf(encoding, "O%d,%d;C%d,%d",
-	   &ui->org_x, &ui->org_y, &ui->cx, &ui->cy);
+       &ui->org_x, &ui->org_y, &ui->cx, &ui->cy);
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -2080,45 +2070,45 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     action = NONE;
 
     if (button == LEFT_BUTTON ||
-	button == MIDDLE_BUTTON ||
+    button == MIDDLE_BUTTON ||
 #ifdef USE_DRAGGING
-	button == LEFT_DRAG ||
-	button == LEFT_RELEASE ||
-	button == RIGHT_DRAG ||
-	button == RIGHT_RELEASE ||
+    button == LEFT_DRAG ||
+    button == LEFT_RELEASE ||
+    button == RIGHT_DRAG ||
+    button == RIGHT_RELEASE ||
 #endif
-	button == RIGHT_BUTTON) {
+    button == RIGHT_BUTTON) {
 
-	if (ui->cur_visible) {
-	    ui->cur_visible = false;
-	    nullret = UI_UPDATE;
-	}
+    if (ui->cur_visible) {
+        ui->cur_visible = false;
+        nullret = UI_UPDATE;
+    }
 
-	/*
-	 * The button must have been clicked on a valid tile.
-	 */
-	x -= WINDOW_OFFSET + LINE_THICK;
-	y -= WINDOW_OFFSET + LINE_THICK;
-	if (x < 0 || y < 0)
-	    return nullret;
-	tx = x / TILE_SIZE;
-	ty = y / TILE_SIZE;
-	if (tx >= state->width || ty >= state->height)
-	    return nullret;
-        /* Transform from physical to game coords */
-        tx = (tx + ui->org_x) % state->width;
-        ty = (ty + ui->org_y) % state->height;
-	if (x % TILE_SIZE >= TILE_SIZE - LINE_THICK ||
-	    y % TILE_SIZE >= TILE_SIZE - LINE_THICK)
-	    return nullret;
+    /*
+     * The button must have been clicked on a valid tile.
+     */
+    x -= WINDOW_OFFSET + LINE_THICK;
+    y -= WINDOW_OFFSET + LINE_THICK;
+    if (x < 0 || y < 0)
+        return nullret;
+    tx = x / TILE_SIZE;
+    ty = y / TILE_SIZE;
+    if (tx >= state->width || ty >= state->height)
+        return nullret;
+    /* Transform from physical to game coords */
+    tx = (tx + ui->org_x) % state->width;
+    ty = (ty + ui->org_y) % state->height;
+    if (x % TILE_SIZE >= TILE_SIZE - LINE_THICK ||
+        y % TILE_SIZE >= TILE_SIZE - LINE_THICK)
+        return nullret;
 
 #ifdef USE_DRAGGING
 
         if (button == MIDDLE_BUTTON
 #ifdef STYLUS_BASED
-	    || button == RIGHT_BUTTON  /* with a stylus, `right-click' locks */
+        || button == RIGHT_BUTTON  /* with a stylus, `right-click' locks */
 #endif
-	    ) {
+        ) {
             /*
              * Middle button never drags: it only toggles the lock.
              */
@@ -2213,8 +2203,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
 #else /* USE_DRAGGING */
 
-	action = (button == LEFT_BUTTON ? ROTATE_LEFT :
-		  button == RIGHT_BUTTON ? ROTATE_RIGHT : TOGGLE_LOCK);
+    action = (button == LEFT_BUTTON ? ROTATE_LEFT :
+          button == RIGHT_BUTTON ? ROTATE_RIGHT : TOGGLE_LOCK);
 
 #endif /* USE_DRAGGING */
 
@@ -2231,25 +2221,25 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         else if (ctrl)     action = MOVE_SOURCE;
         else               action = MOVE_CURSOR;
     } else if (button == 'a' || button == 's' || button == 'd' ||
-	       button == 'A' || button == 'S' || button == 'D' ||
+           button == 'A' || button == 'S' || button == 'D' ||
                button == 'f' || button == 'F' ||
                IS_CURSOR_SELECT(button)) {
-	tx = ui->cur_x;
-	ty = ui->cur_y;
-	if (button == 'a' || button == 'A' || button == CURSOR_SELECT)
-	    action = ROTATE_LEFT;
-	else if (button == 's' || button == 'S' || button == CURSOR_SELECT2)
-	    action = TOGGLE_LOCK;
-	else if (button == 'd' || button == 'D')
-	    action = ROTATE_RIGHT;
+    tx = ui->cur_x;
+    ty = ui->cur_y;
+    if (button == 'a' || button == 'A' || button == CURSOR_SELECT)
+        action = ROTATE_LEFT;
+    else if (button == 's' || button == 'S' || button == CURSOR_SELECT2)
+        action = TOGGLE_LOCK;
+    else if (button == 'd' || button == 'D')
+        action = ROTATE_RIGHT;
         else if (button == 'f' || button == 'F')
             action = ROTATE_180;
         ui->cur_visible = true;
     } else if (button == 'j' || button == 'J') {
-	/* XXX should we have some mouse control for this? */
-	action = JUMBLE;
+    /* XXX should we have some mouse control for this? */
+    action = JUMBLE;
     } else
-	return nullret;
+    return nullret;
 
     /*
      * The middle button locks or unlocks a tile. (A locked tile
@@ -2262,12 +2252,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
      * unlocks it.)
      */
     if (action == TOGGLE_LOCK) {
-	char buf[80];
-	sprintf(buf, "L%d,%d", tx, ty);
-	return dupstr(buf);
+    char buf[80];
+    sprintf(buf, "L%d,%d", tx, ty);
+    return dupstr(buf);
     } else if (action == ROTATE_LEFT || action == ROTATE_RIGHT ||
                action == ROTATE_180) {
-	char buf[80];
+    char buf[80];
 
         /*
          * The left and right buttons have no effect if clicked on a
@@ -2280,42 +2270,42 @@ static char *interpret_move(const game_state *state, game_ui *ui,
          * Otherwise, turn the tile one way or the other. Left button
          * turns anticlockwise; right button turns clockwise.
          */
-	sprintf(buf, "%c%d,%d", (int)(action == ROTATE_LEFT ? 'A' :
+    sprintf(buf, "%c%d,%d", (int)(action == ROTATE_LEFT ? 'A' :
                                       action == ROTATE_RIGHT ? 'C' : 'F'), tx, ty);
-	return dupstr(buf);
+    return dupstr(buf);
     } else if (action == JUMBLE) {
         /*
          * Jumble all unlocked tiles to random orientations.
          */
 
         int jx, jy, maxlen;
-	char *ret, *p;
+    char *ret, *p;
 
-	/*
-	 * Maximum string length assumes no int can be converted to
-	 * decimal and take more than 11 digits!
-	 */
-	maxlen = state->width * state->height * 25 + 3;
+    /*
+     * Maximum string length assumes no int can be converted to
+     * decimal and take more than 11 digits!
+     */
+    maxlen = state->width * state->height * 25 + 3;
 
-	ret = snewn(maxlen, char);
-	p = ret;
-	*p++ = 'J';
+    ret = snewn(maxlen, char);
+    p = ret;
+    *p++ = 'J';
 
         for (jy = 0; jy < state->height; jy++) {
             for (jx = 0; jx < state->width; jx++) {
                 if (!(tile(state, jx, jy) & LOCKED)) {
                     int rot = random_upto(ui->rs, 4);
-		    if (rot) {
-			p += sprintf(p, ";%c%d,%d", "AFC"[rot-1], jx, jy);
-		    }
+            if (rot) {
+            p += sprintf(p, ";%c%d,%d", "AFC"[rot-1], jx, jy);
+            }
                 }
             }
         }
-	*p++ = '\0';
-	assert(p - ret < maxlen);
-	ret = sresize(ret, p - ret, char);
+    *p++ = '\0';
+    assert(p - ret < maxlen);
+    ret = sresize(ret, p - ret, char);
 
-	return ret;
+    return ret;
     } else if (action == MOVE_ORIGIN || action == MOVE_SOURCE ||
                action == MOVE_ORIGIN_AND_SOURCE || action == MOVE_CURSOR) {
         assert(dir != 0);
@@ -2333,7 +2323,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
         return UI_UPDATE;
     } else {
-	return NULL;
+    return NULL;
     }
 }
 
@@ -2346,53 +2336,53 @@ static game_state *execute_move(const game_state *from, const char *move)
     ret = dup_game(from);
 
     if (move[0] == 'J' || move[0] == 'S') {
-	if (move[0] == 'S')
-	    ret->used_solve = true;
+    if (move[0] == 'S')
+        ret->used_solve = true;
 
-	move++;
-	if (*move == ';')
-	    move++;
-	noanim = true;
+    move++;
+    if (*move == ';')
+        move++;
+    noanim = true;
     } else
-	noanim = false;
+    noanim = false;
 
-    ret->last_rotate_dir = 0;	       /* suppress animation */
+    ret->last_rotate_dir = 0;           /* suppress animation */
     ret->last_rotate_x = ret->last_rotate_y = 0;
 
     while (*move) {
-	if ((move[0] == 'A' || move[0] == 'C' ||
-	     move[0] == 'F' || move[0] == 'L') &&
-	    sscanf(move+1, "%d,%d%n", &tx, &ty, &n) >= 2 &&
-	    tx >= 0 && tx < from->width && ty >= 0 && ty < from->height) {
-	    orig = tile(ret, tx, ty);
-	    if (move[0] == 'A') {
-		tile(ret, tx, ty) = A(orig);
-		if (!noanim)
-		    ret->last_rotate_dir = +1;
-	    } else if (move[0] == 'F') {
-		tile(ret, tx, ty) = F(orig);
-		if (!noanim)
+    if ((move[0] == 'A' || move[0] == 'C' ||
+         move[0] == 'F' || move[0] == 'L') &&
+        sscanf(move+1, "%d,%d%n", &tx, &ty, &n) >= 2 &&
+        tx >= 0 && tx < from->width && ty >= 0 && ty < from->height) {
+        orig = tile(ret, tx, ty);
+        if (move[0] == 'A') {
+        tile(ret, tx, ty) = A(orig);
+        if (!noanim)
+            ret->last_rotate_dir = +1;
+        } else if (move[0] == 'F') {
+        tile(ret, tx, ty) = F(orig);
+        if (!noanim)
                     ret->last_rotate_dir = +2; /* + for sake of argument */
-	    } else if (move[0] == 'C') {
-		tile(ret, tx, ty) = C(orig);
-		if (!noanim)
-		    ret->last_rotate_dir = -1;
-	    } else {
-		assert(move[0] == 'L');
-		tile(ret, tx, ty) ^= LOCKED;
-	    }
+        } else if (move[0] == 'C') {
+        tile(ret, tx, ty) = C(orig);
+        if (!noanim)
+            ret->last_rotate_dir = -1;
+        } else {
+        assert(move[0] == 'L');
+        tile(ret, tx, ty) ^= LOCKED;
+        }
 
-	    move += 1 + n;
-	    if (*move == ';') move++;
-	} else {
-	    free_game(ret);
-	    return NULL;
-	}
+        move += 1 + n;
+        if (*move == ';') move++;
+    } else {
+        free_game(ret);
+        return NULL;
+    }
     }
     if (!noanim) {
         if (tx == -1 || ty == -1) { free_game(ret); return NULL; }
-	ret->last_rotate_x = tx;
-	ret->last_rotate_y = ty;
+    ret->last_rotate_x = tx;
+    ret->last_rotate_y = ty;
     }
 
     /*
@@ -2404,11 +2394,11 @@ static game_state *execute_move(const game_state *from, const char *move)
      * completed.
      */
     {
-	unsigned char *active;
-	int pos;
+    unsigned char *active;
+    int pos;
         bool complete = true;
 
-	for (pos = 0; pos < ret->width * ret->height; pos++)
+    for (pos = 0; pos < ret->width * ret->height; pos++)
             if (ret->tiles[pos] & 0xF)
                 break;
 
@@ -2417,15 +2407,15 @@ static game_state *execute_move(const game_state *from, const char *move)
 
             for (pos = 0; pos < ret->width * ret->height; pos++)
                 if ((ret->tiles[pos] & 0xF) && !active[pos]) {
-		    complete = false;
+            complete = false;
                     break;
                 }
 
             sfree(active);
         }
 
-	if (complete)
-	    ret->completed = true;
+    if (complete)
+        ret->completed = true;
     }
 
     return ret;
@@ -2484,6 +2474,7 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 static float *game_colours(frontend *fe, int *ncolours)
 {
     float *ret;
+    int i;
 
     ret = snewn(NCOLOURS * 3, float);
     *ncolours = NCOLOURS;
@@ -2492,57 +2483,16 @@ static float *game_colours(frontend *fe, int *ncolours)
      * Basic background colour is whatever the front end thinks is
      * a sensible default.
      */
-    frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-
-    /*
-     * Wires are black.
-     */
-    ret[COL_WIRE * 3 + 0] = 0.0F;
-    ret[COL_WIRE * 3 + 1] = 0.0F;
-    ret[COL_WIRE * 3 + 2] = 0.0F;
-
-    /*
-     * Powered wires and powered endpoints are cyan.
-     */
-    ret[COL_POWERED * 3 + 0] = 0.0F;
-    ret[COL_POWERED * 3 + 1] = 1.0F;
-    ret[COL_POWERED * 3 + 2] = 1.0F;
-
-    /*
-     * Barriers are red.
-     */
-    ret[COL_BARRIER * 3 + 0] = 1.0F;
-    ret[COL_BARRIER * 3 + 1] = 0.0F;
-    ret[COL_BARRIER * 3 + 2] = 0.0F;
-
-    /*
-     * Highlighted errors are red as well.
-     */
-    ret[COL_ERR * 3 + 0] = 1.0F;
-    ret[COL_ERR * 3 + 1] = 0.0F;
-    ret[COL_ERR * 3 + 2] = 0.0F;
-
-    /*
-     * Unpowered endpoints are blue.
-     */
-    ret[COL_ENDPOINT * 3 + 0] = 0.0F;
-    ret[COL_ENDPOINT * 3 + 1] = 0.0F;
-    ret[COL_ENDPOINT * 3 + 2] = 1.0F;
-
-    /*
-     * Tile borders are a darker grey than the background.
-     */
-    ret[COL_BORDER * 3 + 0] = 0.5F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_BORDER * 3 + 1] = 0.5F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_BORDER * 3 + 2] = 0.5F * ret[COL_BACKGROUND * 3 + 2];
-
-    /*
-     * Locked tiles are a grey in between those two.
-     */
-    ret[COL_LOCKED * 3 + 0] = 0.75F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_LOCKED * 3 + 1] = 0.75F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_LOCKED * 3 + 2] = 0.75F * ret[COL_BACKGROUND * 3 + 2];
-
+    for (i=0; i<3; i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_WIRE       * 3 + i] = 0.0F;  /* Wires are black. */
+        ret[COL_POWERED    * 3 + i] = 0.75F; /* Powered wires and powered endpoints are light */
+        ret[COL_BARRIER    * 3 + i] = 0.25F;  /* Barriers are dark grey */
+        ret[COL_ERR        * 3 + i] = 0.5F;  /* Highlighted errors are grey. */
+        ret[COL_ENDPOINT   * 3 + i] = 0.25F; /* Unpowered endpoints are dark grey. */
+        ret[COL_BORDER     * 3 + i] = 0.5F;  /* Tile borders are a darker grey than the background. */
+        ret[COL_LOCKED     * 3 + i] = 0.75F; /* Locked tiles are a grey in between those two. */
+    }
     return ret;
 }
 
@@ -3006,8 +2956,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * Update the status bar.
      */
     {
-	char statusbuf[256], *p;
-	int i, n, n2, a;
+        char statusbuf[256], *p;
+        int i, n, n2, a;
         bool complete = false;
 
         p = statusbuf;
@@ -3044,7 +2994,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 p += sprintf(p, "Active: %d/%d", a, n2);
         }
 
-	status_bar(dr, statusbuf);
+    status_bar(dr, statusbuf);
     }
 
     sfree(active);
@@ -3054,36 +3004,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 static float game_anim_length(const game_state *oldstate,
                               const game_state *newstate, int dir, game_ui *ui)
 {
-    int last_rotate_dir;
-
-    /*
-     * Don't animate if last_rotate_dir is zero.
-     */
-    last_rotate_dir = dir==-1 ? oldstate->last_rotate_dir :
-                                newstate->last_rotate_dir;
-    if (last_rotate_dir)
-        return ROTATE_TIME;
-
     return 0.0F;
 }
 
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    /*
-     * If the game has just been completed, we display a completion
-     * flash.
-     */
-    if (!oldstate->completed && newstate->completed &&
-	!oldstate->used_solve && !newstate->used_solve) {
-        int size = 0;
-        if (size < newstate->width)
-            size = newstate->width;
-        if (size < newstate->height)
-            size = newstate->height;
-        return FLASH_FRAME * (size+4);
-    }
-
     return 0.0F;
 }
 
@@ -3095,141 +3021,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /*
-     * I'll use 8mm squares by default.
-     */
-    game_compute_size(params, 800, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void draw_diagram(drawing *dr, game_drawstate *ds, int x, int y,
-			 bool topleft, int v, bool drawlines, int ink)
-{
-    int tx, ty, cx, cy, r, br, k, thick;
-
-    tx = WINDOW_OFFSET + TILE_SIZE * x;
-    ty = WINDOW_OFFSET + TILE_SIZE * y;
-
-    /*
-     * Find our centre point.
-     */
-    if (topleft) {
-	cx = tx + (v & L ? TILE_SIZE / 4 : TILE_SIZE / 6);
-	cy = ty + (v & U ? TILE_SIZE / 4 : TILE_SIZE / 6);
-	r = TILE_SIZE / 8;
-	br = TILE_SIZE / 32;
-    } else {
-	cx = tx + TILE_SIZE / 2;
-	cy = ty + TILE_SIZE / 2;
-	r = TILE_SIZE / 2;
-	br = TILE_SIZE / 8;
-    }
-    thick = r / 20;
-
-    /*
-     * Draw the square block if we have an endpoint.
-     */
-    if (v == 1 || v == 2 || v == 4 || v == 8)
-	draw_rect(dr, cx - br, cy - br, br*2, br*2, ink);
-
-    /*
-     * Draw each radial line.
-     */
-    if (drawlines) {
-	for (k = 1; k < 16; k *= 2)
-	    if (v & k) {
-		int x1 = min(cx, cx + (r-thick) * X(k));
-		int x2 = max(cx, cx + (r-thick) * X(k));
-		int y1 = min(cy, cy + (r-thick) * Y(k));
-		int y2 = max(cy, cy + (r-thick) * Y(k));
-		draw_rect(dr, x1 - thick, y1 - thick,
-			  (x2 - x1) + 2*thick, (y2 - y1) + 2*thick, ink);
-	    }
-    }
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w = state->width, h = state->height;
-    int ink = print_mono_colour(dr, 0);
-    int x, y;
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    game_set_size(dr, ds, NULL, tilesize);
-
-    /*
-     * Border.
-     */
-    print_line_width(dr, TILE_SIZE / (state->wrapping ? 128 : 12));
-    draw_rect_outline(dr, WINDOW_OFFSET, WINDOW_OFFSET,
-		      TILE_SIZE * w, TILE_SIZE * h, ink);
-
-    /*
-     * Grid.
-     */
-    print_line_width(dr, TILE_SIZE / 128);
-    for (x = 1; x < w; x++)
-	draw_line(dr, WINDOW_OFFSET + TILE_SIZE * x, WINDOW_OFFSET,
-		  WINDOW_OFFSET + TILE_SIZE * x, WINDOW_OFFSET + TILE_SIZE * h,
-		  ink);
-    for (y = 1; y < h; y++)
-	draw_line(dr, WINDOW_OFFSET, WINDOW_OFFSET + TILE_SIZE * y,
-		  WINDOW_OFFSET + TILE_SIZE * w, WINDOW_OFFSET + TILE_SIZE * y,
-		  ink);
-
-    /*
-     * Barriers.
-     */
-    for (y = 0; y <= h; y++)
-	for (x = 0; x <= w; x++) {
-	    int b = barrier(state, x % w, y % h);
-	    if (x < w && (b & U))
-		draw_rect(dr, WINDOW_OFFSET + TILE_SIZE * x - TILE_SIZE/24,
-			  WINDOW_OFFSET + TILE_SIZE * y - TILE_SIZE/24,
-			  TILE_SIZE + TILE_SIZE/24 * 2, TILE_SIZE/24 * 2, ink);
-	    if (y < h && (b & L))
-		draw_rect(dr, WINDOW_OFFSET + TILE_SIZE * x - TILE_SIZE/24,
-			  WINDOW_OFFSET + TILE_SIZE * y - TILE_SIZE/24,
-			  TILE_SIZE/24 * 2, TILE_SIZE + TILE_SIZE/24 * 2, ink);
-	}
-
-    /*
-     * Grid contents.
-     */
-    for (y = 0; y < h; y++)
-	for (x = 0; x < w; x++) {
-	    int vx, v = tile(state, x, y);
-	    int locked = v & LOCKED;
-
-	    v &= 0xF;
-
-	    /*
-	     * Rotate into a standard orientation for the top left
-	     * corner diagram.
-	     */
-	    vx = v;
-	    while (vx != 0 && vx != 15 && vx != 1 && vx != 9 && vx != 13 &&
-		   vx != 5)
-		vx = A(vx);
-
-	    /*
-	     * Draw the top left corner diagram.
-	     */
-	    draw_diagram(dr, ds, x, y, true, vx, true, ink);
-
-	    /*
-	     * Draw the real solution diagram, if we're doing so.
-	     */
-	    draw_diagram(dr, ds, x, y, false, v, locked, ink);
-	}
 }
 
 #ifdef COMBINED
@@ -3252,7 +3043,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -3269,8 +3060,8 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
-    true,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    true,                   /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    0,                       /* flags */
 };

@@ -1508,7 +1508,7 @@ struct game_drawstate {
 #else
 #define BORDER    (TILESIZE)
 #endif
-#define HIGHLIGHT_WIDTH (TILESIZE / 10)
+#define HIGHLIGHT_WIDTH (TILESIZE / 8)
 #define COORD(x)  ( (x) * TILESIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILESIZE) / TILESIZE - 1 )
 
@@ -1723,19 +1723,17 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-
     for (i=0;i<3;i++) {
-        ret[COL_BACKGROUND * 3 + i] = 1.0F;
-        ret[COL_OUTLINE * 3 + i] = 0.0F;
-        ret[COL_PLAYER * 3 + i] = 0.25F;
-        ret[COL_DEAD_PLAYER * 3 + i] = 0.0F;
-        ret[COL_MINE * 3 + i] = 0.0F;
-        ret[COL_GEM * 3 + i] = 0.8F;
-        ret[COL_HIGHLIGHT * 3 + i] = 0.9F;
-        ret[COL_LOWLIGHT * 3 + i] = 0.6F;
-        ret[COL_WALL * 3 + i] = 0.75F;
-        ret[COL_HINT * 3 + i] = 0.8F;
+        ret[COL_BACKGROUND  * 3 + i] = 1.0F;
+        ret[COL_OUTLINE     * 3 + i] = 0.0F;
+        ret[COL_PLAYER      * 3 + i] = 0.0F;
+        ret[COL_DEAD_PLAYER * 3 + i] = 0.2F;
+        ret[COL_MINE        * 3 + i] = 0.0F;
+        ret[COL_GEM         * 3 + i] = 0.8F;
+        ret[COL_HIGHLIGHT   * 3 + i] = 0.9F;
+        ret[COL_LOWLIGHT    * 3 + i] = 0.7F;
+        ret[COL_WALL        * 3 + i] = 0.8F;
+        ret[COL_HINT        * 3 + i] = 0.7F;
     }
 
     *ncolours = NCOLOURS;
@@ -1777,62 +1775,91 @@ static void draw_player(drawing *dr, game_drawstate *ds, int x, int y,
             bool dead, int hintdir)
 {
     if (dead) {
-    int coords[DIRECTIONS*4];
-    int d;
+        int coords[DIRECTIONS*4];
+        int d;
 
-    for (d = 0; d < DIRECTIONS; d++) {
-        float x1, y1, x2, y2, x3, y3, len;
 
-        x1 = DX(d);
-        y1 = DY(d);
-        len = sqrt(x1*x1+y1*y1); x1 /= len; y1 /= len;
+        for (d = 0; d < DIRECTIONS; d++) {
+            float x1, y1, len;
 
-        x3 = DX(d+1);
-        y3 = DY(d+1);
-        len = sqrt(x3*x3+y3*y3); x3 /= len; y3 /= len;
+            x1 = (DX(d) + DX(d+1));
+            y1 = (DY(d) + DY(d+1));
+            len = 2.0*sqrt(x1*x1+y1*y1); x1 /= len; y1 /= len;
 
-        x2 = (x1+x3) / 4;
-        y2 = (y1+y3) / 4;
+            coords[d*2+0] = x + TILESIZE/2 + (int)((TILESIZE*3/7) * x1);
+            coords[d*2+1] = y + TILESIZE/2 + (int)((TILESIZE*3/7) * y1);
+        }
 
-        coords[d*4+0] = x + TILESIZE/2 + (int)((TILESIZE*3/7) * x1);
-        coords[d*4+1] = y + TILESIZE/2 + (int)((TILESIZE*3/7) * y1);
-        coords[d*4+2] = x + TILESIZE/2 + (int)((TILESIZE*3/7) * x2);
-        coords[d*4+3] = y + TILESIZE/2 + (int)((TILESIZE*3/7) * y2);
-    }
-    draw_polygon(dr, coords, DIRECTIONS*2, COL_DEAD_PLAYER, COL_OUTLINE);
+        draw_polygon(dr, coords, DIRECTIONS, COL_DEAD_PLAYER, COL_DEAD_PLAYER);
+
+        for (d = 0; d < DIRECTIONS; d++) {
+            float x1, y1, x2, y2, x3, y3, len;
+
+            x1 = (DX(d) + DX(d+1));
+            y1 = (DY(d) + DY(d+1));
+            len = 2.0*sqrt(x1*x1+y1*y1); x1 /= len; y1 /= len;
+
+            x2 = (DX(d+1) + DX(d+2));
+            y2 = (DY(d+1) + DY(d+2));
+            len = 2.0*sqrt(x2*x2+y2*y2); x2 /= len; y2 /= len;
+
+            x3 = (x1+x2);
+            y3 = (y1+y2);
+
+            coords[0] = x + TILESIZE/2 + (int)((TILESIZE*3/7) * x1);
+            coords[1] = y + TILESIZE/2 + (int)((TILESIZE*3/7) * y1);
+
+            coords[2] = x + TILESIZE/2 + (int)((TILESIZE*3/7) * x3);
+            coords[3] = y + TILESIZE/2 + (int)((TILESIZE*3/7) * y3);
+
+            coords[4] = x + TILESIZE/2 + (int)((TILESIZE*3/7) * x2);
+            coords[5] = y + TILESIZE/2 + (int)((TILESIZE*3/7) * y2);
+
+            draw_polygon(dr, coords, 3, COL_DEAD_PLAYER, COL_DEAD_PLAYER);
+        }
     } else {
-    draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
-            TILESIZE/3, COL_PLAYER, COL_OUTLINE);
-    draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
-            TILESIZE/5, COL_BACKGROUND, COL_BACKGROUND);
-    draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
-            TILESIZE/7, COL_PLAYER, COL_PLAYER);
+        draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
+                    TILESIZE/3, COL_PLAYER, COL_OUTLINE);
+        draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
+                    TILESIZE/4, COL_BACKGROUND, COL_BACKGROUND);
+        draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
+                    TILESIZE/6, COL_PLAYER, COL_PLAYER);
+        draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
+                    TILESIZE/9, COL_BACKGROUND, COL_BACKGROUND);
+        draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
+                    TILESIZE/16, COL_PLAYER, COL_PLAYER);
     }
 
     if (!dead && hintdir >= 0) {
-    float scale = (DX(hintdir) && DY(hintdir) ? 0.8F : 1.0F);
-    int ax = (TILESIZE*2/5) * scale * DX(hintdir);
-    int ay = (TILESIZE*2/5) * scale * DY(hintdir);
-    int px = -ay, py = ax;
-    int ox = x + TILESIZE/2, oy = y + TILESIZE/2;
-    int coords[14], *c;
+        float scale = (DX(hintdir) && DY(hintdir) ? 0.8F : 1.0F);
+        int ax = (TILESIZE*2/5) * scale * DX(hintdir);
+        int ay = (TILESIZE*2/5) * scale * DY(hintdir);
+        int px = -ay, py = ax;
+        int ox = x + TILESIZE/2, oy = y + TILESIZE/2;
+        int coords[14], *c;
 
-    c = coords;
-    *c++ = ox + px/9;
-    *c++ = oy + py/9;
-    *c++ = ox + px/9 + ax*2/3;
-    *c++ = oy + py/9 + ay*2/3;
-    *c++ = ox + px/3 + ax*2/3;
-    *c++ = oy + py/3 + ay*2/3;
-    *c++ = ox + ax;
-    *c++ = oy + ay;
-    *c++ = ox - px/3 + ax*2/3;
-    *c++ = oy - py/3 + ay*2/3;
-    *c++ = ox - px/9 + ax*2/3;
-    *c++ = oy - py/9 + ay*2/3;
-    *c++ = ox - px/9;
-    *c++ = oy - py/9;
-    draw_polygon(dr, coords, 7, COL_HINT, COL_OUTLINE);
+        c = coords;
+
+        *c++ = ox + px/4 + ax*1/2;  *c++ = oy + py/4 + ay*1/2;
+        *c++ = ox + px/2 + ax*1/2;  *c++ = oy + py/2 + ay*1/2;
+        *c++ = ox + ax;             *c++ = oy + ay;
+        *c++ = ox - px/2 + ax*1/2;  *c++ = oy - py/2 + ay*1/2;
+        *c++ = ox - px/4 + ax*1/2;  *c++ = oy - py/4 + ay*1/2;
+        draw_polygon(dr, coords, 5, COL_HINT, COL_HINT);
+        draw_thick_line(dr, 2.0, coords[0], coords[1], coords[2], coords[3], COL_OUTLINE);
+        draw_thick_line(dr, 2.0, coords[2], coords[3], coords[4], coords[5], COL_OUTLINE);
+        draw_thick_line(dr, 2.0, coords[4], coords[5], coords[6], coords[7], COL_OUTLINE);
+        draw_thick_line(dr, 2.0, coords[6], coords[7], coords[8], coords[9], COL_OUTLINE);
+
+        c = coords;
+        *c++ = ox + px/4 + ax*1/2;  *c++ = oy + py/4 + ay*1/2;
+        *c++ = ox + px/4;           *c++ = oy + py/4;
+        *c++ = ox - px/4;           *c++ = oy - py/4;
+        *c++ = ox - px/4 + ax*1/2;  *c++ = oy - py/4 + ay*1/2;
+        draw_polygon(dr, coords, 4, COL_HINT, COL_HINT);
+        draw_thick_line(dr, 2.0, coords[0], coords[1], coords[2], coords[3], COL_OUTLINE);
+        draw_thick_line(dr, 2.0, coords[2], coords[3], coords[4], coords[5], COL_OUTLINE);
+        draw_thick_line(dr, 2.0, coords[4], coords[5], coords[6], coords[7], COL_OUTLINE);
     }
 
     draw_update(dr, x, y, TILESIZE, TILESIZE);
@@ -1850,8 +1877,8 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, int v)
 
     v &= ~FLASH_MASK;
 
-    clip(dr, tx+1, ty+1, TILESIZE-1, TILESIZE-1);
-    draw_rect(dr, tx+1, ty+1, TILESIZE-1, TILESIZE-1, bg);
+    clip(dr, tx+2, ty+2, TILESIZE-4, TILESIZE-4);
+    draw_rect(dr, tx+2, ty+2, TILESIZE-4, TILESIZE-4, bg);
 
     if (v == WALL) {
     int coords[6];
@@ -1872,34 +1899,36 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, int v)
                   TILESIZE - 2*HIGHLIGHT_WIDTH,
           TILESIZE - 2*HIGHLIGHT_WIDTH, COL_WALL);
     } else if (v == MINE) {
-    int cx = tx + TILESIZE / 2;
-    int cy = ty + TILESIZE / 2;
-    int r = TILESIZE / 2 - 3;
+        int cx = tx + TILESIZE / 2;
+        int cy = ty + TILESIZE / 2;
+        int r = TILESIZE / 2 - 3;
 
-    draw_circle(dr, cx, cy, 5*r/6, COL_MINE, COL_MINE);
-    draw_rect(dr, cx - r/6, cy - r, 2*(r/6)+1, 2*r+1, COL_MINE);
-    draw_rect(dr, cx - r, cy - r/6, 2*r+1, 2*(r/6)+1, COL_MINE);
-    draw_rect(dr, cx-r/3, cy-r/3, r/3, r/4, COL_HIGHLIGHT);
+        draw_circle(dr, cx, cy, 5*r/6, COL_MINE, COL_MINE);
+        draw_rect(dr, cx - r/6, cy - r, 2*(r/6)+1, 2*r+1, COL_MINE);
+        draw_rect(dr, cx - r, cy - r/6, 2*r+1, 2*(r/6)+1, COL_MINE);
+        draw_rect(dr, cx-r/3, cy-r/3, r/3, r/4, COL_HIGHLIGHT);
     } else if (v == STOP) {
-    draw_circle(dr, tx + TILESIZE/2, ty + TILESIZE/2,
-            TILESIZE*3/7, -1, COL_OUTLINE);
-    draw_rect(dr, tx + TILESIZE*3/7, ty+1,
-          TILESIZE - 2*(TILESIZE*3/7) + 1, TILESIZE-1, bg);
-    draw_rect(dr, tx+1, ty + TILESIZE*3/7,
-          TILESIZE-1, TILESIZE - 2*(TILESIZE*3/7) + 1, bg);
+        draw_circle(dr, tx + TILESIZE/2, ty + TILESIZE/2,
+                TILESIZE*3/7, COL_OUTLINE, COL_OUTLINE);
+        draw_circle(dr, tx + TILESIZE/2, ty + TILESIZE/2,
+                TILESIZE*3/7-4, COL_BACKGROUND, COL_OUTLINE);
+        draw_rect(dr, tx + TILESIZE*3/7, ty+1,
+              TILESIZE - 2*(TILESIZE*3/7) + 1, TILESIZE-1, bg);
+        draw_rect(dr, tx+1, ty + TILESIZE*3/7,
+              TILESIZE-1, TILESIZE - 2*(TILESIZE*3/7) + 1, bg);
     } else if (v == GEM) {
-    int coords[8];
+        int coords[8];
 
-    coords[0] = tx+TILESIZE/2;
-    coords[1] = ty+TILESIZE/2-TILESIZE*5/14;
-    coords[2] = tx+TILESIZE/2-TILESIZE*5/14;
-    coords[3] = ty+TILESIZE/2;
-    coords[4] = tx+TILESIZE/2;
-    coords[5] = ty+TILESIZE/2+TILESIZE*5/14;
-    coords[6] = tx+TILESIZE/2+TILESIZE*5/14;
-    coords[7] = ty+TILESIZE/2;
+        coords[0] = tx+TILESIZE/2;                coords[1] = ty+TILESIZE/2-7*TILESIZE/16;
+        coords[2] = tx+TILESIZE/2-7*TILESIZE/16; coords[3] = ty+TILESIZE/2;
+        coords[4] = tx+TILESIZE/2;                coords[5] = ty+TILESIZE/2+7*TILESIZE/16;
+        coords[6] = tx+TILESIZE/2+7*TILESIZE/16; coords[7] = ty+TILESIZE/2;
 
-    draw_polygon(dr, coords, 4, COL_GEM, COL_OUTLINE);
+        draw_polygon(dr, coords, 4, COL_GEM, COL_GEM);
+        draw_line(dr, coords[0], coords[1], coords[2], coords[3], COL_OUTLINE);
+        draw_line(dr, coords[2], coords[3], coords[4], coords[5], COL_OUTLINE);
+        draw_line(dr, coords[4], coords[5], coords[6], coords[7], COL_OUTLINE);
+        draw_line(dr, coords[6], coords[7], coords[0], coords[1], COL_OUTLINE);
     }
 
     unclip(dr);
@@ -1951,11 +1980,11 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * Draw the grid lines.
      */
     for (y = 0; y <= h; y++)
-        draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y),
-              COL_LOWLIGHT);
+        draw_thick_line(dr, 3.0, COORD(0), COORD(y), COORD(w), COORD(y),
+              COL_OUTLINE);
     for (x = 0; x <= w; x++)
-        draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h),
-              COL_LOWLIGHT);
+        draw_thick_line(dr, 3.0, COORD(x), COORD(0), COORD(x), COORD(h),
+              COL_OUTLINE);
 
     ds->started = true;
     }

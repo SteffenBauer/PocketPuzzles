@@ -50,9 +50,9 @@ static const struct solid s_cube = {
     8,
     {
         -0.5F,-0.5F,-0.5F, -0.5F,-0.5F,+0.5F,
-	-0.5F,+0.5F,-0.5F, -0.5F,+0.5F,+0.5F,
+    -0.5F,+0.5F,-0.5F, -0.5F,+0.5F,+0.5F,
         +0.5F,-0.5F,-0.5F, +0.5F,-0.5F,+0.5F,
-	+0.5F,+0.5F,-0.5F, +0.5F,+0.5F,+0.5F,
+    +0.5F,+0.5F,-0.5F, +0.5F,+0.5F,+0.5F,
     },
     4, 6,
     {
@@ -60,8 +60,8 @@ static const struct solid s_cube = {
     },
     {
         -1.0F,0.0F,0.0F, 0.0F,0.0F,+1.0F,
-	+1.0F,0.0F,0.0F, 0.0F,0.0F,-1.0F,
-	0.0F,-1.0F,0.0F, 0.0F,+1.0F,0.0F
+    +1.0F,0.0F,0.0F, 0.0F,0.0F,-1.0F,
+    0.0F,-1.0F,0.0F, 0.0F,+1.0F,0.0F
     },
     0.3F, 0.5F
 };
@@ -283,7 +283,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -323,8 +323,8 @@ static void enum_grid_squares(const game_params *params, egc_callback callback,
     if (solid->order == 4) {
         int x, y;
 
-	for (y = 0; y < params->d2; y++)
-	    for (x = 0; x < params->d1; x++) {
+    for (y = 0; y < params->d2; y++)
+        for (x = 0; x < params->d1; x++) {
                 struct grid_square sq;
 
                 sq.x = (float)x;
@@ -525,11 +525,11 @@ static void count_grid_square_callback(void *ctx, struct grid_square *sq)
     int thisclass;
 
     if (classes[4] == 4)
-	thisclass = sq->tetra_class;
+    thisclass = sq->tetra_class;
     else if (classes[4] == 2)
-	thisclass = sq->flip;
+    thisclass = sq->flip;
     else
-	thisclass = 0;
+    thisclass = 0;
 
     classes[thisclass]++;
 }
@@ -540,33 +540,33 @@ static const char *validate_params(const game_params *params, bool full)
     int i;
 
     if (params->solid < 0 || params->solid >= lenof(solids))
-	return "Unrecognised solid type";
+    return "Unrecognised solid type";
 
     if (solids[params->solid]->order == 4) {
-	if (params->d1 <= 1 || params->d2 <= 1)
-	    return "Both grid dimensions must be greater than one";
+    if (params->d1 <= 1 || params->d2 <= 1)
+        return "Both grid dimensions must be greater than one";
     } else {
-	if (params->d1 <= 0 && params->d2 <= 0)
-	    return "At least one grid dimension must be greater than zero";
+    if (params->d1 <= 0 && params->d2 <= 0)
+        return "At least one grid dimension must be greater than zero";
     }
 
     for (i = 0; i < 4; i++)
-	classes[i] = 0;
+    classes[i] = 0;
     if (params->solid == TETRAHEDRON)
-	classes[4] = 4;
+    classes[4] = 4;
     else if (params->solid == OCTAHEDRON)
-	classes[4] = 2;
+    classes[4] = 2;
     else
-	classes[4] = 1;
+    classes[4] = 1;
     enum_grid_squares(params, count_grid_square_callback, classes);
 
     for (i = 0; i < classes[4]; i++)
-	if (classes[i] < solids[params->solid]->nfaces / classes[4])
-	    return "Not enough grid space to place all blue faces";
+    if (classes[i] < solids[params->solid]->nfaces / classes[4])
+        return "Not enough grid space to place all blue faces";
 
     if (grid_area(params->d1, params->d2, solids[params->solid]->order) <
-	solids[params->solid]->nfaces + 1)
-	return "Not enough space to place the solid on an empty square";
+    solids[params->solid]->nfaces + 1)
+    return "Not enough space to place the solid on an empty square";
 
     return NULL;
 }
@@ -584,18 +584,18 @@ static void classify_grid_square_callback(void *ctx, struct grid_square *sq)
     int thisclass;
 
     if (data->nclasses == 4)
-	thisclass = sq->tetra_class;
+    thisclass = sq->tetra_class;
     else if (data->nclasses == 2)
-	thisclass = sq->flip;
+    thisclass = sq->flip;
     else
-	thisclass = 0;
+    thisclass = 0;
 
     data->gridptrs[thisclass][data->nsquares[thisclass]++] =
-	data->squareindex++;
+    data->squareindex++;
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     struct grid_data data;
     int i, j, k, m, area, facesperclass;
@@ -611,15 +611,15 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
     area = grid_area(params->d1, params->d2, solids[params->solid]->order);
     if (params->solid == TETRAHEDRON)
-	data.nclasses = 4;
+    data.nclasses = 4;
     else if (params->solid == OCTAHEDRON)
-	data.nclasses = 2;
+    data.nclasses = 2;
     else
-	data.nclasses = 1;
+    data.nclasses = 1;
     data.gridptrs[0] = snewn(data.nclasses * area, int);
     for (i = 0; i < data.nclasses; i++) {
-	data.gridptrs[i] = data.gridptrs[0] + i * area;
-	data.nsquares[i] = 0;
+    data.gridptrs[i] = data.gridptrs[0] + i * area;
+    data.nsquares[i] = 0;
     }
     data.squareindex = 0;
     enum_grid_squares(params, classify_grid_square_callback, &data);
@@ -627,7 +627,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     facesperclass = solids[params->solid]->nfaces / data.nclasses;
 
     for (i = 0; i < data.nclasses; i++)
-	assert(data.nsquares[i] >= facesperclass);
+    assert(data.nsquares[i] >= facesperclass);
     assert(data.squareindex == area);
 
     /*
@@ -636,26 +636,26 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      */
     flags = snewn(area, bool);
     for (i = 0; i < area; i++)
-	flags[i] = false;
+    flags[i] = false;
 
     for (i = 0; i < data.nclasses; i++) {
-	for (j = 0; j < facesperclass; j++) {
+    for (j = 0; j < facesperclass; j++) {
             int n = random_upto(rs, data.nsquares[i]);
 
-	    assert(!flags[data.gridptrs[i][n]]);
-	    flags[data.gridptrs[i][n]] = true;
+        assert(!flags[data.gridptrs[i][n]]);
+        flags[data.gridptrs[i][n]] = true;
 
-	    /*
-	     * Move everything else up the array. I ought to use a
-	     * better data structure for this, but for such small
-	     * numbers it hardly seems worth the effort.
-	     */
-	    while (n < data.nsquares[i]-1) {
-		data.gridptrs[i][n] = data.gridptrs[i][n+1];
-		n++;
-	    }
-	    data.nsquares[i]--;
-	}
+        /*
+         * Move everything else up the array. I ought to use a
+         * better data structure for this, but for such small
+         * numbers it hardly seems worth the effort.
+         */
+        while (n < data.nsquares[i]-1) {
+        data.gridptrs[i][n] = data.gridptrs[i][n+1];
+        n++;
+        }
+        data.nsquares[i]--;
+    }
     }
 
     /*
@@ -670,20 +670,20 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     k = 8;
     m = 0;
     for (i = 0; i < area; i++) {
-	if (flags[i]) {
-	    j |= k;
-	} else {
-	    data.gridptrs[0][m++] = i;
-	}
-	k >>= 1;
-	if (!k) {
-	    *p++ = "0123456789ABCDEF"[j];
-	    k = 8;
-	    j = 0;
-	}
+    if (flags[i]) {
+        j |= k;
+    } else {
+        data.gridptrs[0][m++] = i;
+    }
+    k >>= 1;
+    if (!k) {
+        *p++ = "0123456789ABCDEF"[j];
+        k = 8;
+        j = 0;
+    }
     }
     if (k != 8)
-	*p++ = "0123456789ABCDEF"[j];
+    *p++ = "0123456789ABCDEF"[j];
 
     /*
      * Choose a non-blue square for the polyhedron.
@@ -849,22 +849,22 @@ static const char *validate_desc(const game_params *params, const char *desc)
 
     i = (area + 3) / 4;
     for (j = 0; j < i; j++) {
-	int c = desc[j];
-	if (c >= '0' && c <= '9') continue;
-	if (c >= 'A' && c <= 'F') continue;
-	if (c >= 'a' && c <= 'f') continue;
-	return "Not enough hex digits at start of string";
-	/* NB if desc[j]=='\0' that will also be caught here, so we're safe */
+    int c = desc[j];
+    if (c >= '0' && c <= '9') continue;
+    if (c >= 'A' && c <= 'F') continue;
+    if (c >= 'a' && c <= 'f') continue;
+    return "Not enough hex digits at start of string";
+    /* NB if desc[j]=='\0' that will also be caught here, so we're safe */
     }
 
     if (desc[i] != ',')
-	return "Expected ',' after hex digits";
+    return "Expected ',' after hex digits";
 
     i++;
     do {
-	if (desc[i] < '0' || desc[i] > '9')
-	    return "Expected decimal integer after ','";
-	i++;
+    if (desc[i] < '0' || desc[i] > '9')
+        return "Expected decimal integer after ','";
+    i++;
     } while (desc[i]);
 
     return NULL;
@@ -893,43 +893,43 @@ static game_state *new_game(midend *me, const game_params *params,
 
     state->bluemask = snewn((state->grid->nsquares + 31) / 32, unsigned long);
     memset(state->bluemask, 0, (state->grid->nsquares + 31) / 32 *
-	   sizeof(unsigned long));
+       sizeof(unsigned long));
 
     /*
      * Set up the blue squares and polyhedron position according to
      * the game description.
      */
     {
-	const char *p = desc;
-	int i, j, v;
+    const char *p = desc;
+    int i, j, v;
 
-	j = 8;
-	v = 0;
-	for (i = 0; i < state->grid->nsquares; i++) {
-	    if (j == 8) {
-		v = *p++;
-		if (v >= '0' && v <= '9')
-		    v -= '0';
-		else if (v >= 'A' && v <= 'F')
-		    v -= 'A' - 10;
-		else if (v >= 'a' && v <= 'f')
-		    v -= 'a' - 10;
-		else
-		    break;
-	    }
-	    if (v & j)
-		SET_SQUARE(state, i, true);
-	    j >>= 1;
-	    if (j == 0)
-		j = 8;
-	}
+    j = 8;
+    v = 0;
+    for (i = 0; i < state->grid->nsquares; i++) {
+        if (j == 8) {
+        v = *p++;
+        if (v >= '0' && v <= '9')
+            v -= '0';
+        else if (v >= 'A' && v <= 'F')
+            v -= 'A' - 10;
+        else if (v >= 'a' && v <= 'f')
+            v -= 'a' - 10;
+        else
+            break;
+        }
+        if (v & j)
+        SET_SQUARE(state, i, true);
+        j >>= 1;
+        if (j == 0)
+        j = 8;
+    }
 
-	if (*p == ',')
-	    p++;
+    if (*p == ',')
+        p++;
 
-	state->current = atoi(p);
-	if (state->current < 0 || state->current >= state->grid->nsquares)
-	    state->current = 0;	       /* got to do _something_ */
+    state->current = atoi(p);
+    if (state->current < 0 || state->current >= state->grid->nsquares)
+        state->current = 0;           /* got to do _something_ */
     }
 
     /*
@@ -971,7 +971,7 @@ static game_state *dup_game(const game_state *state)
     ret->grid->refcount++;
     ret->bluemask = snewn((ret->grid->nsquares + 31) / 32, unsigned long);
     memcpy(ret->bluemask, state->bluemask, (ret->grid->nsquares + 31) / 32 *
-	   sizeof(unsigned long));
+       sizeof(unsigned long));
     ret->dpkey[0] = state->dpkey[0];
     ret->dpkey[1] = state->dpkey[1];
     ret->dgkey[0] = state->dgkey[0];
@@ -991,8 +991,8 @@ static game_state *dup_game(const game_state *state)
 static void free_game(game_state *state)
 {
     if (--state->grid->refcount <= 0) {
-	sfree(state->grid->squares);
-	sfree(state->grid);
+    sfree(state->grid->squares);
+    sfree(state->grid);
     }
     sfree(state->bluemask);
     sfree(state->facecolours);
@@ -1001,16 +1001,6 @@ static void free_game(game_state *state)
 
 static char *solve_game(const game_state *state, const game_state *currstate,
                         const char *aux, const char **error)
-{
-    return NULL;
-}
-
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
 {
     return NULL;
 }
@@ -1047,7 +1037,7 @@ struct game_drawstate {
  * Code shared between interpret_move() and execute_move().
  */
 static int find_move_dest(const game_state *from, int direction,
-			  int *skey, int *dkey)
+              int *skey, int *dkey)
 {
     int mask, dest, i, j;
     float points[4];
@@ -1201,23 +1191,23 @@ static char *interpret_move(const game_state *state, game_ui *ui,
      * Translate diagonal directions into orthogonal ones.
      */
     if (direction > DOWN) {
-	for (i = LEFT; i <= DOWN; i++)
-	    if (state->grid->squares[state->current].directions[i] == mask) {
-		direction = i;
-		break;
-	    }
-	assert(direction <= DOWN);
+    for (i = LEFT; i <= DOWN; i++)
+        if (state->grid->squares[state->current].directions[i] == mask) {
+        direction = i;
+        break;
+        }
+    assert(direction <= DOWN);
     }
 
     if (find_move_dest(state, direction, skey, dkey) < 0)
-	return NULL;
+    return NULL;
 
     if (direction == LEFT)  return dupstr("L");
     if (direction == RIGHT) return dupstr("R");
     if (direction == UP)    return dupstr("U");
     if (direction == DOWN)  return dupstr("D");
 
-    return NULL;		       /* should never happen */
+    return NULL;               /* should never happen */
 }
 
 static game_state *execute_move(const game_state *from, const char *move)
@@ -1504,17 +1494,15 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
+
     float *ret = snewn(3 * NCOLOURS, float);
 
-    frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-
-    ret[COL_BORDER * 3 + 0] = 0.0;
-    ret[COL_BORDER * 3 + 1] = 0.0;
-    ret[COL_BORDER * 3 + 2] = 0.0;
-
-    ret[COL_BLUE * 3 + 0] = 0.0;
-    ret[COL_BLUE * 3 + 1] = 0.0;
-    ret[COL_BLUE * 3 + 2] = 1.0;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0;
+        ret[COL_BORDER     * 3 + i] = 0.0;
+        ret[COL_BLUE       * 3 + i] = 0.2;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1549,7 +1537,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int square;
 
     draw_rect(dr, 0, 0, XSIZE(GRID_SCALE, bb, state->solid),
-	      YSIZE(GRID_SCALE, bb, state->solid), COL_BACKGROUND);
+          YSIZE(GRID_SCALE, bb, state->solid), COL_BACKGROUND);
 
     if (dir < 0) {
         const game_state *t;
@@ -1558,7 +1546,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
          * This is an Undo. So reverse the order of the states, and
          * run the roll timer backwards.
          */
-	assert(oldstate);
+    assert(oldstate);
 
         t = oldstate;
         oldstate = state;
@@ -1586,14 +1574,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         for (j = 0; j < state->grid->squares[i].npoints; j++) {
             coords[2*j] = ((int)(state->grid->squares[i].points[2*j] * GRID_SCALE)
-			   + ds->ox);
+               + ds->ox);
             coords[2*j+1] = ((int)(state->grid->squares[i].points[2*j+1]*GRID_SCALE)
-			     + ds->oy);
+                 + ds->oy);
         }
 
         draw_polygon(dr, coords, state->grid->squares[i].npoints,
                      GET_SQUARE(state, i) ? COL_BLUE : COL_BACKGROUND,
-		     COL_BORDER);
+             COL_BORDER);
     }
 
     /*
@@ -1675,31 +1663,31 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         draw_polygon(dr, coords, poly->order,
                      state->facecolours[i] ? COL_BLUE : COL_BACKGROUND,
-		     COL_BORDER);
+             COL_BORDER);
     }
     sfree(poly);
 
     draw_update(dr, 0, 0, XSIZE(GRID_SCALE, bb, state->solid),
-		YSIZE(GRID_SCALE, bb, state->solid));
+        YSIZE(GRID_SCALE, bb, state->solid));
 
     /*
      * Update the status bar.
      */
     {
-	char statusbuf[256];
+    char statusbuf[256];
 
-	sprintf(statusbuf, "%sMoves: %d",
-		(state->completed ? "COMPLETED! " : ""),
-		(state->completed ? state->completed : state->movecount));
+    sprintf(statusbuf, "%sMoves: %d",
+        (state->completed ? "COMPLETED! " : ""),
+        (state->completed ? state->completed : state->movecount));
 
-	status_bar(dr, statusbuf);
+    status_bar(dr, statusbuf);
     }
 }
 
 static float game_anim_length(const game_state *oldstate,
                               const game_state *newstate, int dir, game_ui *ui)
 {
-    return ROLLTIME;
+    return 0.0F;
 }
 
 static float game_flash_length(const game_state *oldstate,
@@ -1716,14 +1704,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
 }
 
 #ifdef COMBINED
@@ -1746,7 +1726,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     false, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -1763,8 +1743,8 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
-    true,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    true,                   /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    0,                       /* flags */
 };

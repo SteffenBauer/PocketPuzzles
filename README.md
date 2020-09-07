@@ -58,6 +58,7 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 - [ ] Screen orientation handling
 - [ ] Better color palette for greyscale screen (see ToDo.md)
 - [ ] Better error visualization suitable for greyscale screen (see ToDo.md)
+- [ ] B/W texture drawing for games requiring color output
 - [X] Handling of physical device buttons
 - [ ] Modify games with dragging for better handling of eInk screen limitations (see ToDo.md)
 - [ ] Implement left->right->empty cycle on left-click for all games
