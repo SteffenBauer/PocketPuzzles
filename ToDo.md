@@ -19,10 +19,11 @@
 - [X] Undead: Stronger monster outlines
 - [X] Tents: Change error for tree without tent
 - [X] Palisade: Thicker lines / dotted lines on error
-- [ ] Unequal: Coloring, <> polygon error, pencil marker persistence, adjacent error display, error circles, presets with Kropki mode
+- [X] Unequal: Coloring, <> polygon error, pencil marker persistence, adjacent error display, error circles, presets with Kropki mode
 - [ ] Unruly: Coloring
 - [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
-- [ ] Bridges: Add path button, game colors
+- [X] Bridges: Add path button
+- [ ] Bridges: Adjust game colors
 - [ ] Guess: Change blitter drag to Highlight color by click -> Fill peg by click
 - [ ] Guess: Add color fill pattern
 - [ ] Untangle: Change drag to Highlight vertex by click -> click on target coordinates
@@ -31,11 +32,11 @@
 - [X] Fifteen: Remove animation. Adjust colors. Add solver hint mechanism.
 - [ ] Flood: Add color fill pattern
 - [X] Inertia: Remove animation
-- [ ] Inertia: Adjust colors, thicker grid lines, modify gem icons
+- [X] Inertia: Adjust colors, thicker grid lines, modify gem icons
 - [ ] Map: Remove drag animation
 - [ ] Map: Color fill pattern?
 - [X] Net: Remove animation. Adjust colors.
-- [ ] Net: Add shuffle button
+- [X] Net: Add shuffle button
 - [ ] Netslide: Remove animation
 - [ ] Pegs: Remove blitter drag
 - [ ] Rome: Change to highlight / highlight clue; add up/down/left/right buttons

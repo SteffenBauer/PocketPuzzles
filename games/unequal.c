@@ -125,18 +125,19 @@ static char const unequal_diffchars[] = DIFFLIST(ENCODE);
 #define DEFAULT_PRESET 0
 
 static const struct game_params unequal_presets[] = {
-    {  4, DIFF_EASY,    0 },
-    {  5, DIFF_EASY,    0 },
     {  5, DIFF_SET,     0 },
     {  5, DIFF_SET,     1 },
+    {  5, DIFF_SET,     2 },
     {  5, DIFF_EXTREME, 0 },
-    {  6, DIFF_EASY,    0 },
-    {  6, DIFF_SET,     0 },
-    {  6, DIFF_SET,     1 },
+    {  5, DIFF_EXTREME, 1 },
+    {  5, DIFF_EXTREME, 2 },
     {  6, DIFF_EXTREME, 0 },
-    {  7, DIFF_SET,     0 },
-    {  7, DIFF_SET,     1 },
-    {  7, DIFF_EXTREME, 0 }
+    {  6, DIFF_EXTREME, 1 },
+    {  6, DIFF_EXTREME, 2 },
+    {  6, DIFF_EXTREME, 0 },
+    {  7, DIFF_EXTREME, 0 },
+    {  7, DIFF_EXTREME, 1 },
+    {  7, DIFF_EXTREME, 2 }
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -498,87 +499,6 @@ static int c2n(int c, int order) {
     return -1;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int x, y, len, n;
-    char *ret, *p;
-
-    len = (state->order*2) * (state->order*2-1) + 1;
-    ret = snewn(len, char);
-    p = ret;
-
-    for (y = 0; y < state->order; y++) {
-        for (x = 0; x < state->order; x++) {
-            n = GRID(state, nums, x, y);
-            *p++ = n > 0 ? n2c(n, state->order) : '.';
-
-            if (x < (state->order-1)) {
-                if (state->mode == MODE_KROPKI) {
-                    if (GRID(state, flags, x, y) & F_DBL_RIGHT) 
-                        *p++ = '*';
-                    else if (GRID(state, flags, x, y) & F_ADJ_RIGHT)
-                        *p++ = '@';
-                    else
-                        *p++ = ' ';
-                } else if (state->mode == MODE_ADJACENT) {
-                    *p++ = (GRID(state, flags, x, y) & F_ADJ_RIGHT) ? '|' : ' ';
-                } else {
-                    if (GRID(state, flags, x, y) & F_ADJ_RIGHT)
-                        *p++ = '>';
-                    else if (GRID(state, flags, x+1, y) & F_ADJ_LEFT)
-                        *p++ = '<';
-                    else
-                        *p++ = ' ';
-                }
-            }
-        }
-        *p++ = '\n';
-
-        if (y < (state->order-1)) {
-            for (x = 0; x < state->order; x++) {
-                if (state->mode == MODE_KROPKI) {
-                    if (GRID(state, flags, x, y) & F_DBL_DOWN)
-                        *p++ = '*';
-                    else if (GRID(state, flags, x, y) & F_ADJ_DOWN)
-                        *p++ = '@';
-                    else
-                        *p++ = ' ';
-                } else if (state->mode == MODE_ADJACENT) {
-                    *p++ = (GRID(state, flags, x, y) & F_ADJ_DOWN) ? '-' : ' ';
-                } else {
-                    if (GRID(state, flags, x, y) & F_ADJ_DOWN)
-                        *p++ = 'v';
-                    else if (GRID(state, flags, x, y+1) & F_ADJ_UP)
-                        *p++ = '^';
-                    else
-                        *p++ = ' ';
-                }
-
-                if (x < state->order-1)
-                  *p++ = ' ';
-            }
-            *p++ = '\n';
-        }
-    }
-    *p++ = '\0';
-
-    assert(p - ret == len);
-    return ret;
-}
-
-#ifdef STANDALONE_SOLVER
-static void game_debug(game_state *state)
-{
-    char *dbg = game_text_format(state);
-    printf("%s", dbg);
-    sfree(dbg);
-}
-#endif
 
 /* ----------------------------------------------------------
  * Solver.
@@ -890,18 +810,18 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
 {
     struct solver_ctx *ctx = (struct solver_ctx *)vctx;
     if (ctx->state->mode == MODE_ADJACENT)
-	return solver_adjacent(solver, vctx);
+    return solver_adjacent(solver, vctx);
     else
-	return solver_links(solver, vctx);
+    return solver_links(solver, vctx);
 }
 
 static int solver_set(struct latin_solver *solver, void *vctx)
 {
     struct solver_ctx *ctx = (struct solver_ctx *)vctx;
     if (ctx->state->mode == MODE_ADJACENT)
-	return solver_adjacent_set(solver, vctx);
+    return solver_adjacent_set(solver, vctx);
     else
-	return 0;
+    return 0;
 }
 
 #define SOLVER(upper,title,func,lower) func,
@@ -984,9 +904,9 @@ static int solver_state(game_state *state, int maxdiff)
     latin_solver_alloc(&solver, state->nums, state->order);
 
     diff = latin_solver_main(&solver, maxdiff,
-			     DIFF_LATIN, DIFF_SET, DIFF_EXTREME,
-			     DIFF_EXTREME, DIFF_RECURSIVE,
-			     unequal_solvers, unequal_valid, ctx,
+                 DIFF_LATIN, DIFF_SET, DIFF_EXTREME,
+                 DIFF_EXTREME, DIFF_RECURSIVE,
+                 unequal_solvers, unequal_valid, ctx,
                              clone_ctx, free_ctx);
 
     memcpy(state->hints, solver.cube, state->order*state->order*state->order);
@@ -1202,13 +1122,6 @@ static int game_assemble(game_state *new, int *scratch, digit *latin,
         gg_place_clue(copy, scratch[best], latin, false);
     }
     free_game(copy);
-#ifdef STANDALONE_SOLVER
-    if (solver_show_working) {
-        char *dbg = game_text_format(new);
-        printf("game_assemble: done, %d solver iterations:\n%s\n", gg_solved, dbg);
-        sfree(dbg);
-    }
-#endif
     return 0;
 }
 
@@ -1230,22 +1143,9 @@ static void game_strip(game_state *new, int *scratch, digit *latin,
             /* put clue back, we can't solve without it. */
             bool ret = gg_place_clue(new, scratch[i], latin, false);
             assert(ret);
-        } else {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working)
-                printf("game_strip: clue was redundant.");
-#endif
         }
     }
     free_game(copy);
-#ifdef STANDALONE_SOLVER
-    if (solver_show_working) {
-        char *dbg = game_text_format(new);
-        debug(("game_strip: done, %d solver iterations.", gg_solved));
-        debug(("%s", dbg));
-        sfree(dbg);
-    }
-#endif
 }
 
 static void add_kropki_flags(game_state *state, digit *latin, random_state *rs)
@@ -1323,7 +1223,7 @@ static void add_adjacent_flags(game_state *state, digit *latin)
 }
 
 static char *new_game_desc(const game_params *params_in, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     game_params params_copy = *params_in; /* structure copy */
     game_params *params = &params_copy;
@@ -1671,32 +1571,32 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     button &= ~MOD_MASK;
 
     if (x >= 0 && x < ds->order && y >= 0 && y < ds->order && IS_MOUSE_DOWN(button)) {
-	if (oy - COORD(y) > TILE_SIZE && ox - COORD(x) > TILE_SIZE)
-	    return NULL;
+    if (oy - COORD(y) > TILE_SIZE && ox - COORD(x) > TILE_SIZE)
+        return NULL;
 
-	if (oy - COORD(y) > TILE_SIZE) {
-	    if ((GRID(state, flags, x, y) & F_ADJ_DOWN) ||
+    if (oy - COORD(y) > TILE_SIZE) {
+        if ((GRID(state, flags, x, y) & F_ADJ_DOWN) ||
                 (GRID(state, flags, x, y) & F_DBL_DOWN))
-		sprintf(buf, "F%d,%d,%d", x, y, F_SPENT_DOWN);
-	    else if (y + 1 < ds->order && 
-	        ((GRID(state, flags, x, y + 1) & F_ADJ_UP) ||
+        sprintf(buf, "F%d,%d,%d", x, y, F_SPENT_DOWN);
+        else if (y + 1 < ds->order && 
+            ((GRID(state, flags, x, y + 1) & F_ADJ_UP) ||
                  (GRID(state, flags, x, y + 1) & F_DBL_UP)))
-		sprintf(buf, "F%d,%d,%d", x, y + 1, F_SPENT_UP);
-	    else return NULL;
-	    return dupstr(buf);
-	}
+        sprintf(buf, "F%d,%d,%d", x, y + 1, F_SPENT_UP);
+        else return NULL;
+        return dupstr(buf);
+    }
 
-	if (ox - COORD(x) > TILE_SIZE) {
-	    if ((GRID(state, flags, x, y) & F_ADJ_RIGHT) ||
+    if (ox - COORD(x) > TILE_SIZE) {
+        if ((GRID(state, flags, x, y) & F_ADJ_RIGHT) ||
                 (GRID(state, flags, x, y) & F_DBL_RIGHT))
-		sprintf(buf, "F%d,%d,%d", x, y, F_SPENT_RIGHT);
-	    else if (x + 1 < ds->order && 
-	        ((GRID(state, flags, x + 1, y) & F_ADJ_LEFT) ||
+        sprintf(buf, "F%d,%d,%d", x, y, F_SPENT_RIGHT);
+        else if (x + 1 < ds->order && 
+            ((GRID(state, flags, x + 1, y) & F_ADJ_LEFT) ||
                  (GRID(state, flags, x + 1, y) & F_DBL_LEFT)))
-		sprintf(buf, "F%d,%d,%d", x + 1, y, F_SPENT_LEFT);
-	    else return NULL;
-	    return dupstr(buf);
-	}
+        sprintf(buf, "F%d,%d,%d", x + 1, y, F_SPENT_LEFT);
+        else return NULL;
+        return dupstr(buf);
+    }
 
         if (button == LEFT_BUTTON) {
             /* normal highlighting for non-immutable squares */
@@ -1729,19 +1629,19 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
 
     if (IS_CURSOR_MOVE(button)) {
-	if (shift_or_control) {
-	    int nx = ui->hx, ny = ui->hy, i;
+    if (shift_or_control) {
+        int nx = ui->hx, ny = ui->hy, i;
             unsigned long fh, fn;
             bool self;
-	    move_cursor(button, &nx, &ny, ds->order, ds->order, false);
-	    ui->hshow = true;
+        move_cursor(button, &nx, &ny, ds->order, ds->order, false);
+        ui->hshow = true;
             ui->hcursor = true;
 
-	    for (i = 0; i < 4 && (nx != ui->hx + adjthan[i].dx ||
-				  ny != ui->hy + adjthan[i].dy); ++i);
+        for (i = 0; i < 4 && (nx != ui->hx + adjthan[i].dx ||
+                  ny != ui->hy + adjthan[i].dy); ++i);
 
-	    if (i == 4)
-		return UI_UPDATE; /* invalid direction, i.e. out of
+        if (i == 4)
+        return UI_UPDATE; /* invalid direction, i.e. out of
                                    * the board */
 
             fh = GRID(state, flags, ui->hx, ui->hy);
@@ -1750,27 +1650,27 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (!((fh & adjthan[i].f) || (fn & adjthan[i].fo)) &&
             !((fh & ADJ_TO_DOUBLE(adjthan[i].f)) ||
               (fn & ADJ_TO_DOUBLE(adjthan[i].fo))))
-		return UI_UPDATE; /* no clue to toggle */
+        return UI_UPDATE; /* no clue to toggle */
 
-	    if (state->mode != MODE_UNEQUAL)
-		self = (adjthan[i].dx >= 0 && adjthan[i].dy >= 0);
-	    else
-		self = (fh & adjthan[i].f);
+        if (state->mode != MODE_UNEQUAL)
+        self = (adjthan[i].dx >= 0 && adjthan[i].dy >= 0);
+        else
+        self = (fh & adjthan[i].f);
 
-	    if (self)
-		sprintf(buf, "F%d,%d,%ld", ui->hx, ui->hy,
-			ADJ_TO_SPENT(adjthan[i].f));
-	    else
-		sprintf(buf, "F%d,%d,%ld", nx, ny,
-			ADJ_TO_SPENT(adjthan[i].fo));
+        if (self)
+        sprintf(buf, "F%d,%d,%ld", ui->hx, ui->hy,
+            ADJ_TO_SPENT(adjthan[i].f));
+        else
+        sprintf(buf, "F%d,%d,%ld", nx, ny,
+            ADJ_TO_SPENT(adjthan[i].fo));
 
-	    return dupstr(buf);
-	} else {
-	    move_cursor(button, &ui->hx, &ui->hy, ds->order, ds->order, false);
-	    ui->hshow = true;
+        return dupstr(buf);
+    } else {
+        move_cursor(button, &ui->hx, &ui->hy, ds->order, ds->order, false);
+        ui->hshow = true;
             ui->hcursor = true;
-	    return UI_UPDATE;
-	}
+        return UI_UPDATE;
+    }
     }
     if (ui->hshow && IS_CURSOR_SELECT(button)) {
         ui->hpencil = !ui->hpencil;
@@ -1796,7 +1696,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         sprintf(buf, "%c%d,%d,%d",
                 (char)(ui->hpencil && n > 0 ? 'P' : 'R'), ui->hx, ui->hy, n);
 
-        if (!ui->hcursor) ui->hshow = false;
+        if (!ui->hpencil) ui->hshow = false;
 
         return dupstr(buf);
     }
@@ -1849,7 +1749,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         }
         if (*p) goto badmove;
         rc = check_complete(ret->nums, ret, true);
-	assert(rc > 0);
+    assert(rc > 0);
         return ret;
     } else if (move[0] == 'M') {
         ret = dup_game(state);
@@ -1866,10 +1766,10 @@ static game_state *execute_move(const game_state *state, const char *move)
         check_complete(ret->nums, ret, true);
         return ret;
     } else if (move[0] == 'F' && sscanf(move+1, "%d,%d,%d", &x, &y, &n) == 3 &&
-	       x >= 0 && x < state->order && y >= 0 && y < state->order) {
-	ret = dup_game(state);
-	GRID(ret, flags, x, y) ^= n;
-	return ret;
+           x >= 0 && x < state->order && y >= 0 && y < state->order) {
+    ret = dup_game(state);
+    GRID(ret, flags, x, y) ^= n;
+    return ret;
     }
 
 badmove:
@@ -1905,34 +1805,18 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-
     for (i = 0; i < 3; i++) {
-        ret[COL_TEXT * 3 + i] = 0.0F;
-        ret[COL_GRID * 3 + i] = 0.5F;
+        ret[COL_BACKGROUND * 3 + i] = 1.0;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.75;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.25;
+        ret[COL_TEXT       * 3 + i] = 0.0F;
+        ret[COL_GUESS      * 3 + i] = 0.0F;
+        ret[COL_ERROR      * 3 + i] = 0.5F;
+        ret[COL_GRID       * 3 + i] = 0.25F;
+        ret[COL_PENCIL     * 3 + i] = 0.0F;
+        ret[COL_BLACK      * 3 + i] = 0.0F;
+        ret[COL_WHITE      * 3 + i] = 1.0F;
     }
-
-    /* Lots of these were taken from solo.c. */
-    ret[COL_GUESS * 3 + 0] = 0.0F;
-    ret[COL_GUESS * 3 + 1] = 0.6F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_GUESS * 3 + 2] = 0.0F;
-
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
-
-    ret[COL_PENCIL * 3 + 0] = 0.5F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_PENCIL * 3 + 1] = 0.5F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_PENCIL * 3 + 2] = ret[COL_BACKGROUND * 3 + 2];
-
-    ret[COL_BLACK * 3 + 0] = 0.0F;
-    ret[COL_BLACK * 3 + 1] = 0.0F;
-    ret[COL_BLACK * 3 + 2] = 0.0F;
-
-    ret[COL_WHITE * 3 + 0] = 1.0F;
-    ret[COL_WHITE * 3 + 1] = 1.0F;
-    ret[COL_WHITE * 3 + 2] = 1.0F;
-
     *ncolours = NCOLOURS;
     return ret;
 }
@@ -1973,53 +1857,47 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 static void draw_gt(drawing *dr, int ox, int oy,
                     int dx1, int dy1, int dx2, int dy2, int col)
 {
-    int coords[12];
+    int coords[6];
     int xdx = (dx1+dx2 ? 0 : 1), xdy = (dx1+dx2 ? 1 : 0);
-    coords[0] = ox + xdx;
-    coords[1] = oy + xdy;
-    coords[2] = ox + xdx + dx1;
-    coords[3] = oy + xdy + dy1;
-    coords[4] = ox + xdx + dx1 + dx2;
-    coords[5] = oy + xdy + dy1 + dy2;
-    coords[6] = ox - xdx + dx1 + dx2;
-    coords[7] = oy - xdy + dy1 + dy2;
-    coords[8] = ox - xdx + dx1;
-    coords[9] = oy - xdy + dy1;
-    coords[10] = ox - xdx;
-    coords[11] = oy - xdy;
-    draw_polygon(dr, coords, 6, col, col);
+    coords[0] = ox + xdx;             coords[1] = oy + xdy;
+    coords[2] = ox + xdx + dx1;       coords[3] = oy + xdy + dy1;
+    coords[4] = ox + xdx + dx1 + dx2; coords[5] = oy + xdy + dy1 + dy2;
+    draw_polygon(dr, coords, 3, col, col);
 }
-
-#define COLOUR(direction) (f & (F_ERROR_##direction) ? COL_ERROR : \
-			   f & (F_SPENT_##direction) ? COL_SPENT : fg)
-#define COLOUR2(direction) (f & (F_ERROR_##direction) ? COL_BACKGROUND : \
-                f & (F_SPENT_##direction) ? COL_BACKGROUND : fg2)
 
 static void draw_gts(drawing *dr, game_drawstate *ds, int ox, int oy,
                      unsigned long f, int bg, int fg)
 {
-    int g = GAP_SIZE, g2 = (g+1)/2, g4 = (g+1)/4;
-
+    int g = GAP_SIZE, g2 = (g+1)/2, g4 = (g+1)/4, g6 = (g+1)/6;
+    int sx, sy;
     /* Draw all the greater-than signs emanating from this tile. */
 
     if (f & F_ADJ_UP) {
-	if (bg >= 0) draw_rect(dr, ox, oy - g, TILE_SIZE, g, bg);
-        draw_gt(dr, ox+g2, oy-g4, g2, -g2, g2, g2, COLOUR(UP));
+        if (bg >= 0) draw_rect(dr, ox, oy - g, TILE_SIZE, g, bg);
+        sx = ox+g2; sy = oy-g4;
+        if (f & F_ERROR_UP) draw_rect(dr, sx-g6, sy-g2-g6, 2*(g2+g6), g2+2*g6, COL_ERROR);
+        draw_gt(dr, sx, sy, g2, -g2, g2, g2, (f & F_ERROR_UP) ? COL_BACKGROUND : fg);
         draw_update(dr, ox, oy-g, TILE_SIZE, g);
     }
     if (f & F_ADJ_RIGHT) {
-	if (bg >= 0) draw_rect(dr, ox + TILE_SIZE, oy, g, TILE_SIZE, bg);
-        draw_gt(dr, ox+TILE_SIZE+g4, oy+g2, g2, g2, -g2, g2, COLOUR(RIGHT));
+        if (bg >= 0) draw_rect(dr, ox + TILE_SIZE, oy, g, TILE_SIZE, bg);
+        sx = ox+TILE_SIZE+g4; sy = oy+g2;
+        if (f & F_ERROR_RIGHT) draw_rect(dr, sx-g6, sy-g6, g2+2*g6, 2*g2+2*g6, COL_ERROR);
+        draw_gt(dr, sx, sy, g2, g2, -g2, g2, (f & F_ERROR_RIGHT) ? COL_BACKGROUND : fg);
         draw_update(dr, ox+TILE_SIZE, oy, g, TILE_SIZE);
     }
     if (f & F_ADJ_DOWN) {
-	if (bg >= 0) draw_rect(dr, ox, oy + TILE_SIZE, TILE_SIZE, g, bg);
-        draw_gt(dr, ox+g2, oy+TILE_SIZE+g4, g2, g2, g2, -g2, COLOUR(DOWN));
+        if (bg >= 0) draw_rect(dr, ox, oy + TILE_SIZE, TILE_SIZE, g, bg);
+        sx = ox+g2; sy = oy+TILE_SIZE+g4;
+        if (f & F_ERROR_DOWN) draw_rect(dr, sx-g6, sy-g6, 2*(g2+g6), g2+2*g6, COL_ERROR);
+        draw_gt(dr, sx, sy, g2, g2, g2, -g2, (f & F_ERROR_DOWN) ? COL_BACKGROUND : fg);
         draw_update(dr, ox, oy+TILE_SIZE, TILE_SIZE, g);
     }
     if (f & F_ADJ_LEFT) {
-	if (bg >= 0) draw_rect(dr, ox - g, oy, g, TILE_SIZE, bg);
-        draw_gt(dr, ox-g4, oy+g2, -g2, g2, g2, g2, COLOUR(LEFT));
+        if (bg >= 0) draw_rect(dr, ox - g, oy, g, TILE_SIZE, bg);
+        sx = ox-g4; sy = oy+g2;
+        if (f & F_ERROR_LEFT) draw_rect(dr, sx-g2-g6, sy-g6, g2+2*g6, 2*g2+2*g6, COL_ERROR);
+        draw_gt(dr, sx, sy, -g2, g2, g2, g2, (f & F_ERROR_LEFT) ? COL_BACKGROUND : fg);
         draw_update(dr, ox-g, oy, g, TILE_SIZE);
     }
 }
@@ -2027,7 +1905,7 @@ static void draw_gts(drawing *dr, game_drawstate *ds, int ox, int oy,
 static void draw_adjs(drawing *dr, game_drawstate *ds, int ox, int oy,
                       unsigned long f, int bg, int fg)
 {
-    int g = GAP_SIZE, g38 = 3*(g+1)/8, g4 = (g+1)/4;
+    int g = GAP_SIZE, g38 = 3*(g+1)/8, g4 = (g+1)/4, g10 = (g+1)/10;
 
     /* Draw all the adjacency bars relevant to this tile; we only have
      * to worry about F_ADJ_RIGHT and F_ADJ_DOWN.
@@ -2037,10 +1915,18 @@ static void draw_adjs(drawing *dr, game_drawstate *ds, int ox, int oy,
      */
 
     if (f & (F_ADJ_RIGHT|F_ERROR_RIGHT)) {
-        if (f & F_ADJ_RIGHT) {
-            draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, COLOUR(RIGHT));
-        } else {
-            draw_rect_outline(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, COL_ERROR);
+        if ((f & F_ADJ_RIGHT) && (f & F_ERROR_RIGHT)) {
+            draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, bg);
+            draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE/5, COL_ERROR);
+            draw_rect(dr, ox+TILE_SIZE+g38, oy+2*TILE_SIZE/5, g4, TILE_SIZE/5, COL_ERROR);
+            draw_rect(dr, ox+TILE_SIZE+g38, oy+4*TILE_SIZE/5, g4, TILE_SIZE/5, COL_ERROR);
+        } 
+        else if (f & F_ADJ_RIGHT) {
+            draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, COL_TEXT);
+        }
+        else {
+            draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, COL_ERROR);
+            draw_rect(dr, ox+TILE_SIZE+g38+g10, oy+g10, g4-2*g10, TILE_SIZE-2*g10, COL_BACKGROUND);
         }
     } else if (bg >= 0) {
         draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, bg);
@@ -2048,10 +1934,17 @@ static void draw_adjs(drawing *dr, game_drawstate *ds, int ox, int oy,
     draw_update(dr, ox+TILE_SIZE, oy, g, TILE_SIZE);
 
     if (f & (F_ADJ_DOWN|F_ERROR_DOWN)) {
-        if (f & F_ADJ_DOWN) {
-            draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, COLOUR(DOWN));
+        if ((f & F_ADJ_DOWN) && (f & F_ERROR_DOWN)) {
+            draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, bg);
+            draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE/5, g4, COL_ERROR);
+            draw_rect(dr, ox+2*TILE_SIZE/5, oy+TILE_SIZE+g38, TILE_SIZE/5, g4, COL_ERROR);
+            draw_rect(dr, ox+4*TILE_SIZE/5, oy+TILE_SIZE+g38, TILE_SIZE/5, g4, COL_ERROR);
+        }
+        else if (f & F_ADJ_DOWN) {
+            draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, COL_TEXT);
         } else {
-            draw_rect_outline(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, COL_ERROR);
+            draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, COL_ERROR);
+            draw_rect(dr, ox+g10, oy+TILE_SIZE+g38+g10, TILE_SIZE-2*g10, g4-2*g10, COL_BACKGROUND);
         }
     } else if (bg >= 0) {
         draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, bg);
@@ -2062,42 +1955,35 @@ static void draw_adjs(drawing *dr, game_drawstate *ds, int ox, int oy,
 static void draw_krps(drawing *dr, game_drawstate *ds, int ox, int oy,
                       unsigned long f, int bg, int fg, int fg2)
 {
-    int g = GAP_SIZE, g38 = 3*(g+1)/8, g4 = (g+1)/4, g2=(g+1)/2;
+    int g = GAP_SIZE, g4 = (g+1)/4, g2=(g+1)/2, g6=(g+1)/6, g10=(g+1)/10;
 
-    /* Draw all the adjacency bars relevant to this tile; we only have
-     * to worry about F_ADJ_RIGHT and F_ADJ_DOWN / F_ADJ_RIGHT_W and F_ADJ_DOWN_W.
-     *
-     * If we _only_ have the error flag set (i.e. it's not supposed to be
-     * either double or adjacent we draw a red bar.
-     */
-
-    if (f & (F_ADJ_RIGHT|F_DBL_RIGHT|F_ERROR_RIGHT)) {
-        if (f & F_DBL_RIGHT) {
-            draw_circle(dr, ox+TILE_SIZE+g2, oy+TILE_SIZE/2, g4, 
-                 COLOUR(RIGHT), COLOUR(RIGHT));
-        } else if (f & F_ADJ_RIGHT) {
-            draw_circle(dr, ox+TILE_SIZE+g2, oy+TILE_SIZE/2, g4, 
-                 COLOUR2(RIGHT), COLOUR(RIGHT));
-        } else {
-            draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, COL_ERROR);
-        }    
-    } else if (bg >= 0) {
-        draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, bg);
+    if (bg >= 0) {
+        draw_rect(dr, ox+TILE_SIZE, oy, g, TILE_SIZE, bg);
+    }
+    if (f & F_ERROR_RIGHT) {
+        draw_rect(dr, ox+TILE_SIZE+g4-g6, oy+TILE_SIZE/2-g4-g6, g2+2*g6, g2+2*g6, COL_ERROR);
+    }
+    if (f & F_ADJ_RIGHT) {
+        draw_circle(dr, ox+TILE_SIZE+g2, oy+TILE_SIZE/2, g4, COL_TEXT, COL_TEXT);
+        draw_circle(dr, ox+TILE_SIZE+g2, oy+TILE_SIZE/2, g4-g10, COL_BACKGROUND, COL_TEXT);
+    }
+    if (f & F_DBL_RIGHT) {
+        draw_circle(dr, ox+TILE_SIZE+g2, oy+TILE_SIZE/2, g4, COL_TEXT, COL_TEXT);
     }
     draw_update(dr, ox+TILE_SIZE, oy, g, TILE_SIZE);
 
-    if (f & (F_ADJ_DOWN|F_DBL_DOWN|F_ERROR_DOWN)) {
-        if (f & F_DBL_DOWN) {
-            draw_circle(dr, ox+TILE_SIZE/2, oy+TILE_SIZE+g2, g4, 
-                 COLOUR(DOWN), COLOUR(DOWN));
-        } else if (f & F_ADJ_DOWN) {
-            draw_circle(dr, ox+TILE_SIZE/2, oy+TILE_SIZE+g2, g4, 
-                 COLOUR2(DOWN), COLOUR(DOWN));
-        } else {
-            draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, COL_ERROR);
-        }
-    } else if (bg >= 0) {
-        draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, bg);
+    if (bg >= 0) {
+        draw_rect(dr, ox, oy+TILE_SIZE, TILE_SIZE, g, bg);
+    }
+    if (f & F_ERROR_DOWN) {
+        draw_rect(dr, ox+TILE_SIZE/2-g4-g6, oy+TILE_SIZE+g4-g6, g2+2*g6, g2+2*g6, COL_ERROR);
+    }
+    if (f & F_ADJ_DOWN) {
+        draw_circle(dr, ox+TILE_SIZE/2, oy+TILE_SIZE+g2, g4, COL_TEXT, COL_TEXT);
+        draw_circle(dr, ox+TILE_SIZE/2, oy+TILE_SIZE+g2, g4-g10, COL_BACKGROUND, COL_TEXT);
+    }
+    if (f & F_DBL_DOWN) {
+        draw_circle(dr, ox+TILE_SIZE/2, oy+TILE_SIZE+g2, g4, COL_TEXT, COL_TEXT);
     }
     draw_update(dr, ox, oy+TILE_SIZE, TILE_SIZE, g);
 }
@@ -2155,8 +2041,12 @@ static void draw_num(drawing *dr, game_drawstate *ds, int x, int y)
     /* Draw number, choosing appropriate colour */
     str[0] = n2c(GRID(ds, nums, x, y), ds->order);
     str[1] = '\0';
+    if (!(f & F_IMMUTABLE) && (f & F_ERROR)) {
+        draw_circle(dr, ox + TILE_SIZE/2, oy + TILE_SIZE/2, 2*TILE_SIZE/5, COL_ERROR, COL_ERROR);
+        draw_circle(dr, ox + TILE_SIZE/2, oy + TILE_SIZE/2, 2*TILE_SIZE/6, COL_BACKGROUND, COL_BACKGROUND);
+    }
     draw_text(dr, ox + TILE_SIZE/2, oy + TILE_SIZE/2,
-              FONT_VARIABLE, 3*TILE_SIZE/4, ALIGN_VCENTRE | ALIGN_HCENTRE,
+              FONT_VARIABLE, 2*TILE_SIZE/3, ALIGN_VCENTRE | ALIGN_HCENTRE,
               (f & F_IMMUTABLE) ? COL_TEXT : (f & F_ERROR) ? COL_ERROR : COL_GUESS, str);
 }
 
@@ -2294,54 +2184,6 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /* 10mm squares by default, roughly the same as Grauniad. */
-    game_compute_size(params, 1000, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int ink = print_mono_colour(dr, 0);
-    int x, y, o = state->order, ox, oy, n;
-    char str[2];
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    game_set_size(dr, ds, NULL, tilesize);
-
-    print_line_width(dr, 2 * TILE_SIZE / 40);
-
-    /* Squares, numbers, gt signs */
-    for (y = 0; y < o; y++) {
-        for (x = 0; x < o; x++) {
-            ox = COORD(x); oy = COORD(y);
-            n = GRID(state, nums, x, y);
-
-            draw_rect_outline(dr, ox, oy, TILE_SIZE, TILE_SIZE, ink);
-
-            str[0] = n ? n2c(n, state->order) : ' ';
-            str[1] = '\0';
-            draw_text(dr, ox + TILE_SIZE/2, oy + TILE_SIZE/2,
-                      FONT_VARIABLE, TILE_SIZE/2, ALIGN_VCENTRE | ALIGN_HCENTRE,
-                      ink, str);
-
-            if (state->mode == MODE_ADJACENT)
-                draw_adjs(dr, ds, ox, oy, GRID(state, flags, x, y), -1, ink);
-            else
-                draw_gts(dr, ds, ox, oy, GRID(state, flags, x, y), -1, ink);
-        }
-    }
-}
-
-/* ----------------------------------------------------------------------
- * Housekeeping.
- */
-
 #ifdef COMBINED
 #define thegame unequal
 #endif
@@ -2362,7 +2204,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -2379,8 +2221,8 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
-    false,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    false,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON | REQUIRE_NUMPAD,  /* flags */
 };

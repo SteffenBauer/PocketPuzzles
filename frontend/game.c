@@ -733,8 +733,10 @@ LAYOUTTYPE gameGetLayout() {
         if (keys[i].button == '\b') fe->controls[i] = btn_backspace;
         else if (keys[i].button == '+')  fe->controls[i] = btn_add;
         else if (keys[i].button == '-')  fe->controls[i] = btn_remove;
-        else if (keys[i].button == 'O' && strcmp(currentgame->name, "Salad")==0)  fe->controls[i] = btn_salad_o;
-        else if (keys[i].button == 'X' && strcmp(currentgame->name, "Salad")==0)  fe->controls[i] = btn_salad_x;
+        else if (keys[i].button == 'O' && strcmp(currentgame->name, "Salad")==0)   fe->controls[i] = btn_salad_o;
+        else if (keys[i].button == 'X' && strcmp(currentgame->name, "Salad")==0)   fe->controls[i] = btn_salad_x;
+        else if (keys[i].button == 'J' && strcmp(currentgame->name, "Net")==0)     fe->controls[i] = btn_net_shuffle;
+        else if (keys[i].button == 'G' && strcmp(currentgame->name, "Bridges")==0) fe->controls[i] = btn_bridges_g;
         else {
             fe->controls[i].type   = BTN_CHAR;
             fe->controls[i].c      = keys[i].button;

@@ -53,7 +53,7 @@ extern ibitmap icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,
                menu_exit, menu_help, menu_new, menu_restart, menu_solve,
                bt_add, bt_backspace, bt_bridges_g, bt_fill, bt_fill_undead, bt_guess_i,
                bt_redo, bt_redo_d, bt_remove, bt_map_c, bt_map_j, bt_net_shuffle, 
-               bt_salad_o, bt_salad_x, bt_undead_g, bt_undead_v, bt_undead_z,
+               bt_salad_o, bt_salad_x, bt_net_shuffle, bt_bridges_g,
                bt_swap, bt_undo, bt_undo_d;
 
 static BUTTON btn_back = { false, BTN_MENU, 0, 0, 0, 0, ' ', &icon_back, &icon_back_tap, NULL, NULL};
@@ -71,6 +71,8 @@ static BUTTON btn_redo = { false, BTN_CTRL, 0, 0, 0, 0, ' ', &bt_redo, NULL, &bt
 
 static BUTTON btn_salad_o  = { false, BTN_CTRL, 0, 0, 0, 0, 'O', &bt_salad_o, NULL, NULL, NULL};
 static BUTTON btn_salad_x  = { false, BTN_CTRL, 0, 0, 0, 0, 'X', &bt_salad_x, NULL, NULL, NULL};
+static BUTTON btn_net_shuffle = { false, BTN_CTRL, 0, 0, 0, 0, 'J', &bt_net_shuffle, NULL, NULL, NULL};
+static BUTTON btn_bridges_g = { false, BTN_CTRL, 0, 0, 0, 0, 'G', &bt_bridges_g, NULL, NULL, NULL};
 
 static imenuex gameMenu[] = {
     { ITEM_HEADER,   0, "Game",          NULL, NULL,          NULL, NULL },
