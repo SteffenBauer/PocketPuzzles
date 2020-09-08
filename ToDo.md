@@ -42,6 +42,6 @@
 - [ ] Rome: Change to highlight / highlight clue; add up/down/left/right buttons
 - [ ] Samegame: Add color fill pattern
 - [X] Signpost: Remove blitter drag. Adjust colors. Modify left/right click behavior. Fix polygon error.
-- [ ] Sixteen: Remove animation
-- [ ] Twiddle: Remove animation
+- [X] Sixteen: Remove animation
+- [X] Twiddle: Remove animation
 

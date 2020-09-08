@@ -207,80 +207,6 @@ static void fixup_islands_for_realloc(game_state *state)
     }
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int x, y, len, nl;
-    char *ret, *p;
-    struct island *is;
-    grid_type grid;
-
-    len = (state->h) * (state->w+1) + 1;
-    ret = snewn(len, char);
-    p = ret;
-
-    for (y = 0; y < state->h; y++) {
-        for (x = 0; x < state->w; x++) {
-            grid = GRID(state,x,y);
-            nl = INDEX(state,lines,x,y);
-            is = INDEX(state, gridi, x, y);
-            if (is) {
-                *p++ = '0' + is->count;
-            } else if (grid & G_LINEV) {
-                *p++ = (nl > 1) ? '"' : (nl == 1) ? '|' : '!'; /* gaah, want a double-bar. */
-            } else if (grid & G_LINEH) {
-                *p++ = (nl > 1) ? '=' : (nl == 1) ? '-' : '~';
-            } else {
-                *p++ = '.';
-            }
-        }
-        *p++ = '\n';
-    }
-    *p++ = '\0';
-
-    assert(p - ret == len);
-    return ret;
-}
-
-static void debug_state(game_state *state)
-{
-    char *textversion = game_text_format(state);
-    debug(("%s", textversion));
-    sfree(textversion);
-}
-
-/*static void debug_possibles(game_state *state)
-{
-    int x, y;
-    debug(("possh followed by possv\n"));
-    for (y = 0; y < state->h; y++) {
-        for (x = 0; x < state->w; x++) {
-            debug(("%d", POSSIBLES(state, 1, x, y)));
-        }
-        debug((" "));
-        for (x = 0; x < state->w; x++) {
-            debug(("%d", POSSIBLES(state, 0, x, y)));
-        }
-        debug(("\n"));
-    }
-    debug(("\n"));
-        for (y = 0; y < state->h; y++) {
-        for (x = 0; x < state->w; x++) {
-            debug(("%d", MAXIMUM(state, 1, x, y)));
-        }
-        debug((" "));
-        for (x = 0; x < state->w; x++) {
-            debug(("%d", MAXIMUM(state, 0, x, y)));
-        }
-        debug(("\n"));
-    }
-    debug(("\n"));
-}*/
-
 static void island_set_surrounds(struct island *is)
 {
     assert(INGRID(is->state,is->x,is->y));
@@ -630,7 +556,7 @@ static bool island_impossible(struct island *is, bool strict)
 
 /* --- Game parameter functions --- */
 
-#define DEFAULT_PRESET 0
+#define DEFAULT_PRESET 2
 
 static const struct game_params bridges_presets[] = {
   { 7, 7, 2, 30, 10, 1, 0 },
@@ -1444,8 +1370,6 @@ static bool solve_island_stage2(struct island *is, bool *didsth_r)
                        is->adj.points[i].dx, is->adj.points[i].dy));
                 solve_join(is, i, 1, false);
                 added = true;
-                /*debug_state(is->state);
-                debug_possibles(is->state);*/
             }
         }
     }
@@ -1563,7 +1487,6 @@ static bool solve_island_stage3(struct island *is, bool *didsth_r)
         memcpy(ss->dsf, ss->tmpdsf, wh*sizeof(int));
 
         if (maxb != -1) {
-            /*debug_state(is->state);*/
             if (maxb == 0) {
                 debug(("...adding NOLINE.\n"));
                 solve_join(is, i, -1, false); /* we can't have any bridges here. */
@@ -1934,7 +1857,6 @@ foundmax:
         ni_curr++; ni_bad = 0;
 join:
         island_join(is, is2, random_upto(rs, tobuild->maxb)+1, false);
-        debug_state(tobuild);
         continue;
 
 bad:
@@ -1988,7 +1910,6 @@ generated:
     }
 
     /* ... tobuild is now solved. We rely on this making the diff for aux. */
-    debug_state(tobuild);
     ret = encode_game(tobuild);
     {
         game_state *clean = dup_game(tobuild);
@@ -2654,26 +2575,18 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-
     for (i = 0; i < 3; i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.8F;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.6F;
         ret[COL_FOREGROUND * 3 + i] = 0.0F;
-        ret[COL_HINT * 3 + i] = ret[COL_LOWLIGHT * 3 + i];
-        ret[COL_GRID * 3 + i] =
-            (ret[COL_HINT * 3 + i] + ret[COL_BACKGROUND * 3 + i]) * 0.5F;
-        ret[COL_MARK * 3 + i] = ret[COL_HIGHLIGHT * 3 + i];
+        ret[COL_HINT       * 3 + i] = 0.8F;
+        ret[COL_GRID       * 3 + i] = 0.5F;
+        ret[COL_MARK       * 3 + i] = 0.8F;
+        ret[COL_WARNING    * 3 + i] = 0.5F;
+        ret[COL_SELECTED   * 3 + i] = 0.25F;
+        ret[COL_CURSOR     * 3 + i] = 0.8F;
     }
-    ret[COL_WARNING * 3 + 0] = 1.0F;
-    ret[COL_WARNING * 3 + 1] = 0.25F;
-    ret[COL_WARNING * 3 + 2] = 0.25F;
-
-    ret[COL_SELECTED * 3 + 0] = 0.25F;
-    ret[COL_SELECTED * 3 + 1] = 1.00F;
-    ret[COL_SELECTED * 3 + 2] = 0.25F;
-
-    ret[COL_CURSOR * 3 + 0] = min(ret[COL_BACKGROUND * 3 + 0] * 1.4F, 1.0F);
-    ret[COL_CURSOR * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] * 0.8F;
-    ret[COL_CURSOR * 3 + 2] = ret[COL_BACKGROUND * 3 + 2] * 0.8F;
 
     *ncolours = NCOLOURS;
     return ret;
@@ -2747,7 +2660,6 @@ static void lines_lvlh(const game_state *state, const game_ui *ui,
         if (between_island(state, x, y, 0, 1) && !lv) lv = 1;
         if (between_island(state, x, y, 1, 0) && !lh) lh = 1;
     }
-    /*debug(("lvlh: (%d,%d) v 0x%x lv %d lh %d.\n", x, y, v, lv, lh));*/
     *lv_r = lv; *lh_r = lh;
 }
 
@@ -2755,8 +2667,8 @@ static void draw_cross(drawing *dr, game_drawstate *ds,
                        int ox, int oy, int col)
 {
     int off = TS8(2);
-    draw_line(dr, ox,     oy, ox+off, oy+off, col);
-    draw_line(dr, ox+off, oy, ox,     oy+off, col);
+    draw_thick_line(dr, 3.0, ox,     oy, ox+off, oy+off, col);
+    draw_thick_line(dr, 3.0, ox+off, oy, ox,     oy+off, col);
 }
 
 static void draw_general_line(drawing *dr, game_drawstate *ds,
@@ -2778,7 +2690,6 @@ static void draw_general_line(drawing *dr, game_drawstate *ds,
 
     fg = ((ldata & DL_COUNTMASK) == DL_COUNT_HINT ? COL_HINT :
           (ldata & DL_COLMASK) == DL_COL_SELECTED ? COL_SELECTED :
-          (ldata & DL_COLMASK) == DL_COL_FLASH ? COL_HIGHLIGHT :
           (ldata & DL_COLMASK) == DL_COL_WARNING ? COL_WARNING :
           COL_FOREGROUND);
 
@@ -2834,7 +2745,7 @@ static void draw_vline(drawing *dr, game_drawstate *ds,
 static void draw_island(drawing *dr, game_drawstate *ds,
                         int ox, int oy, int clue, unsigned long idata)
 {
-    int half, orad, irad, fg, bg;
+    int half, orad, irad, fg, bg, cg;
 
     if ((idata & DI_BGMASK) == DI_BG_NO_ISLAND)
         return;
@@ -2842,16 +2753,20 @@ static void draw_island(drawing *dr, game_drawstate *ds,
     half = TILE_SIZE/2;
     orad = ISLAND_RADIUS;
     irad = orad - LINE_WIDTH;
-    fg = ((idata & DI_COLMASK) == DI_COL_SELECTED ? COL_SELECTED :
+    fg = ((idata & DI_COLMASK) == DI_COL_SELECTED ? COL_FOREGROUND :
+          (idata & DI_COLMASK) == DI_COL_WARNING ? COL_BACKGROUND :
+          (idata & DI_BGMASK)  == DI_BG_MARK ? COL_HIGHLIGHT : COL_FOREGROUND);
+
+    bg = ((idata & DI_COLMASK) == DI_COL_SELECTED ? COL_HIGHLIGHT :
           (idata & DI_COLMASK) == DI_COL_WARNING ? COL_WARNING :
-          (idata & DI_COLMASK) == DI_COL_FLASH ? COL_HIGHLIGHT :
-          COL_FOREGROUND);
-    bg = ((idata & DI_BGMASK) == DI_BG_CURSOR ? COL_CURSOR :
-          (idata & DI_BGMASK) == DI_BG_MARK ? COL_MARK :
-          COL_BACKGROUND);
+          (idata & DI_BGMASK)  == DI_BG_MARK ? COL_FOREGROUND : COL_BACKGROUND);
+
+    cg = ((idata & DI_COLMASK) == DI_COL_SELECTED ? COL_FOREGROUND :
+          (idata & DI_COLMASK) == DI_COL_WARNING ? COL_LOWLIGHT :
+          (idata & DI_BGMASK)  == DI_BG_MARK ? COL_FOREGROUND : COL_FOREGROUND);
 
     /* draw a thick circle */
-    draw_circle(dr, ox+half, oy+half, orad, fg, fg);
+    draw_circle(dr, ox+half, oy+half, orad, cg, cg);
     draw_circle(dr, ox+half, oy+half, irad, bg, bg);
 
     if (clue > 0) {
@@ -3162,10 +3077,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-        !oldstate->solved && !newstate->solved)
-        return FLASH_TIME;
-
     return 0.0F;
 }
 
@@ -3177,69 +3088,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /* 10mm squares by default. */
-    game_compute_size(params, 1000, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int ts)
-{
-    int ink = print_mono_colour(dr, 0);
-    int paper = print_mono_colour(dr, 1);
-    int x, y, cx, cy, i, nl;
-    int loff;
-    grid_type grid;
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    ads.tilesize = ts;
-
-    /* I don't think this wants a border. */
-
-    /* Bridges */
-    loff = ts / (8 * sqrt((state->params.maxb - 1)));
-    print_line_width(dr, ts / 12);
-    for (x = 0; x < state->w; x++) {
-        for (y = 0; y < state->h; y++) {
-            cx = COORD(x); cy = COORD(y);
-            grid = GRID(state,x,y);
-            nl = INDEX(state,lines,x,y);
-
-            if (grid & G_ISLAND) continue;
-            if (grid & G_LINEV) {
-                for (i = 0; i < nl; i++)
-                    draw_line(dr, cx+ts/2+(2*i-nl+1)*loff, cy,
-                              cx+ts/2+(2*i-nl+1)*loff, cy+ts, ink);
-            }
-            if (grid & G_LINEH) {
-                for (i = 0; i < nl; i++)
-                    draw_line(dr, cx, cy+ts/2+(2*i-nl+1)*loff,
-                              cx+ts, cy+ts/2+(2*i-nl+1)*loff, ink);
-            }
-        }
-    }
-
-    /* Islands */
-    for (i = 0; i < state->n_islands; i++) {
-        char str[32];
-        struct island *is = &state->islands[i];
-        grid = GRID(state, is->x, is->y);
-        cx = COORD(is->x) + ts/2;
-        cy = COORD(is->y) + ts/2;
-
-        draw_circle(dr, cx, cy, ISLAND_RADIUS, paper, ink);
-
-        sprintf(str, "%d", is->count);
-        draw_text(dr, cx, cy, FONT_VARIABLE, ISLAND_NUMSIZE(is->count),
-                  ALIGN_VCENTRE | ALIGN_HCENTRE, ink, str);
-    }
 }
 
 #ifdef COMBINED
@@ -3262,7 +3110,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -3279,7 +3127,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false,			       /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,		       /* flags */
