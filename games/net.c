@@ -1618,6 +1618,18 @@ static const char *validate_desc(const game_params *params, const char *desc)
     return NULL;
 }
 
+static key_label *game_request_keys(const game_params *params, int *nkeys)
+{
+    key_label *keys = snewn(1, key_label);
+    *nkeys = 1;
+
+    keys[0].button = 'J';
+    keys[0].label = "Shuffle";
+
+    return keys;
+}
+
+
 /* ----------------------------------------------------------------------
  * Construct an initial game state, given a description and parameters.
  */
@@ -3048,7 +3060,7 @@ const struct game thegame = {
     free_ui,
     encode_ui,
     decode_ui,
-    NULL, /* game_request_keys */
+    game_request_keys,
     game_changed_state,
     interpret_move,
     execute_move,
