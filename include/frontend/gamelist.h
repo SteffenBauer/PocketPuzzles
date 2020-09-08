@@ -67,7 +67,7 @@ static GAMEINFO mygames[] = {
     { &game_signpost, &signpost},
 
     { &game_singles,  &singles},
-//    { &game_sixteen,  &sixteen},
+    { &game_sixteen,  &sixteen},
     { &game_slant,    &slant},
     { &game_sokoban,  &sokoban},
     { &game_solo,     &solo},
@@ -76,7 +76,7 @@ static GAMEINFO mygames[] = {
     { &game_tents,    &tents},
     { &game_towers,   &towers},
     { &game_tracks,   &tracks},
-//    { &game_twiddle,  &twiddle},
+    { &game_twiddle,  &twiddle},
 
     { &game_undead,   &undead},
     { &game_unequal,  &unequal},

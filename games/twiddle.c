@@ -17,7 +17,7 @@
 #define PREFERRED_TILE_SIZE 48
 #define TILE_SIZE (ds->tilesize)
 #define BORDER    (TILE_SIZE / 2)
-#define HIGHLIGHT_WIDTH (TILE_SIZE / 20)
+#define HIGHLIGHT_WIDTH (TILE_SIZE / 10)
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILE_SIZE) / TILE_SIZE - 1 )
 
@@ -47,9 +47,9 @@ struct game_state {
     bool orientable;
     int *grid;
     int completed;
-    bool used_solve;		       /* used to suppress completion flash */
+    bool used_solve;               /* used to suppress completion flash */
     int movecount, movetarget;
-    int lastx, lasty, lastr;	       /* coordinates of last rotation */
+    int lastx, lasty, lastr;           /* coordinates of last rotation */
 };
 
 static game_params *default_params(void)
@@ -73,7 +73,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -85,6 +85,7 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
     } const presets[] = {
         { "3x3 rows only", { 3, 3, 2, true, false } },
         { "3x3 normal", { 3, 3, 2, false, false } },
+        { "3x3 rows orientable", { 3, 3, 2, true, true } },
         { "3x3 orientable", { 3, 3, 2, false, true } },
         { "4x4 normal", { 4, 4, 2, false } },
         { "4x4 orientable", { 4, 4, 2, false, true } },
@@ -113,24 +114,24 @@ static void decode_params(game_params *ret, char const *string)
     if (*string == 'x') {
         string++;
         ret->h = atoi(string);
-	while (*string && isdigit((unsigned char)*string)) string++;
+    while (*string && isdigit((unsigned char)*string)) string++;
     }
     if (*string == 'n') {
         string++;
         ret->n = atoi(string);
-	while (*string && isdigit((unsigned char)*string)) string++;
+    while (*string && isdigit((unsigned char)*string)) string++;
     }
     while (*string) {
-	if (*string == 'r') {
-	    ret->rowsonly = true;
-	} else if (*string == 'o') {
-	    ret->orientable = true;
-	} else if (*string == 'm') {
+    if (*string == 'r') {
+        ret->rowsonly = true;
+    } else if (*string == 'o') {
+        ret->orientable = true;
+    } else if (*string == 'm') {
             string++;
-	    ret->movetarget = atoi(string);
+        ret->movetarget = atoi(string);
             while (string[1] && isdigit((unsigned char)string[1])) string++;
-	}
-	string++;
+    }
+    string++;
     }
 }
 
@@ -138,8 +139,8 @@ static char *encode_params(const game_params *params, bool full)
 {
     char buf[256];
     sprintf(buf, "%dx%dn%d%s%s", params->w, params->h, params->n,
-	    params->rowsonly ? "r" : "",
-	    params->orientable ? "o" : "");
+        params->rowsonly ? "r" : "",
+        params->orientable ? "o" : "");
     /* Shuffle limit is part of the limited parameters, because we have to
      * supply the target move count. */
     if (params->movetarget)
@@ -205,11 +206,11 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->n < 2)
-	return "Rotating block size must be at least two";
+    return "Rotating block size must be at least two";
     if (params->w < params->n)
-	return "Width must be at least the rotating block size";
+    return "Width must be at least the rotating block size";
     if (params->h < params->n)
-	return "Height must be at least the rotating block size";
+    return "Height must be at least the rotating block size";
     return NULL;
 }
 
@@ -222,7 +223,7 @@ static const char *validate_params(const game_params *params, bool full)
  * use internally.)
  */
 static void do_rotate(int *grid, int w, int h, int n, bool orientable,
-		      int x, int y, int dir)
+              int x, int y, int dir)
 {
     int i, j;
 
@@ -230,9 +231,9 @@ static void do_rotate(int *grid, int w, int h, int n, bool orientable,
     assert(y >= 0 && y+n <= h);
     dir &= 3;
     if (dir == 0)
-	return;			       /* nothing to do */
+    return;                   /* nothing to do */
 
-    grid += y*w+x;		       /* translate region to top corner */
+    grid += y*w+x;               /* translate region to top corner */
 
     /*
      * If we were leaving the result of the rotation in a separate
@@ -251,26 +252,26 @@ static void do_rotate(int *grid, int w, int h, int n, bool orientable,
      * one that never moves anyway.)
      */
     for (i = 0; i < (n+1)/2; i++) {
-	for (j = 0; j < n/2; j++) {
-	    int k;
-	    int g[4];
-	    int p[4];
+    for (j = 0; j < n/2; j++) {
+        int k;
+        int g[4];
+        int p[4];
             
             p[0] = j*w+i;
             p[1] = i*w+(n-j-1);
             p[2] = (n-j-1)*w+(n-i-1);
             p[3] = (n-i-1)*w+j;
 
-	    for (k = 0; k < 4; k++)
-		g[k] = grid[p[k]];
+        for (k = 0; k < 4; k++)
+        g[k] = grid[p[k]];
 
-	    for (k = 0; k < 4; k++) {
-		int v = g[(k+dir) & 3];
-		if (orientable)
-		    v ^= ((v+dir) ^ v) & 3;  /* alter orientation */
-		grid[p[k]] = v;
-	    }
-	}
+        for (k = 0; k < 4; k++) {
+        int v = g[(k+dir) & 3];
+        if (orientable)
+            v ^= ((v+dir) ^ v) & 3;  /* alter orientation */
+        grid[p[k]] = v;
+        }
+    }
     }
 
     /*
@@ -278,9 +279,9 @@ static void do_rotate(int *grid, int w, int h, int n, bool orientable,
      * odd.
      */
     if (orientable && (n & 1)) {
-	int v = grid[n/2*(w+1)];
-	v ^= ((v+dir) ^ v) & 3;  /* alter orientation */
-	grid[n/2*(w+1)] = v;
+    int v = grid[n/2*(w+1)];
+    v ^= ((v+dir) ^ v) & 3;  /* alter orientation */
+    grid[n/2*(w+1)] = v;
     }
 }
 
@@ -289,18 +290,18 @@ static bool grid_complete(int *grid, int wh, bool orientable)
     bool ok = true;
     int i;
     for (i = 1; i < wh; i++)
-	if (grid[i] < grid[i-1])
-	    ok = false;
+    if (grid[i] < grid[i-1])
+        ok = false;
     if (orientable) {
-	for (i = 0; i < wh; i++)
-	    if (grid[i] & 3)
-		ok = false;
+    for (i = 0; i < wh; i++)
+        if (grid[i] & 3)
+        ok = false;
     }
     return ok;
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     int *grid;
     int w = params->w, h = params->h, n = params->n, wh = w*h;
@@ -314,7 +315,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      */
     grid = snewn(wh, int);
     for (i = 0; i < wh; i++)
-	grid[i] = ((params->rowsonly ? i/w : i) + 1) * 4;
+    grid[i] = ((params->rowsonly ? i/w : i) + 1) * 4;
 
     /*
      * Shuffle it. This game is complex enough that I don't feel up
@@ -410,14 +411,14 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         int k;
 
         k = sprintf(buf, "%d%c", grid[i] / 4,
-		    (char)(params->orientable ? "uldr"[grid[i] & 3] : ','));
+            (char)(params->orientable ? "uldr"[grid[i] & 3] : ','));
 
         ret = sresize(ret, retlen + k + 1, char);
         strcpy(ret + retlen, buf);
         retlen += k;
     }
     if (!params->orientable)
-	ret[retlen-1] = '\0';	       /* delete last comma */
+    ret[retlen-1] = '\0';           /* delete last comma */
 
     sfree(grid);
     return ret;
@@ -432,21 +433,21 @@ static const char *validate_desc(const game_params *params, const char *desc)
     p = desc;
 
     for (i = 0; i < wh; i++) {
-	if (*p < '0' || *p > '9')
-	    return "Not enough numbers in string";
-	while (*p >= '0' && *p <= '9')
-	    p++;
-	if (!params->orientable && i < wh-1) {
-	    if (*p != ',')
-		return "Expected comma after number";
-	} else if (params->orientable && i < wh) {
-	    if (*p != 'l' && *p != 'r' && *p != 'u' && *p != 'd')
-		return "Expected orientation letter after number";
-	} else if (i == wh-1 && *p) {
-	    return "Excess junk at end of string";
-	}
+    if (*p < '0' || *p > '9')
+        return "Not enough numbers in string";
+    while (*p >= '0' && *p <= '9')
+        p++;
+    if (!params->orientable && i < wh-1) {
+        if (*p != ',')
+        return "Expected comma after number";
+    } else if (params->orientable && i < wh) {
+        if (*p != 'l' && *p != 'r' && *p != 'u' && *p != 'd')
+        return "Expected orientation letter after number";
+    } else if (i == wh-1 && *p) {
+        return "Excess junk at end of string";
+    }
 
-	if (*p) p++;		       /* eat comma */
+    if (*p) p++;               /* eat comma */
     }
 
     return NULL;
@@ -475,19 +476,19 @@ static game_state *new_game(midend *me, const game_params *params,
     p = desc;
 
     for (i = 0; i < wh; i++) {
-	state->grid[i] = 4 * atoi(p);
-	while (*p >= '0' && *p <= '9')
-	    p++;
-	if (*p) {
-	    if (params->orientable) {
-		switch (*p) {
-		  case 'l': state->grid[i] |= 1; break;
-		  case 'd': state->grid[i] |= 2; break;
-		  case 'r': state->grid[i] |= 3; break;
-		}
-	    }
-	    p++;
-	}
+    state->grid[i] = 4 * atoi(p);
+    while (*p >= '0' && *p <= '9')
+        p++;
+    if (*p) {
+        if (params->orientable) {
+        switch (*p) {
+          case 'l': state->grid[i] |= 1; break;
+          case 'd': state->grid[i] |= 2; break;
+          case 'r': state->grid[i] |= 3; break;
+        }
+        }
+        p++;
+    }
     }
 
     return state;
@@ -526,80 +527,17 @@ static int compare_int(const void *av, const void *bv)
     const int *a = (const int *)av;
     const int *b = (const int *)bv;
     if (*a < *b)
-	return -1;
+    return -1;
     else if (*a > *b)
-	return +1;
+    return +1;
     else
-	return 0;
+    return 0;
 }
 
 static char *solve_game(const game_state *state, const game_state *currstate,
                         const char *aux, const char **error)
 {
     return dupstr("S");
-}
-
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    char *ret, *p, buf[80];
-    int i, x, y, col, maxlen;
-    bool o = state->orientable;
-
-    /* Pedantic check: ensure buf is large enough to format an int in
-     * decimal, using the bound log10(2) < 1/3. (Obviously in practice
-     * int is not going to be larger than even 32 bits any time soon,
-     * but.) */
-    assert(sizeof(buf) >= 1 + sizeof(int) * CHAR_BIT/3);
-
-    /*
-     * First work out how many characters we need to display each
-     * number. We're pretty flexible on grid contents here, so we
-     * have to scan the entire grid.
-     */
-    col = 0;
-    for (i = 0; i < state->w * state->h; i++) {
-	x = sprintf(buf, "%d", state->grid[i] / 4);
-	if (col < x) col = x;
-    }
-
-    /* Reassure sprintf-checking compilers like gcc that the field
-     * width we've just computed is not now excessive */
-    if (col >= sizeof(buf))
-        col = sizeof(buf)-1;
-
-    /*
-     * Now we know the exact total size of the grid we're going to
-     * produce: it's got h rows, each containing w lots of col+o,
-     * w-1 spaces and a trailing newline.
-     */
-    maxlen = state->h * state->w * (col+o+1);
-
-    ret = snewn(maxlen+1, char);
-    p = ret;
-
-    for (y = 0; y < state->h; y++) {
-	for (x = 0; x < state->w; x++) {
-	    int v = state->grid[state->w*y+x];
-	    sprintf(buf, "%*d", col, v/4);
-	    memcpy(p, buf, col);
-	    p += col;
-	    if (o)
-		*p++ = "^<v>"[v & 3];
-	    if (x+1 == state->w)
-		*p++ = '\n';
-	    else
-		*p++ = ' ';
-	}
-    }
-
-    assert(p - ret == maxlen);
-    *p = '\0';
-    return ret;
 }
 
 struct game_ui {
@@ -669,18 +607,18 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
 
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
-	/*
-	 * Determine the coordinates of the click. We offset by n-1
-	 * half-blocks so that the user must click at the centre of
-	 * a rotation region rather than at the corner.
-	 */
-	x -= (n-1) * TILE_SIZE / 2;
-	y -= (n-1) * TILE_SIZE / 2;
-	x = FROMCOORD(x);
-	y = FROMCOORD(y);
-	dir = (button == LEFT_BUTTON ? 1 : -1);
-	if (x < 0 || x > w-n || y < 0 || y > h-n)
-	    return NULL;
+    /*
+     * Determine the coordinates of the click. We offset by n-1
+     * half-blocks so that the user must click at the centre of
+     * a rotation region rather than at the corner.
+     */
+        x -= (n-1) * TILE_SIZE / 2;
+        y -= (n-1) * TILE_SIZE / 2;
+        x = FROMCOORD(x);
+        y = FROMCOORD(y);
+        dir = (button == LEFT_BUTTON ? 1 : -1);
+        if (x < 0 || x > w-n || y < 0 || y > h-n)
+            return NULL;
         ui->cur_visible = false;
     } else if (IS_CURSOR_SELECT(button)) {
         if (ui->cur_visible) {
@@ -744,29 +682,29 @@ static game_state *execute_move(const game_state *from, const char *move)
     int x, y, dir;
 
     if (!strcmp(move, "S")) {
-	int i;
-	ret = dup_game(from);
+    int i;
+    ret = dup_game(from);
 
-	/*
-	 * Simply replace the grid with a solved one. For this game,
-	 * this isn't a useful operation for actually telling the user
-	 * what they should have done, but it is useful for
-	 * conveniently being able to get hold of a clean state from
-	 * which to practise manoeuvres.
-	 */
-	qsort(ret->grid, ret->w*ret->h, sizeof(int), compare_int);
-	for (i = 0; i < ret->w*ret->h; i++)
-	    ret->grid[i] &= ~3;
-	ret->used_solve = true;
-	ret->completed = ret->movecount = 1;
+    /*
+     * Simply replace the grid with a solved one. For this game,
+     * this isn't a useful operation for actually telling the user
+     * what they should have done, but it is useful for
+     * conveniently being able to get hold of a clean state from
+     * which to practise manoeuvres.
+     */
+    qsort(ret->grid, ret->w*ret->h, sizeof(int), compare_int);
+    for (i = 0; i < ret->w*ret->h; i++)
+        ret->grid[i] &= ~3;
+    ret->used_solve = true;
+    ret->completed = ret->movecount = 1;
 
-	return ret;
+    return ret;
     }
 
     if (move[0] != 'M' ||
-	sscanf(move+1, "%d,%d,%d", &x, &y, &dir) != 3 ||
-	x < 0 || y < 0 || x > from->w - n || y > from->h - n)
-	return NULL;		       /* can't parse this move string */
+    sscanf(move+1, "%d,%d,%d", &x, &y, &dir) != 3 ||
+    x < 0 || y < 0 || x > from->w - n || y > from->h - n)
+    return NULL;               /* can't parse this move string */
 
     ret = dup_game(from);
     ret->movecount++;
@@ -810,18 +748,15 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-
-    /* cursor is light-background with a red tinge. */
-    ret[COL_HIGHCURSOR * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] * 1.0F;
-    ret[COL_HIGHCURSOR * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] * 0.5F;
-    ret[COL_HIGHCURSOR * 3 + 2] = ret[COL_BACKGROUND * 3 + 2] * 0.5F;
-
     for (i = 0; i < 3; i++) {
-        ret[COL_HIGHLIGHT_GENTLE * 3 + i] = ret[COL_BACKGROUND * 3 + i] * 1.1F;
-        ret[COL_LOWLIGHT_GENTLE * 3 + i] = ret[COL_BACKGROUND * 3 + i] * 0.9F;
-        ret[COL_TEXT * 3 + i] = 0.0;
-        ret[COL_LOWCURSOR * 3 + i] = ret[COL_HIGHCURSOR * 3 + i] * 0.6F;
+        ret[COL_BACKGROUND       * 3 + i] = 1.0;
+        ret[COL_HIGHLIGHT        * 3 + i] = 0.8;
+        ret[COL_LOWLIGHT         * 3 + i] = 0.4;
+        ret[COL_TEXT             * 3 + i] = 0.0;
+        ret[COL_HIGHCURSOR       * 3 + i] = 0.7F;
+        ret[COL_HIGHLIGHT_GENTLE * 3 + i] = 0.7F;
+        ret[COL_LOWLIGHT_GENTLE  * 3 + i] = 0.7F;
+        ret[COL_LOWCURSOR        * 3 + i] = 0.7F;
     }
 
     *ncolours = NCOLOURS;
@@ -853,23 +788,23 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 }
 
 struct rotation {
-    int cx, cy, cw, ch;		       /* clip region */
-    int ox, oy;			       /* rotation origin */
-    float c, s;			       /* cos and sin of rotation angle */
-    int lc, rc, tc, bc;		       /* colours of tile edges */
+    int cx, cy, cw, ch;               /* clip region */
+    int ox, oy;                   /* rotation origin */
+    float c, s;                   /* cos and sin of rotation angle */
+    int lc, rc, tc, bc;               /* colours of tile edges */
 };
 
 static void rotate(int *xy, struct rotation *rot)
 {
     if (rot) {
-	float xf = (float)xy[0] - rot->ox, yf = (float)xy[1] - rot->oy;
-	float xf2, yf2;
+    float xf = (float)xy[0] - rot->ox, yf = (float)xy[1] - rot->oy;
+    float xf2, yf2;
 
-	xf2 = rot->c * xf + rot->s * yf;
-	yf2 = - rot->s * xf + rot->c * yf;
+    xf2 = rot->c * xf + rot->s * yf;
+    yf2 = - rot->s * xf + rot->c * yf;
 
-	xy[0] = (int)(xf2 + rot->ox + 0.5);   /* round to nearest */
-	xy[1] = (int)(yf2 + rot->oy + 0.5);   /* round to nearest */
+    xy[0] = (int)(xf2 + rot->ox + 0.5);   /* round to nearest */
+    xy[1] = (int)(yf2 + rot->oy + 0.5);   /* round to nearest */
     }
 }
 
@@ -896,7 +831,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
         rot = NULL;
 
     if (rot)
-	clip(dr, rot->cx, rot->cy, rot->cw, rot->ch);
+    clip(dr, rot->cx, rot->cy, rot->cw, rot->ch);
 
     /*
      * We must draw each side of the tile's highlight separately,
@@ -917,92 +852,92 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
     coords[3] = y;
     rotate(coords+2, rot);
     draw_polygon(dr, coords, 3, rot ? rot->rc : COL_LOWLIGHT,
-		 rot ? rot->rc : (cedges & CUR_RIGHT) ? COL_LOWCURSOR : COL_LOWLIGHT);
+         rot ? rot->rc : (cedges & CUR_RIGHT) ? COL_LOWCURSOR : COL_LOWLIGHT);
 
     /* Bottom side. */
     coords[2] = x;
     coords[3] = y + TILE_SIZE - 1;
     rotate(coords+2, rot);
     draw_polygon(dr, coords, 3, rot ? rot->bc : COL_LOWLIGHT,
-		 rot ? rot->bc : (cedges & CUR_BOTTOM) ? COL_LOWCURSOR : COL_LOWLIGHT);
+         rot ? rot->bc : (cedges & CUR_BOTTOM) ? COL_LOWCURSOR : COL_LOWLIGHT);
 
     /* Left side. */
     coords[0] = x;
     coords[1] = y;
     rotate(coords+0, rot);
     draw_polygon(dr, coords, 3, rot ? rot->lc : COL_HIGHLIGHT,
-		 rot ? rot->lc : (cedges & CUR_LEFT) ? COL_HIGHCURSOR : COL_HIGHLIGHT);
+         rot ? rot->lc : (cedges & CUR_LEFT) ? COL_HIGHCURSOR : COL_HIGHLIGHT);
 
     /* Top side. */
     coords[2] = x + TILE_SIZE - 1;
     coords[3] = y;
     rotate(coords+2, rot);
     draw_polygon(dr, coords, 3, rot ? rot->tc : COL_HIGHLIGHT,
-		 rot ? rot->tc : (cedges & CUR_TOP) ? COL_HIGHCURSOR : COL_HIGHLIGHT);
+         rot ? rot->tc : (cedges & CUR_TOP) ? COL_HIGHCURSOR : COL_HIGHLIGHT);
 
     /*
      * Now the main blank area in the centre of the tile.
      */
     if (rot) {
-	coords[0] = x + HIGHLIGHT_WIDTH;
-	coords[1] = y + HIGHLIGHT_WIDTH;
-	rotate(coords+0, rot);
-	coords[2] = x + HIGHLIGHT_WIDTH;
-	coords[3] = y + TILE_SIZE - 1 - HIGHLIGHT_WIDTH;
-	rotate(coords+2, rot);
-	coords[4] = x + TILE_SIZE - 1 - HIGHLIGHT_WIDTH;
-	coords[5] = y + TILE_SIZE - 1 - HIGHLIGHT_WIDTH;
-	rotate(coords+4, rot);
-	coords[6] = x + TILE_SIZE - 1 - HIGHLIGHT_WIDTH;
-	coords[7] = y + HIGHLIGHT_WIDTH;
-	rotate(coords+6, rot);
-	draw_polygon(dr, coords, 4, flash_colour, flash_colour);
+    coords[0] = x + HIGHLIGHT_WIDTH;
+    coords[1] = y + HIGHLIGHT_WIDTH;
+    rotate(coords+0, rot);
+    coords[2] = x + HIGHLIGHT_WIDTH;
+    coords[3] = y + TILE_SIZE - 1 - HIGHLIGHT_WIDTH;
+    rotate(coords+2, rot);
+    coords[4] = x + TILE_SIZE - 1 - HIGHLIGHT_WIDTH;
+    coords[5] = y + TILE_SIZE - 1 - HIGHLIGHT_WIDTH;
+    rotate(coords+4, rot);
+    coords[6] = x + TILE_SIZE - 1 - HIGHLIGHT_WIDTH;
+    coords[7] = y + HIGHLIGHT_WIDTH;
+    rotate(coords+6, rot);
+    draw_polygon(dr, coords, 4, flash_colour, flash_colour);
     } else {
-	draw_rect(dr, x + HIGHLIGHT_WIDTH, y + HIGHLIGHT_WIDTH,
-		  TILE_SIZE - 2*HIGHLIGHT_WIDTH, TILE_SIZE - 2*HIGHLIGHT_WIDTH,
-		  flash_colour);
+    draw_rect(dr, x + HIGHLIGHT_WIDTH, y + HIGHLIGHT_WIDTH,
+          TILE_SIZE - 2*HIGHLIGHT_WIDTH, TILE_SIZE - 2*HIGHLIGHT_WIDTH,
+          flash_colour);
     }
 
     /*
      * Next, the triangles for orientation.
      */
     if (state->orientable) {
-	int xdx, xdy, ydx, ydy;
-	int cx, cy, displ, displ2;
-	switch (tile & 3) {
-	  case 0:
-	    xdx = 1, xdy = 0;
-	    ydx = 0, ydy = 1;
-	    break;
-	  case 1:
-	    xdx = 0, xdy = -1;
-	    ydx = 1, ydy = 0;
-	    break;
-	  case 2:
-	    xdx = -1, xdy = 0;
-	    ydx = 0, ydy = -1;
-	    break;
-	  default /* case 3 */:
-	    xdx = 0, xdy = 1;
-	    ydx = -1, ydy = 0;
-	    break;
-	}
+    int xdx, xdy, ydx, ydy;
+    int cx, cy, displ, displ2;
+    switch (tile & 3) {
+      case 0:
+        xdx = 1, xdy = 0;
+        ydx = 0, ydy = 1;
+        break;
+      case 1:
+        xdx = 0, xdy = -1;
+        ydx = 1, ydy = 0;
+        break;
+      case 2:
+        xdx = -1, xdy = 0;
+        ydx = 0, ydy = -1;
+        break;
+      default /* case 3 */:
+        xdx = 0, xdy = 1;
+        ydx = -1, ydy = 0;
+        break;
+    }
 
-	cx = x + TILE_SIZE / 2;
-	cy = y + TILE_SIZE / 2;
-	displ = TILE_SIZE / 2 - HIGHLIGHT_WIDTH - 2;
-	displ2 = TILE_SIZE / 3 - HIGHLIGHT_WIDTH;
+    cx = x + TILE_SIZE / 2;
+    cy = y + TILE_SIZE / 2;
+    displ = TILE_SIZE / 2 - HIGHLIGHT_WIDTH - 2;
+    displ2 = TILE_SIZE / 3 - HIGHLIGHT_WIDTH;
 
-	coords[0] = cx - displ * xdx + displ2 * ydx;
-	coords[1] = cy - displ * xdy + displ2 * ydy;
-	rotate(coords+0, rot);
-	coords[2] = cx + displ * xdx + displ2 * ydx;
-	coords[3] = cy + displ * xdy + displ2 * ydy;
-	rotate(coords+2, rot);
-	coords[4] = cx - displ * ydx;
-	coords[5] = cy - displ * ydy;
-	rotate(coords+4, rot);
-	draw_polygon(dr, coords, 3, COL_LOWLIGHT_GENTLE, COL_LOWLIGHT_GENTLE);
+    coords[0] = cx - displ * xdx + displ2 * ydx;
+    coords[1] = cy - displ * xdy + displ2 * ydy;
+    rotate(coords+0, rot);
+    coords[2] = cx + displ * xdx + displ2 * ydx;
+    coords[3] = cy + displ * xdy + displ2 * ydy;
+    rotate(coords+2, rot);
+    coords[4] = cx - displ * ydx;
+    coords[5] = cy - displ * ydy;
+    rotate(coords+4, rot);
+    draw_polygon(dr, coords, 3, COL_LOWLIGHT_GENTLE, COL_LOWLIGHT_GENTLE);
     }
 
     coords[0] = x + TILE_SIZE/2;
@@ -1010,11 +945,11 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
     rotate(coords+0, rot);
     sprintf(str, "%d", tile / 4);
     draw_text(dr, coords[0], coords[1],
-	      FONT_VARIABLE, TILE_SIZE/3, ALIGN_VCENTRE | ALIGN_HCENTRE,
-	      COL_TEXT, str);
+          FONT_VARIABLE, TILE_SIZE/3, ALIGN_VCENTRE | ALIGN_HCENTRE,
+          COL_TEXT, str);
 
     if (rot)
-	unclip(dr);
+    unclip(dr);
 
     draw_update(dr, x, y, TILE_SIZE, TILE_SIZE);
 }
@@ -1022,38 +957,38 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
 static int highlight_colour(float angle)
 {
     int colours[32] = {
-	COL_LOWLIGHT,
-	COL_LOWLIGHT_GENTLE,
-	COL_LOWLIGHT_GENTLE,
-	COL_LOWLIGHT_GENTLE,
-	COL_HIGHLIGHT_GENTLE,
-	COL_HIGHLIGHT_GENTLE,
-	COL_HIGHLIGHT_GENTLE,
-	COL_HIGHLIGHT,
-	COL_HIGHLIGHT,
-	COL_HIGHLIGHT,
-	COL_HIGHLIGHT,
-	COL_HIGHLIGHT,
-	COL_HIGHLIGHT,
-	COL_HIGHLIGHT,
-	COL_HIGHLIGHT,
-	COL_HIGHLIGHT,
-	COL_HIGHLIGHT,
-	COL_HIGHLIGHT_GENTLE,
-	COL_HIGHLIGHT_GENTLE,
-	COL_HIGHLIGHT_GENTLE,
-	COL_LOWLIGHT_GENTLE,
-	COL_LOWLIGHT_GENTLE,
-	COL_LOWLIGHT_GENTLE,
-	COL_LOWLIGHT,
-	COL_LOWLIGHT,
-	COL_LOWLIGHT,
-	COL_LOWLIGHT,
-	COL_LOWLIGHT,
-	COL_LOWLIGHT,
-	COL_LOWLIGHT,
-	COL_LOWLIGHT,
-	COL_LOWLIGHT,
+    COL_LOWLIGHT,
+    COL_LOWLIGHT_GENTLE,
+    COL_LOWLIGHT_GENTLE,
+    COL_LOWLIGHT_GENTLE,
+    COL_HIGHLIGHT_GENTLE,
+    COL_HIGHLIGHT_GENTLE,
+    COL_HIGHLIGHT_GENTLE,
+    COL_HIGHLIGHT,
+    COL_HIGHLIGHT,
+    COL_HIGHLIGHT,
+    COL_HIGHLIGHT,
+    COL_HIGHLIGHT,
+    COL_HIGHLIGHT,
+    COL_HIGHLIGHT,
+    COL_HIGHLIGHT,
+    COL_HIGHLIGHT,
+    COL_HIGHLIGHT,
+    COL_HIGHLIGHT_GENTLE,
+    COL_HIGHLIGHT_GENTLE,
+    COL_HIGHLIGHT_GENTLE,
+    COL_LOWLIGHT_GENTLE,
+    COL_LOWLIGHT_GENTLE,
+    COL_LOWLIGHT_GENTLE,
+    COL_LOWLIGHT,
+    COL_LOWLIGHT,
+    COL_LOWLIGHT,
+    COL_LOWLIGHT,
+    COL_LOWLIGHT,
+    COL_LOWLIGHT,
+    COL_LOWLIGHT,
+    COL_LOWLIGHT,
+    COL_LOWLIGHT,
     };
 
     return colours[(int)((angle + 2*PI) / (PI/16)) & 31];
@@ -1063,31 +998,20 @@ static float game_anim_length_real(const game_state *oldstate,
                                    const game_state *newstate, int dir,
                                    const game_ui *ui)
 {
-    /*
-     * Our game_anim_length doesn't need to modify its game_ui, so
-     * this is the real function which declares ui as const. We must
-     * wrap this for the backend structure with a version that has ui
-     * non-const, but we still need this version to call from within
-     * game_redraw which only has a const ui available.
-     */
-    return (float)(ANIM_PER_BLKSIZE_UNIT * sqrt(newstate->n-1));
+    return 0.0F;
 }
 
 static float game_anim_length(const game_state *oldstate,
                               const game_state *newstate, int dir, game_ui *ui)
 {
-    return game_anim_length_real(oldstate, newstate, dir, ui);
+    return 0.0F;
 
 }
 
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-	!oldstate->used_solve && !newstate->used_solve)
-        return 2 * FLASH_FRAME;
-    else
-        return 0.0F;
+    return 0.0F;
 }
 
 static int game_status(const game_state *state)
@@ -1120,12 +1044,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     if (!ds->started) {
         int coords[10];
 
-	draw_rect(dr, 0, 0,
-		  TILE_SIZE * state->w + 2 * BORDER,
-		  TILE_SIZE * state->h + 2 * BORDER, COL_BACKGROUND);
-	draw_update(dr, 0, 0,
-		    TILE_SIZE * state->w + 2 * BORDER,
-		    TILE_SIZE * state->h + 2 * BORDER);
+    draw_rect(dr, 0, 0,
+          TILE_SIZE * state->w + 2 * BORDER,
+          TILE_SIZE * state->h + 2 * BORDER, COL_BACKGROUND);
+    draw_update(dr, 0, 0,
+            TILE_SIZE * state->w + 2 * BORDER,
+            TILE_SIZE * state->h + 2 * BORDER);
 
         /*
          * Recessed area containing the whole puzzle.
@@ -1155,62 +1079,62 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * background colour before doing anything else.
      */
     if (oldstate) {
-	float angle;
-	float anim_max = game_anim_length_real(oldstate, state, dir, ui);
+    float angle;
+    float anim_max = game_anim_length_real(oldstate, state, dir, ui);
 
-	if (dir > 0) {
-	    lastx = state->lastx;
-	    lasty = state->lasty;
-	    lastr = state->lastr;
-	} else {
-	    lastx = oldstate->lastx;
-	    lasty = oldstate->lasty;
-	    lastr = -oldstate->lastr;
-	}
+    if (dir > 0) {
+        lastx = state->lastx;
+        lasty = state->lasty;
+        lastr = state->lastr;
+    } else {
+        lastx = oldstate->lastx;
+        lasty = oldstate->lasty;
+        lastr = -oldstate->lastr;
+    }
 
-	rot = &srot;
-	rot->cx = COORD(lastx);
-	rot->cy = COORD(lasty);
-	rot->cw = rot->ch = TILE_SIZE * state->n;
-	rot->ox = rot->cx + rot->cw/2;
-	rot->oy = rot->cy + rot->ch/2;
-	angle = (float)((-PI/2 * lastr) * (1.0 - animtime / anim_max));
-	rot->c = (float)cos(angle);
-	rot->s = (float)sin(angle);
+    rot = &srot;
+    rot->cx = COORD(lastx);
+    rot->cy = COORD(lasty);
+    rot->cw = rot->ch = TILE_SIZE * state->n;
+    rot->ox = rot->cx + rot->cw/2;
+    rot->oy = rot->cy + rot->ch/2;
+    angle = (float)((-PI/2 * lastr) * (1.0 - animtime / anim_max));
+    rot->c = (float)cos(angle);
+    rot->s = (float)sin(angle);
 
-	/*
-	 * Sort out the colours of the various sides of the tile.
-	 */
-	rot->lc = highlight_colour((float)PI + angle);
-	rot->rc = highlight_colour(angle);
-	rot->tc = highlight_colour((float)(PI/2.0) + angle);
-	rot->bc = highlight_colour((float)(-PI/2.0) + angle);
+    /*
+     * Sort out the colours of the various sides of the tile.
+     */
+    rot->lc = highlight_colour((float)PI + angle);
+    rot->rc = highlight_colour(angle);
+    rot->tc = highlight_colour((float)(PI/2.0) + angle);
+    rot->bc = highlight_colour((float)(-PI/2.0) + angle);
 
-	draw_rect(dr, rot->cx, rot->cy, rot->cw, rot->ch, bgcolour);
+    draw_rect(dr, rot->cx, rot->cy, rot->cw, rot->ch, bgcolour);
     } else
-	rot = NULL;
+    rot = NULL;
 
     /*
      * Now draw each tile.
      */
     for (i = 0; i < state->w * state->h; i++) {
-	int t;
+        int t;
         bool cc = false;
-	int tx = i % state->w, ty = i / state->w;
+        int tx = i % state->w, ty = i / state->w;
 
-	/*
-	 * Figure out what should be displayed at this location.
-	 * Usually it will be state->grid[i], unless we're in the
-	 * middle of animating an actual rotation and this cell is
-	 * within the rotation region, in which case we set -1
-	 * (always display).
-	 */
-	if (oldstate && lastx >= 0 && lasty >= 0 &&
-	    tx >= lastx && tx < lastx + state->n &&
-	    ty >= lasty && ty < lasty + state->n)
-	    t = -1;
-	else
-	    t = state->grid[i];
+    /*
+     * Figure out what should be displayed at this location.
+     * Usually it will be state->grid[i], unless we're in the
+     * middle of animating an actual rotation and this cell is
+     * within the rotation region, in which case we set -1
+     * (always display).
+     */
+        if (oldstate && lastx >= 0 && lasty >= 0 &&
+            tx >= lastx && tx < lastx + state->n &&
+            ty >= lasty && ty < lasty + state->n)
+            t = -1;
+        else
+            t = state->grid[i];
 
         if (cmoved) {
             /* cursor has moved (or changed visibility)... */
@@ -1221,9 +1145,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 cc = true; /* ...we were on old cursor, redraw */
         }
 
-	if (ds->bgcolour != bgcolour ||   /* always redraw when flashing */
-	    ds->grid[i] != t || ds->grid[i] == -1 || t == -1 || cc) {
-	    int x = COORD(tx), y = COORD(ty);
+        if (ds->bgcolour != bgcolour ||   /* always redraw when flashing */
+            ds->grid[i] != t || ds->grid[i] == -1 || t == -1 || cc) {
+            int x = COORD(tx), y = COORD(ty);
             unsigned cedges = 0;
 
             if (tx == cx     && ty >= cy && ty <= cy+n-1) cedges |= CUR_LEFT;
@@ -1231,7 +1155,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             if (tx == cx+n-1 && ty >= cy && ty <= cy+n-1) cedges |= CUR_RIGHT;
             if (ty == cy+n-1 && tx >= cx && tx <= cx+n-1) cedges |= CUR_BOTTOM;
 
-	    draw_tile(dr, ds, state, x, y, state->grid[i], bgcolour, rot, cedges);
+            draw_tile(dr, ds, state, x, y, state->grid[i], bgcolour, rot, cedges);
             ds->grid[i] = t;
         }
     }
@@ -1242,7 +1166,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * Update the status bar.
      */
     {
-	char statusbuf[256];
+    char statusbuf[256];
 
         /*
          * Don't show the new status until we're also showing the
@@ -1251,33 +1175,25 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         if (oldstate)
             state = oldstate;
 
-	if (state->used_solve)
-	    sprintf(statusbuf, "Moves since auto-solve: %d",
-		    state->movecount - state->completed);
-	else {
-	    sprintf(statusbuf, "%sMoves: %d",
-		    (state->completed ? "COMPLETED! " : ""),
-		    (state->completed ? state->completed : state->movecount));
+    if (state->used_solve)
+        sprintf(statusbuf, "Moves since auto-solve: %d",
+            state->movecount - state->completed);
+    else {
+        sprintf(statusbuf, "%sMoves: %d",
+            (state->completed ? "COMPLETED! " : ""),
+            (state->completed ? state->completed : state->movecount));
             if (state->movetarget)
                 sprintf(statusbuf+strlen(statusbuf), " (target %d)",
                         state->movetarget);
         }
 
-	status_bar(dr, statusbuf);
+    status_bar(dr, statusbuf);
     }
 }
 
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
 }
 
 #ifdef COMBINED
@@ -1300,7 +1216,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -1317,10 +1233,10 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
-    true,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    true,                   /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    0,                       /* flags */
 };
 
 /* vim: set shiftwidth=4 tabstop=8: */
