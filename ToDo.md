@@ -2,6 +2,7 @@
 
 - [X] Boats: Change error for incomplete boats, adjacent boats, and wrong boat numbers
 - [ ] Dominosa: Error coloring, thicker line
+- [ ] Dominosa: Number highlighting (numerical buttons)
 - [ ] Filling: Error coloring
 - [ ] Keen: Persist pencil marker, error circle 
 - [X] Loopy: Add dotted line draw for line errors, diagonal dotted line, better presets
@@ -12,6 +13,7 @@
 - [X] Salad: Colors, no O in letters
 - [ ] Singles: Show ! mark on adjacent black squares error
 - [X] Solo: Lighter activation pencil mark, better presets
+- [ ] Solo: Number highlighting indication in numerical buttons
 - [ ] Spokes: Better error display
 - [ ] Towers: Persist pencil marker
 - [ ] Tracks: Background color on circular error
