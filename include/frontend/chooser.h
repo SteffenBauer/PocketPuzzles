@@ -2,32 +2,34 @@
 #define POCKETPUZZLES_CHOOSER_HEADER
 #include "common.h"
 
-struct layout chooserlayout;
-int current_chooserpage;
-int chooser_lastpage;
+#define CHOOSER_COLS 5
+#define CHOOSER_ROWS 5
+#define CONTROL_NUM 2
 
-static int chooser_cols = 5;
-static int chooser_rows = 5;
+struct chooserAttributes {
+    struct layout chooserlayout;
+    int current_chooserpage;
+    int chooser_lastpage;
 
-static int control_num = 2;
-static int control_padding;
-static int chooser_padding;
+    ifont *chooserfont;
 
-ifont *chooserfont;
+    int num_games;
+    int numChooserButtons;
+    BUTTON *chooserButton;
+
+    int control_padding;
+    int chooser_padding;
+
+    int btnHomeIDX;
+    int btnDrawIDX;
+    int btnPrevIDX;
+    int btnNextIDX;
+} ca;
+
 extern ibitmap icon_home, icon_home_tap, icon_redraw, icon_redraw_tap,
                bt_prev, bt_next;
 
-static BUTTON btn_home = { false, BTN_MENU, 0, 0, 0, 0, ' ', &icon_home, &icon_home_tap, NULL, NULL};
-static BUTTON btn_draw = { false, BTN_MENU, 0, 0, 0, 0, ' ', &icon_redraw, &icon_redraw_tap, NULL, NULL};
-static BUTTON btn_prev = { false, BTN_CTRL, 0, 0, 0, 0, ' ', &bt_prev, NULL, NULL, NULL};
-static BUTTON btn_next = { false, BTN_CTRL, 0, 0, 0, 0, ' ', &bt_next, NULL, NULL, NULL};
-
-static int num_games;
-static BUTTON *btn_chooser;
-
-static void chooserSetupMenuButtons();
-static void chooserSetupChooserButtons();
-static void chooserSetupControlButtons();
+static void chooserSetupButtons();
 
 static void chooserDrawMenu();
 static void chooserDrawChooserButtons(int page);
