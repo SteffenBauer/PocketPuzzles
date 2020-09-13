@@ -1,6 +1,8 @@
 # PocketPuzzles
 
-![PocketPuzzles Chooser](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser.png) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_game.png)
+![PocketPuzzles Chooser](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_a.png | width=50) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_loopygame.png | width=50) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_boatsgame.png | width=50) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_undeadgame.png | width=50)
+
+![PocketPuzzles Chooser](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_wallsgame.png) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamemenu.png) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamepresets.png) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_solved.png)
 
 ### About
 
