@@ -39,18 +39,33 @@ typedef enum {
     BTN_NULL
 } BUTTONTYPE;
 
+typedef enum {
+    ACTION_HOME,
+    ACTION_DRAW,
+    ACTION_NEXT,
+    ACTION_PREV,
+    ACTION_LAUNCH,
+    ACTION_BACK,
+    ACTION_GAME,
+    ACTION_TYPE,
+    ACTION_UNDO,
+    ACTION_REDO,
+    ACTION_SWAP,
+    ACTION_CTRL
+} BUTTONACTION;
+
 typedef struct button {
     bool active;
     BUTTONTYPE type;
-    int posx;
-    int posy;
-    int size;
-    int page;
-    char c;
+    int posx; int posy; int size; int page;
+    BUTTONACTION action;
+    union {
+        char c;
+        const struct game *thegame;
+    } actionParm;
     ibitmap *bitmap;
     ibitmap *bitmap_tap;
     ibitmap *bitmap_disabled;
-    const struct game *thegame;
 } BUTTON;
 
 typedef struct gameinfo {
@@ -65,6 +80,7 @@ void button_to_tapped(BUTTON *button);
 void button_to_cleared(BUTTON *button, bool update);
 void activate_button(BUTTON *button);
 void deactivate_button(BUTTON *button);
+static void draw_buttonchar(BUTTON *button);
 
 int init_tap_x;
 int init_tap_y;

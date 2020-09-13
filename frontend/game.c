@@ -388,7 +388,7 @@ void gameTap(int x, int y) {
     if (coord_in_button(x, y, &btn_type)) button_to_tapped(&btn_type);
 
     for (i=0;i<fe->ncontrols;i++) {
-        if ((fe->controls[i].c != 'S') && coord_in_button(x, y, &fe->controls[i]))
+        if ((fe->controls[i].action != ACTION_SWAP) && coord_in_button(x, y, &fe->controls[i]))
             button_to_tapped(&fe->controls[i]);
     }
 
@@ -439,7 +439,7 @@ void gameRelease(int x, int y) {
     if (coord_in_button(init_tap_x, init_tap_y, &btn_type)) button_to_normal(&btn_type, true);
 
     for (i=0;i<fe->ncontrols;i++) {
-        if (fe->controls[i].c != 'S' && coord_in_button(init_tap_x, init_tap_y, &fe->controls[i]))
+        if (fe->controls[i].action != ACTION_SWAP && coord_in_button(init_tap_x, init_tap_y, &fe->controls[i]))
             button_to_normal(&fe->controls[i], true);
     }
 
@@ -494,13 +494,13 @@ void gameRelease(int x, int y) {
                     midend_process_key(me, 0, 0 , UI_UNDO);
                 }
             }
-            else if (fe->controls[i].c == 'S') {
+            else if (fe->controls[i].action == ACTION_SWAP) {
                 fe->swapped ? button_to_normal(&fe->controls[i], true) 
                             : button_to_tapped(&fe->controls[i]);
                 fe->swapped = !fe->swapped;
             }
             else {
-                midend_process_key(me, 0, 0, fe->controls[i].c);
+                midend_process_key(me, 0, 0, fe->controls[i].actionParm.c);
             }
         }
        checkGameEnd();
@@ -739,7 +739,8 @@ LAYOUTTYPE gameGetLayout() {
         else if (keys[i].button == 'G' && strcmp(currentgame->name, "Bridges")==0) fe->controls[i] = btn_bridges_g;
         else {
             fe->controls[i].type   = BTN_CHAR;
-            fe->controls[i].c      = keys[i].button;
+            fe->controls[i].action = ACTION_CTRL;
+            fe->controls[i].actionParm.c      = keys[i].button;
             fe->controls[i].bitmap = NULL;
         }
     }
