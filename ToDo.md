@@ -1,8 +1,8 @@
 ### ToDo for individual games
 
 - [X] Boats: Change error for incomplete boats, adjacent boats, and wrong boat numbers
-- [ ] Dominosa: Error coloring, thicker line
-- [ ] Dominosa: Number highlighting (numerical buttons)
+- [X] Dominosa: Error coloring, thicker line
+- [X] Dominosa: Number highlighting (numerical buttons)
 - [ ] Filling: Error coloring
 - [ ] Keen: Persist pencil marker, error circle 
 - [X] Loopy: Add dotted line draw for line errors, diagonal dotted line, better presets

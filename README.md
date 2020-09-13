@@ -55,9 +55,12 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 - [ ] Better color palette for greyscale screen (see ToDo.md)
 - [ ] Better error visualization suitable for greyscale screen (see ToDo.md)
 - [ ] B/W texture drawing for games requiring color output
+- [ ] Numeric buttons indicating status (needed for Dominosa and Solo)
 - [X] Handling of physical device buttons
 - [ ] Modify games with dragging for better handling of eInk screen limitations (see ToDo.md)
 - [ ] Implement left->right->empty cycle on left-click for all games
+
+ToDos for individual games see [ToDo.md](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/ToDo.md)
 
 ### MIT License
 
@@ -75,8 +78,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ### Screenshots
 ---
-<img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_a.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_b.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_loopygame.png" width="310">
-
-<img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_boatsgame.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_undeadgame.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_wallsgame.png" width="310">
-
-<img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamemenu.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamepresets.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_solved.png" width="310">
+<img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_a.png" width="300"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_b.png" width="300"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_loopygame.png" width="300">
+---
+<img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_boatsgame.png" width="300"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_undeadgame.png" width="300"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_wallsgame.png" width="300">
+---
+<img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamemenu.png" width="300"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamepresets.png" width="300"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_solved.png" width="300">
+---

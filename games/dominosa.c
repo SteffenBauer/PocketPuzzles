@@ -167,7 +167,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -2209,8 +2209,23 @@ static bool alloc_try_hard(struct alloc_scratch *as, random_state *rs)
     return ok;
 }
 
+static key_label *game_request_keys(const game_params *params, int *nkeys)
+{
+    int i;
+    int n = params->n + 1;
+    key_label *keys = snewn(n, key_label);
+    *nkeys = n;
+
+    for (i = 0; i < n; i++) {
+        keys[i].button = (i<=9) ? ('0' + i) : ('a' + i - 10);
+        keys[i].label = NULL;
+    }
+
+    return keys;
+}
+
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     int n = params->n, w = n+2, h = n+1, wh = w*h, diff = params->diff;
     struct solver_scratch *sc;
@@ -2365,7 +2380,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      */
     len = n+1;
     for (i = 10; i <= n; i *= 10)
-	len += max(n + 1 - i, 0);
+    len += max(n + 1 - i, 0);
     /* Now add two square brackets for each number above 9. */
     len += 2 * max(n + 1 - 10, 0);
     /* And multiply by n+2 for the repeated occurrences of each number. */
@@ -2391,16 +2406,16 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      * Encode the solved state as an aux_info.
      */
     {
-	char *auxinfo = snewn(wh+1, char);
+    char *auxinfo = snewn(wh+1, char);
 
-	for (i = 0; i < wh; i++) {
-	    int v = as->layout[i];
-	    auxinfo[i] = (v == i+1 ? 'L' : v == i-1 ? 'R' :
-			  v == i+w ? 'T' : v == i-w ? 'B' : '.');
-	}
-	auxinfo[wh] = '\0';
+    for (i = 0; i < wh; i++) {
+        int v = as->layout[i];
+        auxinfo[i] = (v == i+1 ? 'L' : v == i-1 ? 'R' :
+              v == i+w ? 'T' : v == i-w ? 'B' : '.');
+    }
+    auxinfo[wh] = '\0';
 
-	*aux = auxinfo;
+    *aux = auxinfo;
     }
 
     solver_free_scratch(sc);
@@ -2596,107 +2611,35 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     int extra;
 
     if (aux) {
-	retsize = 256;
-	ret = snewn(retsize, char);
-	retlen = sprintf(ret, "S");
+    retsize = 256;
+    ret = snewn(retsize, char);
+    retlen = sprintf(ret, "S");
 
-	for (i = 0; i < wh; i++) {
-	    if (aux[i] == 'L')
-		extra = sprintf(buf, ";D%d,%d", i, i+1);
-	    else if (aux[i] == 'T')
-		extra = sprintf(buf, ";D%d,%d", i, i+w);
-	    else
-		continue;
+    for (i = 0; i < wh; i++) {
+        if (aux[i] == 'L')
+        extra = sprintf(buf, ";D%d,%d", i, i+1);
+        else if (aux[i] == 'T')
+        extra = sprintf(buf, ";D%d,%d", i, i+w);
+        else
+        continue;
 
-	    if (retlen + extra + 1 >= retsize) {
-		retsize = retlen + extra + 256;
-		ret = sresize(ret, retsize, char);
-	    }
-	    strcpy(ret + retlen, buf);
-	    retlen += extra;
-	}
+        if (retlen + extra + 1 >= retsize) {
+        retsize = retlen + extra + 256;
+        ret = sresize(ret, retsize, char);
+        }
+        strcpy(ret + retlen, buf);
+        retlen += extra;
+    }
 
     } else {
         struct solver_scratch *sc = solver_make_scratch(n);
         solver_setup_grid(sc, state->numbers->numbers);
         run_solver(sc, DIFFCOUNT);
         ret = solution_move_string(sc);
-	solver_free_scratch(sc);
+    solver_free_scratch(sc);
     }
 
     return ret;
-}
-
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return params->n < 1000;
-}
-
-static void draw_domino(char *board, int start, char corner,
-			int dshort, int nshort, char cshort,
-			int dlong, int nlong, char clong)
-{
-    int go_short = nshort*dshort, go_long = nlong*dlong, i;
-
-    board[start] = corner;
-    board[start + go_short] = corner;
-    board[start + go_long] = corner;
-    board[start + go_short + go_long] = corner;
-
-    for (i = 1; i < nshort; ++i) {
-	int j = start + i*dshort, k = start + i*dshort + go_long;
-	if (board[j] != corner) board[j] = cshort;
-	if (board[k] != corner) board[k] = cshort;
-    }
-
-    for (i = 1; i < nlong; ++i) {
-	int j = start + i*dlong, k = start + i*dlong + go_short;
-	if (board[j] != corner) board[j] = clong;
-	if (board[k] != corner) board[k] = clong;
-    }
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int w = state->w, h = state->h, r, c;
-    int cw = 4, ch = 2, gw = cw*w + 2, gh = ch * h + 1, len = gw * gh;
-    char *board = snewn(len + 1, char);
-
-    memset(board, ' ', len);
-
-    for (r = 0; r < h; ++r) {
-	for (c = 0; c < w; ++c) {
-	    int cell = r*ch*gw + cw*c, center = cell + gw*ch/2 + cw/2;
-	    int i = r*w + c, num = state->numbers->numbers[i];
-
-	    if (num < 100) {
-		board[center] = '0' + num % 10;
-		if (num >= 10) board[center - 1] = '0' + num / 10;
-	    } else {
-		board[center+1] = '0' + num % 10;
-		board[center] = '0' + num / 10 % 10;
-		board[center-1] = '0' + num / 100;
-	    }
-
-	    if (state->edges[i] & EDGE_L) board[center - cw/2] = '|';
-	    if (state->edges[i] & EDGE_R) board[center + cw/2] = '|';
-	    if (state->edges[i] & EDGE_T) board[center - gw] = '-';
-	    if (state->edges[i] & EDGE_B) board[center + gw] = '-';
-
-	    if (state->grid[i] == i) continue; /* no domino pairing */
-	    if (state->grid[i] < i) continue; /* already done */
-	    assert (state->grid[i] == i + 1 || state->grid[i] == i + w);
-	    if (state->grid[i] == i + 1)
-		draw_domino(board, cell, '+', gw, ch, '|', +1, 2*cw, '-');
-	    else if (state->grid[i] == i + w)
-		draw_domino(board, cell, '+', +1, cw, '-', gw, 2*ch, '|');
-	}
-	board[r*ch*gw + gw - 1] = '\n';
-	board[r*ch*gw + gw + gw - 1] = '\n';
-    }
-    board[len - 1] = '\n';
-    board[len] = '\0';
-    return board;
 }
 
 struct game_ui {
@@ -2741,6 +2684,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 #define DOMINO_RADIUS (TILESIZE / 8)
 #define DOMINO_COFFSET (DOMINO_GUTTER + DOMINO_RADIUS)
 #define CURSOR_RADIUS (TILESIZE / 4)
+#define DOMINO_CLASH (TILESIZE / 6)
 
 #define COORD(x) ( (x) * TILESIZE + BORDER )
 #define FROMCOORD(x) ( ((x) - BORDER + TILESIZE) / TILESIZE - 1 )
@@ -2799,18 +2743,18 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         sprintf(buf, "%c%d,%d", (int)(button == RIGHT_BUTTON ? 'E' : 'D'), d1, d2);
         return dupstr(buf);
     } else if (IS_CURSOR_MOVE(button)) {
-	ui->cur_visible = true;
+    ui->cur_visible = true;
 
         move_cursor(button, &ui->cur_x, &ui->cur_y, 2*w-1, 2*h-1, false);
 
-	return UI_UPDATE;
+    return UI_UPDATE;
     } else if (IS_CURSOR_SELECT(button)) {
         int d1, d2;
 
-	if (!((ui->cur_x ^ ui->cur_y) & 1))
-	    return NULL;	       /* must have exactly one dimension odd */
-	d1 = (ui->cur_y / 2) * w + (ui->cur_x / 2);
-	d2 = ((ui->cur_y+1) / 2) * w + ((ui->cur_x+1) / 2);
+    if (!((ui->cur_x ^ ui->cur_y) & 1))
+        return NULL;           /* must have exactly one dimension odd */
+    d1 = (ui->cur_y / 2) * w + (ui->cur_x / 2);
+    d2 = ((ui->cur_y+1) / 2) * w + ((ui->cur_x+1) / 2);
 
         /*
          * We can't mark an edge next to any domino.
@@ -3019,36 +2963,19 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 static float *game_colours(frontend *fe, int *ncolours)
 {
     float *ret = snewn(3 * NCOLOURS, float);
-
+    int i;
+    
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-
-    ret[COL_TEXT * 3 + 0] = 0.0F;
-    ret[COL_TEXT * 3 + 1] = 0.0F;
-    ret[COL_TEXT * 3 + 2] = 0.0F;
-
-    ret[COL_DOMINO * 3 + 0] = 0.0F;
-    ret[COL_DOMINO * 3 + 1] = 0.0F;
-    ret[COL_DOMINO * 3 + 2] = 0.0F;
-
-    ret[COL_DOMINOCLASH * 3 + 0] = 0.5F;
-    ret[COL_DOMINOCLASH * 3 + 1] = 0.0F;
-    ret[COL_DOMINOCLASH * 3 + 2] = 0.0F;
-
-    ret[COL_DOMINOTEXT * 3 + 0] = 1.0F;
-    ret[COL_DOMINOTEXT * 3 + 1] = 1.0F;
-    ret[COL_DOMINOTEXT * 3 + 2] = 1.0F;
-
-    ret[COL_EDGE * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] * 2 / 3;
-    ret[COL_EDGE * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] * 2 / 3;
-    ret[COL_EDGE * 3 + 2] = ret[COL_BACKGROUND * 3 + 2] * 2 / 3;
-
-    ret[COL_HIGHLIGHT_1 * 3 + 0] = 0.85;
-    ret[COL_HIGHLIGHT_1 * 3 + 1] = 0.20;
-    ret[COL_HIGHLIGHT_1 * 3 + 2] = 0.20;
-
-    ret[COL_HIGHLIGHT_2 * 3 + 0] = 0.30;
-    ret[COL_HIGHLIGHT_2 * 3 + 1] = 0.85;
-    ret[COL_HIGHLIGHT_2 * 3 + 2] = 0.20;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND  * 3 + i] = 1.0F;
+        ret[COL_TEXT        * 3 + i] = 0.0F;
+        ret[COL_DOMINO      * 3 + i] = 0.0F;
+        ret[COL_DOMINOCLASH * 3 + i] = 0.3F;
+        ret[COL_DOMINOTEXT  * 3 + i] = 1.0F;
+        ret[COL_EDGE        * 3 + i] = 0.0F;
+        ret[COL_HIGHLIGHT_1 * 3 + i] = 0.5F;
+        ret[COL_HIGHLIGHT_2 * 3 + i] = 0.5F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -3131,17 +3058,8 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
          *  - a slight shift in the number
          */
 
-        if (flags & DF_CLASH)
-            bg = COL_DOMINOCLASH;
-        else
-            bg = COL_DOMINO;
+        bg = COL_DOMINO;
         nc = COL_DOMINOTEXT;
-
-        if (flags & DF_FLASH) {
-            int tmp = nc;
-            nc = bg;
-            bg = tmp;
-        }
 
         if (type == TYPE_L || type == TYPE_T)
             draw_circle(dr, cx+DOMINO_COFFSET, cy+DOMINO_COFFSET,
@@ -3172,40 +3090,52 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
                 y2 = cy + TILESIZE + TILESIZE/16;
             else if (type == TYPE_B)
                 y1 = cy - TILESIZE/16;
-
             draw_rect(dr, x1, y1, x2-x1+1, y2-y1+1, bg);
         }
+        
+        if (flags & DF_CLASH) {
+            if (type == TYPE_L)
+                draw_rect(dr, cx+DOMINO_CLASH, cy+DOMINO_CLASH, TILESIZE, TILESIZE-2*DOMINO_CLASH, COL_DOMINOCLASH);
+            else if (type == TYPE_R)
+                draw_rect(dr, cx, cy+DOMINO_CLASH, TILESIZE-DOMINO_CLASH, TILESIZE-2*DOMINO_CLASH, COL_DOMINOCLASH);
+            else if (type == TYPE_T)
+                draw_rect(dr, cx+DOMINO_CLASH, cy+DOMINO_CLASH, TILESIZE-2*DOMINO_CLASH, TILESIZE, COL_DOMINOCLASH);
+            else if (type == TYPE_B)
+                draw_rect(dr, cx+DOMINO_CLASH, cy, TILESIZE-2*DOMINO_CLASH, TILESIZE-DOMINO_CLASH, COL_DOMINOCLASH);
+        }
+
+
     } else {
         if (flags & EDGE_T)
             draw_rect(dr, cx+DOMINO_GUTTER, cy,
-                      TILESIZE-2*DOMINO_GUTTER, 1, COL_EDGE);
+                      TILESIZE-2*DOMINO_GUTTER, 3, COL_EDGE);
         if (flags & EDGE_B)
             draw_rect(dr, cx+DOMINO_GUTTER, cy+TILESIZE-1,
-                      TILESIZE-2*DOMINO_GUTTER, 1, COL_EDGE);
+                      TILESIZE-2*DOMINO_GUTTER, 3, COL_EDGE);
         if (flags & EDGE_L)
             draw_rect(dr, cx, cy+DOMINO_GUTTER,
-                      1, TILESIZE-2*DOMINO_GUTTER, COL_EDGE);
+                      3, TILESIZE-2*DOMINO_GUTTER, COL_EDGE);
         if (flags & EDGE_R)
             draw_rect(dr, cx+TILESIZE-1, cy+DOMINO_GUTTER,
-                      1, TILESIZE-2*DOMINO_GUTTER, COL_EDGE);
+                      3, TILESIZE-2*DOMINO_GUTTER, COL_EDGE);
         nc = COL_TEXT;
     }
 
     if (flags & DF_CURSOR) {
-	int curx = ((flags & DF_CURSOR_XMASK) / DF_CURSOR_XBASE) & 3;
-	int cury = ((flags & DF_CURSOR_YMASK) / DF_CURSOR_YBASE) & 3;
-	int ox = cx + curx*TILESIZE/2;
-	int oy = cy + cury*TILESIZE/2;
+        int curx = ((flags & DF_CURSOR_XMASK) / DF_CURSOR_XBASE) & 3;
+        int cury = ((flags & DF_CURSOR_YMASK) / DF_CURSOR_YBASE) & 3;
+        int ox = cx + curx*TILESIZE/2;
+        int oy = cy + cury*TILESIZE/2;
 
-	draw_rect_corners(dr, ox, oy, CURSOR_RADIUS, nc);
-        if (flags & DF_CURSOR_USEFUL)
-	    draw_rect_corners(dr, ox, oy, CURSOR_RADIUS+1, nc);
+        draw_rect_corners(dr, ox, oy, CURSOR_RADIUS, nc);
+            if (flags & DF_CURSOR_USEFUL)
+            draw_rect_corners(dr, ox, oy, CURSOR_RADIUS+1, nc);
     }
 
     if (flags & DF_HIGHLIGHT_1) {
-        nc = COL_HIGHLIGHT_1;
+        draw_rect(dr, cx+TILESIZE/4, cy+TILESIZE/4, TILESIZE/2, TILESIZE/2, COL_HIGHLIGHT_1);
     } else if (flags & DF_HIGHLIGHT_2) {
-        nc = COL_HIGHLIGHT_2;
+        draw_rect(dr, cx+TILESIZE/4, cy+TILESIZE/4, TILESIZE/2, TILESIZE/2, COL_HIGHLIGHT_2);
     }
 
     sprintf(str, "%d", state->numbers->numbers[y*w+x]);
@@ -3228,9 +3158,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     if (!ds->started) {
         int pw, ph;
         game_compute_size(&state->params, TILESIZE, &pw, &ph);
-	draw_rect(dr, 0, 0, pw, ph, COL_BACKGROUND);
-	draw_update(dr, 0, 0, pw, ph);
-	ds->started = true;
+    draw_rect(dr, 0, 0, pw, ph, COL_BACKGROUND);
+    draw_update(dr, 0, 0, pw, ph);
+    ds->started = true;
     }
 
     /*
@@ -3257,7 +3187,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         for (x = 0; x < w; x++) {
             int n = y*w+x;
             int n1, n2, di;
-	    unsigned long c;
+        unsigned long c;
 
             if (state->grid[n] == n-1)
                 c = TYPE_R;
@@ -3289,23 +3219,23 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 c |= DF_FLASH;             /* we're flashing */
 
             if (ui->cur_visible) {
-		unsigned curx = (unsigned)(ui->cur_x - (2*x-1));
-		unsigned cury = (unsigned)(ui->cur_y - (2*y-1));
-		if (curx < 3 && cury < 3) {
-		    c |= (DF_CURSOR |
-			  (curx * DF_CURSOR_XBASE) |
-			  (cury * DF_CURSOR_YBASE));
+        unsigned curx = (unsigned)(ui->cur_x - (2*x-1));
+        unsigned cury = (unsigned)(ui->cur_y - (2*y-1));
+        if (curx < 3 && cury < 3) {
+            c |= (DF_CURSOR |
+              (curx * DF_CURSOR_XBASE) |
+              (cury * DF_CURSOR_YBASE));
                     if ((ui->cur_x ^ ui->cur_y) & 1)
                         c |= DF_CURSOR_USEFUL;
                 }
             }
 
-	    if (ds->visible[n] != c) {
-		draw_tile(dr, ds, state, x, y, c,
+        if (ds->visible[n] != c) {
+        draw_tile(dr, ds, state, x, y, c,
                           ui->highlight_1, ui->highlight_2);
                 ds->visible[n] = c;
-	    }
-	}
+        }
+    }
 
     sfree(used);
 }
@@ -3319,13 +3249,7 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-	!oldstate->cheated && !newstate->cheated)
-    {
-        ui->highlight_1 = ui->highlight_2 = -1;
-        return FLASH_TIME;
-    }
-    return 0.0F;
+   return 0.0F;
 }
 
 static int game_status(const game_state *state)
@@ -3336,54 +3260,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /*
-     * I'll use 6mm squares by default.
-     */
-    game_compute_size(params, 600, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w = state->w, h = state->h;
-    int c, x, y;
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate ads, *ds = &ads;
-    game_set_size(dr, ds, NULL, tilesize);
-
-    c = print_mono_colour(dr, 1); assert(c == COL_BACKGROUND);
-    c = print_mono_colour(dr, 0); assert(c == COL_TEXT);
-    c = print_mono_colour(dr, 0); assert(c == COL_DOMINO);
-    c = print_mono_colour(dr, 0); assert(c == COL_DOMINOCLASH);
-    c = print_mono_colour(dr, 1); assert(c == COL_DOMINOTEXT);
-    c = print_mono_colour(dr, 0); assert(c == COL_EDGE);
-
-    for (y = 0; y < h; y++)
-        for (x = 0; x < w; x++) {
-            int n = y*w+x;
-	    unsigned long c;
-
-            if (state->grid[n] == n-1)
-                c = TYPE_R;
-            else if (state->grid[n] == n+1)
-                c = TYPE_L;
-            else if (state->grid[n] == n-w)
-                c = TYPE_B;
-            else if (state->grid[n] == n+w)
-                c = TYPE_T;
-            else
-                c = TYPE_BLANK;
-
-	    draw_tile(dr, ds, state, x, y, c, -1, -1);
-	}
 }
 
 #ifdef COMBINED
@@ -3406,12 +3282,12 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
     decode_ui,
-    NULL, /* game_request_keys */
+    game_request_keys,
     game_changed_state,
     interpret_move,
     execute_move,
@@ -3423,7 +3299,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false,                     /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,           /* flags */
