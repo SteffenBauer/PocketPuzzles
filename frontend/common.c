@@ -20,27 +20,15 @@ void button_to_normal(BUTTON *button, bool update) {
     if (button->bitmap != NULL) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
     }
-    else {
-        ifont *font; char buf[2];
-        buf[0] = button->c; buf[1] = '\0';
-        font = OpenFont("LiberationMono-Bold", button->size/2, 0);
-        SetFont(font, BLACK);
-        FillArea(button->posx, button->posy, button->size, button->size, 0x00FFFFFF);
-        DrawTextRect(button->posx, button->posy, button->size, button->size, buf, ALIGN_CENTER | VALIGN_MIDDLE);
-        CloseFont(font);
+    else if (button->action == ACTION_CTRL) {
+        draw_buttonchar(button);
     }
     if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
 void button_to_tapped(BUTTON *button) {
-    if (button->bitmap == NULL) {
-        ifont *font; char buf[2];
-        buf[0] = button->c; buf[1] = '\0';
-        font = OpenFont("LiberationMono-Bold", button->size/2, 0);
-        SetFont(font, BLACK);
-        FillArea(button->posx, button->posy, button->size, button->size, 0x00FFFFFF);
-        DrawTextRect(button->posx, button->posy, button->size, button->size, buf, ALIGN_CENTER | VALIGN_MIDDLE);
+    if (button->action == ACTION_CTRL) {
+        draw_buttonchar(button);
         InvertArea(button->posx, button->posy, button->size, button->size);
-        CloseFont(font);
     }
     else if (button->bitmap_tap == NULL) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
@@ -50,6 +38,16 @@ void button_to_tapped(BUTTON *button) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap_tap, 0);
     PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
+static void draw_buttonchar(BUTTON *button) {
+    ifont *font; char buf[2];
+    buf[0] = button->actionParm.c; buf[1] = '\0';
+    font = OpenFont("LiberationMono-Bold", button->size/2, 0);
+    SetFont(font, BLACK);
+    FillArea(button->posx, button->posy, button->size, button->size, 0x00FFFFFF);
+    DrawTextRect(button->posx, button->posy, button->size, button->size, buf, ALIGN_CENTER | VALIGN_MIDDLE);
+    CloseFont(font);
+}
+
 void button_to_cleared(BUTTON *button, bool update) {
     FillArea(button->posx, button->posy, button->size, button->size, 0x00FFFFFF);
     if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);

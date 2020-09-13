@@ -56,23 +56,23 @@ extern ibitmap icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,
                bt_salad_o, bt_salad_x, bt_net_shuffle, bt_bridges_g,
                bt_swap, bt_undo, bt_undo_d;
 
-static BUTTON btn_back = { false, BTN_MENU, 0, 0, 0, 0, ' ', &icon_back, &icon_back_tap, NULL, NULL};
-static BUTTON btn_draw = { false, BTN_MENU, 0, 0, 0, 0, ' ', &icon_redraw, &icon_redraw_tap, NULL, NULL};
-static BUTTON btn_game = { false, BTN_MENU, 0, 0, 0, 0, ' ', &icon_game, &icon_game_tap, NULL, NULL};
-static BUTTON btn_type = { false, BTN_MENU, 0, 0, 0, 0, ' ', &icon_type, &icon_type_tap, NULL, NULL};
+static BUTTON btn_back = { true, BTN_MENU, 0, 0, 0, 0, ACTION_BACK, ' ', &icon_back, &icon_back_tap, NULL};
+static BUTTON btn_draw = { true, BTN_MENU, 0, 0, 0, 0, ACTION_DRAW, ' ', &icon_redraw, &icon_redraw_tap, NULL};
+static BUTTON btn_game = { true, BTN_MENU, 0, 0, 0, 0, ACTION_GAME, ' ', &icon_game, &icon_game_tap, NULL};
+static BUTTON btn_type = { true, BTN_MENU, 0, 0, 0, 0, ACTION_TYPE, ' ', &icon_type, &icon_type_tap, NULL};
 
-static BUTTON btn_backspace = { false, BTN_CTRL, 0, 0, 0, 0, '\b', &bt_backspace, NULL, NULL, NULL};
-static BUTTON btn_add       = { false, BTN_CTRL, 0, 0, 0, 0, '+', &bt_add, NULL, NULL, NULL};
-static BUTTON btn_remove    = { false, BTN_CTRL, 0, 0, 0, 0, '-', &bt_remove, NULL, NULL, NULL};
+static BUTTON btn_backspace = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, '\b', &bt_backspace, NULL, NULL};
+static BUTTON btn_add       = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, '+', &bt_add, NULL, NULL};
+static BUTTON btn_remove    = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, '-', &bt_remove, NULL, NULL};
 
-static BUTTON btn_swap = { false, BTN_CTRL, 0, 0, 0, 0, 'S', &bt_swap, NULL, NULL, NULL};
-static BUTTON btn_undo = { false, BTN_CTRL, 0, 0, 0, 0, ' ', &bt_undo, NULL, &bt_undo_d, NULL};
-static BUTTON btn_redo = { false, BTN_CTRL, 0, 0, 0, 0, ' ', &bt_redo, NULL, &bt_redo_d, NULL};
+static BUTTON btn_swap = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_SWAP, ' ', &bt_swap, NULL, NULL};
+static BUTTON btn_undo = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_UNDO, ' ', &bt_undo, NULL, &bt_undo_d};
+static BUTTON btn_redo = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_REDO, ' ', &bt_redo, NULL, &bt_redo_d};
 
-static BUTTON btn_salad_o  = { false, BTN_CTRL, 0, 0, 0, 0, 'O', &bt_salad_o, NULL, NULL, NULL};
-static BUTTON btn_salad_x  = { false, BTN_CTRL, 0, 0, 0, 0, 'X', &bt_salad_x, NULL, NULL, NULL};
-static BUTTON btn_net_shuffle = { false, BTN_CTRL, 0, 0, 0, 0, 'J', &bt_net_shuffle, NULL, NULL, NULL};
-static BUTTON btn_bridges_g = { false, BTN_CTRL, 0, 0, 0, 0, 'G', &bt_bridges_g, NULL, NULL, NULL};
+static BUTTON btn_salad_o     = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'O', &bt_salad_o, NULL, NULL};
+static BUTTON btn_salad_x     = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'X', &bt_salad_x, NULL, NULL};
+static BUTTON btn_net_shuffle = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'J', &bt_net_shuffle, NULL, NULL};
+static BUTTON btn_bridges_g   = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'G', &bt_bridges_g, NULL, NULL};
 
 static imenuex gameMenu[] = {
     { ITEM_HEADER,   0, "Game",          NULL, NULL,          NULL, NULL },
