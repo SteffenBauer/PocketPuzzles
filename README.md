@@ -1,11 +1,5 @@
 # PocketPuzzles
 
-![PocketPuzzles Chooser](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_a.png | width=50) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_loopygame.png | width=50) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_boatsgame.png | width=50) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_undeadgame.png | width=50)
-
-![PocketPuzzles Chooser](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_wallsgame.png) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamemenu.png) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamepresets.png) ![PocketPuzzles Game Screen](https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_solved.png)
-
-### About
-
 Port of [Simon Tatham's Portable Puzzle Collection](http://www.chiark.greenend.org.uk/~sgtatham/puzzles/) to the [PocketBook eReader family](https://de.wikipedia.org/wiki/PocketBook)
 
 I'm planning to also include unofficial puzzles and puzzle variations from [puzzles-unreleased](https://github.com/x-sheep/puzzles-unreleased) and [sgtpuzzles-extended](https://github.com/SteffenBauer/sgtpuzzles-extended), and the two unofficial *Group* and *Sokoban* puzzles from the original collection.
@@ -79,3 +73,10 @@ Build and installation is completely **on your own risk**! You must be aware tha
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+### Screenshots
+---
+<img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_a.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_b.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_loopygame.png" width="310">
+
+<img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_boatsgame.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_undeadgame.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_wallsgame.png" width="310">
+
+<img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamemenu.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamepresets.png" width="310"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_solved.png" width="310">
