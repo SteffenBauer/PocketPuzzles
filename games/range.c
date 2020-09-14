@@ -1648,26 +1648,25 @@ static void draw_cell(drawing *draw, game_drawstate *ds, int r, int c,
     int const tx = x + (ts / 2), ty = y + (ts / 2);
     int const dotsz = (ds->tilesize + 9) / 10;
 
-    int const colour = (cell.value == BLACK ?
-                        cell.error ? COL_ERROR : COL_BLACK :
-                        cell.flash || cell.cursor ?
-                        COL_LOWLIGHT : COL_BACKGROUND);
+    int colour = (cell.value == BLACK ? COL_BLACK : 
+                        cell.error ? COL_ERROR : COL_BACKGROUND);
 
     draw_rect_outline(draw, x,     y,     ts + 1, ts + 1, COL_GRID);
     draw_rect        (draw, x + 1, y + 1, ts - 1, ts - 1, colour);
-    if (cell.error)
-        draw_rect_outline(draw, x + 1, y + 1, ts - 1, ts - 1, COL_ERROR);
+    
+    if (cell.value == BLACK && cell.error) {
+        draw_rect        (draw, x + 1 + ts/12, y + 1 + ts/12, 10*ts/12 - 1, 10*ts/12 - 1, COL_ERROR);
+        draw_rect        (draw, x + 1 + ts/6,  y + 1 + ts/6,  4*ts/6 - 1, 4*ts/6 - 1, COL_BLACK);
+    }
 
     switch (cell.value) {
-      case WHITE: draw_rect(draw, tx - dotsz / 2, ty - dotsz / 2, dotsz, dotsz,
-                cell.error ? COL_ERROR : COL_USER);
+      case WHITE: draw_rect(draw, tx - dotsz / 2, ty - dotsz / 2, dotsz, dotsz, COL_USER);
       case BLACK: case EMPTY: break;
       default:
     {
-        int const colour = (cell.error ? COL_ERROR : COL_GRID);
         char *msg = nfmtstr(10, "%d", cell.value);
         draw_text(draw, tx, ty, FONT_VARIABLE, ts * 3 / 5,
-              ALIGN_VCENTRE | ALIGN_HCENTRE, colour, msg);
+              ALIGN_VCENTRE | ALIGN_HCENTRE, COL_GRID, msg);
         sfree(msg);
     }
     }
@@ -1681,7 +1680,11 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return false; /* the (non-existing) timer should not be running */
 }
 
-struct game const range = {
+#ifdef COMBINED
+#define thegame range
+#endif
+
+struct game const thegame = {
     "Range", "games.range", "range",
     default_params,
     game_fetch_preset, NULL,

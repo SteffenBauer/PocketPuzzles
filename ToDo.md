@@ -2,16 +2,17 @@
 
 - [X] Boats: Change error for incomplete boats, adjacent boats, and wrong boat numbers
 - [X] Dominosa: Error coloring, thicker line
-- [X] Dominosa: Number highlighting (numerical buttons)
+- [X] Dominosa: Number highlighting 
+- [ ] Dominosa: Number highlighting in numerical buttons
 - [ ] Filling: Error coloring
-- [ ] Keen: Persist pencil marker, error circle 
+- [X] Keen: Persist pencil marker, error circle, error background for clues
 - [X] Loopy: Add dotted line draw for line errors, diagonal dotted line, better presets
 - [ ] Magnets: Better presets
 - [ ] Pattern: Black-white-neutral circling on click
 - [ ] Pearl: Colors, Dashed error line
-- [ ] Range: Circle error & ! error for adjacent squares
+- [X] Range: Background error & outline error for black squares
 - [X] Salad: Colors, no O in letters
-- [ ] Singles: Show ! mark on adjacent black squares error
+- [X] Singles: Show mark on adjacent black squares error, error background on white squares
 - [X] Solo: Lighter activation pencil mark, better presets
 - [ ] Solo: Number highlighting indication in numerical buttons
 - [ ] Spokes: Better error display
@@ -25,7 +26,7 @@
 - [ ] Unruly: Coloring
 - [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
 - [X] Bridges: Add path button
-- [ ] Bridges: Adjust game colors
+- [X] Bridges: Adjust game colors
 - [ ] Guess: Change blitter drag to Highlight color by click -> Fill peg by click
 - [ ] Guess: Add color fill pattern
 - [ ] Untangle: Change drag to Highlight vertex by click -> click on target coordinates
