@@ -127,17 +127,17 @@ static game_params *default_params(void)
 }
 
 static const struct game_params dominosa_presets[] = {
-    {  3, DIFF_TRIVIAL },
-    {  4, DIFF_TRIVIAL },
-    {  5, DIFF_TRIVIAL },
-    {  6, DIFF_TRIVIAL },
+    {  3, DIFF_BASIC   },
     {  4, DIFF_BASIC   },
     {  5, DIFF_BASIC   },
     {  6, DIFF_BASIC   },
-    {  7, DIFF_BASIC   },
-    {  8, DIFF_BASIC   },
-    {  9, DIFF_BASIC   },
+    {  3, DIFF_HARD    },
+    {  4, DIFF_HARD    },
+    {  5, DIFF_HARD    },
     {  6, DIFF_HARD    },
+    {  3, DIFF_EXTREME },
+    {  4, DIFF_EXTREME },
+    {  5, DIFF_EXTREME },
     {  6, DIFF_EXTREME },
 };
 

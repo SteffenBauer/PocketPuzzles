@@ -1402,7 +1402,7 @@ static game_ui *new_ui(const game_state *state)
 
     ui->cx = ui->cy = 0;
     ui->cshow = false;
-    ui->show_black_nums = false;
+    ui->show_black_nums = true;
 
     return ui;
 }
@@ -1563,21 +1563,17 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
     for (i = 0; i < 3; i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
-        ret[COL_BLACK * 3 + i] = 0.0F;
-        ret[COL_BLACKNUM * 3 + i] = 0.4F;
-        ret[COL_WHITE * 3 + i] = 1.0F;
-        ret[COL_GRID * 3 + i] = 0.0F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.8F;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.4F;
+        ret[COL_BLACK      * 3 + i] = 0.0F;
+        ret[COL_BLACKNUM   * 3 + i] = 0.8F;
+        ret[COL_WHITE      * 3 + i] = 1.0F;
+        ret[COL_GRID       * 3 + i] = 0.0F;
+        ret[COL_CURSOR     * 3 + i] = 0.8F;
+        ret[COL_ERROR      * 3 + i] = 0.5F;
     }
-    ret[COL_CURSOR * 3 + 0] = 0.2F;
-    ret[COL_CURSOR * 3 + 1] = 0.8F;
-    ret[COL_CURSOR * 3 + 2] = 0.0F;
-
-    ret[COL_ERROR * 3 + 0] = 0.5F;
-    ret[COL_ERROR * 3 + 1] = 0.5F;
-    ret[COL_ERROR * 3 + 2] = 0.5F;
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1615,18 +1611,22 @@ static void tile_redraw(drawing *dr, game_drawstate *ds, int x, int y,
     char buf[32];
 
     if (f & DS_BLACK) {
-        bg = (f & DS_ERROR) ? COL_ERROR : COL_BLACK;
+        bg = COL_BLACK;
         tcol = COL_BLACKNUM;
         dnum = (f & DS_BLACK_NUM);
     } else {
-        bg = (f & DS_FLASH) ? COL_LOWLIGHT : COL_BACKGROUND;
-        tcol = (f & DS_ERROR) ? COL_ERROR : COL_BLACK;
+        bg = (f & DS_ERROR) ? COL_ERROR : COL_BACKGROUND;
+        tcol = COL_BLACK;
         dnum = true;
     }
 
     cx = x + TILE_SIZE/2; cy = y + TILE_SIZE/2;
 
     draw_rect(dr, x,    y, TILE_SIZE, TILE_SIZE, bg);
+    if ((f & DS_BLACK) && (f & DS_ERROR)) {
+        draw_rect(dr, x+TILE_SIZE/12, y+TILE_SIZE/12, 10*TILE_SIZE/12, 10*TILE_SIZE/12, COL_ERROR);
+        draw_rect(dr, x+TILE_SIZE/6,  y+TILE_SIZE/6,   4*TILE_SIZE/6,   4*TILE_SIZE/6, bg);
+    }
     draw_rect_outline(dr, x, y, TILE_SIZE, TILE_SIZE,
                       (f & DS_IMPOSSIBLE) ? COL_ERROR : COL_GRID);
 
@@ -1721,8 +1721,11 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
+#ifdef COMBINED
+#define thegame singles
+#endif
 
-const struct game singles = {
+const struct game thegame = {
     "Singles", "games.singles", "singles",
     default_params,
     game_fetch_preset, NULL,
