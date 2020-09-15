@@ -9,6 +9,7 @@
 - [X] Loopy: Add dotted line draw for line errors, diagonal dotted line, better presets
 - [ ] Magnets: Better presets
 - [ ] Pattern: Black-white-neutral circling on click
+- [ ] Pattern: Better utilization of screen space
 - [ ] Pearl: Colors, Dashed error line
 - [X] Range: Background error & outline error for black squares
 - [X] Salad: Colors, no O in letters
@@ -40,11 +41,12 @@
 - [ ] Map: Color fill pattern?
 - [X] Net: Remove animation. Adjust colors.
 - [X] Net: Add shuffle button
-- [ ] Netslide: Remove animation
+- [ ] Netslide: Remove animation. Thicker lines.
 - [ ] Pegs: Remove blitter drag
 - [ ] Rome: Change to highlight / highlight clue; add up/down/left/right buttons
 - [ ] Samegame: Add color fill pattern
 - [X] Signpost: Remove blitter drag. Adjust colors. Modify left/right click behavior. Fix polygon error.
+- [ ] Signpost: Rework cell arrow highlighting to avoid whole screen redraw
 - [X] Sixteen: Remove animation
 - [X] Twiddle: Remove animation
 
