@@ -55,21 +55,21 @@ static game_params *default_params(void)
     game_params *ret = snew(game_params);
 
     ret->w = ret->h = 8;
-    ret->diff = DIFF_TRICKY;
+    ret->diff = DIFF_HARD;
     ret->single_ones = true;
 
     return ret;
 }
 
 static const struct game_params tracks_presets[] = {
+    {6, 6, DIFF_EASY, 1},
     {8, 8, DIFF_EASY, 1},
     {8, 8, DIFF_TRICKY, 1},
-    {10, 10, DIFF_EASY, 1},
+    {8, 8, DIFF_HARD, 1},
+    {9, 9, DIFF_TRICKY, 1},
+    {9, 9, DIFF_HARD, 1},
     {10, 10, DIFF_TRICKY, 1},
     {10, 10, DIFF_HARD, 1},
-    {12, 12, DIFF_EASY, 1},
-    {12, 12, DIFF_TRICKY, 1},
-    {12, 12, DIFF_HARD, 1},
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -98,7 +98,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -366,7 +366,7 @@ static game_state *dup_game(const game_state *state)
     int w = state->p.w, h = state->p.h;
     game_state *ret = snew(game_state);
 
-    ret->p = state->p;		       /* structure copy */
+    ret->p = state->p;               /* structure copy */
 
     ret->sflags = snewn(w*h, unsigned int);
     copy_game_flags(state, ret);
@@ -2338,8 +2338,6 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    // game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-
     for (i = 0; i < 3; i++) {
         ret[COL_BACKGROUND       * 3 + i] = 1.0F;
         ret[COL_TRACK_BACKGROUND * 3 + i] = 0.75F;
@@ -2534,7 +2532,7 @@ static void draw_square(drawing *dr, game_drawstate *ds,
               (flags_drag & DS_TRACK) == DS_TRACK, &bg);
     draw_rect(dr, ox, oy, TILE_SIZE, TILE_SIZE, COL_GRID);
     draw_rect(dr, ox + GRID_LINE_TL, oy + GRID_LINE_TL,
-              TILE_SIZE - GRID_LINE_ALL, TILE_SIZE - GRID_LINE_ALL, bg);
+              TILE_SIZE - GRID_LINE_ALL, TILE_SIZE - GRID_LINE_ALL, (flags & DS_ERROR) ? COL_ERROR_BACKGROUND : bg);
 
     /* More outlines for clue squares. */
     if (flags & DS_CURSOR) {
@@ -2558,11 +2556,9 @@ static void draw_square(drawing *dr, game_drawstate *ds,
     }
 
     /* Draw tracks themselves */
-    c = (flags & DS_ERROR) ? COL_ERROR :
-      (flags & DS_FLASH) ? COL_FLASH :
-      (flags & DS_CLUE) ? COL_TRACK_CLUE : COL_TRACK;
+    c = (flags & DS_CLUE) ? COL_TRACK_CLUE : COL_TRACK;
     flags_best = best_bits(flags, flags_drag, &c);
-    draw_tracks_specific(dr, ds, x, y, flags_best, c, COL_SLEEPER);
+    draw_tracks_specific(dr, ds, x, y, flags_best, c, (flags & DS_ERROR) ? COL_ERROR : COL_SLEEPER);
 
     /* Draw no-track marks, if present, in square and on edges. */
     c = COL_TRACK;
@@ -2697,7 +2693,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             ds->num_errors[i] = state->num_errors[i];
             draw_clue(dr, ds, w, state->numbers->numbers[i], i,
                       ds->num_errors[i] ? COL_ERROR : COL_CLUE,
-		      ds->num_errors[i] ? COL_ERROR_BACKGROUND : COL_BACKGROUND);
+              ds->num_errors[i] ? COL_ERROR_BACKGROUND : COL_BACKGROUND);
         }
     }
 
@@ -2788,8 +2784,8 @@ const struct game thegame = {
     game_flash_length,
     game_status,
     false, false, NULL, NULL,
-    false,			       /* wants_statusbar */
+    false,                   /* wants_statusbar */
     false, game_timing_state,
-    REQUIRE_RBUTTON,				       /* flags */
+    REQUIRE_RBUTTON,                       /* flags */
 };
 

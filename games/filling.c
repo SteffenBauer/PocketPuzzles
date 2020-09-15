@@ -1,4 +1,4 @@
-/* -*- tab-width: 8; indent-tabs-mode: t -*-
+/*
  * filling.c: An implementation of the Nikoli game fillomino.
  * Copyright (C) 2007 Jonas Kölker.  See LICENSE for the license.
  */
@@ -220,53 +220,6 @@ static const char *validate_params(const game_params *params, bool full)
  * 7x7:6002002030603030000010230420200000305010404003003
  * 7x7:6662232336663232331311235422255544325413434443313
  */
-static char *board_to_string(int *board, int w, int h) {
-    const int sz = w * h;
-    const int chw = (4*w + 2); /* +2 for trailing '+' and '\n' */
-    const int chh = (2*h + 1); /* +1: n fence segments, n+1 posts */
-    const int chlen = chw * chh;
-    char *repr = snewn(chlen + 1, char);
-    int i;
-
-    assert(board);
-
-    /* build the first line ("^(\+---){n}\+$") */
-    for (i = 0; i < w; ++i) {
-        repr[4*i + 0] = '+';
-        repr[4*i + 1] = '-';
-        repr[4*i + 2] = '-';
-        repr[4*i + 3] = '-';
-    }
-    repr[4*i + 0] = '+';
-    repr[4*i + 1] = '\n';
-
-    /* ... and copy it onto the odd-numbered lines */
-    for (i = 0; i < h; ++i) memcpy(repr + (2*i + 2) * chw, repr, chw);
-
-    /* build the second line ("^(\|\t){n}\|$") */
-    for (i = 0; i < w; ++i) {
-        repr[chw + 4*i + 0] = '|';
-        repr[chw + 4*i + 1] = ' ';
-        repr[chw + 4*i + 2] = ' ';
-        repr[chw + 4*i + 3] = ' ';
-    }
-    repr[chw + 4*i + 0] = '|';
-    repr[chw + 4*i + 1] = '\n';
-
-    /* ... and copy it onto the even-numbered lines */
-    for (i = 1; i < h; ++i) memcpy(repr + (2*i + 1) * chw, repr + chw, chw);
-
-    /* fill in the numbers */
-    for (i = 0; i < sz; ++i) {
-        const int x = i % w;
-    const int y = i / w;
-    if (board[i] == EMPTY) continue;
-    repr[chw*(2*y + 1) + (4*x + 2)] = board[i] + '0';
-    }
-
-    repr[chlen] = '\0';
-    return repr;
-}
 
 /*****************************************************************************
  * GAME GENERATION AND SOLVER                                                *
@@ -1618,32 +1571,18 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 static float *game_colours(frontend *fe, int *ncolours)
 {
     float *ret = snewn(3 * NCOLOURS, float);
+    int i;
 
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-
-    ret[COL_GRID * 3 + 0] = 0.0F;
-    ret[COL_GRID * 3 + 1] = 0.0F;
-    ret[COL_GRID * 3 + 2] = 0.0F;
-
-    ret[COL_HIGHLIGHT * 3 + 0] = 0.85F;
-    ret[COL_HIGHLIGHT * 3 + 1] = 0.85F;
-    ret[COL_HIGHLIGHT * 3 + 2] = 0.85F;
-
-    ret[COL_CORRECT * 3 + 0] = 0.9F;
-    ret[COL_CORRECT * 3 + 1] = 0.9F;
-    ret[COL_CORRECT * 3 + 2] = 0.9F;
-
-    ret[COL_CURSOR * 3 + 0] = 0.5F;
-    ret[COL_CURSOR * 3 + 1] = 0.5F;
-    ret[COL_CURSOR * 3 + 2] = 0.5F;
-
-    ret[COL_ERROR * 3 + 0] = 0.75F;
-    ret[COL_ERROR * 3 + 1] = 0.75F;
-    ret[COL_ERROR * 3 + 2] = 0.75F;
-
-    ret[COL_USER * 3 + 0] = 0.25F;
-    ret[COL_USER * 3 + 1] = 0.25F;
-    ret[COL_USER * 3 + 2] = 0.25F;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_GRID       * 3 + i] = 0.0F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.85F;
+        ret[COL_CORRECT    * 3 + i] = 0.9F;
+        ret[COL_CURSOR     * 3 + i] = 0.5F;
+        ret[COL_ERROR      * 3 + i] = 0.75F;
+        ret[COL_USER       * 3 + i] = 0.25F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1711,7 +1650,7 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
               TILE_SIZE,
               TILE_SIZE,
               (flags & HIGH_BG ? COL_HIGHLIGHT :
-               flags & ERROR_BG ? COL_ERROR :
+               flags & ERROR_BG ? COL_USER :
                flags & CORRECT_BG ? COL_CORRECT : COL_BACKGROUND));
 
     /*
@@ -1735,6 +1674,7 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
                   FONT_VARIABLE,
                   TILE_SIZE / 2,
                   ALIGN_VCENTRE | ALIGN_HCENTRE,
+                  flags & ERROR_BG ? COL_ERROR :
                   flags & USER_COL ? COL_USER : COL_CLUE,
                   buf);
     }
@@ -2023,13 +1963,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    assert(oldstate);
-    assert(newstate);
-    assert(newstate->shared);
-    assert(oldstate->shared == newstate->shared);
-    if (!oldstate->completed && newstate->completed &&
-    !oldstate->cheated && !newstate->cheated)
-        return FLASH_TIME;
     return 0.0F;
 }
 

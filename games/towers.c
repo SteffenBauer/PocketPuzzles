@@ -125,7 +125,7 @@ static game_params *default_params(void)
     game_params *ret = snew(game_params);
 
     ret->w = 5;
-    ret->diff = DIFF_EASY;
+    ret->diff = DIFF_HARD;
 
     return ret;
 }
@@ -1404,7 +1404,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     sprintf(buf, "%c%d,%d,%d",
         (char)(ui->hpencil && n > 0 ? 'P' : 'R'), ui->hx, ui->hy, n);
 
-        if (!ui->hcursor) ui->hshow = false;
+        if (ui->hshow && !ui->hpencil) ui->hshow = false;
 
     return dupstr(buf);
     }

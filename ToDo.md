@@ -4,12 +4,12 @@
 - [X] Dominosa: Error coloring, thicker line
 - [X] Dominosa: Number highlighting 
 - [ ] Dominosa: Number highlighting in numerical buttons
-- [ ] Filling: Error coloring
+- [X] Filling: Error coloring
 - [X] Keen: Persist pencil marker, error circle, error background for clues
 - [X] Loopy: Add dotted line draw for line errors, diagonal dotted line, better presets
-- [ ] Magnets: Better presets
-- [ ] Pattern: Black-white-neutral circling on click
-- [ ] Pattern: Better utilization of screen space
+- [X] Magnets: Better presets
+- [X] Pattern: Black-white-neutral circling on click
+- [X] Pattern: Better utilization of screen space
 - [ ] Pearl: Colors, Dashed error line
 - [X] Range: Background error & outline error for black squares
 - [X] Salad: Colors, no O in letters
@@ -17,14 +17,14 @@
 - [X] Solo: Lighter activation pencil mark, better presets
 - [ ] Solo: Number highlighting indication in numerical buttons
 - [ ] Spokes: Better error display
-- [ ] Towers: Persist pencil marker
-- [ ] Tracks: Background color on circular error
+- [X] Towers: Persist pencil marker
+- [X] Tracks: Background color on circular error
 - [X] Undead: Ghost lines, Different monster colors, fix ghost polygon error
 - [X] Undead: Stronger monster outlines
 - [X] Tents: Change error for tree without tent
 - [X] Palisade: Thicker lines / dotted lines on error
 - [X] Unequal: Coloring, <> polygon error, pencil marker persistence, adjacent error display, error circles, presets with Kropki mode
-- [ ] Unruly: Coloring
+- [X] Unruly: Coloring
 - [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
 - [X] Bridges: Add path button
 - [X] Bridges: Adjust game colors
