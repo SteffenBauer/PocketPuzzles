@@ -26,9 +26,9 @@ enum {
 
 #define PREFERRED_TILE_SIZE 24
 #define TILE_SIZE (ds->tilesize)
-#define BORDER (3 * TILE_SIZE / 4)
-#define TLBORDER(d) ( (d) / 5 + 2 )
-#define GUTTER (TILE_SIZE / 2)
+#define BORDER (1 * TILE_SIZE / 8)
+#define TLBORDER(d) ( (d) / 8 + 2 )
+#define GUTTER (0) /* (TILE_SIZE / 20) */
 
 #define FROMCOORD(d, x) \
         ( ((x) - (BORDER + GUTTER + TILE_SIZE * TLBORDER(d))) / TILE_SIZE )
@@ -1161,6 +1161,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     x = FROMCOORD(state->common->w, x);
     y = FROMCOORD(state->common->h, y);
+#define STYLUS_BASED
 
     if (x >= 0 && x < state->common->w && y >= 0 && y < state->common->h &&
         (button == LEFT_BUTTON || button == RIGHT_BUTTON ||
@@ -1192,7 +1193,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->release = MIDDLE_RELEASE;
             ui->state = GRID_UNKNOWN;
         }
-
+#undef STYLUS_BASED
         ui->drag_start_x = ui->drag_end_x = x;
         ui->drag_start_y = ui->drag_end_y = y;
         ui->cur_visible = false;
@@ -1566,7 +1567,7 @@ static float *game_colours(frontend *fe, int *ncolours)
     for (i = 0; i < 3; i++) {
         ret[COL_BACKGROUND   * 3 + i] = 1.0F;
         ret[COL_GRID         * 3 + i] = 0.25F;
-        ret[COL_UNKNOWN      * 3 + i] = 0.5F;
+        ret[COL_UNKNOWN      * 3 + i] = 0.7F;
         ret[COL_TEXT         * 3 + i] = 0.0F;
         ret[COL_FULL         * 3 + i] = 0.0F;
         ret[COL_EMPTY        * 3 + i] = 1.0F;
@@ -1822,9 +1823,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-    !oldstate->cheated && !newstate->cheated)
-        return FLASH_TIME;
     return 0.0F;
 }
 

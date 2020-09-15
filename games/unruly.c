@@ -95,15 +95,14 @@ static char const unruly_diffchars[] = DIFFLIST(ENCODE);
 #define DIFFCONFIG DIFFLIST(CONFIG)
 
 static const struct game_params unruly_presets[] = {
-    { 8,  8, false, DIFF_EASY},
-    { 8,  8, false, DIFF_NORMAL},
-    {10, 10, false, DIFF_EASY},
-    {10, 10, false, DIFF_NORMAL},
-    {14, 14, false, DIFF_EASY},
-    {14, 14, false, DIFF_NORMAL}
+    { 6,  6, true, DIFF_EASY},
+    { 6,  6, true, DIFF_NORMAL},
+    { 8,  8, true, DIFF_NORMAL},
+    {10, 10, true, DIFF_NORMAL},
+    {12, 12, true, DIFF_NORMAL}
 };
 
-#define DEFAULT_PRESET 0
+#define DEFAULT_PRESET 2
 
 enum {
     EMPTY,
@@ -434,36 +433,6 @@ static void free_game(game_state *state)
     }
 
     sfree(state);
-}
-
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int w2 = state->w2, h2 = state->h2;
-    int lr = w2*2 + 1;
-
-    char *ret = snewn(lr * h2 + 1, char);
-    char *p = ret;
-
-    int x, y;
-    for (y = 0; y < h2; y++) {
-        for (x = 0; x < w2; x++) {
-            /* Place number */
-            char c = state->grid[y * w2 + x];
-            *p++ = (c == N_ONE ? '1' : c == N_ZERO ? '0' : '.');
-            *p++ = ' ';
-        }
-        /* End line */
-        *p++ = '\n';
-    }
-    /* End with NUL */
-    *p++ = '\0';
-
-    return ret;
 }
 
 /* ****** *
@@ -1310,18 +1279,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
             unruly_free_scratch(scratch);
         }
 
-#ifdef STANDALONE_SOLVER
-        if (solver_verbose) {
-            printf("Puzzle generated in %i attempts\n", attempts);
-            debug = game_text_format(state);
-            fputs(debug, stdout);
-            sfree(debug);
-
-            temp_verbose = solver_verbose;
-            solver_verbose = false;
-        }
-#endif
-
         unruly_free_scratch(scratch);
 
         /* Generate random array of spaces */
@@ -1356,17 +1313,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
             unruly_free_scratch(scratch);
         }
         sfree(spaces);
-
-#ifdef STANDALONE_SOLVER
-        if (temp_verbose) {
-            solver_verbose = true;
-
-            printf("Final puzzle:\n");
-            debug = game_text_format(state);
-            fputs(debug, stdout);
-            sfree(debug);
-        }
-#endif
 
         /*
          * See if the game has accidentally come out too easy.
@@ -1654,28 +1600,22 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-
     for (i = 0; i < 3; i++) {
-        ret[COL_1 * 3 + i] = 0.2F;
+        ret[COL_BACKGROUND  * 3 + i] = 1.0F;
+        ret[COL_1           * 3 + i] = 0.2F;
         ret[COL_1_HIGHLIGHT * 3 + i] = 0.4F;
-        ret[COL_1_LOWLIGHT * 3 + i] = 0.0F;
-        ret[COL_0 * 3 + i] = 0.95F;
+        ret[COL_1_LOWLIGHT  * 3 + i] = 0.0F;
+        ret[COL_0           * 3 + i] = 0.8F;
         ret[COL_0_HIGHLIGHT * 3 + i] = 1.0F;
-        ret[COL_0_LOWLIGHT * 3 + i] = 0.9F;
-        ret[COL_EMPTY * 3 + i] = 0.5F;
-        ret[COL_GRID * 3 + i] = 0.3F;
+        ret[COL_0_LOWLIGHT  * 3 + i] = 0.6F;
+        ret[COL_EMPTY       * 3 + i] = 0.5F;
+        ret[COL_GRID        * 3 + i] = 0.3F;
+        ret[COL_ERROR       * 3 + i] = 0.5F;
+        ret[COL_CURSOR      * 3 + i] = 0.0F;
     }
-    game_mkhighlight_specific(fe, ret, COL_0, COL_0_HIGHLIGHT, COL_0_LOWLIGHT);
+    /* game_mkhighlight_specific(fe, ret, COL_0, COL_0_HIGHLIGHT, COL_0_LOWLIGHT);
     game_mkhighlight_specific(fe, ret, COL_1, COL_1_HIGHLIGHT, COL_1_LOWLIGHT);
-
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
-
-    ret[COL_CURSOR * 3 + 0] = 0.0F;
-    ret[COL_CURSOR * 3 + 1] = 0.7F;
-    ret[COL_CURSOR * 3 + 2] = 0.0F;
+    */
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1713,14 +1653,23 @@ static void unruly_draw_tile(drawing *dr, int x, int y, int tilesize, int tile)
         draw_rect(dr, x, y, tilesize-1, tilesize-1, val);
 
         if ((val == COL_0 || val == COL_1) && (tile & FF_IMMUTABLE)) {
-            draw_rect(dr, x + tilesize/6, y + tilesize/6,
-                      tilesize - 2*(tilesize/6) - 2, 1, val + 2);
-            draw_rect(dr, x + tilesize/6, y + tilesize/6,
-                      1, tilesize - 2*(tilesize/6) - 2, val + 2);
-            draw_rect(dr, x + tilesize/6 + 1, y + tilesize - tilesize/6 - 2,
-                      tilesize - 2*(tilesize/6) - 2, 1, val + 1);
-            draw_rect(dr, x + tilesize - tilesize/6 - 2, y + tilesize/6 + 1,
-                      1, tilesize - 2*(tilesize/6) - 2, val + 1);
+            int coords[12];
+            int offset = tilesize/6;
+            int width = tilesize/10;
+            coords[0]  = x + offset;                     coords[1]  = y + offset;
+            coords[2]  = x + tilesize - offset;          coords[3]  = y + offset;
+            coords[4]  = x + tilesize - offset  - width; coords[5]  = y + offset + width;
+            coords[6]  = x + offset + width;             coords[7]  = y + offset + width;
+            coords[8]  = x + offset + width;             coords[9]  = y + tilesize - offset - width;
+            coords[10] = x + offset;                     coords[11] = y + tilesize - offset;
+            draw_polygon(dr, coords, 6, val+2, val+2);
+            coords[0]  = x + tilesize - offset;          coords[1]  = y + tilesize - offset;
+            coords[2]  = x + tilesize - offset;          coords[3]  = y + offset;
+            coords[4]  = x + tilesize - offset - width;  coords[5]  = y + offset + width;
+            coords[6]  = x + tilesize - offset - width;  coords[7]  = y + tilesize - offset - width;
+            coords[8]  = x + offset + width;             coords[9]  = y + tilesize - offset - width;
+            coords[10] = x + offset;                     coords[11] = y + tilesize - offset;
+            draw_polygon(dr, coords, 6, val+1, val+1);
         }
     }
 
@@ -1854,9 +1803,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-        !oldstate->cheated && !newstate->cheated)
-        return FLASH_TIME;
     return 0.0F;
 }
 
@@ -1868,48 +1814,6 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
-
-    /* Using 7mm squares */
-    game_compute_size(params, 700, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w2 = state->w2, h2 = state->h2;
-    int x, y;
-
-    int ink = print_mono_colour(dr, 0);
-
-    for (y = 0; y < h2; y++)
-        for (x = 0; x < w2; x++) {
-            int tx = x * tilesize + (tilesize / 2);
-            int ty = y * tilesize + (tilesize / 2);
-
-            /* Draw the border */
-            int coords[8];
-            coords[0] = tx;
-            coords[1] = ty - 1;
-            coords[2] = tx + tilesize;
-            coords[3] = ty - 1;
-            coords[4] = tx + tilesize;
-            coords[5] = ty + tilesize - 1;
-            coords[6] = tx;
-            coords[7] = ty + tilesize - 1;
-            draw_polygon(dr, coords, 4, -1, ink);
-
-            if (state->grid[y * w2 + x] == N_ONE)
-                draw_rect(dr, tx, ty, tilesize, tilesize, ink);
-            else if (state->grid[y * w2 + x] == N_ZERO)
-                draw_circle(dr, tx + tilesize/2, ty + tilesize/2,
-                            tilesize/12, ink, ink);
-        }
 }
 
 #ifdef COMBINED
@@ -1932,7 +1836,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -1949,132 +1853,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
+    false, false, NULL, NULL,
     false,                      /* wants_statusbar */
     false, game_timing_state,
     0,                          /* flags */
 };
 
-/* ***************** *
- * Standalone solver *
- * ***************** */
-
-#ifdef STANDALONE_SOLVER
-#include <time.h>
-#include <stdarg.h>
-
-/* Most of the standalone solver code was copied from unequal.c and singles.c */
-
-const char *quis;
-
-static void usage_exit(const char *msg)
-{
-    if (msg)
-        fprintf(stderr, "%s: %s\n", quis, msg);
-    fprintf(stderr,
-            "Usage: %s [-v] [--seed SEED] <params> | [game_id [game_id ...]]\n",
-            quis);
-    exit(1);
-}
-
-int main(int argc, char *argv[])
-{
-    random_state *rs;
-    time_t seed = time(NULL);
-
-    game_params *params = NULL;
-
-    char *id = NULL, *desc = NULL;
-    const char *err;
-
-    quis = argv[0];
-
-    while (--argc > 0) {
-        char *p = *++argv;
-        if (!strcmp(p, "--seed")) {
-            if (argc == 0)
-                usage_exit("--seed needs an argument");
-            seed = (time_t) atoi(*++argv);
-            argc--;
-        } else if (!strcmp(p, "-v"))
-            solver_verbose = true;
-        else if (*p == '-')
-            usage_exit("unrecognised option");
-        else
-            id = p;
-    }
-
-    if (id) {
-        desc = strchr(id, ':');
-        if (desc)
-            *desc++ = '\0';
-
-        params = default_params();
-        decode_params(params, id);
-        err = validate_params(params, true);
-        if (err) {
-            fprintf(stderr, "Parameters are invalid\n");
-            fprintf(stderr, "%s: %s", argv[0], err);
-            exit(1);
-        }
-    }
-
-    if (!desc) {
-        char *desc_gen, *aux;
-        rs = random_new((void *) &seed, sizeof(time_t));
-        if (!params)
-            params = default_params();
-        printf("Generating puzzle with parameters %s\n",
-               encode_params(params, true));
-        desc_gen = new_game_desc(params, rs, &aux, false);
-
-        if (!solver_verbose) {
-            char *fmt = game_text_format(new_game(NULL, params, desc_gen));
-            fputs(fmt, stdout);
-            sfree(fmt);
-        }
-
-        printf("Game ID: %s\n", desc_gen);
-    } else {
-        game_state *input;
-        struct unruly_scratch *scratch;
-        int maxdiff, errcode;
-
-        err = validate_desc(params, desc);
-        if (err) {
-            fprintf(stderr, "Description is invalid\n");
-            fprintf(stderr, "%s", err);
-            exit(1);
-        }
-
-        input = new_game(NULL, params, desc);
-        scratch = unruly_new_scratch(input);
-
-        maxdiff = unruly_solve_game(input, scratch, DIFFCOUNT);
-
-        errcode = unruly_validate_counts(input, scratch, NULL);
-        if (unruly_validate_all_rows(input, NULL) == -1)
-            errcode = -1;
-
-        if (errcode != -1) {
-            char *fmt = game_text_format(input);
-            fputs(fmt, stdout);
-            sfree(fmt);
-            if (maxdiff < 0)
-                printf("Difficulty: already solved!\n");
-            else
-                printf("Difficulty: %s\n", unruly_diffnames[maxdiff]);
-        }
-
-        if (errcode == 1)
-            printf("No solution found.\n");
-        else if (errcode == -1)
-            printf("Puzzle is invalid.\n");
-
-        free_game(input);
-        unruly_free_scratch(scratch);
-    }
-
-    return 0;
-}
-#endif

@@ -156,12 +156,12 @@ static void decode_params(game_params *ret, char const *string)
 
     ret->diff = DIFF_EASY;
     if (*string == 'd') {
-	int i;
-	string++;
-	for (i = 0; i < DIFFCOUNT; i++)
-	    if (*string == magnets_diffchars[i])
-		ret->diff = i;
-	if (*string) string++;
+    int i;
+    string++;
+    for (i = 0; i < DIFFCOUNT; i++)
+        if (*string == magnets_diffchars[i])
+        ret->diff = i;
+    if (*string) string++;
     }
 
     ret->stripclues = false;
@@ -585,21 +585,6 @@ static char *generate_desc(game_state *new)
 
     return desc;
 }
-
-static void game_text_hborder(const game_state *state, char **p_r)
-{
-    char *p = *p_r;
-    int x;
-
-    *p++ = ' ';
-    *p++ = '+';
-    for (x = 0; x < state->w*2-1; x++) *p++ = '-';
-    *p++ = '+';
-    *p++ = '\n';
-
-    *p_r = p;
-}
-
 
 enum { ROW, COLUMN };
 
@@ -1610,7 +1595,7 @@ static int check_difficulty(const game_params *params, game_state *new,
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux_r, bool interactive)
+               char **aux_r, bool interactive)
 {
     game_state *new = new_state(params->w, params->h);
     char *desc, *aux = snewn(new->wh+1, char);
@@ -1775,7 +1760,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             movech = '.';
     } else {
         assert(!"unknown action");
-	movech = 0;		       /* placate optimiser */
+    movech = 0;               /* placate optimiser */
     }
 
     sprintf(buf, "%c%d,%d", movech, gx, gy);
@@ -2211,8 +2196,11 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
+#ifdef COMBINED
+#define thegame magnets
+#endif
 
-const struct game magnets = {
+const struct game thegame = {
     "Magnets", "games.magnets", "magnets",
     default_params,
     game_fetch_preset, NULL,
@@ -2246,8 +2234,8 @@ const struct game magnets = {
     game_flash_length,
     game_status,
     false, false, NULL, NULL,
-    false,			       /* wants_statusbar */
+    false,                   /* wants_statusbar */
     false, game_timing_state,
-    REQUIRE_RBUTTON,		       /* flags */
+    REQUIRE_RBUTTON,               /* flags */
 };
 
