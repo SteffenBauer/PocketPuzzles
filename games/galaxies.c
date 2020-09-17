@@ -371,13 +371,6 @@ static void add_assoc_with_opposite(game_state *state, space *tile, space *dot) 
     add_assoc(state, opposite, dot);
 }
 
-static space *sp2dot(const game_state *state, int x, int y)
-{
-    space *sp = &SPACE(state, x, y);
-    if (!(sp->flags & F_TILE_ASSOC)) return NULL;
-    return &SPACE(state, sp->dotx, sp->doty);
-}
-
 #define IS_VERTICAL_EDGE(x) ((x % 2) == 0)
 
 
@@ -3300,7 +3293,11 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
-const struct game galaxies = {
+#ifdef COMBINED
+#define thegame galaxies
+#endif
+
+const struct game thegame = {
     "Galaxies", "games.galaxies", "galaxies",
     default_params,
     game_fetch_preset, NULL,

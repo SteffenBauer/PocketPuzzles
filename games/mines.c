@@ -96,20 +96,21 @@ static game_params *default_params(void)
 {
     game_params *ret = snew(game_params);
 
-    ret->w = ret->h = 9;
-    ret->n = 10;
+    ret->w = 8;
+    ret->h = 8;
+    ret->n = 22;
     ret->unique = true;
 
     return ret;
 }
 
 static const struct game_params mines_presets[] = {
-  {9, 10, 10, true},
-  {9, 10, 35, true},
-  {12, 15, 20, true},
-  {12, 15, 50, true},
-  {16, 18, 40, true},
-  {16, 18, 99, true},
+  {8, 8, 6, true},
+  {8, 8, 30, true},
+  {10, 10, 10, true},
+  {10, 10, 35, true},
+  {12, 12, 15, true},
+  {12, 12, 48, true},
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)

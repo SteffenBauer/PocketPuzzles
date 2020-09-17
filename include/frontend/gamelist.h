@@ -5,23 +5,25 @@ extern const struct game abcd, ascent, blackbox, boats, bridges,
                          clusters, cube, dominosa, fifteen, filling,
                          flip, flood, galaxies, group, guess,
                          inertia, keen, lightup, loopy, magnets,
-                         map, mathrax, mines, net, netslide,
-                         palisade, pattern, pearl, pegs, range,
-                         rect, rome, salad, samegame, signpost,
-                         singles, sixteen, slant, sokoban, solo,
-                         spokes, tents, towers, tracks, twiddle,
-                         undead, unequal, unruly, untangle, walls;
+                         map, mathrax, mines, mosaic, net,
+                         netslide, palisade, pattern, pearl, pegs,
+                         range, rect, rome, salad, samegame,
+                         signpost, singles, sixteen, slant, sokoban,
+                         solo, spokes, tents, towers, tracks,
+                         twiddle, undead, unequal, unruly, untangle,
+                         walls;
 
 extern ibitmap game_abcd, game_ascent, game_blackbox, game_boats, game_bridges,
                game_clusters, game_cube, game_dominosa, game_fifteen, game_filling,
                game_flip, game_flood, game_galaxies, game_group, game_guess,
                game_inertia, game_keen, game_lightup, game_loopy, game_magnets,
-               game_map, game_mathrax, game_mines, game_net, game_netslide,
-               game_palisade, game_pattern, game_pearl, game_pegs, game_range,
-               game_rect, game_rome, game_salad, game_samegame, game_signpost,
-               game_singles, game_sixteen, game_slant, game_sokoban, game_solo,
-               game_spokes, game_tents, game_towers, game_tracks, game_twiddle,
-               game_undead, game_unequal, game_unruly, game_untangle, game_walls;
+               game_map, game_mathrax, game_mines, game_mosaic, game_net,
+               game_netslide, game_palisade, game_pattern, game_pearl, game_pegs,
+               game_range, game_rect, game_rome, game_salad, game_samegame,
+               game_signpost, game_singles, game_sixteen, game_slant, game_sokoban,
+               game_solo, game_spokes, game_tents, game_towers, game_tracks,
+               game_twiddle, game_undead, game_unequal, game_unruly, game_untangle,
+               game_walls;
 
 static GAMEINFO mygames[] = {
     { &game_abcd,     &abcd},
@@ -51,6 +53,7 @@ static GAMEINFO mygames[] = {
 //    { &game_map,      &map},
     { &game_mathrax,  &mathrax},
     { &game_mines,    &mines},
+    { &game_mosaic,   &mosaic},
     { &game_net,      &net},
 //    { &game_netslide, &netslide},
 
