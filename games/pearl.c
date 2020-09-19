@@ -21,13 +21,13 @@
  *    the first place with a loop that makes a soluble puzzle even
  *    with all possible clues filled in.
  *     + A possible alternative strategy to further tuning of the
- * 	 existing loop generator would be to throw the entire
- * 	 mechanism out and instead write a different generator from
- * 	 scratch which evolves the solution along with the puzzle:
- * 	 place a few clues, nail down a bit of the loop, place another
- * 	 clue, nail down some more, etc. However, I don't have a
- * 	 detailed plan for any such mechanism, so it may be a pipe
- * 	 dream.
+ *      existing loop generator would be to throw the entire
+ *      mechanism out and instead write a different generator from
+ *      scratch which evolves the solution along with the puzzle:
+ *      place a few clues, nail down a bit of the loop, place another
+ *      clue, nail down some more, etc. However, I don't have a
+ *      detailed plan for any such mechanism, so it may be a pipe
+ *      dream.
  */
 
 #include <stdio.h>
@@ -92,7 +92,7 @@ enum {
     COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT,
     COL_CURSOR_BACKGROUND = COL_LOWLIGHT,
     COL_BLACK, COL_WHITE,
-    COL_ERROR, COL_GRID, COL_FLASH,
+    COL_ERROR, COL_GRID,
     COL_DRAGON, COL_DRAGOFF,
     NCOLOURS
 };
@@ -182,7 +182,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -198,12 +198,12 @@ static void decode_params(game_params *ret, char const *string)
 
     ret->difficulty = DIFF_EASY;
     if (*string == 'd') {
-	int i;
-	string++;
-	for (i = 0; i < DIFFCOUNT; i++)
-	    if (*string == pearl_diffchars[i])
-		ret->difficulty = i;
-	if (*string) string++;
+    int i;
+    string++;
+    for (i = 0; i < DIFFCOUNT; i++)
+        if (*string == pearl_diffchars[i])
+        ret->difficulty = i;
+    if (*string) string++;
     }
 
     ret->nosolve = false;
@@ -312,29 +312,29 @@ static int pearl_solve(int w, int h, char *clues, char *result,
      */
     workspace = snewn(W*H, short);
     for (x = 0; x < W*H; x++)
-	workspace[x] = 0;
+    workspace[x] = 0;
     /* Square states */
     for (y = 0; y < h; y++)
-	for (x = 0; x < w; x++)
-	    switch (clues[y*w+x]) {
-	      case CORNER:
-		workspace[(2*y+1)*W+(2*x+1)] = bLU|bLD|bRU|bRD;
-		break;
-	      case STRAIGHT:
-		workspace[(2*y+1)*W+(2*x+1)] = bLR|bUD;
-		break;
-	      default:
-		workspace[(2*y+1)*W+(2*x+1)] = bLR|bUD|bLU|bLD|bRU|bRD|bBLANK;
-		break;
-	    }
+    for (x = 0; x < w; x++)
+        switch (clues[y*w+x]) {
+          case CORNER:
+        workspace[(2*y+1)*W+(2*x+1)] = bLU|bLD|bRU|bRD;
+        break;
+          case STRAIGHT:
+        workspace[(2*y+1)*W+(2*x+1)] = bLR|bUD;
+        break;
+          default:
+        workspace[(2*y+1)*W+(2*x+1)] = bLR|bUD|bLU|bLD|bRU|bRD|bBLANK;
+        break;
+        }
     /* Horizontal edges */
     for (y = 0; y <= h; y++)
-	for (x = 0; x < w; x++)
-	    workspace[(2*y)*W+(2*x+1)] = (y==0 || y==h ? 2 : 3);
+    for (x = 0; x < w; x++)
+        workspace[(2*y)*W+(2*x+1)] = (y==0 || y==h ? 2 : 3);
     /* Vertical edges */
     for (y = 0; y < h; y++)
-	for (x = 0; x <= w; x++)
-	    workspace[(2*y+1)*W+(2*x)] = (x==0 || x==w ? 2 : 3);
+    for (x = 0; x <= w; x++)
+        workspace[(2*y+1)*W+(2*x)] = (x==0 || x==w ? 2 : 3);
 
     /*
      * We maintain a dsf of connected squares, together with a
@@ -347,487 +347,487 @@ static int pearl_solve(int w, int h, char *clues, char *result,
      * Now repeatedly try to find something we can do.
      */
     while (1) {
-	bool done_something = false;
+    bool done_something = false;
 
 #ifdef SOLVER_DIAGNOSTICS
-	for (y = 0; y < H; y++) {
-	    for (x = 0; x < W; x++)
-		printf("%*x", (x&1) ? 5 : 2, workspace[y*W+x]);
-	    printf("\n");
-	}
+    for (y = 0; y < H; y++) {
+        for (x = 0; x < W; x++)
+        printf("%*x", (x&1) ? 5 : 2, workspace[y*W+x]);
+        printf("\n");
+    }
 #endif
 
-	/*
-	 * Go through the square state words, and discard any
-	 * square state which is inconsistent with known facts
-	 * about the edges around the square.
-	 */
-	for (y = 0; y < h; y++)
-	    for (x = 0; x < w; x++) {
-		for (b = 0; b < 0xD; b++)
-		    if (workspace[(2*y+1)*W+(2*x+1)] & (1<<b)) {
-			/*
-			 * If any edge of this square is known to
-			 * be connected when state b would require
-			 * it disconnected, or vice versa, discard
-			 * the state.
-			 */
-			for (d = 1; d <= 8; d += d) {
-			    int ex = 2*x+1 + DX(d), ey = 2*y+1 + DY(d);
-			    if (workspace[ey*W+ex] ==
-				((b & d) ? 2 : 1)) {
-				workspace[(2*y+1)*W+(2*x+1)] &= ~(1<<b);
+    /*
+     * Go through the square state words, and discard any
+     * square state which is inconsistent with known facts
+     * about the edges around the square.
+     */
+    for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++) {
+        for (b = 0; b < 0xD; b++)
+            if (workspace[(2*y+1)*W+(2*x+1)] & (1<<b)) {
+            /*
+             * If any edge of this square is known to
+             * be connected when state b would require
+             * it disconnected, or vice versa, discard
+             * the state.
+             */
+            for (d = 1; d <= 8; d += d) {
+                int ex = 2*x+1 + DX(d), ey = 2*y+1 + DY(d);
+                if (workspace[ey*W+ex] ==
+                ((b & d) ? 2 : 1)) {
+                workspace[(2*y+1)*W+(2*x+1)] &= ~(1<<b);
 #ifdef SOLVER_DIAGNOSTICS
-				printf("edge (%d,%d)-(%d,%d) rules out state"
-				       " %d for square (%d,%d)\n",
-				       ex/2, ey/2, (ex+1)/2, (ey+1)/2,
-				       b, x, y);
+                printf("edge (%d,%d)-(%d,%d) rules out state"
+                       " %d for square (%d,%d)\n",
+                       ex/2, ey/2, (ex+1)/2, (ey+1)/2,
+                       b, x, y);
 #endif
-				done_something = true;
-				break;
-			    }
-			}
-		    }
+                done_something = true;
+                break;
+                }
+            }
+            }
 
-		/*
-		 * Consistency check: each square must have at
-		 * least one state left!
-		 */
-		if (!workspace[(2*y+1)*W+(2*x+1)]) {
+        /*
+         * Consistency check: each square must have at
+         * least one state left!
+         */
+        if (!workspace[(2*y+1)*W+(2*x+1)]) {
 #ifdef SOLVER_DIAGNOSTICS
-		    printf("edge check at (%d,%d): inconsistency\n", x, y);
+            printf("edge check at (%d,%d): inconsistency\n", x, y);
 #endif
-		    ret = 0;
-		    goto cleanup;
-		}
-	    }
+            ret = 0;
+            goto cleanup;
+        }
+        }
 
-	/*
-	 * Now go through the states array again, and nail down any
-	 * unknown edge if one of its neighbouring squares makes it
-	 * known.
-	 */
-	for (y = 0; y < h; y++)
-	    for (x = 0; x < w; x++) {
-		int edgeor = 0, edgeand = 15;
+    /*
+     * Now go through the states array again, and nail down any
+     * unknown edge if one of its neighbouring squares makes it
+     * known.
+     */
+    for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++) {
+        int edgeor = 0, edgeand = 15;
 
-		for (b = 0; b < 0xD; b++)
-		    if (workspace[(2*y+1)*W+(2*x+1)] & (1<<b)) {
-			edgeor |= b;
-			edgeand &= b;
-		    }
+        for (b = 0; b < 0xD; b++)
+            if (workspace[(2*y+1)*W+(2*x+1)] & (1<<b)) {
+            edgeor |= b;
+            edgeand &= b;
+            }
 
-		/*
-		 * Now any bit clear in edgeor marks a disconnected
-		 * edge, and any bit set in edgeand marks a
-		 * connected edge.
-		 */
+        /*
+         * Now any bit clear in edgeor marks a disconnected
+         * edge, and any bit set in edgeand marks a
+         * connected edge.
+         */
 
-		/* First check consistency: neither bit is both! */
-		if (edgeand & ~edgeor) {
+        /* First check consistency: neither bit is both! */
+        if (edgeand & ~edgeor) {
 #ifdef SOLVER_DIAGNOSTICS
-		    printf("square check at (%d,%d): inconsistency\n", x, y);
+            printf("square check at (%d,%d): inconsistency\n", x, y);
 #endif
-		    ret = 0;
-		    goto cleanup;
-		}
+            ret = 0;
+            goto cleanup;
+        }
 
-		for (d = 1; d <= 8; d += d) {
-		    int ex = 2*x+1 + DX(d), ey = 2*y+1 + DY(d);
+        for (d = 1; d <= 8; d += d) {
+            int ex = 2*x+1 + DX(d), ey = 2*y+1 + DY(d);
 
-		    if (!(edgeor & d) && workspace[ey*W+ex] == 3) {
-			workspace[ey*W+ex] = 2;
-			done_something = true;
+            if (!(edgeor & d) && workspace[ey*W+ex] == 3) {
+            workspace[ey*W+ex] = 2;
+            done_something = true;
 #ifdef SOLVER_DIAGNOSTICS
-			printf("possible states of square (%d,%d) force edge"
-			       " (%d,%d)-(%d,%d) to be disconnected\n",
-			       x, y, ex/2, ey/2, (ex+1)/2, (ey+1)/2);
+            printf("possible states of square (%d,%d) force edge"
+                   " (%d,%d)-(%d,%d) to be disconnected\n",
+                   x, y, ex/2, ey/2, (ex+1)/2, (ey+1)/2);
 #endif
-		    } else if ((edgeand & d) && workspace[ey*W+ex] == 3) {
-			workspace[ey*W+ex] = 1;
-			done_something = true;
+            } else if ((edgeand & d) && workspace[ey*W+ex] == 3) {
+            workspace[ey*W+ex] = 1;
+            done_something = true;
 #ifdef SOLVER_DIAGNOSTICS
-			printf("possible states of square (%d,%d) force edge"
-			       " (%d,%d)-(%d,%d) to be connected\n",
-			       x, y, ex/2, ey/2, (ex+1)/2, (ey+1)/2);
+            printf("possible states of square (%d,%d) force edge"
+                   " (%d,%d)-(%d,%d) to be connected\n",
+                   x, y, ex/2, ey/2, (ex+1)/2, (ey+1)/2);
 #endif
-		    }
-		}
-	    }
+            }
+        }
+        }
 
-	if (done_something)
-	    continue;
+    if (done_something)
+        continue;
 
-	/*
-	 * Now for longer-range clue-based deductions (using the
-	 * rules that a corner clue must connect to two straight
-	 * squares, and a straight clue must connect to at least
-	 * one corner square).
-	 */
-	for (y = 0; y < h; y++)
-	    for (x = 0; x < w; x++)
-		switch (clues[y*w+x]) {
-		  case CORNER:
-		    for (d = 1; d <= 8; d += d) {
-			int ex = 2*x+1 + DX(d), ey = 2*y+1 + DY(d);
-			int fx = ex + DX(d), fy = ey + DY(d);
-			int type = d | F(d);
+    /*
+     * Now for longer-range clue-based deductions (using the
+     * rules that a corner clue must connect to two straight
+     * squares, and a straight clue must connect to at least
+     * one corner square).
+     */
+    for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++)
+        switch (clues[y*w+x]) {
+          case CORNER:
+            for (d = 1; d <= 8; d += d) {
+            int ex = 2*x+1 + DX(d), ey = 2*y+1 + DY(d);
+            int fx = ex + DX(d), fy = ey + DY(d);
+            int type = d | F(d);
 
-			if (workspace[ey*W+ex] == 1) {
-			    /*
-			     * If a corner clue is connected on any
-			     * edge, then we can immediately nail
-			     * down the square beyond that edge as
-			     * being a straight in the appropriate
-			     * direction.
-			     */
-			    if (workspace[fy*W+fx] != (1<<type)) {
-				workspace[fy*W+fx] = (1<<type);
-				done_something = true;
+            if (workspace[ey*W+ex] == 1) {
+                /*
+                 * If a corner clue is connected on any
+                 * edge, then we can immediately nail
+                 * down the square beyond that edge as
+                 * being a straight in the appropriate
+                 * direction.
+                 */
+                if (workspace[fy*W+fx] != (1<<type)) {
+                workspace[fy*W+fx] = (1<<type);
+                done_something = true;
 #ifdef SOLVER_DIAGNOSTICS
-				printf("corner clue at (%d,%d) forces square "
-				       "(%d,%d) into state %d\n", x, y,
-				       fx/2, fy/2, type);
+                printf("corner clue at (%d,%d) forces square "
+                       "(%d,%d) into state %d\n", x, y,
+                       fx/2, fy/2, type);
 #endif
-				
-			    }
-			} else if (workspace[ey*W+ex] == 3) {
-			    /*
-			     * Conversely, if a corner clue is
-			     * separated by an unknown edge from a
-			     * square which _cannot_ be a straight
-			     * in the appropriate direction, we can
-			     * mark that edge as disconnected.
-			     */
-			    if (!(workspace[fy*W+fx] & (1<<type))) {
-				workspace[ey*W+ex] = 2;
-				done_something = true;
+                
+                }
+            } else if (workspace[ey*W+ex] == 3) {
+                /*
+                 * Conversely, if a corner clue is
+                 * separated by an unknown edge from a
+                 * square which _cannot_ be a straight
+                 * in the appropriate direction, we can
+                 * mark that edge as disconnected.
+                 */
+                if (!(workspace[fy*W+fx] & (1<<type))) {
+                workspace[ey*W+ex] = 2;
+                done_something = true;
 #ifdef SOLVER_DIAGNOSTICS
-				printf("corner clue at (%d,%d), plus square "
-				       "(%d,%d) not being state %d, "
-				       "disconnects edge (%d,%d)-(%d,%d)\n",
-				       x, y, fx/2, fy/2, type,
-				       ex/2, ey/2, (ex+1)/2, (ey+1)/2);
+                printf("corner clue at (%d,%d), plus square "
+                       "(%d,%d) not being state %d, "
+                       "disconnects edge (%d,%d)-(%d,%d)\n",
+                       x, y, fx/2, fy/2, type,
+                       ex/2, ey/2, (ex+1)/2, (ey+1)/2);
 #endif
 
-			    }
-			}
-		    }
+                }
+            }
+            }
 
-		    break;
-		  case STRAIGHT:
-		    /*
-		     * If a straight clue is between two squares
-		     * neither of which is capable of being a
-		     * corner connected to it, then the straight
-		     * clue cannot point in that direction.
-		     */
-		    for (d = 1; d <= 2; d += d) {
-			int fx = 2*x+1 + 2*DX(d), fy = 2*y+1 + 2*DY(d);
-			int gx = 2*x+1 - 2*DX(d), gy = 2*y+1 - 2*DY(d);
-			int type = d | F(d);
+            break;
+          case STRAIGHT:
+            /*
+             * If a straight clue is between two squares
+             * neither of which is capable of being a
+             * corner connected to it, then the straight
+             * clue cannot point in that direction.
+             */
+            for (d = 1; d <= 2; d += d) {
+            int fx = 2*x+1 + 2*DX(d), fy = 2*y+1 + 2*DY(d);
+            int gx = 2*x+1 - 2*DX(d), gy = 2*y+1 - 2*DY(d);
+            int type = d | F(d);
 
-			if (!(workspace[(2*y+1)*W+(2*x+1)] & (1<<type)))
-			    continue;
+            if (!(workspace[(2*y+1)*W+(2*x+1)] & (1<<type)))
+                continue;
 
-			if (!(workspace[fy*W+fx] & ((1<<(F(d)|A(d))) |
-						    (1<<(F(d)|C(d))))) &&
-			    !(workspace[gy*W+gx] & ((1<<(  d |A(d))) |
-						    (1<<(  d |C(d)))))) {
-			    workspace[(2*y+1)*W+(2*x+1)] &= ~(1<<type);
-			    done_something = true;
+            if (!(workspace[fy*W+fx] & ((1<<(F(d)|A(d))) |
+                            (1<<(F(d)|C(d))))) &&
+                !(workspace[gy*W+gx] & ((1<<(  d |A(d))) |
+                            (1<<(  d |C(d)))))) {
+                workspace[(2*y+1)*W+(2*x+1)] &= ~(1<<type);
+                done_something = true;
 #ifdef SOLVER_DIAGNOSTICS
-			    printf("straight clue at (%d,%d) cannot corner at "
-				   "(%d,%d) or (%d,%d) so is not state %d\n",
-				   x, y, fx/2, fy/2, gx/2, gy/2, type);
+                printf("straight clue at (%d,%d) cannot corner at "
+                   "(%d,%d) or (%d,%d) so is not state %d\n",
+                   x, y, fx/2, fy/2, gx/2, gy/2, type);
 #endif
-			}
-						    
-		    }
+            }
+                            
+            }
 
-		    /*
-		     * If a straight clue with known direction is
-		     * connected on one side to a known straight,
-		     * then on the other side it must be a corner.
-		     */
-		    for (d = 1; d <= 8; d += d) {
-			int fx = 2*x+1 + 2*DX(d), fy = 2*y+1 + 2*DY(d);
-			int gx = 2*x+1 - 2*DX(d), gy = 2*y+1 - 2*DY(d);
-			int type = d | F(d);
+            /*
+             * If a straight clue with known direction is
+             * connected on one side to a known straight,
+             * then on the other side it must be a corner.
+             */
+            for (d = 1; d <= 8; d += d) {
+            int fx = 2*x+1 + 2*DX(d), fy = 2*y+1 + 2*DY(d);
+            int gx = 2*x+1 - 2*DX(d), gy = 2*y+1 - 2*DY(d);
+            int type = d | F(d);
 
-			if (workspace[(2*y+1)*W+(2*x+1)] != (1<<type))
-			    continue;
+            if (workspace[(2*y+1)*W+(2*x+1)] != (1<<type))
+                continue;
 
-			if (!(workspace[fy*W+fx] &~ (bLR|bUD)) &&
-			    (workspace[gy*W+gx] &~ (bLU|bLD|bRU|bRD))) {
-			    workspace[gy*W+gx] &= (bLU|bLD|bRU|bRD);
-			    done_something = true;
+            if (!(workspace[fy*W+fx] &~ (bLR|bUD)) &&
+                (workspace[gy*W+gx] &~ (bLU|bLD|bRU|bRD))) {
+                workspace[gy*W+gx] &= (bLU|bLD|bRU|bRD);
+                done_something = true;
 #ifdef SOLVER_DIAGNOSTICS
-			    printf("straight clue at (%d,%d) connecting to "
-				   "straight at (%d,%d) makes (%d,%d) a "
-				   "corner\n", x, y, fx/2, fy/2, gx/2, gy/2);
+                printf("straight clue at (%d,%d) connecting to "
+                   "straight at (%d,%d) makes (%d,%d) a "
+                   "corner\n", x, y, fx/2, fy/2, gx/2, gy/2);
 #endif
-			}
-						    
-		    }
-		    break;
-		}
+            }
+                            
+            }
+            break;
+        }
 
-	if (done_something)
-	    continue;
+    if (done_something)
+        continue;
 
-	/*
-	 * Now detect shortcut loops.
-	 */
+    /*
+     * Now detect shortcut loops.
+     */
 
-	{
-	    int nonblanks, loopclass;
+    {
+        int nonblanks, loopclass;
 
-	    dsf_init(dsf, w*h);
-	    for (x = 0; x < w*h; x++)
-		dsfsize[x] = 1;
+        dsf_init(dsf, w*h);
+        for (x = 0; x < w*h; x++)
+        dsfsize[x] = 1;
 
-	    /*
-	     * First go through the edge entries and update the dsf
-	     * of which squares are connected to which others. We
-	     * also track the number of squares in each equivalence
-	     * class, and count the overall number of
-	     * known-non-blank squares.
-	     *
-	     * In the process of doing this, we must notice if a
-	     * loop has already been formed. If it has, we blank
-	     * out any square which isn't part of that loop
-	     * (failing a consistency check if any such square does
-	     * not have BLANK as one of its remaining options) and
-	     * exit the deduction loop with success.
-	     */
-	    nonblanks = 0;
-	    loopclass = -1;
-	    for (y = 1; y < H-1; y++)
-		for (x = 1; x < W-1; x++)
-		    if ((y ^ x) & 1) {
-			/*
-			 * (x,y) are the workspace coordinates of
-			 * an edge field. Compute the normal-space
-			 * coordinates of the squares it connects.
-			 */
-			int ax = (x-1)/2, ay = (y-1)/2, ac = ay*w+ax;
-			int bx = x/2, by = y/2, bc = by*w+bx;
+        /*
+         * First go through the edge entries and update the dsf
+         * of which squares are connected to which others. We
+         * also track the number of squares in each equivalence
+         * class, and count the overall number of
+         * known-non-blank squares.
+         *
+         * In the process of doing this, we must notice if a
+         * loop has already been formed. If it has, we blank
+         * out any square which isn't part of that loop
+         * (failing a consistency check if any such square does
+         * not have BLANK as one of its remaining options) and
+         * exit the deduction loop with success.
+         */
+        nonblanks = 0;
+        loopclass = -1;
+        for (y = 1; y < H-1; y++)
+        for (x = 1; x < W-1; x++)
+            if ((y ^ x) & 1) {
+            /*
+             * (x,y) are the workspace coordinates of
+             * an edge field. Compute the normal-space
+             * coordinates of the squares it connects.
+             */
+            int ax = (x-1)/2, ay = (y-1)/2, ac = ay*w+ax;
+            int bx = x/2, by = y/2, bc = by*w+bx;
 
-			/*
-			 * If the edge is connected, do the dsf
-			 * thing.
-			 */
-			if (workspace[y*W+x] == 1) {
-			    int ae, be;
+            /*
+             * If the edge is connected, do the dsf
+             * thing.
+             */
+            if (workspace[y*W+x] == 1) {
+                int ae, be;
 
-			    ae = dsf_canonify(dsf, ac);
-			    be = dsf_canonify(dsf, bc);
+                ae = dsf_canonify(dsf, ac);
+                be = dsf_canonify(dsf, bc);
 
-			    if (ae == be) {
-				/*
-				 * We have a loop!
-				 */
-				if (loopclass != -1) {
-				    /*
-				     * In fact, we have two
-				     * separate loops, which is
-				     * doom.
-				     */
+                if (ae == be) {
+                /*
+                 * We have a loop!
+                 */
+                if (loopclass != -1) {
+                    /*
+                     * In fact, we have two
+                     * separate loops, which is
+                     * doom.
+                     */
 #ifdef SOLVER_DIAGNOSTICS
-				    printf("two loops found in grid!\n");
+                    printf("two loops found in grid!\n");
 #endif
-				    ret = 0;
-				    goto cleanup;
-				}
-				loopclass = ae;
-			    } else {
-				/*
-				 * Merge the two equivalence
-				 * classes.
-				 */
-				int size = dsfsize[ae] + dsfsize[be];
-				dsf_merge(dsf, ac, bc);
-				ae = dsf_canonify(dsf, ac);
-				dsfsize[ae] = size;
-			    }
-			}
-		    } else if ((y & x) & 1) {
-			/*
-			 * (x,y) are the workspace coordinates of a
-			 * square field. If the square is
-			 * definitely not blank, count it.
-			 */
-			if (!(workspace[y*W+x] & bBLANK))
-			    nonblanks++;
-		    }
+                    ret = 0;
+                    goto cleanup;
+                }
+                loopclass = ae;
+                } else {
+                /*
+                 * Merge the two equivalence
+                 * classes.
+                 */
+                int size = dsfsize[ae] + dsfsize[be];
+                dsf_merge(dsf, ac, bc);
+                ae = dsf_canonify(dsf, ac);
+                dsfsize[ae] = size;
+                }
+            }
+            } else if ((y & x) & 1) {
+            /*
+             * (x,y) are the workspace coordinates of a
+             * square field. If the square is
+             * definitely not blank, count it.
+             */
+            if (!(workspace[y*W+x] & bBLANK))
+                nonblanks++;
+            }
 
-	    /*
-	     * If we discovered an existing loop above, we must now
-	     * blank every square not part of it, and exit the main
-	     * deduction loop.
-	     */
-	    if (loopclass != -1) {
+        /*
+         * If we discovered an existing loop above, we must now
+         * blank every square not part of it, and exit the main
+         * deduction loop.
+         */
+        if (loopclass != -1) {
 #ifdef SOLVER_DIAGNOSTICS
-		printf("loop found in grid!\n");
+        printf("loop found in grid!\n");
 #endif
-		for (y = 0; y < h; y++)
-		    for (x = 0; x < w; x++)
-			if (dsf_canonify(dsf, y*w+x) != loopclass) {
-			    if (workspace[(y*2+1)*W+(x*2+1)] & bBLANK) {
-				workspace[(y*2+1)*W+(x*2+1)] = bBLANK;
-			    } else {
-				/*
-				 * This square is not part of the
-				 * loop, but is known non-blank. We
-				 * have goofed.
-				 */
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w; x++)
+            if (dsf_canonify(dsf, y*w+x) != loopclass) {
+                if (workspace[(y*2+1)*W+(x*2+1)] & bBLANK) {
+                workspace[(y*2+1)*W+(x*2+1)] = bBLANK;
+                } else {
+                /*
+                 * This square is not part of the
+                 * loop, but is known non-blank. We
+                 * have goofed.
+                 */
 #ifdef SOLVER_DIAGNOSTICS
-				printf("non-blank square (%d,%d) found outside"
-				       " loop!\n", x, y);
+                printf("non-blank square (%d,%d) found outside"
+                       " loop!\n", x, y);
 #endif
-				ret = 0;
-				goto cleanup;
-			    }
-			}
-		/*
-		 * And we're done.
-		 */
-		ret = 1;
-		break;
-	    }
+                ret = 0;
+                goto cleanup;
+                }
+            }
+        /*
+         * And we're done.
+         */
+        ret = 1;
+        break;
+        }
 
             /* Further deductions are considered 'tricky'. */
             if (difficulty == DIFF_EASY) goto done_deductions;
 
-	    /*
-	     * Now go through the workspace again and mark any edge
-	     * which would cause a shortcut loop (i.e. would
-	     * connect together two squares in the same equivalence
-	     * class, and that equivalence class does not contain
-	     * _all_ the known-non-blank squares currently in the
-	     * grid) as disconnected. Also, mark any _square state_
-	     * which would cause a shortcut loop as disconnected.
-	     */
-	    for (y = 1; y < H-1; y++)
-		for (x = 1; x < W-1; x++)
-		    if ((y ^ x) & 1) {
-			/*
-			 * (x,y) are the workspace coordinates of
-			 * an edge field. Compute the normal-space
-			 * coordinates of the squares it connects.
-			 */
-			int ax = (x-1)/2, ay = (y-1)/2, ac = ay*w+ax;
-			int bx = x/2, by = y/2, bc = by*w+bx;
+        /*
+         * Now go through the workspace again and mark any edge
+         * which would cause a shortcut loop (i.e. would
+         * connect together two squares in the same equivalence
+         * class, and that equivalence class does not contain
+         * _all_ the known-non-blank squares currently in the
+         * grid) as disconnected. Also, mark any _square state_
+         * which would cause a shortcut loop as disconnected.
+         */
+        for (y = 1; y < H-1; y++)
+        for (x = 1; x < W-1; x++)
+            if ((y ^ x) & 1) {
+            /*
+             * (x,y) are the workspace coordinates of
+             * an edge field. Compute the normal-space
+             * coordinates of the squares it connects.
+             */
+            int ax = (x-1)/2, ay = (y-1)/2, ac = ay*w+ax;
+            int bx = x/2, by = y/2, bc = by*w+bx;
 
-			/*
-			 * If the edge is currently unknown, and
-			 * sits between two squares in the same
-			 * equivalence class, and the size of that
-			 * class is less than nonblanks, then
-			 * connecting this edge would be a shortcut
-			 * loop and so we must not do so.
-			 */
-			if (workspace[y*W+x] == 3) {
-			    int ae, be;
+            /*
+             * If the edge is currently unknown, and
+             * sits between two squares in the same
+             * equivalence class, and the size of that
+             * class is less than nonblanks, then
+             * connecting this edge would be a shortcut
+             * loop and so we must not do so.
+             */
+            if (workspace[y*W+x] == 3) {
+                int ae, be;
 
-			    ae = dsf_canonify(dsf, ac);
-			    be = dsf_canonify(dsf, bc);
+                ae = dsf_canonify(dsf, ac);
+                be = dsf_canonify(dsf, bc);
 
-			    if (ae == be) {
-				/*
-				 * We have a loop. Is it a shortcut?
-				 */
-				if (dsfsize[ae] < nonblanks) {
-				    /*
-				     * Yes! Mark this edge disconnected.
-				     */
-				    workspace[y*W+x] = 2;
-				    done_something = true;
+                if (ae == be) {
+                /*
+                 * We have a loop. Is it a shortcut?
+                 */
+                if (dsfsize[ae] < nonblanks) {
+                    /*
+                     * Yes! Mark this edge disconnected.
+                     */
+                    workspace[y*W+x] = 2;
+                    done_something = true;
 #ifdef SOLVER_DIAGNOSTICS
-				    printf("edge (%d,%d)-(%d,%d) would create"
-					   " a shortcut loop, hence must be"
-					   " disconnected\n", x/2, y/2,
-					   (x+1)/2, (y+1)/2);
+                    printf("edge (%d,%d)-(%d,%d) would create"
+                       " a shortcut loop, hence must be"
+                       " disconnected\n", x/2, y/2,
+                       (x+1)/2, (y+1)/2);
 #endif
-				}
-			    }
-			}
-		    } else if ((y & x) & 1) {
-			/*
-			 * (x,y) are the workspace coordinates of a
-			 * square field. Go through its possible
-			 * (non-blank) states and see if any gives
-			 * rise to a shortcut loop.
-			 * 
-			 * This is slightly fiddly, because we have
-			 * to check whether this square is already
-			 * part of the same equivalence class as
-			 * the things it's joining.
-			 */
-			int ae = dsf_canonify(dsf, (y/2)*w+(x/2));
+                }
+                }
+            }
+            } else if ((y & x) & 1) {
+            /*
+             * (x,y) are the workspace coordinates of a
+             * square field. Go through its possible
+             * (non-blank) states and see if any gives
+             * rise to a shortcut loop.
+             * 
+             * This is slightly fiddly, because we have
+             * to check whether this square is already
+             * part of the same equivalence class as
+             * the things it's joining.
+             */
+            int ae = dsf_canonify(dsf, (y/2)*w+(x/2));
 
-			for (b = 2; b < 0xD; b++)
-			    if (workspace[y*W+x] & (1<<b)) {
-				/*
-				 * Find the equivalence classes of
-				 * the two squares this one would
-				 * connect if it were in this
-				 * state.
-				 */
-				int e = -1;
+            for (b = 2; b < 0xD; b++)
+                if (workspace[y*W+x] & (1<<b)) {
+                /*
+                 * Find the equivalence classes of
+                 * the two squares this one would
+                 * connect if it were in this
+                 * state.
+                 */
+                int e = -1;
 
-				for (d = 1; d <= 8; d += d) if (b & d) {
-				    int xx = x/2 + DX(d), yy = y/2 + DY(d);
-				    int ee = dsf_canonify(dsf, yy*w+xx);
+                for (d = 1; d <= 8; d += d) if (b & d) {
+                    int xx = x/2 + DX(d), yy = y/2 + DY(d);
+                    int ee = dsf_canonify(dsf, yy*w+xx);
 
-				    if (e == -1)
-					ee = e;
-				    else if (e != ee)
-					e = -2;
-				}
+                    if (e == -1)
+                    ee = e;
+                    else if (e != ee)
+                    e = -2;
+                }
 
-				if (e >= 0) {
-				    /*
-				     * This square state would form
-				     * a loop on equivalence class
-				     * e. Measure the size of that
-				     * loop, and see if it's a
-				     * shortcut.
-				     */
-				    int loopsize = dsfsize[e];
-				    if (e != ae)
-					loopsize++;/* add the square itself */
-				    if (loopsize < nonblanks) {
-					/*
-					 * It is! Mark this square
-					 * state invalid.
-					 */
-					workspace[y*W+x] &= ~(1<<b);
-					done_something = true;
+                if (e >= 0) {
+                    /*
+                     * This square state would form
+                     * a loop on equivalence class
+                     * e. Measure the size of that
+                     * loop, and see if it's a
+                     * shortcut.
+                     */
+                    int loopsize = dsfsize[e];
+                    if (e != ae)
+                    loopsize++;/* add the square itself */
+                    if (loopsize < nonblanks) {
+                    /*
+                     * It is! Mark this square
+                     * state invalid.
+                     */
+                    workspace[y*W+x] &= ~(1<<b);
+                    done_something = true;
 #ifdef SOLVER_DIAGNOSTICS
-					printf("square (%d,%d) would create a "
-					       "shortcut loop in state %d, "
-					       "hence cannot be\n",
-					       x/2, y/2, b);
+                    printf("square (%d,%d) would create a "
+                           "shortcut loop in state %d, "
+                           "hence cannot be\n",
+                           x/2, y/2, b);
 #endif
-				    }
-				}
-			    }
-		    }
-	}
+                    }
+                }
+                }
+            }
+    }
 
 done_deductions:
 
-	if (done_something)
-	    continue;
+    if (done_something)
+        continue;
 
-	/*
-	 * If we reach here, there is nothing left we can do.
-	 * Return 2 for ambiguous puzzle.
-	 */
-	ret = 2;
-	break;
+    /*
+     * If we reach here, there is nothing left we can do.
+     * Return 2 for ambiguous puzzle.
+     */
+    ret = 2;
+    break;
     }
 
 cleanup:
@@ -1136,17 +1136,17 @@ static void pearl_loopgen(int w, int h, char *lines, random_state *rs)
 #if defined LOOPGEN_DIAGNOSTICS && !defined GENERATION_DIAGNOSTICS
     printf("as returned:\n");
     for (y = 0; y < h; y++) {
-	for (x = 0; x < w; x++) {
-	    int type = lines[y*w+x];
-	    char s[5], *p = s;
-	    if (type & L) *p++ = 'L';
-	    if (type & R) *p++ = 'R';
-	    if (type & U) *p++ = 'U';
-	    if (type & D) *p++ = 'D';
-	    *p = '\0';
-	    printf("%3s", s);
-	}
-	printf("\n");
+    for (x = 0; x < w; x++) {
+        int type = lines[y*w+x];
+        char s[5], *p = s;
+        if (type & L) *p++ = 'L';
+        if (type & R) *p++ = 'R';
+        if (type & U) *p++ = 'U';
+        if (type & D) *p++ = 'D';
+        *p = '\0';
+        printf("%3s", s);
+    }
+    printf("\n");
     }
     printf("\n");
 #endif
@@ -1168,76 +1168,76 @@ static int new_clues(const game_params *params, random_state *rs,
 
     while (1) {
         ngen++;
-	pearl_loopgen(w, h, grid, rs);
+    pearl_loopgen(w, h, grid, rs);
 
 #ifdef GENERATION_DIAGNOSTICS
-	printf("grid array:\n");
-	for (y = 0; y < h; y++) {
-	    for (x = 0; x < w; x++) {
-		int type = grid[y*w+x];
-		char s[5], *p = s;
-		if (type & L) *p++ = 'L';
-		if (type & R) *p++ = 'R';
-		if (type & U) *p++ = 'U';
-		if (type & D) *p++ = 'D';
-		*p = '\0';
-		printf("%2s ", s);
-	    }
-	    printf("\n");
-	}
-	printf("\n");
+    printf("grid array:\n");
+    for (y = 0; y < h; y++) {
+        for (x = 0; x < w; x++) {
+        int type = grid[y*w+x];
+        char s[5], *p = s;
+        if (type & L) *p++ = 'L';
+        if (type & R) *p++ = 'R';
+        if (type & U) *p++ = 'U';
+        if (type & D) *p++ = 'D';
+        *p = '\0';
+        printf("%2s ", s);
+        }
+        printf("\n");
+    }
+    printf("\n");
 #endif
 
-	/*
-	 * Set up the maximal clue array.
-	 */
-	for (y = 0; y < h; y++)
-	    for (x = 0; x < w; x++) {
-		int type = grid[y*w+x];
+    /*
+     * Set up the maximal clue array.
+     */
+    for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++) {
+        int type = grid[y*w+x];
 
-		clues[y*w+x] = NOCLUE;
+        clues[y*w+x] = NOCLUE;
 
-		if ((bLR|bUD) & (1 << type)) {
-		    /*
-		     * This is a straight; see if it's a viable
-		     * candidate for a straight clue. It qualifies if
-		     * at least one of the squares it connects to is a
-		     * corner.
-		     */
-		    for (d = 1; d <= 8; d += d) if (type & d) {
-			int xx = x + DX(d), yy = y + DY(d);
-			assert(xx >= 0 && xx < w && yy >= 0 && yy < h);
-			if ((bLU|bLD|bRU|bRD) & (1 << grid[yy*w+xx]))
-			    break;
-		    }
-		    if (d <= 8)	       /* we found one */
-			clues[y*w+x] = STRAIGHT;
-		} else if ((bLU|bLD|bRU|bRD) & (1 << type)) {
-		    /*
-		     * This is a corner; see if it's a viable candidate
-		     * for a corner clue. It qualifies if all the
-		     * squares it connects to are straights.
-		     */
-		    for (d = 1; d <= 8; d += d) if (type & d) {
-			int xx = x + DX(d), yy = y + DY(d);
-			assert(xx >= 0 && xx < w && yy >= 0 && yy < h);
-			if (!((bLR|bUD) & (1 << grid[yy*w+xx])))
-			    break;
-		    }
-		    if (d > 8)	       /* we didn't find a counterexample */
-			clues[y*w+x] = CORNER;
-		}
-	    }
+        if ((bLR|bUD) & (1 << type)) {
+            /*
+             * This is a straight; see if it's a viable
+             * candidate for a straight clue. It qualifies if
+             * at least one of the squares it connects to is a
+             * corner.
+             */
+            for (d = 1; d <= 8; d += d) if (type & d) {
+            int xx = x + DX(d), yy = y + DY(d);
+            assert(xx >= 0 && xx < w && yy >= 0 && yy < h);
+            if ((bLU|bLD|bRU|bRD) & (1 << grid[yy*w+xx]))
+                break;
+            }
+            if (d <= 8)           /* we found one */
+            clues[y*w+x] = STRAIGHT;
+        } else if ((bLU|bLD|bRU|bRD) & (1 << type)) {
+            /*
+             * This is a corner; see if it's a viable candidate
+             * for a corner clue. It qualifies if all the
+             * squares it connects to are straights.
+             */
+            for (d = 1; d <= 8; d += d) if (type & d) {
+            int xx = x + DX(d), yy = y + DY(d);
+            assert(xx >= 0 && xx < w && yy >= 0 && yy < h);
+            if (!((bLR|bUD) & (1 << grid[yy*w+xx])))
+                break;
+            }
+            if (d > 8)           /* we didn't find a counterexample */
+            clues[y*w+x] = CORNER;
+        }
+        }
 
 #ifdef GENERATION_DIAGNOSTICS
-	printf("clue array:\n");
-	for (y = 0; y < h; y++) {
-	    for (x = 0; x < w; x++) {
-		printf("%c", " *O"[(unsigned char)clues[y*w+x]]);
-	    }
-	    printf("\n");
-	}
-	printf("\n");
+    printf("clue array:\n");
+    for (y = 0; y < h; y++) {
+        for (x = 0; x < w; x++) {
+        printf("%c", " *O"[(unsigned char)clues[y*w+x]]);
+        }
+        printf("\n");
+    }
+    printf("\n");
 #endif
 
         if (!params->nosolve) {
@@ -1248,9 +1248,9 @@ static int new_clues(const game_params *params, random_state *rs,
              * See if we can solve the puzzle just like this.
              */
             ret = pearl_solve(w, h, clues, grid, diff, false);
-            assert(ret > 0);	       /* shouldn't be inconsistent! */
+            assert(ret > 0);           /* shouldn't be inconsistent! */
             if (ret != 1)
-                continue;		       /* go round and try again */
+                continue;               /* go round and try again */
 
             /*
              * Check this puzzle isn't too easy.
@@ -1321,7 +1321,7 @@ static int new_clues(const game_params *params, random_state *rs,
                 x = cluepos % w;
 
                 clue = clues[y*w+x];
-                clues[y*w+x] = 0;	       /* try removing this clue */
+                clues[y*w+x] = 0;           /* try removing this clue */
 
                 ret = pearl_solve(w, h, clues, grid, diff, false);
                 assert(ret > 0);
@@ -1332,17 +1332,17 @@ static int new_clues(const game_params *params, random_state *rs,
         }
 
 #ifdef FINISHED_PUZZLE
-	printf("clue array:\n");
-	for (y = 0; y < h; y++) {
-	    for (x = 0; x < w; x++) {
-		printf("%c", " *O"[(unsigned char)clues[y*w+x]]);
-	    }
-	    printf("\n");
-	}
-	printf("\n");
+    printf("clue array:\n");
+    for (y = 0; y < h; y++) {
+        for (x = 0; x < w; x++) {
+        printf("%c", " *O"[(unsigned char)clues[y*w+x]]);
+        }
+        printf("\n");
+    }
+    printf("\n");
 #endif
 
-	break;			       /* got it */
+    break;                   /* got it */
     }
 
     debug(("%d %dx%d loops before finished puzzle.\n", ngen, w, h));
@@ -1351,7 +1351,7 @@ static int new_clues(const game_params *params, random_state *rs,
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     char *grid, *clues;
     char *desc;
@@ -1766,42 +1766,6 @@ done:
     return move;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int w = state->shared->w, h = state->shared->h, cw = 4, ch = 2;
-    int gw = cw*(w-1) + 2, gh = ch*(h-1) + 1, len = gw * gh, r, c, j;
-    char *board = snewn(len + 1, char);
-
-    assert(board);
-    memset(board, ' ', len);
-
-    for (r = 0; r < h; ++r) {
-	for (c = 0; c < w; ++c) {
-	    int i = r*w + c, cell = r*ch*gw + c*cw;
-	    board[cell] = "+BW"[(unsigned char)state->shared->clues[i]];
-	    if (c < w - 1 && (state->lines[i] & R || state->lines[i+1] & L))
-		memset(board + cell + 1, '-', cw - 1);
-	    if (r < h - 1 && (state->lines[i] & D || state->lines[i+w] & U))
-		for (j = 1; j < ch; ++j) board[cell + j*gw] = '|';
-	    if (c < w - 1 && (state->marks[i] & R || state->marks[i+1] & L))
-		board[cell + cw/2] = 'x';
-	    if (r < h - 1 && (state->marks[i] & D || state->marks[i+w] & U))
-		board[cell + (ch/2 * gw)] = 'x';
-	}
-
-	for (j = 0; j < (r == h - 1 ? 1 : ch); ++j)
-	    board[r*ch*gw + (gw - 1) + j*gw] = '\n';
-    }
-
-    board[len] = '\0';
-    return board;
-}
-
 struct game_ui {
     int *dragcoords;       /* list of (y*w+x) coords in drag so far */
     int ndragcoords;       /* number of entries in dragcoords.
@@ -2009,7 +1973,7 @@ static void interpret_ui_drag(const game_state *state, const game_ui *ui,
 }
 
 static char *mark_in_direction(const game_state *state, int x, int y, int dir,
-			       bool primary, char *buf)
+                   bool primary, char *buf)
 {
     int w = state->shared->w /*, h = state->shared->h, sz = state->shared->sz */;
     int x2 = x + DX(dir);
@@ -2045,7 +2009,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     button &= ~MOD_MASK;
 
     if (IS_MOUSE_DOWN(button)) {
-	ui->cursor_active = false;
+    ui->cursor_active = false;
 
         if (!INGRID(state, gx, gy)) {
             ui->ndragcoords = -1;
@@ -2067,41 +2031,41 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (IS_MOUSE_RELEASE(button)) release = true;
 
     if (IS_CURSOR_MOVE(button)) {
-	if (!ui->cursor_active) {
-	    ui->cursor_active = true;
-	} else if (control || shift) {
-	    char *move;
-	    if (ui->ndragcoords > 0) return NULL;
-	    ui->ndragcoords = -1;
-	    move = mark_in_direction(state, ui->curx, ui->cury,
-				     KEY_DIRECTION(button), control, tmpbuf);
-	    if (control && !shift && *move)
-		move_cursor(button, &ui->curx, &ui->cury, w, h, false);
-	    return move;
-	} else {
-	    move_cursor(button, &ui->curx, &ui->cury, w, h, false);
-	    if (ui->ndragcoords >= 0)
-		update_ui_drag(state, ui, ui->curx, ui->cury);
-	}
-	return UI_UPDATE;
+    if (!ui->cursor_active) {
+        ui->cursor_active = true;
+    } else if (control || shift) {
+        char *move;
+        if (ui->ndragcoords > 0) return NULL;
+        ui->ndragcoords = -1;
+        move = mark_in_direction(state, ui->curx, ui->cury,
+                     KEY_DIRECTION(button), control, tmpbuf);
+        if (control && !shift && *move)
+        move_cursor(button, &ui->curx, &ui->cury, w, h, false);
+        return move;
+    } else {
+        move_cursor(button, &ui->curx, &ui->cury, w, h, false);
+        if (ui->ndragcoords >= 0)
+        update_ui_drag(state, ui, ui->curx, ui->cury);
+    }
+    return UI_UPDATE;
     }
 
     if (IS_CURSOR_SELECT(button)) {
-	if (!ui->cursor_active) {
-	    ui->cursor_active = true;
-	    return UI_UPDATE;
-	} else if (button == CURSOR_SELECT) {
-	    if (ui->ndragcoords == -1) {
-		ui->ndragcoords = 0;
-		ui->dragcoords[0] = ui->cury * w + ui->curx;
-		ui->clickx = CENTERED_COORD(ui->curx);
-		ui->clicky = CENTERED_COORD(ui->cury);
-		return UI_UPDATE;
-	    } else release = true;
-	} else if (button == CURSOR_SELECT2 && ui->ndragcoords >= 0) {
-	    ui->ndragcoords = -1;
-	    return UI_UPDATE;
-	}
+    if (!ui->cursor_active) {
+        ui->cursor_active = true;
+        return UI_UPDATE;
+    } else if (button == CURSOR_SELECT) {
+        if (ui->ndragcoords == -1) {
+        ui->ndragcoords = 0;
+        ui->dragcoords[0] = ui->cury * w + ui->curx;
+        ui->clickx = CENTERED_COORD(ui->curx);
+        ui->clicky = CENTERED_COORD(ui->cury);
+        return UI_UPDATE;
+        } else release = true;
+    } else if (button == CURSOR_SELECT2 && ui->ndragcoords >= 0) {
+        ui->ndragcoords = -1;
+        return UI_UPDATE;
+    }
     }
 
     if (button == 27 || button == '\b') {
@@ -2166,7 +2130,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
                 return UI_UPDATE;
             } else {
-		int direction;
+        int direction;
                 if (abs(x-cx) < abs(y-cy)) {
                     /* Closest to top/bottom edge. */
                     direction = (y < cy) ? U : D;
@@ -2174,8 +2138,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                     /* Closest to left/right edge. */
                     direction = (x < cx) ? L : R;
                 }
-		return mark_in_direction(state, gx, gy, direction,
-					 (button == LEFT_RELEASE), tmpbuf);
+        return mark_in_direction(state, gx, gy, direction,
+                     (button == LEFT_RELEASE), tmpbuf);
             }
         }
     }
@@ -2286,26 +2250,16 @@ static float *game_colours(frontend *fe, int *ncolours)
     game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
 
     for (i = 0; i < 3; i++) {
-        ret[COL_BLACK * 3 + i] = 0.0F;
-        ret[COL_WHITE * 3 + i] = 1.0F;
-        ret[COL_GRID * 3 + i] = 0.4F;
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.7F;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.4F;
+        ret[COL_BLACK      * 3 + i] = 0.0F;
+        ret[COL_WHITE      * 3 + i] = 1.0F;
+        ret[COL_GRID       * 3 + i] = 0.0F;
+        ret[COL_ERROR      * 3 + i] = 0.5F;
+        ret[COL_DRAGON     * 3 + i] = 0.3F;
+        ret[COL_DRAGOFF    * 3 + i] = 0.7F;
     }
-
-    ret[COL_ERROR * 3 + 0] = 1.0F;
-    ret[COL_ERROR * 3 + 1] = 0.0F;
-    ret[COL_ERROR * 3 + 2] = 0.0F;
-
-    ret[COL_DRAGON * 3 + 0] = 0.0F;
-    ret[COL_DRAGON * 3 + 1] = 0.0F;
-    ret[COL_DRAGON * 3 + 2] = 1.0F;
-
-    ret[COL_DRAGOFF * 3 + 0] = 0.8F;
-    ret[COL_DRAGOFF * 3 + 1] = 0.8F;
-    ret[COL_DRAGOFF * 3 + 2] = 1.0F;
-
-    ret[COL_FLASH * 3 + 0] = 1.0F;
-    ret[COL_FLASH * 3 + 1] = 1.0F;
-    ret[COL_FLASH * 3 + 2] = 1.0F;
 
     *ncolours = NCOLOURS;
 
@@ -2386,17 +2340,17 @@ static void draw_square(drawing *dr, game_drawstate *ds, const game_ui *ui,
 
     /* Clear the square. */
     draw_rect(dr, ox, oy, TILE_SIZE, TILE_SIZE,
-	      (lflags & DS_CURSOR) ?
-	      COL_CURSOR_BACKGROUND : COL_BACKGROUND);
-	      
+          (lflags & DS_CURSOR) ?
+          COL_CURSOR_BACKGROUND : COL_BACKGROUND);
+          
 
     if (get_gui_style() == GUI_LOOPY) {
         /* Draw small dot, underneath any lines. */
         draw_circle(dr, cx, cy, t16, COL_GRID, COL_GRID);
     } else {
         /* Draw outline of grid square */
-        draw_line(dr, ox, oy, COORD(x+1), oy, COL_GRID);
-        draw_line(dr, ox, oy, ox, COORD(y+1), COL_GRID);
+        draw_thick_line(dr, 3.0, ox, oy, COORD(x+1), oy, COL_GRID);
+        draw_thick_line(dr, 3.0, ox, oy, ox, COORD(y+1), COL_GRID);
     }
 
     /* Draw grid: either thin gridlines, or no-line marks.
@@ -2427,21 +2381,19 @@ static void draw_square(drawing *dr, game_drawstate *ds, const game_ui *ui,
     /* Draw each of the four directions, where laid (or error, or drag, etc.)
      * Order is important here, specifically for the eventual colours of the
      * exposed end caps. */
-    draw_lines_specific(dr, ds, x, y, lflags, 0,
-                        (lflags & DS_FLASH ? COL_FLASH : COL_BLACK));
+    draw_lines_specific(dr, ds, x, y, lflags, 0, COL_BLACK);
     draw_lines_specific(dr, ds, x, y, lflags, DS_ESHIFT, COL_ERROR);
     draw_lines_specific(dr, ds, x, y, lflags, DS_DSHIFT, COL_DRAGOFF);
     draw_lines_specific(dr, ds, x, y, lflags, DS_DSHIFT, COL_DRAGON);
 
     /* Draw a clue, if present */
     if (clue != NOCLUE) {
-        int c = (lflags & DS_FLASH) ? COL_FLASH :
-                (clue == STRAIGHT) ? COL_WHITE : COL_BLACK;
-
         if (lflags & DS_ERROR_CLUE) /* draw a bigger 'error' clue circle. */
             draw_circle(dr, cx, cy, TILE_SIZE*3/8, COL_ERROR, COL_ERROR);
 
-        draw_circle(dr, cx, cy, TILE_SIZE/4, c, COL_BLACK);
+        draw_circle(dr, cx, cy, TILE_SIZE/4, COL_BLACK, COL_BLACK);
+        if (clue == STRAIGHT)
+            draw_circle(dr, cx, cy, TILE_SIZE/4-TILE_SIZE/12, COL_WHITE, COL_WHITE);
     }
 
     unclip(dr);
@@ -2499,7 +2451,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             ds->draglines[sy*w+sx] ^= (oldstate ^ newstate);
             ds->draglines[dy*w+dx] ^= (F(oldstate) ^ F(newstate));
         }
-    }	
+    }    
 
     for (x = 0; x < w; x++) {
         for (y = 0; y < h; y++) {
@@ -2515,8 +2467,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
             f |= flashing;
 
-	    if (ui->cursor_active && x == ui->curx && y == ui->cury)
-		f |= DS_CURSOR;
+        if (ui->cursor_active && x == ui->curx && y == ui->cury)
+        f |= DS_CURSOR;
 
             if (f != ds->lflags[y*w+x] || force) {
                 ds->lflags[y*w+x] = f;
@@ -2535,11 +2487,7 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-        !oldstate->used_solve && !newstate->used_solve)
-        return FLASH_TIME;
-    else
-        return 0.0F;
+    return 0.0F;
 }
 
 static int game_status(const game_state *state)
@@ -2552,52 +2500,7 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
     return true;
 }
 
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-    int pw, ph;
 
-    /*
-     * I'll use 6mm squares by default.
-     */
-    game_compute_size(params, 600, &pw, &ph);
-    *x = pw / 100.0F;
-    *y = ph / 100.0F;
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
-    int w = state->shared->w, h = state->shared->h, x, y;
-    int black = print_mono_colour(dr, 0);
-    int white = print_mono_colour(dr, 1);
-
-    /* No GUI_LOOPY here: only use the familiar masyu style. */
-
-    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
-    game_drawstate *ds = game_new_drawstate(dr, state);
-    game_set_size(dr, ds, NULL, tilesize);
-
-    /* Draw grid outlines (black). */
-    for (x = 0; x <= w; x++)
-        draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h), black);
-    for (y = 0; y <= h; y++)
-        draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y), black);
-
-    for (x = 0; x < w; x++) {
-        for (y = 0; y < h; y++) {
-            int cx = COORD(x) + HALFSZ, cy = COORD(y) + HALFSZ;
-            int clue = state->shared->clues[y*w+x];
-
-            draw_lines_specific(dr, ds, x, y, state->lines[y*w+x], 0, black);
-
-            if (clue != NOCLUE) {
-                int c = (clue == CORNER) ? black : white;
-                draw_circle(dr, cx, cy, TILE_SIZE/4, c, black);
-            }
-        }
-    }
-
-    game_free_drawstate(dr, ds);
-}
 
 #ifdef COMBINED
 #define thegame pearl
@@ -2619,7 +2522,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -2636,135 +2539,9 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    true, false, game_print_size, game_print,
-    false,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    false,                   /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    REQUIRE_RBUTTON,                       /* flags */
 };
 
-#ifdef STANDALONE_SOLVER
-
-#include <time.h>
-#include <stdarg.h>
-
-const char *quis = NULL;
-
-static void usage(FILE *out) {
-    fprintf(out, "usage: %s <params>\n", quis);
-}
-
-static void pnum(int n, int ntot, const char *desc)
-{
-    printf("%2.1f%% (%d) %s", (double)n*100.0 / (double)ntot, n, desc);
-}
-
-static void start_soak(game_params *p, random_state *rs, int nsecs)
-{
-    time_t tt_start, tt_now, tt_last;
-    int n = 0, nsolved = 0, nimpossible = 0, ret;
-    char *grid, *clues;
-
-    tt_start = tt_last = time(NULL);
-
-    /* Currently this generates puzzles of any difficulty (trying to solve it
-     * on the maximum difficulty level and not checking it's not too easy). */
-    printf("Soak-testing a %dx%d grid (any difficulty)", p->w, p->h);
-    if (nsecs > 0) printf(" for %d seconds", nsecs);
-    printf(".\n");
-
-    p->nosolve = true;
-
-    grid = snewn(p->w*p->h, char);
-    clues = snewn(p->w*p->h, char);
-
-    while (1) {
-        n += new_clues(p, rs, clues, grid); /* should be 1, with nosolve */
-
-        ret = pearl_solve(p->w, p->h, clues, grid, DIFF_TRICKY, false);
-        if (ret <= 0) nimpossible++;
-        if (ret == 1) nsolved++;
-
-        tt_now = time(NULL);
-        if (tt_now > tt_last) {
-            tt_last = tt_now;
-
-            printf("%d total, %3.1f/s, ",
-                   n, (double)n / ((double)tt_now - tt_start));
-            pnum(nsolved, n, "solved"); printf(", ");
-            printf("%3.1f/s", (double)nsolved / ((double)tt_now - tt_start));
-            if (nimpossible > 0)
-                pnum(nimpossible, n, "impossible");
-            printf("\n");
-        }
-        if (nsecs > 0 && (tt_now - tt_start) > nsecs) {
-            printf("\n");
-            break;
-        }
-    }
-
-    sfree(grid);
-    sfree(clues);
-}
-
-int main(int argc, const char *argv[])
-{
-    game_params *p = NULL;
-    random_state *rs = NULL;
-    time_t seed = time(NULL);
-    char *id = NULL;
-    const char *err;
-
-    setvbuf(stdout, NULL, _IONBF, 0);
-
-    quis = argv[0];
-
-    while (--argc > 0) {
-        char *p = (char*)(*++argv);
-        if (!strcmp(p, "-e") || !strcmp(p, "--seed")) {
-            seed = atoi(*++argv);
-            argc--;
-        } else if (*p == '-') {
-            fprintf(stderr, "%s: unrecognised option `%s'\n", argv[0], p);
-            usage(stderr);
-            exit(1);
-        } else {
-            id = p;
-        }
-    }
-
-    rs = random_new((void*)&seed, sizeof(time_t));
-    p = default_params();
-
-    if (id) {
-        if (strchr(id, ':')) {
-            fprintf(stderr, "soak takes params only.\n");
-            goto done;
-        }
-
-        decode_params(p, id);
-        err = validate_params(p, true);
-        if (err) {
-            fprintf(stderr, "%s: %s", argv[0], err);
-            goto done;
-        }
-
-        start_soak(p, rs, 0); /* run forever */
-    } else {
-        int i;
-
-        for (i = 5; i <= 12; i++) {
-            p->w = p->h = i;
-            start_soak(p, rs, 5);
-        }
-    }
-
-done:
-    free_params(p);
-    random_free(rs);
-
-    return 0;
-}
-
-#endif
-
-/* vim: set shiftwidth=4 tabstop=8: */

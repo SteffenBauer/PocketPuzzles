@@ -10,7 +10,8 @@
 - [X] Magnets: Better presets
 - [X] Pattern: Black-white-neutral circling on click
 - [X] Pattern: Better utilization of screen space
-- [ ] Pearl: Colors, Dashed error line
+- [X] Pearl: Colors
+- [ ] Pearl: Better error display for error line
 - [X] Range: Background error & outline error for black squares
 - [X] Salad: Colors, no O in letters
 - [X] Singles: Show mark on adjacent black squares error, error background on white squares
@@ -30,6 +31,7 @@
 - [X] Bridges: Adjust game colors
 - [ ] Guess: Change blitter drag to Highlight color by click -> Fill peg by click
 - [ ] Guess: Add color fill pattern
+- [ ] Group: Error display
 - [ ] Untangle: Change drag to Highlight vertex by click -> click on target coordinates
 - [X] Cube: Remove animation. Adjust colors.
 - [X] Flip: Remove animation. Adjust colors.

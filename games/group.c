@@ -1651,7 +1651,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
         movebuf = sresize(movebuf, buflen+1, char);
 
-        if (!ui->hcursor) ui->hshow = false;
+        if (!ui->hpencil) ui->hshow = false;
 
     return movebuf;
     }
@@ -2167,9 +2167,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-    !oldstate->cheated && !newstate->cheated)
-        return FLASH_TIME;
     return 0.0F;
 }
 

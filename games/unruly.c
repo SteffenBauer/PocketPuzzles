@@ -1856,6 +1856,6 @@ const struct game thegame = {
     false, false, NULL, NULL,
     false,                      /* wants_statusbar */
     false, game_timing_state,
-    0,                          /* flags */
+    REQUIRE_RBUTTON,                          /* flags */
 };
 
