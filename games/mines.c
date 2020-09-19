@@ -106,7 +106,7 @@ static game_params *default_params(void)
 
 static const struct game_params mines_presets[] = {
   {8, 8, 6, true},
-  {8, 8, 30, true},
+  {8, 8, 22, true},
   {10, 10, 10, true},
   {10, 10, 35, true},
   {12, 12, 15, true},

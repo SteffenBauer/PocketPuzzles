@@ -1236,7 +1236,6 @@ const struct game thegame = {
     false, false, NULL, NULL,
     true,                   /* wants_statusbar */
     false, game_timing_state,
-    0,                       /* flags */
+    REQUIRE_RBUTTON,                       /* flags */
 };
 
-/* vim: set shiftwidth=4 tabstop=8: */

@@ -2751,7 +2751,7 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #endif
 
 const struct game thegame = {
-    "Train Tracks", "games.tracks", "tracks",
+    "Tracks", "games.tracks", "tracks",
     default_params,
     game_fetch_preset, NULL,
     decode_params,
