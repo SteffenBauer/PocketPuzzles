@@ -1225,15 +1225,15 @@ static float *game_colours(frontend *fe, int *ncolours)
 
     COLOUR(ret, COL_BACKGROUND,          1.0F, 1.0F, 1.0F);
     COLOUR(ret, COL_GRID,                0.0F, 0.0F, 0.0F);
-    COLOUR(ret, COL_UNMARKED,            0.5F, 0.5F, 0.5F);
+    COLOUR(ret, COL_UNMARKED,            0.6F, 0.6F, 0.6F);
     COLOUR(ret, COL_MARKED,              0.0F, 0.0F, 0.0F);
     COLOUR(ret, COL_BLANK,               1.0F, 1.0F, 1.0F);
-    COLOUR(ret, COL_MARKED_UNSOLVED,     0.2F, 0.2F, 0.2F);
-    COLOUR(ret, COL_BLANK_UNSOLVED,      0.8F, 0.8F, 0.8F);
+    COLOUR(ret, COL_MARKED_UNSOLVED,     0.1F, 0.1F, 0.1F);
+    COLOUR(ret, COL_BLANK_UNSOLVED,      0.9F, 0.9F, 0.9F);
     COLOUR(ret, COL_TEXT_DARK,           0.0F, 0.0F, 0.0F);
     COLOUR(ret, COL_TEXT_LIGHT,          1.0F, 1.0F, 1.0F);
-    COLOUR(ret, COL_TEXT_DARK_UNSOLVED,  0.4F, 0.4F, 0.4F);
-    COLOUR(ret, COL_TEXT_LIGHT_UNSOLVED, 0.6F, 0.6F, 0.6F);
+    COLOUR(ret, COL_TEXT_DARK_UNSOLVED,  0.5F, 0.5F, 0.5F);
+    COLOUR(ret, COL_TEXT_LIGHT_UNSOLVED, 0.5F, 0.5F, 0.5F);
     COLOUR(ret, COL_ERROR,               0.5F, 0.5F, 0.5F);
 
     *ncolours = NCOLOURS;
