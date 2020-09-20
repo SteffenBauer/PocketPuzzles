@@ -17,7 +17,7 @@
 - [X] Singles: Show mark on adjacent black squares error, error background on white squares
 - [X] Solo: Lighter activation pencil mark, better presets
 - [ ] Solo: Number highlighting indication in numerical buttons
-- [ ] Spokes: Better error display
+- [X] Spokes: Better error display
 - [X] Towers: Persist pencil marker
 - [X] Tracks: Background color on circular error
 - [X] Undead: Ghost lines, Different monster colors, fix ghost polygon error
@@ -31,7 +31,7 @@
 - [X] Bridges: Adjust game colors
 - [ ] Guess: Change blitter drag to Highlight color by click -> Fill peg by click
 - [ ] Guess: Add color fill pattern
-- [ ] Group: Error display
+- [X] Group: Error display
 - [ ] Untangle: Change drag to Highlight vertex by click -> click on target coordinates
 - [X] Cube: Remove animation. Adjust colors.
 - [X] Flip: Remove animation. Adjust colors.

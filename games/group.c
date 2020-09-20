@@ -60,7 +60,8 @@ enum {
     COL_GRID,
     COL_USER,
     COL_HIGHLIGHT,
-    COL_ERROR,
+    COL_TEXT_ERROR,
+    COL_FILL_ERROR,
     COL_PENCIL,
     COL_DIAGONAL,
     NCOLOURS
@@ -1808,7 +1809,8 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_GRID       * 3 + i] = 0.0F;
         ret[COL_USER       * 3 + i] = 0.0F;
         ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
-        ret[COL_ERROR      * 3 + i] = 0.25F;
+        ret[COL_TEXT_ERROR * 3 + i] = 1.0F;
+        ret[COL_FILL_ERROR * 3 + i] = 0.5F;
         ret[COL_PENCIL     * 3 + i] = 0.25F;
         ret[COL_DIAGONAL   * 3 + i] = 0.9F;
     }
@@ -1858,6 +1860,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, long tile,
     int tx, ty, tw, th;
     int cx, cy, cw, ch;
     char str[64];
+    bool is_error;
 
     tx = BORDER + LEGEND + x * TILESIZE + 1;
     ty = BORDER + LEGEND + y * TILESIZE + 1;
@@ -1877,9 +1880,11 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, long tile,
 
     clip(dr, cx, cy, cw, ch);
 
+    is_error = (error & EF_LATIN) || (error & EF_LEFT_MASK) || (error & EF_RIGHT_MASK);
     /* background needs erasing */
     draw_rect(dr, cx, cy, cw, ch,
           (tile & DF_HIGHLIGHT) ? COL_HIGHLIGHT :
+                is_error ? COL_FILL_ERROR : 
               (x == y) ? COL_DIAGONAL : COL_BACKGROUND);
 
     /* dividers */
@@ -1910,7 +1915,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, long tile,
     str[0] = TOCHAR(tile & DF_DIGIT_MASK, ds->par.id);
     draw_text(dr, tx + TILESIZE/2, ty + TILESIZE/2,
           FONT_VARIABLE, TILESIZE/2, ALIGN_VCENTRE | ALIGN_HCENTRE,
-          (error & EF_LATIN) ? COL_ERROR :
+          (error & EF_LATIN) ? COL_TEXT_ERROR :
           (tile & DF_IMMUTABLE) ? COL_GRID : COL_USER, str);
 
     if (error & EF_LEFT_MASK) {
@@ -1922,7 +1927,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, long tile,
             TOCHAR(b, ds->par.id), TOCHAR(c, ds->par.id));
         draw_text(dr, tx + TILESIZE/2, ty + TILESIZE/6,
               FONT_VARIABLE, TILESIZE/6, ALIGN_VCENTRE | ALIGN_HCENTRE,
-              COL_ERROR, buf);
+              COL_TEXT_ERROR, buf);
     }
     if (error & EF_RIGHT_MASK) {
         int a = (error >> (EF_RIGHT_SHIFT+2*EF_DIGIT_SHIFT))&EF_DIGIT_MASK;
@@ -1933,7 +1938,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, long tile,
             TOCHAR(b, ds->par.id), TOCHAR(c, ds->par.id));
         draw_text(dr, tx + TILESIZE/2, ty + TILESIZE - TILESIZE/6,
               FONT_VARIABLE, TILESIZE/6, ALIGN_VCENTRE | ALIGN_HCENTRE,
-              COL_ERROR, buf);
+              COL_TEXT_ERROR, buf);
     }
     } else {
         int i, j, npencil;
