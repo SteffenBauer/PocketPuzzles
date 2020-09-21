@@ -44,7 +44,7 @@
 - [X] Net: Remove animation. Adjust colors.
 - [X] Net: Add shuffle button
 - [ ] Netslide: Remove animation. Thicker lines.
-- [ ] Pegs: Remove blitter drag
+- [X] Pegs: Remove blitter drag
 - [ ] Rome: Change to highlight / highlight clue; add up/down/left/right buttons
 - [ ] Samegame: Add color fill pattern
 - [X] Signpost: Remove blitter drag. Adjust colors. Modify left/right click behavior. Fix polygon error.

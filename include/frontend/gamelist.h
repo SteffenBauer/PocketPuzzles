@@ -60,7 +60,7 @@ static GAMEINFO mygames[] = {
     { &game_palisade, &palisade},
     { &game_pattern,  &pattern},
     { &game_pearl,    &pearl},
-//    { &game_pegs,     &pegs},
+    { &game_pegs,     &pegs},
     { &game_range,    &range},
 
     { &game_rect,     &rect},
