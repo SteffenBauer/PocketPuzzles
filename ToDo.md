@@ -29,8 +29,8 @@
 - [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
 - [X] Bridges: Add path button
 - [X] Bridges: Adjust game colors
-- [ ] Guess: Change blitter drag to Highlight color by click -> Fill peg by click
-- [ ] Guess: Add color fill pattern
+- [X] Guess: Change blitter drag to Highlight color by click -> Fill peg by click
+- [X] Guess: Add color fill pattern
 - [X] Group: Error display
 - [ ] Untangle: Change drag to Highlight vertex by click -> click on target coordinates
 - [X] Cube: Remove animation. Adjust colors.
