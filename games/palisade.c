@@ -1,5 +1,3 @@
-/* -*- indent-tabs-mode: nil; tab-width: 1000 -*- */
-
 /*
  * palisade.c: Nikoli's `Five Cells' puzzle.
  *
@@ -874,7 +872,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds, int x, int y, int button)
 {
     int w = state->shared->params.w, h = state->shared->params.h;
-    bool control = button & MOD_CTRL, shift = button & MOD_SHFT;
 
     button &= ~MOD_MASK;
 
@@ -923,38 +920,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return string(80, "F%d,%d,%dF%d,%d,%d",
                           gx, gy, DISABLED(BORDER(dir)),
                           hx, hy, DISABLED(BORDER(FLIP(dir))));
-        }
-    }
-
-    if (IS_CURSOR_MOVE(button)) {
-        ui->show = true;
-        if (control || shift) {
-            borderflag flag = 0, newflag;
-            int dir, i =  ui->y * w + ui->x;
-            x = ui->x;
-            y = ui->y;
-            move_cursor(button, &x, &y, w, h, false);
-            if (OUT_OF_BOUNDS(x, y, w, h)) return NULL;
-
-            for (dir = 0; dir < 4; ++dir)
-                if (dx[dir] == x - ui->x && dy[dir] == y - ui->y) break;
-            if (dir == 4) return NULL; /* how the ... ?! */
-
-            if (control) flag |= BORDER(dir);
-            if (shift) flag |= DISABLED(BORDER(dir));
-
-            newflag = state->borders[i] ^ flag;
-            if (newflag & BORDER(dir) && newflag & DISABLED(BORDER(dir)))
-                return NULL;
-
-            newflag = 0;
-            if (control) newflag |= BORDER(FLIP(dir));
-            if (shift) newflag |= DISABLED(BORDER(FLIP(dir)));
-            return string(80, "F%d,%d,%dF%d,%d,%d",
-                          ui->x, ui->y, flag, x, y, newflag);
-        } else {
-            move_cursor(button, &ui->x, &ui->y, w, h, false);
-            return UI_UPDATE;
         }
     }
 
@@ -1010,14 +975,14 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 enum {
     COL_BACKGROUND,
-    COL_FLASH,
     COL_GRID,
     COL_CLUE = COL_GRID,
     COL_LINE_YES = COL_GRID,
     COL_LINE_MAYBE,
     COL_LINE_NO,
     COL_ERROR,
-
+    COL_ERROR_TEXT,
+    COL_FINISHED,
     NCOLOURS
 };
 
@@ -1029,15 +994,15 @@ static float *game_colours(frontend *fe, int *ncolours)
 {
     float *ret = snewn(3 * NCOLOURS, float);
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, -1, COL_FLASH);
-
     COLOUR(COL_BACKGROUND, 1.0F, 1.0F, 1.0F);
     COLOUR(COL_GRID,   0.0F, 0.0F, 0.0F);
     COLOUR(COL_ERROR,  0.25F, 0.25F, 0.25F);
 
-    COLOUR(COL_LINE_MAYBE, 0.75F, 0.75F, 0.75F);
+    COLOUR(COL_LINE_MAYBE, 0.5F, 0.5F, 0.5F);
     COLOUR(COL_LINE_NO,    1.0F, 1.0F, 1.0F);
-
+    
+    COLOUR(COL_ERROR_TEXT, 0.75F, 0.75F, 0.75F);
+    COLOUR(COL_FINISHED,   0.75F, 0.75F, 0.75F);
     *ncolours = NCOLOURS;
     return ret;
 }
@@ -1049,8 +1014,7 @@ static float *game_colours(frontend *fe, int *ncolours)
 #define F_ERROR_D BORDER_ERROR(BORDER_D) /* BIT(10) */
 #define F_ERROR_L BORDER_ERROR(BORDER_L) /* BIT(11) */
 #define F_ERROR_CLUE BIT(12)
-#define F_FLASH BIT(13)
-#define F_CURSOR BIT(14)
+#define F_FINISHED BIT(13)
 
 static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
 {
@@ -1071,6 +1035,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 #define COLOUR(border)                                                  \
     (flags & BORDER_ERROR((border)) ? COL_ERROR :                       \
      flags & (border)               ? COL_LINE_YES :                    \
+     flags & F_FINISHED             ? COL_FINISHED :                    \
      flags & DISABLED((border))     ? COL_LINE_NO :                     \
                                       COL_LINE_MAYBE)
 
@@ -1080,25 +1045,23 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int r, int c,
     int i;
     int x = MARGIN + TILESIZE * c, y = MARGIN + TILESIZE * r;
 
-    clip(dr, x, y, TILESIZE + WIDTH, TILESIZE + WIDTH); /* { */
+    clip(dr, x, y, TILESIZE + WIDTH, TILESIZE + WIDTH);
 
-    draw_rect(dr, x + WIDTH, y + WIDTH, TILESIZE - WIDTH, TILESIZE - WIDTH,
-              (flags & F_FLASH ? COL_FLASH : COL_BACKGROUND));
-
-    if (flags & F_CURSOR)
-        draw_rect_corners(dr, x + CENTER, y + CENTER, TILESIZE / 3, COL_GRID);
+    draw_rect(dr, x + WIDTH, y + WIDTH, TILESIZE - WIDTH, TILESIZE - WIDTH, 
+                (flags & F_ERROR_CLUE) ? COL_ERROR : 
+                (flags & F_FINISHED) ? COL_FINISHED : COL_BACKGROUND);
 
     if (clue != EMPTY) {
         char buf[2];
         buf[0] = '0' + clue;
         buf[1] = '\0';
-        if (flags & F_ERROR_CLUE) {
+/*        if (flags & F_ERROR_CLUE) {
             draw_circle(dr, x + CENTER, y + CENTER, TILESIZE/2-10, COL_ERROR, COL_ERROR);
             draw_circle(dr, x + CENTER, y + CENTER, TILESIZE/2-15, COL_BACKGROUND, COL_ERROR);
-        }
+        } */
         draw_text(dr, x + CENTER, y + CENTER, FONT_VARIABLE,
                   TILESIZE / 2, ALIGN_VCENTRE | ALIGN_HCENTRE,
-                  (flags & F_ERROR_CLUE ? COL_ERROR : COL_CLUE), buf);
+                  (flags & F_ERROR_CLUE ? COL_ERROR_TEXT : COL_CLUE), buf);
     }
 
 
@@ -1137,15 +1100,13 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int r, int c,
     draw_update(dr, x, y, TILESIZE + WIDTH, TILESIZE + WIDTH);
 }
 
-#define FLASH_TIME 0.7F
-
 static void game_redraw(drawing *dr, game_drawstate *ds,
                         const game_state *oldstate, const game_state *state,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime)
 {
     int w = state->shared->params.w, h = state->shared->params.h, wh = w*h;
-    int r, c, i, flash = ((int) (flashtime * 5 / FLASH_TIME)) % 2;
+    int r, c, i;
     int *black_border_dsf = snew_dsf(wh), *yellow_border_dsf = snew_dsf(wh);
     int k = state->shared->params.k;
 
@@ -1182,13 +1143,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
             flags = state->borders[i];
 
-            if (flash) flags |= F_FLASH;
-
             if (clue != EMPTY && (on > clue || clue > 4 - off))
                 flags |= F_ERROR_CLUE;
 
-            if (ui->show && ui->x == c && ui->y == r)
-                flags |= F_CURSOR;
+            /* Finished regions */
+            
+            if (dsf_size(black_border_dsf, i) == k)
+                flags |= F_FINISHED;
 
             /* border errors */
             for (dir = 0; dir < 4; ++dir) {

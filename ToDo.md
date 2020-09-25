@@ -23,7 +23,8 @@
 - [X] Undead: Ghost lines, Different monster colors, fix ghost polygon error
 - [X] Undead: Stronger monster outlines
 - [X] Tents: Change error for tree without tent
-- [X] Palisade: Thicker lines / dotted lines on error
+- [X] Palisade: Thicker lines / dotted lines on error / clue error background
+- [X] Palisade: Fill finished regions
 - [X] Unequal: Coloring, <> polygon error, pencil marker persistence, adjacent error display, error circles, presets with Kropki mode
 - [X] Unruly: Coloring
 - [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
@@ -32,6 +33,7 @@
 - [X] Guess: Change blitter drag to Highlight color by click -> Fill peg by click
 - [X] Guess: Add color fill pattern
 - [X] Group: Error display
+- [ ] Galaxies: Rework right-drag / arrow handling
 - [ ] Untangle: Change drag to Highlight vertex by click -> click on target coordinates
 - [X] Cube: Remove animation. Adjust colors.
 - [X] Flip: Remove animation. Adjust colors.
