@@ -34,8 +34,9 @@
 - [X] Guess: Add color fill pattern
 - [X] Group: Error display
 - [ ] Galaxies: Rework right-drag / arrow handling
-- [ ] Untangle: Change drag to Highlight vertex by click -> click on target coordinates
+- [X] Untangle: Change drag to Highlight vertex by click -> update after drag to target coordinates
 - [X] Cube: Remove animation. Adjust colors.
+- [ ] Cube: Thicker lines for cube
 - [X] Flip: Remove animation. Adjust colors.
 - [X] Fifteen: Remove animation. Adjust colors. Add solver hint mechanism.
 - [ ] Flood: Add color fill pattern
