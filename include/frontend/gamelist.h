@@ -84,7 +84,7 @@ static GAMEINFO mygames[] = {
     { &game_undead,   &undead},
     { &game_unequal,  &unequal},
     { &game_unruly,   &unruly},
-//    { &game_untangle, &untangle},
+    { &game_untangle, &untangle},
     { &game_walls,    &walls},
 
     { NULL, NULL}
