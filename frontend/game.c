@@ -447,15 +447,15 @@ void gameRelease(int x, int y) {
                 midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), LEFT_BUTTON);
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_RELEASE);
         }
-        if (fe->current_pointer == LEFT_DRAG) {
+        else if (fe->current_pointer == LEFT_DRAG) {
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_RELEASE);
         }
-        if (fe->current_pointer == RIGHT_BUTTON) {
+        else if (fe->current_pointer == RIGHT_BUTTON) {
             if (fe->with_rightpointer && fe->swapped)
                 midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), RIGHT_BUTTON);
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_RELEASE);
         }
-        if (fe->current_pointer == RIGHT_DRAG) {
+        else if (fe->current_pointer == RIGHT_DRAG) {
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_RELEASE);
         }
         fe->current_pointer = 0;
@@ -728,10 +728,10 @@ LAYOUTTYPE gameGetLayout() {
         else if (keys[i].button == 'X' && strcmp(currentgame->name, "Salad")==0)   fe->gameButton[i] = btn_salad_x;
         else if (keys[i].button == 'J' && strcmp(currentgame->name, "Net")==0)     fe->gameButton[i] = btn_net_shuffle;
         else if (keys[i].button == 'G' && strcmp(currentgame->name, "Bridges")==0) fe->gameButton[i] = btn_bridges_g;
-        else if (keys[i].button == 'I' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_n;
-        else if (keys[i].button == 'J' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_w;
-        else if (keys[i].button == 'L' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_e;
-        else if (keys[i].button == 'K' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_s;
+        else if (keys[i].button == 'U' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_n;
+        else if (keys[i].button == 'L' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_w;
+        else if (keys[i].button == 'R' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_e;
+        else if (keys[i].button == 'D' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_s;
         else {
             fe->gameButton[i].type   = BTN_CHAR;
             fe->gameButton[i].action = ACTION_CTRL;
