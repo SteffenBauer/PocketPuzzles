@@ -64,7 +64,7 @@ static GAMEINFO mygames[] = {
     { &game_range,    &range},
 
     { &game_rect,     &rect},
-//    { &game_rome,     &rome},
+    { &game_rome,     &rome},
     { &game_salad,    &salad},
 //    { &game_samegame, &samegame},
     { &game_signpost, &signpost},
