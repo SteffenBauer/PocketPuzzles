@@ -194,12 +194,11 @@ void ink_start_draw(void *handle) {
 }
 
 void ink_draw_update(void *handle, int x, int y, int w, int h) {
-  // if (fe->do_partial) PartialUpdate(fe->xoffset+x, fe->yoffset + y, w, h);
+    /* No updates while redraw is in progress. Update will be done in ink_end_draw */
 }
 
 void ink_end_draw(void *handle) {
     SoftUpdate();
-  //if (!fe->do_partial) FullUpdate();
 }
 
 blitter *ink_blitter_new(void *handle, int w, int h) {
@@ -292,14 +291,10 @@ void gameMenuHandler(int index) {
             gameShowPage();
             break;
         case 102:
-            fe->do_partial = false;
             midend_restart_game(me);
-            fe->do_partial = true;
             break;
         case 103:
-            fe->do_partial = false;
             errorMsg = midend_solve(me);
-            fe->do_partial = true;
             if (errorMsg) Message(ICON_WARNING, "", errorMsg, 3000);
             break;
         case 104:
@@ -367,29 +362,30 @@ static void gameBuildTypeMenu() {
 
 };
 
-static void check_button_state() {
-    BUTTON *undo, *redo;
-    undo = &fe->controls[fe->ncontrols-2];
-    redo = &fe->controls[fe->ncontrols-1];
+static void gameCheckButtonState() {
+    BUTTON *undo, *redo, *swap;
+    undo = &fe->gameButton[fe->btnUndoIDX];
+    redo = &fe->gameButton[fe->btnRedoIDX];
     if (midend_can_undo(me) && ! undo->active) activate_button(undo);
     if (midend_can_redo(me) && ! redo->active) activate_button(redo);
     if (!midend_can_undo(me) && undo->active) deactivate_button(undo);
     if (!midend_can_redo(me) && redo->active) deactivate_button(redo);
+    if (fe->with_rightpointer) {
+        swap = &fe->gameButton[fe->btnSwapIDX];
+        fe->swapped ? button_to_tapped(swap) : button_to_normal(swap, false);
+    }
 }
+
+/* Screen event callbacks */
 
 void gameTap(int x, int y) {
     int i;
     init_tap_x = x;
     init_tap_y = y;
 
-    if (coord_in_button(x, y, &btn_back)) button_to_tapped(&btn_back);
-    if (coord_in_button(x, y, &btn_draw)) button_to_tapped(&btn_draw);
-    if (coord_in_button(x, y, &btn_game)) button_to_tapped(&btn_game);
-    if (coord_in_button(x, y, &btn_type)) button_to_tapped(&btn_type);
-
-    for (i=0;i<fe->ncontrols;i++) {
-        if ((fe->controls[i].action != ACTION_SWAP) && coord_in_button(x, y, &fe->controls[i]))
-            button_to_tapped(&fe->controls[i]);
+    for (i=0;i<fe->numGameButtons;i++) {
+        if ((fe->gameButton[i].action != ACTION_SWAP) && coord_in_button(x, y, &fe->gameButton[i]))
+            button_to_tapped(&fe->gameButton[i]);
     }
 
     if (coord_in_gamecanvas(x, y) && (fe->current_pointer == 0)) {
@@ -433,15 +429,6 @@ void gameDrag(int x, int y) {
 
 void gameRelease(int x, int y) {
     int i;
-    if (coord_in_button(init_tap_x, init_tap_y, &btn_back)) button_to_normal(&btn_back, true);
-    if (coord_in_button(init_tap_x, init_tap_y, &btn_draw)) button_to_normal(&btn_draw, true);
-    if (coord_in_button(init_tap_x, init_tap_y, &btn_game)) button_to_normal(&btn_game, true);
-    if (coord_in_button(init_tap_x, init_tap_y, &btn_type)) button_to_normal(&btn_type, true);
-
-    for (i=0;i<fe->ncontrols;i++) {
-        if (fe->controls[i].action != ACTION_SWAP && coord_in_button(init_tap_x, init_tap_y, &fe->controls[i]))
-            button_to_normal(&fe->controls[i], true);
-    }
 
     if (coord_in_gamecanvas(x, y)) {
         if (fe->current_pointer == LEFT_BUTTON) {
@@ -463,70 +450,71 @@ void gameRelease(int x, int y) {
         fe->current_pointer = 0;
         checkGameEnd();
     }
-
-    if (release_button(x, y, &btn_back)) {
-        gameExit();
-        showChooserScreen();
-        return;
-    }
-    else if (release_button(x, y, &btn_draw)) {
-        gameShowPage();
-        FullUpdate();
-    }
-    else if (release_button(x, y, &btn_game)) {
-        OpenMenuEx(gameMenu, gameMenu_selectedIndex, ScreenWidth()-20-(2*fe->gamelayout.menubtn_size),
-                   fe->gamelayout.menubtn_size+2, gameMenuHandler);
-    }
-    else if (release_button(x, y, &btn_type)) {
-        OpenMenu(typeMenu, typeMenu_selectedIndex, ScreenWidth()-10-fe->gamelayout.menubtn_size,
-                 fe->gamelayout.menubtn_size+2, typeMenuHandler);
-    }
-
-    for (i=0;i<fe->ncontrols;i++) {
-        if (release_button(x, y, &fe->controls[i])) {
-            if (i==fe->ncontrols-1) {
-                if (midend_can_redo(me)) {
-                    midend_process_key(me, 0, 0, UI_REDO);
+    else {
+        for (i=0;i<fe->numGameButtons;i++) {
+            if (release_button(x, y, &fe->gameButton[i])) {
+                if (fe->gameButton[i].action != ACTION_SWAP)
+                    button_to_normal(&fe->gameButton[i], true);
+                switch(fe->gameButton[i].action) {
+                    case ACTION_BACK:
+                        gameExit();
+                        showChooserScreen();
+                        return;
+                    case ACTION_DRAW:
+                        gameShowPage();
+                        FullUpdate();
+                        return;
+                    case ACTION_GAME:
+                        OpenMenuEx(gameMenu, gameMenu_selectedIndex, 
+                            ScreenWidth()-20-(2*fe->gamelayout.menubtn_size),
+                            fe->gamelayout.menubtn_size+2, gameMenuHandler);
+                        return;
+                    case ACTION_TYPE:
+                        OpenMenu(typeMenu, typeMenu_selectedIndex, 
+                            ScreenWidth()-10-fe->gamelayout.menubtn_size,
+                            fe->gamelayout.menubtn_size+2, typeMenuHandler);
+                        return;
+                    case ACTION_CTRL:
+                        midend_process_key(me, 0, 0, fe->gameButton[i].actionParm.c);
+                        checkGameEnd();
+                        break;
+                    case ACTION_UNDO:
+                        if (midend_can_undo(me)) midend_process_key(me, 0, 0 , UI_UNDO);
+                        break;
+                    case ACTION_REDO:
+                        if (midend_can_redo(me)) midend_process_key(me, 0, 0, UI_REDO);
+                        break;
+                    case ACTION_SWAP:
+                        fe->swapped = !fe->swapped;
+                        break;
                 }
-            }
-            else if (i == fe->ncontrols-2) {
-                if (midend_can_undo(me)) {
-                    midend_process_key(me, 0, 0 , UI_UNDO);
-                }
-            }
-            else if (fe->controls[i].action == ACTION_SWAP) {
-                fe->swapped ? button_to_normal(&fe->controls[i], true) 
-                            : button_to_tapped(&fe->controls[i]);
-                fe->swapped = !fe->swapped;
-            }
-            else {
-                midend_process_key(me, 0, 0, fe->controls[i].actionParm.c);
             }
         }
-       checkGameEnd();
     }
 
-    check_button_state();
-
+    gameCheckButtonState();
     if (fe->gamelayout.with_statusbar) {
         gameDrawStatusBar();
     }
-
     SoftUpdate();
 }
 
 void gamePrev() {
-    if (midend_can_undo(me)) {
-        midend_process_key(me, 0, 0, UI_UNDO);
-        check_button_state();
+    if (midend_can_undo(me)) midend_process_key(me, 0, 0 , UI_UNDO);
+    gameCheckButtonState();
+    if (fe->gamelayout.with_statusbar) {
+        gameDrawStatusBar();
     }
+    SoftUpdate();
 }
 
 void gameNext() {
-    if (midend_can_redo(me)) {
-        midend_process_key(me, 0, 0, UI_REDO);
-        check_button_state();
+    if (midend_can_redo(me)) midend_process_key(me, 0, 0, UI_REDO);
+    gameCheckButtonState();
+    if (fe->gamelayout.with_statusbar) {
+        gameDrawStatusBar();
     }
+    SoftUpdate();
 }
 
 static void gameDrawStatusBar() {
@@ -542,22 +530,22 @@ static void gameDrawControlButtons() {
     FillArea(0, fe->gamelayout.buttonpanel.starty, ScreenWidth(), fe->gamelayout.buttonpanel.height, 0x00FFFFFF);
     FillArea(0, fe->gamelayout.buttonpanel.starty, ScreenWidth(), 1, 0x00000000);
 
-    for (i=0;i<fe->ncontrols;i++)
-        button_to_normal(&fe->controls[i], false);
+    for (i=0;i<fe->numGameButtons;i++)
+        button_to_normal(&fe->gameButton[i], false);
 
-    deactivate_button(&fe->controls[fe->ncontrols-2]);
-    deactivate_button(&fe->controls[fe->ncontrols-1]);
-    check_button_state();
+    deactivate_button(&fe->gameButton[fe->numGameButtons-6]);
+    deactivate_button(&fe->gameButton[fe->numGameButtons-5]);
+    gameCheckButtonState();
 }
 
 static void gameDrawMenu() {
     FillArea(0, fe->gamelayout.menu.starty, ScreenWidth(), fe->gamelayout.menu.height, 0x00FFFFFF);
     FillArea(0, fe->gamelayout.menu.starty + fe->gamelayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
-    button_to_normal(&btn_back, false);
-    button_to_normal(&btn_draw, false);
-    button_to_normal(&btn_game, false);
-    button_to_normal(&btn_type, false);
+    button_to_normal(&fe->gameButton[fe->btnBackIDX], false);
+    button_to_normal(&fe->gameButton[fe->btnDrawIDX], false);
+    button_to_normal(&fe->gameButton[fe->btnGameIDX], false);
+    button_to_normal(&fe->gameButton[fe->btnTypeIDX], false);
 
     SetFont(gamefont, BLACK);
     DrawTextRect(0, (fe->gamelayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, currentgame->name, ALIGN_CENTER);
@@ -568,25 +556,25 @@ static void gameSetupStatusBar() {
 }
 
 static void gameSetupMenuButtons() {
-    btn_back.active = true;
-    btn_back.posx = 10;
-    btn_back.posy = fe->gamelayout.menu.starty;
-    btn_back.size = fe->gamelayout.menubtn_size;
+    fe->gameButton[fe->btnBackIDX].active = true;
+    fe->gameButton[fe->btnBackIDX].posx = 10;
+    fe->gameButton[fe->btnBackIDX].posy = fe->gamelayout.menu.starty;
+    fe->gameButton[fe->btnBackIDX].size = fe->gamelayout.menubtn_size;
 
-    btn_draw.active = true;
-    btn_draw.posx = ScreenWidth() - 30 - (3*fe->gamelayout.menubtn_size);
-    btn_draw.posy = fe->gamelayout.menu.starty;
-    btn_draw.size = fe->gamelayout.menubtn_size;
+    fe->gameButton[fe->btnDrawIDX].active = true;
+    fe->gameButton[fe->btnDrawIDX].posx = ScreenWidth() - 30 - (3*fe->gamelayout.menubtn_size);
+    fe->gameButton[fe->btnDrawIDX].posy = fe->gamelayout.menu.starty;
+    fe->gameButton[fe->btnDrawIDX].size = fe->gamelayout.menubtn_size;
 
-    btn_game.active = true;
-    btn_game.posx = ScreenWidth() - 20 - (2*fe->gamelayout.menubtn_size);
-    btn_game.posy = fe->gamelayout.menu.starty;
-    btn_game.size = fe->gamelayout.menubtn_size;
+    fe->gameButton[fe->btnGameIDX].active = true;
+    fe->gameButton[fe->btnGameIDX].posx = ScreenWidth() - 20 - (2*fe->gamelayout.menubtn_size);
+    fe->gameButton[fe->btnGameIDX].posy = fe->gamelayout.menu.starty;
+    fe->gameButton[fe->btnGameIDX].size = fe->gamelayout.menubtn_size;
 
-    btn_type.active = true;
-    btn_type.posx = ScreenWidth() - 10 - fe->gamelayout.menubtn_size;
-    btn_type.posy = fe->gamelayout.menu.starty;
-    btn_type.size = fe->gamelayout.menubtn_size;
+    fe->gameButton[fe->btnTypeIDX].active = true;
+    fe->gameButton[fe->btnTypeIDX].posx = ScreenWidth() - 10 - fe->gamelayout.menubtn_size;
+    fe->gameButton[fe->btnTypeIDX].posy = fe->gamelayout.menu.starty;
+    fe->gameButton[fe->btnTypeIDX].size = fe->gamelayout.menubtn_size;
 }
 
 static void gameSetupControlButtons() {
@@ -596,30 +584,30 @@ static void gameSetupControlButtons() {
 
     if (fe->with_twoctrllines) {
         btn_num1 = 0;
-        for (i=0;i<fe->ncontrols;i++) {
-            if (fe->controls[i].type == BTN_CHAR) btn_num1++;
+        for (i=0;i<fe->numGameButtons-4;i++) {
+            if (fe->gameButton[i].type == BTN_CHAR) btn_num1++;
         }
-        btn_num2 = fe->ncontrols - btn_num1;
+        btn_num2 = fe->numGameButtons - btn_num1 - 4;
     }
     else {
-        btn_num1 = fe->ncontrols;
+        btn_num1 = fe->numGameButtons - 4;
         btn_num2 = 0;
     }
     pad1 = (ScreenWidth()-(btn_num1 * fe->gamelayout.control_size))/(btn_num1+1);
     pad2 = (ScreenWidth()-(btn_num2 * fe->gamelayout.control_size))/(btn_num2+1);
 
-    for (i=0;i<fe->ncontrols;i++) {
-        fe->controls[i].active = true;
-        fe->controls[i].page = (i<btn_num1) ? 1 : 2;
+    for (i=0;i<fe->numGameButtons-4;i++) {
+        fe->gameButton[i].active = true;
+        fe->gameButton[i].page = (i<btn_num1) ? 1 : 2;
         if (i < btn_num1) {
-            fe->controls[i].posx = i*fe->gamelayout.control_size + (i+1)*pad1;
-            fe->controls[i].posy = fe->gamelayout.buttonpanel.starty + 2;
+            fe->gameButton[i].posx = i*fe->gamelayout.control_size + (i+1)*pad1;
+            fe->gameButton[i].posy = fe->gamelayout.buttonpanel.starty + 2;
         }
         else {
-            fe->controls[i].posx = (i-btn_num1)*fe->gamelayout.control_size + (i-btn_num1+1)*pad2;
-            fe->controls[i].posy = fe->gamelayout.buttonpanel.starty + fe->gamelayout.control_size + 4;
+            fe->gameButton[i].posx = (i-btn_num1)*fe->gamelayout.control_size + (i-btn_num1+1)*pad2;
+            fe->gameButton[i].posy = fe->gamelayout.buttonpanel.starty + fe->gamelayout.control_size + 4;
         }
-        fe->controls[i].size = fe->gamelayout.control_size;
+        fe->gameButton[i].size = fe->gamelayout.control_size;
     }
 }
 
@@ -629,7 +617,7 @@ static void gameExit() {
     deactivate_timer(fe);
     free(typeMenu);
     midend_free(me);
-    sfree(fe->controls);
+    sfree(fe->gameButton);
     sfree(fe);
 }
 
@@ -654,10 +642,8 @@ void gameShowPage() {
     DrawPanel(NULL, "", "", 0);
     gameDrawMenu();
     gameDrawControlButtons();
-    fe->do_partial = false;
     midend_force_redraw(me);
     if (fe->gamelayout.with_statusbar) gameDrawStatusBar();
-    fe->do_partial = true;
 }
 
 void gameInit(const struct game *thegame) {
@@ -672,7 +658,7 @@ void gamePrepare() {
     int x, y;
     char buf[256];
 
-    fe->controls = NULL;
+    fe->gameButton = NULL;
     fe->cliprect = GetClipRect();
     fe->statustext = "";
     fe->current_pointer = 0;
@@ -711,43 +697,53 @@ LAYOUTTYPE gameGetLayout() {
 
     fe->with_rightpointer = currentgame->flags & REQUIRE_RBUTTON;
 
-    sfree(fe->controls);
+    sfree(fe->gameButton);
     keys = midend_request_keys(me, &nkeys);
     if (keys == NULL) nkeys = 0;
 
     addkeys = (fe->with_rightpointer) ? 3 : 2; // Left/right switch button 
-    fe->controls = smalloc((nkeys+addkeys) * sizeof(BUTTON));
+    fe->numGameButtons = 4 + nkeys + addkeys;
+    fe->with_twoctrllines = (nkeys+addkeys) > 9;
+    fe->with_statusbar = midend_wants_statusbar(me);
 
-    if (fe->with_rightpointer) {
-        fe->controls[nkeys]   = btn_swap;
-        fe->controls[nkeys+1] = btn_undo;
-        fe->controls[nkeys+2] = btn_redo;
-    }
-    else {
-        fe->controls[nkeys]   = btn_undo;
-        fe->controls[nkeys+1] = btn_redo;
-    }
+    fe->gameButton = smalloc((fe->numGameButtons) * sizeof(BUTTON));
 
     for (i=0;i<nkeys;i++) {
-        fe->controls[i].type = BTN_CTRL;
-        if (keys[i].button == '\b') fe->controls[i] = btn_backspace;
-        else if (keys[i].button == '+')  fe->controls[i] = btn_add;
-        else if (keys[i].button == '-')  fe->controls[i] = btn_remove;
-        else if (keys[i].button == 'O' && strcmp(currentgame->name, "Salad")==0)   fe->controls[i] = btn_salad_o;
-        else if (keys[i].button == 'X' && strcmp(currentgame->name, "Salad")==0)   fe->controls[i] = btn_salad_x;
-        else if (keys[i].button == 'J' && strcmp(currentgame->name, "Net")==0)     fe->controls[i] = btn_net_shuffle;
-        else if (keys[i].button == 'G' && strcmp(currentgame->name, "Bridges")==0) fe->controls[i] = btn_bridges_g;
+        fe->gameButton[i].type = BTN_CTRL;
+        if      (keys[i].button == '\b') fe->gameButton[i] = btn_backspace;
+        else if (keys[i].button == '+')  fe->gameButton[i] = btn_add;
+        else if (keys[i].button == '-')  fe->gameButton[i] = btn_remove;
+        else if (keys[i].button == 'O' && strcmp(currentgame->name, "Salad")==0)   fe->gameButton[i] = btn_salad_o;
+        else if (keys[i].button == 'X' && strcmp(currentgame->name, "Salad")==0)   fe->gameButton[i] = btn_salad_x;
+        else if (keys[i].button == 'J' && strcmp(currentgame->name, "Net")==0)     fe->gameButton[i] = btn_net_shuffle;
+        else if (keys[i].button == 'G' && strcmp(currentgame->name, "Bridges")==0) fe->gameButton[i] = btn_bridges_g;
+        else if (keys[i].button == 'I' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_n;
+        else if (keys[i].button == 'J' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_w;
+        else if (keys[i].button == 'L' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_e;
+        else if (keys[i].button == 'K' && strcmp(currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_s;
         else {
-            fe->controls[i].type   = BTN_CHAR;
-            fe->controls[i].action = ACTION_CTRL;
-            fe->controls[i].actionParm.c      = keys[i].button;
-            fe->controls[i].bitmap = NULL;
+            fe->gameButton[i].type   = BTN_CHAR;
+            fe->gameButton[i].action = ACTION_CTRL;
+            fe->gameButton[i].actionParm.c = keys[i].button;
+            fe->gameButton[i].bitmap = NULL;
         }
     }
 
-    fe->ncontrols = nkeys + addkeys;
-    fe->with_twoctrllines = (nkeys+addkeys) > 9;
-    fe->with_statusbar = midend_wants_statusbar(me);
+    if (fe->with_rightpointer) {
+        fe->gameButton[fe->btnSwapIDX = i++] = btn_swap;
+        fe->gameButton[fe->btnUndoIDX = i++] = btn_undo;
+        fe->gameButton[fe->btnRedoIDX = i++] = btn_redo;
+    }
+    else {
+        fe->gameButton[fe->btnUndoIDX = i++] = btn_undo;
+        fe->gameButton[fe->btnRedoIDX = i++] = btn_redo;
+    }
+
+    fe->gameButton[fe->btnBackIDX = i++] = btn_back;
+    fe->gameButton[fe->btnDrawIDX = i++] = btn_draw;
+    fe->gameButton[fe->btnGameIDX = i++] = btn_game;
+    fe->gameButton[fe->btnTypeIDX = i++] = btn_type;
+
     sfree(keys);
 
     if (fe->with_statusbar && !fe->with_twoctrllines)  return LAYOUT_BOTH;
