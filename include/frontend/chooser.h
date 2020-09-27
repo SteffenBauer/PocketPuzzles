@@ -27,7 +27,7 @@ struct chooserAttributes {
 } ca;
 
 extern ibitmap icon_home, icon_home_tap, icon_redraw, icon_redraw_tap,
-               bt_prev, bt_next;
+               bt_west, bt_east;
 
 static void chooserSetupButtons();
 

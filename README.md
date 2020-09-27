@@ -30,6 +30,8 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 
 ### ToDo
 
+#### Milestones for beta version
+
 - [X] Basic GUI framework
 - [X] Generate game bitmaps (game icons, menu buttons, control buttons)
 - [X] Game chooser
@@ -44,20 +46,28 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 - [X] Colors -> Greyscale
 - [X] Implement game menu controls (new, restart, solve)
 - [X] Implement swap / undo / redo functionality
+- [X] Handling of physical device buttons
 - [X] Setup of game specific control buttons
 - [X] Setup of game specific type presets
-- [ ] Save / restore of game state on app exit / relaunch
-- [ ] Save / restore current game preset on game screen / app exit / relaunch
+- [ ] Save / restore current game preset on screen change / app exit / relaunch
+- [ ] Save / restore of game state on screen change / app exit / relaunch
+- [ ] 'About' box
+
+#### Milestones for 1.0 version
+
 - [ ] Implement custom game type entry screen
-- [ ] Implement help screen
-- [ ] Ability to mark games as favorite
-- [ ] Screen orientation handling
-- [ ] Better color palette for greyscale screen (see ToDo.md)
+- [X] Better color palette for greyscale screen (done for all active games)
 - [ ] Better error visualization suitable for greyscale screen (see ToDo.md)
-- [ ] B/W texture drawing for games requiring color output
-- [ ] Numeric buttons indicating status (needed for Dominosa and Solo)
-- [X] Handling of physical device buttons
 - [ ] Modify games with dragging for better handling of eInk screen limitations (see ToDo.md)
+- [ ] B/W texture drawing for games depending on color output (Flood, SameGame, Map)
+
+#### For future versions
+
+- [ ] Implement help screen and/or separate documentation eBook
+- [ ] Ability to mark games as favorite
+- [ ] General settings (show/hide statusbar, orientation, chooser style)
+- [ ] Screen orientation handling
+- [ ] Numeric buttons indicating status (Dominosa and Solo)
 - [ ] Implement left->right->empty cycle on left-click for all games
 
 ToDos for individual games see [ToDo.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/ToDo.md)

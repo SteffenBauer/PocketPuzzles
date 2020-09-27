@@ -150,12 +150,12 @@ static void chooserSetupButtons() {
     ca.chooserButton[ca.btnPrevIDX = i++] = (BUTTON){ false, BTN_CTRL, 
         ca.control_padding, ca.chooserlayout.buttonpanel.starty + 2, 
         ca.chooserlayout.control_size, 0, 
-        ACTION_PREV, ' ', &bt_prev, NULL, NULL};
+        ACTION_PREV, ' ', &bt_west, NULL, NULL};
 
     ca.chooserButton[ca.btnNextIDX = i++] = (BUTTON){ false, BTN_CTRL, 
         2*ca.control_padding + ca.chooserlayout.control_size, 
         ca.chooserlayout.buttonpanel.starty + 2, ca.chooserlayout.control_size, 0, 
-        ACTION_NEXT, ' ', &bt_next, NULL, NULL};
+        ACTION_NEXT, ' ', &bt_east, NULL, NULL};
 }
 
 void chooserShowPage() {
