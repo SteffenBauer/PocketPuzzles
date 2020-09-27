@@ -1153,4 +1153,3 @@ const struct game thegame = {
     0,                       /* flags */
 };
 
-/* vim: set shiftwidth=4 tabstop=8: */

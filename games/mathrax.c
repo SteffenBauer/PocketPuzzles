@@ -1682,3 +1682,4 @@ const struct game thegame = {
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };
+

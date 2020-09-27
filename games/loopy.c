@@ -6,7 +6,6 @@
  * Substantially rewritten to allowing for more general types of grid.
  * (c) Lambros Lambrou 2008
  *
- * vim: set shiftwidth=4 :set textwidth=80:
  */
 
 /*

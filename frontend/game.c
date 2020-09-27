@@ -292,10 +292,14 @@ void gameMenuHandler(int index) {
             break;
         case 102:
             midend_restart_game(me);
+            fe->finished = false;
+            gameCheckButtonState();
+            if (fe->gamelayout.with_statusbar) gameDrawStatusBar();
             break;
         case 103:
             errorMsg = midend_solve(me);
             if (errorMsg) Message(ICON_WARNING, "", errorMsg, 3000);
+            else fe->finished = true;
             break;
         case 104:
             Message(ICON_WARNING, "", "Help not implemented yet!", 3000);
@@ -376,7 +380,9 @@ static void gameCheckButtonState() {
     }
 }
 
-/* Screen event callbacks */
+/* ----------------------------
+   Screen event callbacks
+   ---------------------------- */
 
 void gameTap(int x, int y) {
     int i;
@@ -389,14 +395,19 @@ void gameTap(int x, int y) {
     }
 
     if (coord_in_gamecanvas(x, y) && (fe->current_pointer == 0)) {
-        fe->current_pointer = (fe->swapped ? RIGHT_BUTTON : LEFT_BUTTON);
         fe->pointerdown_x = x;
         fe->pointerdown_y = y;
+        if (fe->with_rightpointer)
+            fe->current_pointer = (fe->swapped ? RIGHT_BUTTON : LEFT_BUTTON);
+        else {
+            fe->current_pointer = LEFT_BUTTON;
+            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_BUTTON);
+        }
     }
 }
 
 void gameLongTap(int x, int y) {
-    if (coord_in_gamecanvas(x, y)) {
+    if (coord_in_gamecanvas(x, y) && fe->with_rightpointer) {
         midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), 
                            (fe->swapped ? LEFT_BUTTON : RIGHT_BUTTON));
         fe->current_pointer = (fe->swapped ? LEFT_BUTTON : RIGHT_BUTTON);
@@ -406,7 +417,7 @@ void gameLongTap(int x, int y) {
 void gameDrag(int x, int y) {
     if (coord_in_gamecanvas(x, y)) {
         if (fe->current_pointer == LEFT_BUTTON) {
-            if (!fe->swapped)
+            if (fe->with_rightpointer && !fe->swapped)
                 midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), LEFT_BUTTON);
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_DRAG);
             fe->current_pointer = LEFT_DRAG;
@@ -415,7 +426,7 @@ void gameDrag(int x, int y) {
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_DRAG);
         }
         else if (fe->current_pointer == RIGHT_BUTTON) {
-            if (fe->swapped)
+            if (fe->with_rightpointer && fe->swapped)
                 midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), RIGHT_BUTTON);
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_DRAG);
             fe->current_pointer = RIGHT_DRAG;
@@ -432,7 +443,7 @@ void gameRelease(int x, int y) {
 
     if (coord_in_gamecanvas(x, y)) {
         if (fe->current_pointer == LEFT_BUTTON) {
-            if (!fe->swapped)
+            if (fe->with_rightpointer && !fe->swapped)
                 midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), LEFT_BUTTON);
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_RELEASE);
         }
@@ -440,7 +451,7 @@ void gameRelease(int x, int y) {
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_RELEASE);
         }
         if (fe->current_pointer == RIGHT_BUTTON) {
-            if (fe->swapped)
+            if (fe->with_rightpointer && fe->swapped)
                 midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), RIGHT_BUTTON);
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_RELEASE);
         }
@@ -726,6 +737,7 @@ LAYOUTTYPE gameGetLayout() {
             fe->gameButton[i].action = ACTION_CTRL;
             fe->gameButton[i].actionParm.c = keys[i].button;
             fe->gameButton[i].bitmap = NULL;
+            fe->gameButton[i].bitmap_tap = NULL;
         }
     }
 

@@ -1516,4 +1516,3 @@ const struct game thegame = {
     REQUIRE_RBUTTON,               /* flags */
 };
 
-/* vim: set shiftwidth=4 tabstop=8: */

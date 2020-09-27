@@ -527,23 +527,23 @@ static bool island_impossible(struct island *is, bool strict)
 
         ifree = is_orth->count - island_countbridges(is_orth);
         if (ifree > 0) {
-	    /*
-	     * ifree is the number of bridges unfilled in the other
-	     * island, which is clearly an upper bound on the number
-	     * of extra bridges this island may run to it.
-	     *
-	     * Another upper bound is the number of bridges unfilled
-	     * on the specific line between here and there. We must
-	     * take the minimum of both.
-	     */
-	    int bmax = MAXIMUM(is->state, dx,
-			       is->adj.points[i].x, is->adj.points[i].y);
-	    int bcurr = GRIDCOUNT(is->state,
-				  is->adj.points[i].x, is->adj.points[i].y,
-				  dx ? G_LINEH : G_LINEV);
-	    assert(bcurr <= bmax);
+        /*
+         * ifree is the number of bridges unfilled in the other
+         * island, which is clearly an upper bound on the number
+         * of extra bridges this island may run to it.
+         *
+         * Another upper bound is the number of bridges unfilled
+         * on the specific line between here and there. We must
+         * take the minimum of both.
+         */
+        int bmax = MAXIMUM(is->state, dx,
+                   is->adj.points[i].x, is->adj.points[i].y);
+        int bcurr = GRIDCOUNT(is->state,
+                  is->adj.points[i].x, is->adj.points[i].y,
+                  dx ? G_LINEH : G_LINEV);
+        assert(bcurr <= bmax);
             nsurrspc += min(ifree, bmax - bcurr);
-	}
+    }
     }
     if (nsurrspc < nspc) {
         debug(("island at (%d,%d) impossible: surr. islands %d spc, need %d.\n",
@@ -606,7 +606,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -1756,7 +1756,7 @@ static void free_game(game_state *state)
 #define ORDER(a,b) do { if (a < b) { int tmp=a; int a=b; int b=tmp; } } while(0)
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     game_state *tobuild  = NULL;
     int i, j, wh = params->w * params->h, x, y, dx, dy;
@@ -3128,9 +3128,8 @@ const struct game thegame = {
     game_flash_length,
     game_status,
     false, false, NULL, NULL,
-    false,			       /* wants_statusbar */
+    false,                   /* wants_statusbar */
     false, game_timing_state,
-    REQUIRE_RBUTTON,		       /* flags */
+    REQUIRE_RBUTTON,               /* flags */
 };
 
-/* vim: set shiftwidth=4 tabstop=8: */

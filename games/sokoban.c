@@ -17,25 +17,25 @@
  *    randomly from all the possible shortest routes, which would
  *    be superior in terms of eliminating directional bias.
  *     + So when tracing the path back to the current px,py, we
- * 	 look at all four adjacent squares, find the minimum
- * 	 distance, check that it's _strictly smaller_ than that of
- * 	 the current square, and restrict our choice to precisely
- * 	 those squares with that minimum distance.
+ *      look at all four adjacent squares, find the minimum
+ *      distance, check that it's _strictly smaller_ than that of
+ *      the current square, and restrict our choice to precisely
+ *      those squares with that minimum distance.
  *     + The other place `prev' is currently used is in the check
- * 	 for consistency of a pull. We would have to replace the
- * 	 check for whether prev[ny*w+nx]==oy*w+ox with a check that
- * 	 made sure there was at least one adjacent square with a
- * 	 smaller distance which _wasn't_ oy*w+ox. Then when we did
- * 	 the path-tracing we'd also have to take this special case
- * 	 into account.
+ *      for consistency of a pull. We would have to replace the
+ *      check for whether prev[ny*w+nx]==oy*w+ox with a check that
+ *      made sure there was at least one adjacent square with a
+ *      smaller distance which _wasn't_ oy*w+ox. Then when we did
+ *      the path-tracing we'd also have to take this special case
+ *      into account.
  * 
  *  - More discriminating choice of pull. (Snigger.)
  *     + favour putting targets in clumps
  *     + try to shoot for a reasonably consistent number of barrels
- * 	 (adjust willingness to generate a new barrel depending on
- * 	 how many are already present)
+ *      (adjust willingness to generate a new barrel depending on
+ *      how many are already present)
  *     + adjust willingness to break new ground depending on how
- * 	 much is already broken
+ *      much is already broken
  * 
  *  - generation time parameters:
  *     + enable NetHack mode (and find a better place for the hole)
@@ -152,7 +152,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -170,7 +170,7 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
     char namebuf[80];
 
     if (i < 0 || i >= lenof(sokoban_presets))
-	return false;
+    return false;
 
     p = sokoban_presets[i];
     ret = dup_params(&p);
@@ -237,7 +237,7 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 4 || params->h < 4)
-	return "Width and height must both be at least 4";
+    return "Width and height must both be at least 4";
 
     return NULL;
 }
@@ -301,10 +301,10 @@ static const char *validate_params(const game_params *params, bool full)
  */
 
 static void sokoban_generate(int w, int h, unsigned char *grid, int moves,
-			     bool nethack, random_state *rs)
+                 bool nethack, random_state *rs)
 {
     struct pull {
-	int ox, oy, nx, ny, score;
+    int ox, oy, nx, ny, score;
     };
 
     struct pull *pulls;
@@ -320,11 +320,11 @@ static void sokoban_generate(int w, int h, unsigned char *grid, int moves,
      * Configure the initial grid.
      */
     for (y = 0; y < h; y++)
-	for (x = 0; x < w; x++)
-	    grid[y*w+x] = (x == 0 || y == 0 || x == w-1 || y == h-1 ?
-			   WALL : INITIAL);
+    for (x = 0; x < w; x++)
+        grid[y*w+x] = (x == 0 || y == 0 || x == w-1 || y == h-1 ?
+               WALL : INITIAL);
     if (nethack)
-	grid[1] = DEEP_PIT;
+    grid[1] = DEEP_PIT;
 
     /*
      * Place the player.
@@ -343,245 +343,245 @@ static void sokoban_generate(int w, int h, unsigned char *grid, int moves,
      * position for that pull.
      */
     while (moves-- >= 0) {
-	/*
-	 * First enumerate all the viable barrel-pulls we can
-	 * possibly make, counting two pulls of the same barrel in
-	 * different directions as different. We also include pulls
-	 * we can perform by creating a new barrel. Each pull is
-	 * marked with the amount of violence it would have to do
-	 * to the grid.
-	 */
-	npulls = 0;
-	for (y = 0; y < h; y++)
-	    for (x = 0; x < w; x++)
-		for (d = 0; d < 4; d++) {
-		    int dx = DX(d);
-		    int dy = DY(d);
-		    int nx = x + dx, ny = y + dy;
-		    int npx = nx + dx, npy = ny + dy;
-		    int score = 0;
+    /*
+     * First enumerate all the viable barrel-pulls we can
+     * possibly make, counting two pulls of the same barrel in
+     * different directions as different. We also include pulls
+     * we can perform by creating a new barrel. Each pull is
+     * marked with the amount of violence it would have to do
+     * to the grid.
+     */
+    npulls = 0;
+    for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++)
+        for (d = 0; d < 4; d++) {
+            int dx = DX(d);
+            int dy = DY(d);
+            int nx = x + dx, ny = y + dy;
+            int npx = nx + dx, npy = ny + dy;
+            int score = 0;
 
-		    /*
-		     * The candidate move is to put the player at
-		     * (nx,ny), and move him to (npx,npy), pulling
-		     * a barrel at (x,y) to (nx,ny). So first we
-		     * must check that all those squares are within
-		     * the boundaries of the grid. For this it is
-		     * sufficient to check npx,npy.
-		     */
-		    if (npx < 0 || npx >= w || npy < 0 || npy >= h)
-			continue;
+            /*
+             * The candidate move is to put the player at
+             * (nx,ny), and move him to (npx,npy), pulling
+             * a barrel at (x,y) to (nx,ny). So first we
+             * must check that all those squares are within
+             * the boundaries of the grid. For this it is
+             * sufficient to check npx,npy.
+             */
+            if (npx < 0 || npx >= w || npy < 0 || npy >= h)
+            continue;
 
-		    /*
-		     * (x,y) must either be a barrel, or a square
-		     * which we can convert into a barrel.
-		     */
-		    switch (grid[y*w+x]) {
-		      case BARREL: case BARRELTARGET:
-			break;
-		      case INITIAL:
-			if (nethack)
-			    continue;
-			score += 10 /* new_barrel_score */;
-			break;
-		      case DEEP_PIT:
-			if (!nethack)
-			    continue;
-			break;
-		      default:
-			continue;
-		    }
+            /*
+             * (x,y) must either be a barrel, or a square
+             * which we can convert into a barrel.
+             */
+            switch (grid[y*w+x]) {
+              case BARREL: case BARRELTARGET:
+            break;
+              case INITIAL:
+            if (nethack)
+                continue;
+            score += 10 /* new_barrel_score */;
+            break;
+              case DEEP_PIT:
+            if (!nethack)
+                continue;
+            break;
+              default:
+            continue;
+            }
 
-		    /*
-		     * (nx,ny) must either be a space, or a square
-		     * which we can convert into a space.
-		     */
-		    switch (grid[ny*w+nx]) {
-		      case SPACE: case TARGET:
-			break;
-		      case INITIAL:
-			score += 3 /* new_space_score */;
-			break;
-		      default:
-			continue;
-		    }
+            /*
+             * (nx,ny) must either be a space, or a square
+             * which we can convert into a space.
+             */
+            switch (grid[ny*w+nx]) {
+              case SPACE: case TARGET:
+            break;
+              case INITIAL:
+            score += 3 /* new_space_score */;
+            break;
+              default:
+            continue;
+            }
 
-		    /*
-		     * (npx,npy) must also either be a space, or a
-		     * square which we can convert into a space.
-		     */
-		    switch (grid[npy*w+npx]) {
-		      case SPACE: case TARGET:
-			break;
-		      case INITIAL:
-			score += 3 /* new_space_score */;
-			break;
-		      default:
-			continue;
-		    }
+            /*
+             * (npx,npy) must also either be a space, or a
+             * square which we can convert into a space.
+             */
+            switch (grid[npy*w+npx]) {
+              case SPACE: case TARGET:
+            break;
+              case INITIAL:
+            score += 3 /* new_space_score */;
+            break;
+              default:
+            continue;
+            }
 
-		    /*
-		     * That's sufficient to tag this as a possible
-		     * pull right now. We still don't know if we
-		     * can reach the required player position, but
-		     * that's a job for the subsequent BFS phase to
-		     * tell us.
-		     */
-		    pulls[npulls].ox = x;
-		    pulls[npulls].oy = y;
-		    pulls[npulls].nx = nx;
-		    pulls[npulls].ny = ny;
-		    pulls[npulls].score = score;
+            /*
+             * That's sufficient to tag this as a possible
+             * pull right now. We still don't know if we
+             * can reach the required player position, but
+             * that's a job for the subsequent BFS phase to
+             * tell us.
+             */
+            pulls[npulls].ox = x;
+            pulls[npulls].oy = y;
+            pulls[npulls].nx = nx;
+            pulls[npulls].ny = ny;
+            pulls[npulls].score = score;
 #ifdef GENERATION_DIAGNOSTICS
-		    printf("found potential pull: (%d,%d)-(%d,%d) cost %d\n",
-			   pulls[npulls].ox, pulls[npulls].oy,
-			   pulls[npulls].nx, pulls[npulls].ny,
-			   pulls[npulls].score);
+            printf("found potential pull: (%d,%d)-(%d,%d) cost %d\n",
+               pulls[npulls].ox, pulls[npulls].oy,
+               pulls[npulls].nx, pulls[npulls].ny,
+               pulls[npulls].score);
 #endif
-		    npulls++;
-		}
+            npulls++;
+        }
 #ifdef GENERATION_DIAGNOSTICS
-	printf("found %d potential pulls\n", npulls);
+    printf("found %d potential pulls\n", npulls);
 #endif
 
-	/*
-	 * If there are no pulls available at all, we give up.
-	 * 
-	 * (FIXME: or perhaps backtrack?)
-	 */
-	if (npulls == 0)
-	    break;
+    /*
+     * If there are no pulls available at all, we give up.
+     * 
+     * (FIXME: or perhaps backtrack?)
+     */
+    if (npulls == 0)
+        break;
 
-	/*
-	 * Now we do a BFS from our current position, to find all
-	 * the squares we can get the player into.
-	 * 
-	 * This BFS is unusually tricky. We want to give a positive
-	 * distance only to squares which we have to carve through
-	 * INITIALs to get to, which means we can't just stick
-	 * every square we reach on the end of our to-do list.
-	 * Instead, we must maintain our list as a proper priority
-	 * queue.
-	 */
-	for (i = 0; i < w*h; i++)
-	    dist[i] = prev[i] = -1;
+    /*
+     * Now we do a BFS from our current position, to find all
+     * the squares we can get the player into.
+     * 
+     * This BFS is unusually tricky. We want to give a positive
+     * distance only to squares which we have to carve through
+     * INITIALs to get to, which means we can't just stick
+     * every square we reach on the end of our to-do list.
+     * Instead, we must maintain our list as a proper priority
+     * queue.
+     */
+    for (i = 0; i < w*h; i++)
+        dist[i] = prev[i] = -1;
 
-	heap[0] = py*w+px;
-	heapsize = 1;
-	dist[py*w+px] = 0;
+    heap[0] = py*w+px;
+    heapsize = 1;
+    dist[py*w+px] = 0;
 
 #define PARENT(n) ( ((n)-1)/2 )
 #define LCHILD(n) ( 2*(n)+1 )
 #define RCHILD(n) ( 2*(n)+2 )
 #define SWAP(i,j) do { int swaptmp = (i); (i) = (j); (j) = swaptmp; } while (0)
 
-	while (heapsize > 0) {
-	    /*
-	     * Pull the smallest element off the heap: it's at
-	     * position 0. Move the arbitrary element from the very
-	     * end of the heap into position 0.
-	     */
-	    y = heap[0] / w;
-	    x = heap[0] % w;
+    while (heapsize > 0) {
+        /*
+         * Pull the smallest element off the heap: it's at
+         * position 0. Move the arbitrary element from the very
+         * end of the heap into position 0.
+         */
+        y = heap[0] / w;
+        x = heap[0] % w;
 
-	    heapsize--;
-	    heap[0] = heap[heapsize];
+        heapsize--;
+        heap[0] = heap[heapsize];
 
-	    /*
-	     * Now repeatedly move that arbitrary element down the
-	     * heap by swapping it with the more suitable of its
-	     * children.
-	     */
-	    i = 0;
-	    while (1) {
-		int lc, rc;
+        /*
+         * Now repeatedly move that arbitrary element down the
+         * heap by swapping it with the more suitable of its
+         * children.
+         */
+        i = 0;
+        while (1) {
+        int lc, rc;
 
-		lc = LCHILD(i);
-		rc = RCHILD(i);
+        lc = LCHILD(i);
+        rc = RCHILD(i);
 
-		if (lc >= heapsize)
-		    break;	       /* we've hit bottom */
+        if (lc >= heapsize)
+            break;           /* we've hit bottom */
 
-		if (rc >= heapsize) {
-		    /*
-		     * Special case: there is only one child to
-		     * check.
-		     */
-		    if (dist[heap[i]] > dist[heap[lc]])
-			SWAP(heap[i], heap[lc]);
+        if (rc >= heapsize) {
+            /*
+             * Special case: there is only one child to
+             * check.
+             */
+            if (dist[heap[i]] > dist[heap[lc]])
+            SWAP(heap[i], heap[lc]);
 
-		    /* _Now_ we've hit bottom. */
-		    break;
-		} else {
-		    /*
-		     * The common case: there are two children and
-		     * we must check them both.
-		     */
-		    if (dist[heap[i]] > dist[heap[lc]] ||
-			dist[heap[i]] > dist[heap[rc]]) {
-			/*
-			 * Pick the more appropriate child to swap with
-			 * (i.e. the one which would want to be the
-			 * parent if one were above the other - as one
-			 * is about to be).
-			 */
-			if (dist[heap[lc]] > dist[heap[rc]]) {
-			    SWAP(heap[i], heap[rc]);
-			    i = rc;
-			} else {
-			    SWAP(heap[i], heap[lc]);
-			    i = lc;
-			}
-		    } else {
-			/* This element is in the right place; we're done. */
-			break;
-		    }
-		}
-	    }
+            /* _Now_ we've hit bottom. */
+            break;
+        } else {
+            /*
+             * The common case: there are two children and
+             * we must check them both.
+             */
+            if (dist[heap[i]] > dist[heap[lc]] ||
+            dist[heap[i]] > dist[heap[rc]]) {
+            /*
+             * Pick the more appropriate child to swap with
+             * (i.e. the one which would want to be the
+             * parent if one were above the other - as one
+             * is about to be).
+             */
+            if (dist[heap[lc]] > dist[heap[rc]]) {
+                SWAP(heap[i], heap[rc]);
+                i = rc;
+            } else {
+                SWAP(heap[i], heap[lc]);
+                i = lc;
+            }
+            } else {
+            /* This element is in the right place; we're done. */
+            break;
+            }
+        }
+        }
 
-	    /*
-	     * OK, that's given us (x,y) for this phase of the
-	     * search. Now try all directions from here.
-	     */
+        /*
+         * OK, that's given us (x,y) for this phase of the
+         * search. Now try all directions from here.
+         */
 
-	    for (d = 0; d < 4; d++) {
-		int dx = DX(d);
-		int dy = DY(d);
-		int nx = x + dx, ny = y + dy;
-		if (nx < 0 || nx >= w || ny < 0 || ny >= h)
-		    continue;
-		if (grid[ny*w+nx] != SPACE && grid[ny*w+nx] != TARGET &&
-		    grid[ny*w+nx] != INITIAL)
-		    continue;
-		if (dist[ny*w+nx] == -1) {
-		    dist[ny*w+nx] = dist[y*w+x] + (grid[ny*w+nx] == INITIAL);
-		    prev[ny*w+nx] = y*w+x;
+        for (d = 0; d < 4; d++) {
+        int dx = DX(d);
+        int dy = DY(d);
+        int nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= w || ny < 0 || ny >= h)
+            continue;
+        if (grid[ny*w+nx] != SPACE && grid[ny*w+nx] != TARGET &&
+            grid[ny*w+nx] != INITIAL)
+            continue;
+        if (dist[ny*w+nx] == -1) {
+            dist[ny*w+nx] = dist[y*w+x] + (grid[ny*w+nx] == INITIAL);
+            prev[ny*w+nx] = y*w+x;
 
-		    /*
-		     * Now insert ny*w+nx at the end of the heap,
-		     * and move it down to its appropriate resting
-		     * place.
-		     */
-		    i = heapsize;
-		    heap[heapsize++] = ny*w+nx;
+            /*
+             * Now insert ny*w+nx at the end of the heap,
+             * and move it down to its appropriate resting
+             * place.
+             */
+            i = heapsize;
+            heap[heapsize++] = ny*w+nx;
 
-		    /*
-		     * Swap element n with its parent repeatedly to
-		     * preserve the heap property.
-		     */
+            /*
+             * Swap element n with its parent repeatedly to
+             * preserve the heap property.
+             */
 
-		    while (i > 0) {
-			int p = PARENT(i);
+            while (i > 0) {
+            int p = PARENT(i);
 
-			if (dist[heap[p]] > dist[heap[i]]) {
-			    SWAP(heap[p], heap[i]);
-			    i = p;
-			} else
-			    break;
-		    }
-		}
-	    }
-	}
+            if (dist[heap[p]] > dist[heap[i]]) {
+                SWAP(heap[p], heap[i]);
+                i = p;
+            } else
+                break;
+            }
+        }
+        }
+    }
 
 #undef PARENT
 #undef LCHILD
@@ -589,132 +589,132 @@ static void sokoban_generate(int w, int h, unsigned char *grid, int moves,
 #undef SWAP
 
 #ifdef GENERATION_DIAGNOSTICS
-	printf("distance map:\n");
-	for (i = 0; i < h; i++) {
-	    for (j = 0; j < w; j++) {
-		int d = dist[i*w+j];
-		int c;
-		if (d < 0)
-		    c = '#';
-		else if (d >= 36)
-		    c = '!';
-		else if (d >= 10)
-		    c = 'A' - 10 + d;
-		else
-		    c = '0' + d;
-		putchar(c);
-	    }
-	    putchar('\n');
-	}
+    printf("distance map:\n");
+    for (i = 0; i < h; i++) {
+        for (j = 0; j < w; j++) {
+        int d = dist[i*w+j];
+        int c;
+        if (d < 0)
+            c = '#';
+        else if (d >= 36)
+            c = '!';
+        else if (d >= 10)
+            c = 'A' - 10 + d;
+        else
+            c = '0' + d;
+        putchar(c);
+        }
+        putchar('\n');
+    }
 #endif
 
-	/*
-	 * Now we can go back through the `pulls' array, adjusting
-	 * the score for each pull depending on how hard it is to
-	 * reach its starting point, and also throwing out any
-	 * whose starting points are genuinely unreachable even
-	 * with the possibility of carving through INITIAL squares.
-	 */
-	for (i = j = 0; i < npulls; i++) {
+    /*
+     * Now we can go back through the `pulls' array, adjusting
+     * the score for each pull depending on how hard it is to
+     * reach its starting point, and also throwing out any
+     * whose starting points are genuinely unreachable even
+     * with the possibility of carving through INITIAL squares.
+     */
+    for (i = j = 0; i < npulls; i++) {
 #ifdef GENERATION_DIAGNOSTICS
-	    printf("potential pull (%d,%d)-(%d,%d)",
-		   pulls[i].ox, pulls[i].oy,
-		   pulls[i].nx, pulls[i].ny);
+        printf("potential pull (%d,%d)-(%d,%d)",
+           pulls[i].ox, pulls[i].oy,
+           pulls[i].nx, pulls[i].ny);
 #endif
-	    x = pulls[i].nx;
-	    y = pulls[i].ny;
-	    if (dist[y*w+x] < 0) {
+        x = pulls[i].nx;
+        y = pulls[i].ny;
+        if (dist[y*w+x] < 0) {
 #ifdef GENERATION_DIAGNOSTICS
-		printf(" unreachable\n");
+        printf(" unreachable\n");
 #endif
-		continue;	       /* this pull isn't feasible at all */
-	    } else {
-		/*
-		 * Another nasty special case we have to check is
-		 * whether the initial barrel location (ox,oy) is
-		 * on the path used to reach the square. This can
-		 * occur if that square is in state INITIAL: the
-		 * pull is initially considered valid on the basis
-		 * that the INITIAL can become BARRELTARGET, and
-		 * it's also considered reachable on the basis that
-		 * INITIAL can be turned into SPACE, but it can't
-		 * be both at once.
-		 * 
-		 * Fortunately, if (ox,oy) is on the path at all,
-		 * it must be only one space from the end, so this
-		 * is easy to spot and rule out.
-		 */
-		if (prev[y*w+x] == pulls[i].oy*w+pulls[i].ox) {
+        continue;           /* this pull isn't feasible at all */
+        } else {
+        /*
+         * Another nasty special case we have to check is
+         * whether the initial barrel location (ox,oy) is
+         * on the path used to reach the square. This can
+         * occur if that square is in state INITIAL: the
+         * pull is initially considered valid on the basis
+         * that the INITIAL can become BARRELTARGET, and
+         * it's also considered reachable on the basis that
+         * INITIAL can be turned into SPACE, but it can't
+         * be both at once.
+         * 
+         * Fortunately, if (ox,oy) is on the path at all,
+         * it must be only one space from the end, so this
+         * is easy to spot and rule out.
+         */
+        if (prev[y*w+x] == pulls[i].oy*w+pulls[i].ox) {
 #ifdef GENERATION_DIAGNOSTICS
-		    printf(" goes through itself\n");
+            printf(" goes through itself\n");
 #endif
-		    continue;	       /* this pull isn't feasible at all */
-		}
-		pulls[j] = pulls[i];   /* structure copy */
-		pulls[j].score += dist[y*w+x] * 3 /* new_space_score */;
+            continue;           /* this pull isn't feasible at all */
+        }
+        pulls[j] = pulls[i];   /* structure copy */
+        pulls[j].score += dist[y*w+x] * 3 /* new_space_score */;
 #ifdef GENERATION_DIAGNOSTICS
-		printf(" reachable at distance %d (cost now %d)\n",
-		       dist[y*w+x], pulls[j].score);
+        printf(" reachable at distance %d (cost now %d)\n",
+               dist[y*w+x], pulls[j].score);
 #endif
-		j++;
-	    }
-	}
-	npulls = j;
+        j++;
+        }
+    }
+    npulls = j;
 
-	/*
-	 * Again, if there are no pulls available at all, we give
-	 * up.
-	 * 
-	 * (FIXME: or perhaps backtrack?)
-	 */
-	if (npulls == 0)
-	    break;
+    /*
+     * Again, if there are no pulls available at all, we give
+     * up.
+     * 
+     * (FIXME: or perhaps backtrack?)
+     */
+    if (npulls == 0)
+        break;
 
-	/*
-	 * Now choose which pull to make. On the one hand we should
-	 * prefer pulls which do less damage to the INITIAL squares
-	 * (thus, ones for which we can already get into position
-	 * via existing SPACEs, and for which the barrel already
-	 * exists and doesn't have to be invented); on the other,
-	 * we want to avoid _always_ preferring such pulls, on the
-	 * grounds that that will lead to levels without very much
-	 * stuff in.
-	 * 
-	 * When creating new barrels, we prefer creations which are
-	 * next to existing TARGET squares.
-	 * 
-	 * FIXME: for the moment I'll make this very simple indeed.
-	 */
-	i = random_upto(rs, npulls);
+    /*
+     * Now choose which pull to make. On the one hand we should
+     * prefer pulls which do less damage to the INITIAL squares
+     * (thus, ones for which we can already get into position
+     * via existing SPACEs, and for which the barrel already
+     * exists and doesn't have to be invented); on the other,
+     * we want to avoid _always_ preferring such pulls, on the
+     * grounds that that will lead to levels without very much
+     * stuff in.
+     * 
+     * When creating new barrels, we prefer creations which are
+     * next to existing TARGET squares.
+     * 
+     * FIXME: for the moment I'll make this very simple indeed.
+     */
+    i = random_upto(rs, npulls);
 
-	/*
-	 * Actually make the pull, including carving a path to get
-	 * to the site if necessary.
-	 */
-	x = pulls[i].nx;
-	y = pulls[i].ny;
-	while (prev[y*w+x] >= 0) {
-	    int p;
+    /*
+     * Actually make the pull, including carving a path to get
+     * to the site if necessary.
+     */
+    x = pulls[i].nx;
+    y = pulls[i].ny;
+    while (prev[y*w+x] >= 0) {
+        int p;
 
-	    if (grid[y*w+x] == INITIAL)
-		grid[y*w+x] = SPACE;
+        if (grid[y*w+x] == INITIAL)
+        grid[y*w+x] = SPACE;
 
-	    p = prev[y*w+x];
-	    y = p / w;
-	    x = p % w;
-	}
-	px = 2*pulls[i].nx - pulls[i].ox;
-	py = 2*pulls[i].ny - pulls[i].oy;
-	if (grid[py*w+px] == INITIAL)
-	    grid[py*w+px] = SPACE;
-	if (grid[pulls[i].ny*w+pulls[i].nx] == TARGET)
-	    grid[pulls[i].ny*w+pulls[i].nx] = BARRELTARGET;
-	else
-	    grid[pulls[i].ny*w+pulls[i].nx] = BARREL;
-	if (grid[pulls[i].oy*w+pulls[i].ox] == BARREL)
-	    grid[pulls[i].oy*w+pulls[i].ox] = SPACE;
-	else if (grid[pulls[i].oy*w+pulls[i].ox] != DEEP_PIT)
-	    grid[pulls[i].oy*w+pulls[i].ox] = TARGET;
+        p = prev[y*w+x];
+        y = p / w;
+        x = p % w;
+    }
+    px = 2*pulls[i].nx - pulls[i].ox;
+    py = 2*pulls[i].ny - pulls[i].oy;
+    if (grid[py*w+px] == INITIAL)
+        grid[py*w+px] = SPACE;
+    if (grid[pulls[i].ny*w+pulls[i].nx] == TARGET)
+        grid[pulls[i].ny*w+pulls[i].nx] = BARRELTARGET;
+    else
+        grid[pulls[i].ny*w+pulls[i].nx] = BARREL;
+    if (grid[pulls[i].oy*w+pulls[i].ox] == BARREL)
+        grid[pulls[i].oy*w+pulls[i].ox] = SPACE;
+    else if (grid[pulls[i].oy*w+pulls[i].ox] != DEEP_PIT)
+        grid[pulls[i].oy*w+pulls[i].ox] = TARGET;
     }
 
     sfree(heap);
@@ -723,13 +723,13 @@ static void sokoban_generate(int w, int h, unsigned char *grid, int moves,
     sfree(pulls);
 
     if (grid[py*w+px] == TARGET)
-	grid[py*w+px] = PLAYERTARGET;
+    grid[py*w+px] = PLAYERTARGET;
     else
-	grid[py*w+px] = PLAYER;
+    grid[py*w+px] = PLAYER;
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     int w = params->w, h = params->h;
     char *desc;
@@ -1249,7 +1249,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, int v)
     draw_rect(dr, tx+1, ty+1, TILESIZE-1, TILESIZE-1, bg);
 
     if (v == WALL) {
-	int coords[6];
+    int coords[6];
 
         coords[0] = tx + TILESIZE;
         coords[1] = ty + TILESIZE;
@@ -1265,7 +1265,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, int v)
 
         draw_rect(dr, tx + 1 + HIGHLIGHT_WIDTH, ty + 1 + HIGHLIGHT_WIDTH,
                   TILESIZE - 2*HIGHLIGHT_WIDTH,
-		  TILESIZE - 2*HIGHLIGHT_WIDTH, COL_WALL);
+          TILESIZE - 2*HIGHLIGHT_WIDTH, COL_WALL);
     } else if (v == PIT) {
         draw_circle(dr, tx + TILESIZE/2, ty + TILESIZE/2,
                     TILESIZE*3/7, COL_PIT, COL_OUTLINE);
@@ -1317,42 +1317,42 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int flashtype;
 
     if (flashtime &&
-	!((int)(flashtime * 3 / FLASH_LENGTH) % 2))
-	flashtype = 0x100;
+    !((int)(flashtime * 3 / FLASH_LENGTH) % 2))
+    flashtype = 0x100;
     else
-	flashtype = 0;
+    flashtype = 0;
 
     /*
      * Initialise a fresh drawstate.
      */
     if (!ds->started) {
-	int wid, ht;
+    int wid, ht;
 
-	/*
-	 * Blank out the window initially.
-	 */
-	game_compute_size(&ds->p, TILESIZE, &wid, &ht);
-	draw_rect(dr, 0, 0, wid, ht, COL_BACKGROUND);
-	draw_update(dr, 0, 0, wid, ht);
+    /*
+     * Blank out the window initially.
+     */
+    game_compute_size(&ds->p, TILESIZE, &wid, &ht);
+    draw_rect(dr, 0, 0, wid, ht, COL_BACKGROUND);
+    draw_update(dr, 0, 0, wid, ht);
 
-	/*
-	 * Draw the grid lines.
-	 */
-	for (y = 0; y <= h; y++)
-	    draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y),
-		      COL_LOWLIGHT);
-	for (x = 0; x <= w; x++)
-	    draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h),
-		      COL_LOWLIGHT);
+    /*
+     * Draw the grid lines.
+     */
+    for (y = 0; y <= h; y++)
+        draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y),
+              COL_LOWLIGHT);
+    for (x = 0; x <= w; x++)
+        draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h),
+              COL_LOWLIGHT);
 
-	ds->started = true;
+    ds->started = true;
     }
 
     /*
      * Draw the grid contents.
      */
     for (y = 0; y < h; y++)
-	for (x = 0; x < w; x++) {
+    for (x = 0; x < w; x++) {
             int v = state->grid[y*w+x];
             if (y == state->py && x == state->px) {
                 if (v == TARGET)
@@ -1363,13 +1363,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 }
             }
 
-	    v |= flashtype;
+        v |= flashtype;
 
-	    if (ds->grid[y*w+x] != v) {
-		draw_tile(dr, ds, x, y, v);
-		ds->grid[y*w+x] = v;
-	    }
-	}
+        if (ds->grid[y*w+x] != v) {
+        draw_tile(dr, ds, x, y, v);
+        ds->grid[y*w+x] = v;
+        }
+    }
 
 }
 
@@ -1433,7 +1433,8 @@ const struct game thegame = {
     game_flash_length,
     game_status,
     false, false, NULL, NULL,
-    false,			       /* wants_statusbar */
+    false,                   /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    0,                       /* flags */
 };
+
