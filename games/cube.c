@@ -1748,3 +1748,4 @@ const struct game thegame = {
     false, game_timing_state,
     0,                       /* flags */
 };
+

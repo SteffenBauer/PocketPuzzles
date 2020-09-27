@@ -124,7 +124,7 @@ void gameShowPage();
 void gamePrepare();
 LAYOUTTYPE gameGetLayout();
 
-static void check_button_state();
+static void gameCheckButtonState();
 
 void gameTap(int x, int y);
 void gameLongTap(int x, int y);

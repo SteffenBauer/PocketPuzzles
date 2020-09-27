@@ -54,7 +54,7 @@ struct game_params {
 #define hedge(state,x,y)      index(state, (state)->hedge, x, y)
 
 #define CRANGE(state,x,y,dx,dy) ( (x) >= dx && (x) < (state)->w && \
-			        (y) >= dy && (y) < (state)->h )
+                    (y) >= dy && (y) < (state)->h )
 #define RANGE(state,x,y)  CRANGE(state,x,y,0,0)
 #define HRANGE(state,x,y) CRANGE(state,x,y,0,1)
 #define VRANGE(state,x,y) CRANGE(state,x,y,1,0)
@@ -77,9 +77,9 @@ struct game_params {
 
 struct game_state {
     int w, h;
-    int *grid;			       /* contains the numbers */
-    unsigned char *vedge;	       /* (w+1) x h */
-    unsigned char *hedge;	       /* w x (h+1) */
+    int *grid;                   /* contains the numbers */
+    unsigned char *vedge;           /* (w+1) x h */
+    unsigned char *hedge;           /* w x (h+1) */
     bool completed, cheated;
     unsigned char *correct;
 };
@@ -132,7 +132,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -143,17 +143,17 @@ static void decode_params(game_params *ret, char const *string)
     if (*string == 'x') {
         string++;
         ret->h = atoi(string);
-	while (*string && isdigit((unsigned char)*string)) string++;
+    while (*string && isdigit((unsigned char)*string)) string++;
     }
     if (*string == 'e') {
-	string++;
-	ret->expandfactor = (float)atof(string);
-	while (*string &&
-	       (*string == '.' || isdigit((unsigned char)*string))) string++;
+    string++;
+    ret->expandfactor = (float)atof(string);
+    while (*string &&
+           (*string == '.' || isdigit((unsigned char)*string))) string++;
     }
     if (*string == 'a') {
-	string++;
-	ret->unique = false;
+    string++;
+    ret->unique = false;
     }
 }
 
@@ -217,11 +217,11 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w <= 0 || params->h <= 0)
-	return "Width and height must both be greater than zero";
+    return "Width and height must both be greater than zero";
     if (params->w*params->h < 2)
-	return "Grid area must be greater than one";
+    return "Grid area must be greater than one";
     if (params->expandfactor < 0.0F)
-	return "Expansion factor may not be negative";
+    return "Expansion factor may not be negative";
     return NULL;
 }
 
@@ -331,7 +331,7 @@ static void remove_number_placement(int w, int h, struct numberdata *number,
  */
 static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
                        unsigned char *hedge, unsigned char *vedge,
-		       random_state *rs)
+               random_state *rs)
 {
     struct rectlist *rectpositions;
     int *overlaps, *rectbyplace, *workspace;
@@ -881,9 +881,9 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
 
             for (y = 0; y < r->h; y++) {
                 if (r->x > 0)
-		    vedge[(r->y+y) * w + r->x] = 1;
+            vedge[(r->y+y) * w + r->x] = 1;
                 if (r->x+r->w < w)
-		    vedge[(r->y+y) * w + r->x+r->w] = 1;
+            vedge[(r->y+y) * w + r->x+r->w] = 1;
             }
             for (x = 0; x < r->w; x++) {
                 if (r->y > 0)
@@ -891,7 +891,7 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
                 if (r->y+r->h < h)
                     hedge[(r->y+r->h) * w + r->x+x] = 1;
             }
-	}
+    }
     }
 
     /*
@@ -1141,7 +1141,7 @@ static void display_grid(game_params *params, int *grid, int *numbers, int all)
 #endif
 
 static char *new_game_desc(const game_params *params_in, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     game_params params_copy = *params_in; /* structure copy */
     game_params *params = &params_copy;
@@ -1495,7 +1495,7 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
                 for (x = 0; x < params2->w; x++) {
                     int val = index(params2, grid, x, y);
                     if (val / params2->w == y &&   /* rect starts on this line */
-                        (y2 == 0 ||	       /* we're at the very top, or... */
+                        (y2 == 0 ||           /* we're at the very top, or... */
                          index(params3, grid2, x, y2-1) / params3->w < y2last
                          /* this rect isn't already started */))
                         index(params3, grid2, x, y2) =
@@ -1654,11 +1654,11 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
                 }
             }
 
-	    if (params->unique)
-		ret = rect_solver(params->w, params->h, nnumbers, nd,
-				  NULL, NULL, rs);
-	    else
-		ret = 1;	       /* allow any number placement at all */
+        if (params->unique)
+        ret = rect_solver(params->w, params->h, nnumbers, nd,
+                  NULL, NULL, rs);
+        else
+        ret = 1;           /* allow any number placement at all */
 
             if (ret == 1) {
                 /*
@@ -1810,87 +1810,87 @@ static unsigned char *get_correct(game_state *state)
     memset(ret, 0xFF, state->w * state->h);
 
     for (x = 0; x < state->w; x++)
-	for (y = 0; y < state->h; y++)
-	    if (index(state,ret,x,y) == 0xFF) {
-		int rw, rh;
-		int xx, yy;
-		int num, area;
+    for (y = 0; y < state->h; y++)
+        if (index(state,ret,x,y) == 0xFF) {
+        int rw, rh;
+        int xx, yy;
+        int num, area;
                 bool valid;
 
-		/*
-		 * Find a rectangle starting at this point.
-		 */
-		rw = 1;
-		while (x+rw < state->w && !vedge(state,x+rw,y))
-		    rw++;
-		rh = 1;
-		while (y+rh < state->h && !hedge(state,x,y+rh))
-		    rh++;
+        /*
+         * Find a rectangle starting at this point.
+         */
+        rw = 1;
+        while (x+rw < state->w && !vedge(state,x+rw,y))
+            rw++;
+        rh = 1;
+        while (y+rh < state->h && !hedge(state,x,y+rh))
+            rh++;
 
-		/*
-		 * We know what the dimensions of the rectangle
-		 * should be if it's there at all. Find out if we
-		 * really have a valid rectangle.
-		 */
-		valid = true;
-		/* Check the horizontal edges. */
-		for (xx = x; xx < x+rw; xx++) {
-		    for (yy = y; yy <= y+rh; yy++) {
-			int e = !HRANGE(state,xx,yy) || hedge(state,xx,yy);
-			int ec = (yy == y || yy == y+rh);
-			if (e != ec)
-			    valid = false;
-		    }
-		}
-		/* Check the vertical edges. */
-		for (yy = y; yy < y+rh; yy++) {
-		    for (xx = x; xx <= x+rw; xx++) {
-			int e = !VRANGE(state,xx,yy) || vedge(state,xx,yy);
-			int ec = (xx == x || xx == x+rw);
-			if (e != ec)
-			    valid = false;
-		    }
-		}
+        /*
+         * We know what the dimensions of the rectangle
+         * should be if it's there at all. Find out if we
+         * really have a valid rectangle.
+         */
+        valid = true;
+        /* Check the horizontal edges. */
+        for (xx = x; xx < x+rw; xx++) {
+            for (yy = y; yy <= y+rh; yy++) {
+            int e = !HRANGE(state,xx,yy) || hedge(state,xx,yy);
+            int ec = (yy == y || yy == y+rh);
+            if (e != ec)
+                valid = false;
+            }
+        }
+        /* Check the vertical edges. */
+        for (yy = y; yy < y+rh; yy++) {
+            for (xx = x; xx <= x+rw; xx++) {
+            int e = !VRANGE(state,xx,yy) || vedge(state,xx,yy);
+            int ec = (xx == x || xx == x+rw);
+            if (e != ec)
+                valid = false;
+            }
+        }
 
-		/*
-		 * If this is not a valid rectangle with no other
-		 * edges inside it, we just mark this square as not
-		 * complete and proceed to the next square.
-		 */
-		if (!valid) {
-		    index(state, ret, x, y) = 0;
-		    continue;
-		}
+        /*
+         * If this is not a valid rectangle with no other
+         * edges inside it, we just mark this square as not
+         * complete and proceed to the next square.
+         */
+        if (!valid) {
+            index(state, ret, x, y) = 0;
+            continue;
+        }
 
-		/*
-		 * We have a rectangle. Now see what its area is,
-		 * and how many numbers are in it.
-		 */
-		num = 0;
-		area = 0;
-		for (xx = x; xx < x+rw; xx++) {
-		    for (yy = y; yy < y+rh; yy++) {
-			area++;
-			if (grid(state,xx,yy)) {
-			    if (num > 0)
-				valid = false;   /* two numbers */
-			    num = grid(state,xx,yy);
-			}
-		    }
-		}
-		if (num != area)
-		    valid = false;
+        /*
+         * We have a rectangle. Now see what its area is,
+         * and how many numbers are in it.
+         */
+        num = 0;
+        area = 0;
+        for (xx = x; xx < x+rw; xx++) {
+            for (yy = y; yy < y+rh; yy++) {
+            area++;
+            if (grid(state,xx,yy)) {
+                if (num > 0)
+                valid = false;   /* two numbers */
+                num = grid(state,xx,yy);
+            }
+            }
+        }
+        if (num != area)
+            valid = false;
 
-		/*
-		 * Now fill in the whole rectangle based on the
-		 * value of `valid'.
-		 */
-		for (xx = x; xx < x+rw; xx++) {
-		    for (yy = y; yy < y+rh; yy++) {
-			index(state, ret, xx, yy) = valid;
-		    }
-		}
-	    }
+        /*
+         * Now fill in the whole rectangle based on the
+         * value of `valid'.
+         */
+        for (xx = x; xx < x+rw; xx++) {
+            for (yy = y; yy < y+rh; yy++) {
+            index(state, ret, xx, yy) = valid;
+            }
+        }
+        }
 
     return ret;
 }
@@ -1934,8 +1934,8 @@ static game_state *new_game(midend *me, const game_params *params,
     assert(i == area);
 
     for (y = 0; y < state->h; y++)
-	for (x = 0; x < state->w; x++)
-	    vedge(state,x,y) = hedge(state,x,y) = 0;
+    for (x = 0; x < state->w; x++)
+        vedge(state,x,y) = hedge(state,x,y) = 0;
 
     state->correct = get_correct(state);
 
@@ -2033,8 +2033,8 @@ static char *solve_game(const game_state *state, const game_state *currstate,
         for (x = 1; x < state->w; x++)
             *p++ = vedge[y*state->w+x] ? '1' : '0';
     for (y = 1; y < state->h; y++)
-	for (x = 0; x < state->w; x++)
-	    *p++ = hedge[y*state->w+x] ? '1' : '0';
+    for (x = 0; x < state->w; x++)
+        *p++ = hedge[y*state->w+x] ? '1' : '0';
     *p++ = '\0';
     assert(p - ret == len);
 
@@ -2061,8 +2061,8 @@ static char *game_text_format(const game_state *state)
      */
     col = 2;
     for (i = 0; i < state->w * state->h; i++) {
-	x = sprintf(buf, "%d", state->grid[i]);
-	if (col < x) col = x;
+    x = sprintf(buf, "%d", state->grid[i]);
+    if (col < x) col = x;
     }
 
     /*
@@ -2076,65 +2076,65 @@ static char *game_text_format(const game_state *state)
     p = ret;
 
     for (y = 0; y <= 2*state->h; y++) {
-	for (x = 0; x <= 2*state->w; x++) {
-	    if (x & y & 1) {
-		/*
-		 * Display a number.
-		 */
-		int v = grid(state, x/2, y/2);
-		if (v)
-		    sprintf(buf, "%*d", col, v);
-		else
-		    sprintf(buf, "%*s", col, "");
-		memcpy(p, buf, col);
-		p += col;
-	    } else if (x & 1) {
-		/*
-		 * Display a horizontal edge or nothing.
-		 */
-		int h = (y==0 || y==2*state->h ? 1 :
-			 HRANGE(state, x/2, y/2) && hedge(state, x/2, y/2));
-		int i;
-		if (h)
-		    h = '-';
-		else
-		    h = ' ';
-		for (i = 0; i < col; i++)
-		    *p++ = h;
-	    } else if (y & 1) {
-		/*
-		 * Display a vertical edge or nothing.
-		 */
-		int v = (x==0 || x==2*state->w ? 1 :
-			 VRANGE(state, x/2, y/2) && vedge(state, x/2, y/2));
-		if (v)
-		    *p++ = '|';
-		else
-		    *p++ = ' ';
-	    } else {
-		/*
-		 * Display a corner, or a vertical edge, or a
-		 * horizontal edge, or nothing.
-		 */
-		int hl = (y==0 || y==2*state->h ? 1 :
-			  HRANGE(state, (x-1)/2, y/2) && hedge(state, (x-1)/2, y/2));
-		int hr = (y==0 || y==2*state->h ? 1 :
-			  HRANGE(state, (x+1)/2, y/2) && hedge(state, (x+1)/2, y/2));
-		int vu = (x==0 || x==2*state->w ? 1 :
-			  VRANGE(state, x/2, (y-1)/2) && vedge(state, x/2, (y-1)/2));
-		int vd = (x==0 || x==2*state->w ? 1 :
-			  VRANGE(state, x/2, (y+1)/2) && vedge(state, x/2, (y+1)/2));
-		if (!hl && !hr && !vu && !vd)
-		    *p++ = ' ';
-		else if (hl && hr && !vu && !vd)
-		    *p++ = '-';
-		else if (!hl && !hr && vu && vd)
-		    *p++ = '|';
-		else
-		    *p++ = '+';
-	    }
-	}
-	*p++ = '\n';
+    for (x = 0; x <= 2*state->w; x++) {
+        if (x & y & 1) {
+        /*
+         * Display a number.
+         */
+        int v = grid(state, x/2, y/2);
+        if (v)
+            sprintf(buf, "%*d", col, v);
+        else
+            sprintf(buf, "%*s", col, "");
+        memcpy(p, buf, col);
+        p += col;
+        } else if (x & 1) {
+        /*
+         * Display a horizontal edge or nothing.
+         */
+        int h = (y==0 || y==2*state->h ? 1 :
+             HRANGE(state, x/2, y/2) && hedge(state, x/2, y/2));
+        int i;
+        if (h)
+            h = '-';
+        else
+            h = ' ';
+        for (i = 0; i < col; i++)
+            *p++ = h;
+        } else if (y & 1) {
+        /*
+         * Display a vertical edge or nothing.
+         */
+        int v = (x==0 || x==2*state->w ? 1 :
+             VRANGE(state, x/2, y/2) && vedge(state, x/2, y/2));
+        if (v)
+            *p++ = '|';
+        else
+            *p++ = ' ';
+        } else {
+        /*
+         * Display a corner, or a vertical edge, or a
+         * horizontal edge, or nothing.
+         */
+        int hl = (y==0 || y==2*state->h ? 1 :
+              HRANGE(state, (x-1)/2, y/2) && hedge(state, (x-1)/2, y/2));
+        int hr = (y==0 || y==2*state->h ? 1 :
+              HRANGE(state, (x+1)/2, y/2) && hedge(state, (x+1)/2, y/2));
+        int vu = (x==0 || x==2*state->w ? 1 :
+              VRANGE(state, x/2, (y-1)/2) && vedge(state, x/2, (y-1)/2));
+        int vd = (x==0 || x==2*state->w ? 1 :
+              VRANGE(state, x/2, (y+1)/2) && vedge(state, x/2, (y+1)/2));
+        if (!hl && !hr && !vu && !vd)
+            *p++ = ' ';
+        else if (hl && hr && !vu && !vd)
+            *p++ = '-';
+        else if (!hl && !hr && vu && vd)
+            *p++ = '|';
+        else
+            *p++ = '+';
+        }
+    }
+    *p++ = '\n';
     }
 
     assert(p - ret == maxlen);
@@ -2311,9 +2311,9 @@ static void coord_round(float x, float y, int *xr, int *yr)
  * Returns true if it has made any change to the grid.
  */
 static bool grid_draw_rect(const game_state *state,
-			  unsigned char *hedge, unsigned char *vedge,
-			  int c, bool really, bool outline,
-			  int x1, int y1, int x2, int y2)
+              unsigned char *hedge, unsigned char *vedge,
+              int c, bool really, bool outline,
+              int x1, int y1, int x2, int y2)
 {
     int x, y;
     bool changed = false;
@@ -2330,9 +2330,9 @@ static bool grid_draw_rect(const game_state *state,
                     val = c;
                 } else if (c == 1)
                     val = 0;
-		changed = changed || (index(state,hedge,x,y) != val);
-		if (really)
-		    index(state,hedge,x,y) = val;
+        changed = changed || (index(state,hedge,x,y) != val);
+        if (really)
+            index(state,hedge,x,y) = val;
             }
 
     /*
@@ -2347,20 +2347,20 @@ static bool grid_draw_rect(const game_state *state,
                     val = c;
                 } else if (c == 1)
                     val = 0;
-		changed = changed || (index(state,vedge,x,y) != val);
+        changed = changed || (index(state,vedge,x,y) != val);
                 if (really)
-		    index(state,vedge,x,y) = val;
+            index(state,vedge,x,y) = val;
             }
 
     return changed;
 }
 
 static bool ui_draw_rect(const game_state *state, const game_ui *ui,
-			unsigned char *hedge, unsigned char *vedge, int c,
-			bool really, bool outline)
+            unsigned char *hedge, unsigned char *vedge, int c,
+            bool really, bool outline)
 {
     return grid_draw_rect(state, hedge, vedge, c, really, outline,
-			  ui->x1, ui->y1, ui->x2, ui->y2);
+              ui->x1, ui->y1, ui->x2, ui->y2);
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -2446,8 +2446,8 @@ static char *interpret_move(const game_state *from, game_ui *ui,
     }
 
     if (startdrag &&
-	xc >= 0 && xc <= 2*from->w &&
-	yc >= 0 && yc <= 2*from->h) {
+    xc >= 0 && xc <= 2*from->w &&
+    yc >= 0 && yc <= 2*from->h) {
 
         ui->drag_start_x = xc;
         ui->drag_start_y = yc;
@@ -2459,17 +2459,17 @@ static char *interpret_move(const game_state *from, game_ui *ui,
     }
 
     if (ui->drag_start_x >= 0 &&
-	(xc != ui->drag_end_x || yc != ui->drag_end_y)) {
-	int t;
+    (xc != ui->drag_end_x || yc != ui->drag_end_y)) {
+    int t;
 
-	if (ui->drag_end_x != -1 && ui->drag_end_y != -1)
-	    ui->dragged = true;
+    if (ui->drag_end_x != -1 && ui->drag_end_y != -1)
+        ui->dragged = true;
         ui->drag_end_x = xc;
         ui->drag_end_y = yc;
         active = true;
 
-	if (xc >= 0 && xc <= 2*from->w &&
-	    yc >= 0 && yc <= 2*from->h) {
+    if (xc >= 0 && xc <= 2*from->w &&
+        yc >= 0 && yc <= 2*from->h) {
             ui->x1 = ui->drag_start_x;
             ui->x2 = ui->drag_end_x;
             if (ui->x2 < ui->x1) { t = ui->x1; ui->x1 = ui->x2; ui->x2 = t; }
@@ -2493,40 +2493,40 @@ static char *interpret_move(const game_state *from, game_ui *ui,
     ret = NULL;
 
     if (enddrag && (ui->drag_start_x >= 0)) {
-	if (xc >= 0 && xc <= 2*from->w &&
-	    yc >= 0 && yc <= 2*from->h &&
+    if (xc >= 0 && xc <= 2*from->w &&
+        yc >= 0 && yc <= 2*from->h &&
             erasing == ui->erasing) {
 
-	    if (ui->dragged) {
-		if (ui_draw_rect(from, ui, from->hedge,
-				 from->vedge, 1, false, !ui->erasing)) {
-		    sprintf(buf, "%c%d,%d,%d,%d",
-			    (int)(ui->erasing ? 'E' : 'R'),
-			    ui->x1, ui->y1, ui->x2 - ui->x1, ui->y2 - ui->y1);
-		    ret = dupstr(buf);
-		}
-	    } else {
-		if ((xc & 1) && !(yc & 1) && HRANGE(from,xc/2,yc/2)) {
-		    sprintf(buf, "H%d,%d", xc/2, yc/2);
-		    ret = dupstr(buf);
-		}
-		if ((yc & 1) && !(xc & 1) && VRANGE(from,xc/2,yc/2)) {
-		    sprintf(buf, "V%d,%d", xc/2, yc/2);
-		    ret = dupstr(buf);
-		}
-	    }
-	}
+        if (ui->dragged) {
+        if (ui_draw_rect(from, ui, from->hedge,
+                 from->vedge, 1, false, !ui->erasing)) {
+            sprintf(buf, "%c%d,%d,%d,%d",
+                (int)(ui->erasing ? 'E' : 'R'),
+                ui->x1, ui->y1, ui->x2 - ui->x1, ui->y2 - ui->y1);
+            ret = dupstr(buf);
+        }
+        } else {
+        if ((xc & 1) && !(yc & 1) && HRANGE(from,xc/2,yc/2)) {
+            sprintf(buf, "H%d,%d", xc/2, yc/2);
+            ret = dupstr(buf);
+        }
+        if ((yc & 1) && !(xc & 1) && VRANGE(from,xc/2,yc/2)) {
+            sprintf(buf, "V%d,%d", xc/2, yc/2);
+            ret = dupstr(buf);
+        }
+        }
+    }
 
         reset_ui(ui);
-	active = true;
+    active = true;
     }
 
     if (ret)
-	return ret;		       /* a move has been made */
+    return ret;               /* a move has been made */
     else if (active)
         return UI_UPDATE;
     else
-	return NULL;
+    return NULL;
 }
 
 static game_state *execute_move(const game_state *from, const char *move)
@@ -2535,52 +2535,52 @@ static game_state *execute_move(const game_state *from, const char *move)
     int x1, y1, x2, y2, mode;
 
     if (move[0] == 'S') {
-	const char *p = move+1;
-	int x, y;
+    const char *p = move+1;
+    int x, y;
 
-	ret = dup_game(from);
-	ret->cheated = true;
+    ret = dup_game(from);
+    ret->cheated = true;
 
-	for (y = 0; y < ret->h; y++)
-	    for (x = 1; x < ret->w; x++) {
-		vedge(ret, x, y) = (*p == '1');
-		if (*p) p++;
-	    }
-	for (y = 1; y < ret->h; y++)
-	    for (x = 0; x < ret->w; x++) {
-		hedge(ret, x, y) = (*p == '1');
-		if (*p) p++;
-	    }
+    for (y = 0; y < ret->h; y++)
+        for (x = 1; x < ret->w; x++) {
+        vedge(ret, x, y) = (*p == '1');
+        if (*p) p++;
+        }
+    for (y = 1; y < ret->h; y++)
+        for (x = 0; x < ret->w; x++) {
+        hedge(ret, x, y) = (*p == '1');
+        if (*p) p++;
+        }
 
-	sfree(ret->correct);
-	ret->correct = get_correct(ret);
+    sfree(ret->correct);
+    ret->correct = get_correct(ret);
 
-	return ret;
+    return ret;
 
     } else if ((move[0] == 'R' || move[0] == 'E') &&
-	sscanf(move+1, "%d,%d,%d,%d", &x1, &y1, &x2, &y2) == 4 &&
-	x1 >= 0 && x2 >= 0 && x1+x2 <= from->w &&
-	y1 >= 0 && y2 >= 0 && y1+y2 <= from->h) {
-	x2 += x1;
-	y2 += y1;
-	mode = move[0];
+    sscanf(move+1, "%d,%d,%d,%d", &x1, &y1, &x2, &y2) == 4 &&
+    x1 >= 0 && x2 >= 0 && x1+x2 <= from->w &&
+    y1 >= 0 && y2 >= 0 && y1+y2 <= from->h) {
+    x2 += x1;
+    y2 += y1;
+    mode = move[0];
     } else if ((move[0] == 'H' || move[0] == 'V') &&
-	       sscanf(move+1, "%d,%d", &x1, &y1) == 2 &&
-	       (move[0] == 'H' ? HRANGE(from, x1, y1) :
-		VRANGE(from, x1, y1))) {
-	mode = move[0];
+           sscanf(move+1, "%d,%d", &x1, &y1) == 2 &&
+           (move[0] == 'H' ? HRANGE(from, x1, y1) :
+        VRANGE(from, x1, y1))) {
+    mode = move[0];
     } else
-	return NULL;		       /* can't parse move string */
+    return NULL;               /* can't parse move string */
 
     ret = dup_game(from);
 
     if (mode == 'R' || mode == 'E') {
-	grid_draw_rect(ret, ret->hedge, ret->vedge, 1, true,
+    grid_draw_rect(ret, ret->hedge, ret->vedge, 1, true,
                        mode == 'R', x1, y1, x2, y2);
     } else if (mode == 'H') {
-	hedge(ret,x1,y1) = !hedge(ret,x1,y1);
+    hedge(ret,x1,y1) = !hedge(ret,x1,y1);
     } else if (mode == 'V') {
-	vedge(ret,x1,y1) = !vedge(ret,x1,y1);
+    vedge(ret,x1,y1) = !vedge(ret,x1,y1);
     }
 
     sfree(ret->correct);
@@ -2591,17 +2591,17 @@ static game_state *execute_move(const game_state *from, const char *move)
      * if the game has been completed.
      */
     if (!ret->completed) {
-	int x, y;
+    int x, y;
         bool ok;
 
-	ok = true;
-	for (x = 0; x < ret->w; x++)
-	    for (y = 0; y < ret->h; y++)
-		if (!index(ret, ret->correct, x, y))
-		    ok = false;
+    ok = true;
+    for (x = 0; x < ret->w; x++)
+        for (y = 0; y < ret->h; y++)
+        if (!index(ret, ret->correct, x, y))
+            ok = false;
 
-	if (ok)
-	    ret->completed = true;
+    if (ok)
+        ret->completed = true;
     }
 
     return ret;
@@ -2703,32 +2703,32 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
 
     draw_rect(dr, cx, cy, TILE_SIZE+1, TILE_SIZE+1, COL_GRID);
     draw_rect(dr, cx+1, cy+1, TILE_SIZE-1, TILE_SIZE-1,
-	      (bgflags & CURSOR) ? COL_CURSOR :
+          (bgflags & CURSOR) ? COL_CURSOR :
               (bgflags & CORRECT) ? COL_CORRECT : COL_BACKGROUND);
 
     if (grid(state,x,y)) {
-	sprintf(str, "%d", grid(state,x,y));
-	draw_text(dr, cx+TILE_SIZE/2, cy+TILE_SIZE/2, FONT_VARIABLE,
-		  TILE_SIZE/2, ALIGN_HCENTRE | ALIGN_VCENTRE, COL_TEXT, str);
+    sprintf(str, "%d", grid(state,x,y));
+    draw_text(dr, cx+TILE_SIZE/2, cy+TILE_SIZE/2, FONT_VARIABLE,
+          TILE_SIZE/2, ALIGN_HCENTRE | ALIGN_VCENTRE, COL_TEXT, str);
     }
 
     /*
      * Draw edges.
      */
     if (!HRANGE(state,x,y) || index(state,hedge,x,y))
-	draw_rect(dr, cx, cy, TILE_SIZE+1, 2,
+    draw_rect(dr, cx, cy, TILE_SIZE+1, 2,
                   HRANGE(state,x,y) ? COLOUR(index(state,hedge,x,y)) :
                   COL_LINE);
     if (!HRANGE(state,x,y+1) || index(state,hedge,x,y+1))
-	draw_rect(dr, cx, cy+TILE_SIZE-1, TILE_SIZE+1, 2,
+    draw_rect(dr, cx, cy+TILE_SIZE-1, TILE_SIZE+1, 2,
                   HRANGE(state,x,y+1) ? COLOUR(index(state,hedge,x,y+1)) :
                   COL_LINE);
     if (!VRANGE(state,x,y) || index(state,vedge,x,y))
-	draw_rect(dr, cx, cy, 2, TILE_SIZE+1,
+    draw_rect(dr, cx, cy, 2, TILE_SIZE+1,
                   VRANGE(state,x,y) ? COLOUR(index(state,vedge,x,y)) :
                   COL_LINE);
     if (!VRANGE(state,x+1,y) || index(state,vedge,x+1,y))
-	draw_rect(dr, cx+TILE_SIZE-1, cy, 2, TILE_SIZE+1,
+    draw_rect(dr, cx+TILE_SIZE-1, cy, 2, TILE_SIZE+1,
                   VRANGE(state,x+1,y) ? COLOUR(index(state,vedge,x+1,y)) :
                   COL_LINE);
 
@@ -2736,16 +2736,16 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
      * Draw corners.
      */
     if (index(state,corners,x,y))
-	draw_rect(dr, cx, cy, 2, 2,
+    draw_rect(dr, cx, cy, 2, 2,
                   COLOUR(index(state,corners,x,y)));
     if (x+1 < state->w && index(state,corners,x+1,y))
-	draw_rect(dr, cx+TILE_SIZE-1, cy, 2, 2,
+    draw_rect(dr, cx+TILE_SIZE-1, cy, 2, 2,
                   COLOUR(index(state,corners,x+1,y)));
     if (y+1 < state->h && index(state,corners,x,y+1))
-	draw_rect(dr, cx, cy+TILE_SIZE-1, 2, 2,
+    draw_rect(dr, cx, cy+TILE_SIZE-1, 2, 2,
                   COLOUR(index(state,corners,x,y+1)));
     if (x+1 < state->w && y+1 < state->h && index(state,corners,x+1,y+1))
-	draw_rect(dr, cx+TILE_SIZE-1, cy+TILE_SIZE-1, 2, 2,
+    draw_rect(dr, cx+TILE_SIZE-1, cy+TILE_SIZE-1, 2, 2,
                   COLOUR(index(state,corners,x+1,y+1)));
 
     draw_update(dr, cx, cy, TILE_SIZE+1, TILE_SIZE+1);
@@ -2773,81 +2773,81 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     corners = snewn(state->w * state->h, unsigned char);
     memset(corners, 0, state->w * state->h);
     for (x = 0; x < state->w; x++)
-	for (y = 0; y < state->h; y++) {
-	    if (x > 0) {
-		int e = index(state, vedge, x, y);
-		if (index(state,corners,x,y) < e)
-		    index(state,corners,x,y) = e;
-		if (y+1 < state->h &&
-		    index(state,corners,x,y+1) < e)
-		    index(state,corners,x,y+1) = e;
-	    }
-	    if (y > 0) {
-		int e = index(state, hedge, x, y);
-		if (index(state,corners,x,y) < e)
-		    index(state,corners,x,y) = e;
-		if (x+1 < state->w &&
-		    index(state,corners,x+1,y) < e)
-		    index(state,corners,x+1,y) = e;
-	    }
-	}
+    for (y = 0; y < state->h; y++) {
+        if (x > 0) {
+        int e = index(state, vedge, x, y);
+        if (index(state,corners,x,y) < e)
+            index(state,corners,x,y) = e;
+        if (y+1 < state->h &&
+            index(state,corners,x,y+1) < e)
+            index(state,corners,x,y+1) = e;
+        }
+        if (y > 0) {
+        int e = index(state, hedge, x, y);
+        if (index(state,corners,x,y) < e)
+            index(state,corners,x,y) = e;
+        if (x+1 < state->w &&
+            index(state,corners,x+1,y) < e)
+            index(state,corners,x+1,y) = e;
+        }
+    }
 
     if (!ds->started) {
-	draw_rect(dr, 0, 0,
-		  state->w * TILE_SIZE + 2*BORDER + 1,
-		  state->h * TILE_SIZE + 2*BORDER + 1, COL_BACKGROUND);
-	draw_rect(dr, COORD(0)-1, COORD(0)-1,
-		  ds->w*TILE_SIZE+3, ds->h*TILE_SIZE+3, COL_LINE);
-	ds->started = true;
-	draw_update(dr, 0, 0,
-		    state->w * TILE_SIZE + 2*BORDER + 1,
-		    state->h * TILE_SIZE + 2*BORDER + 1);
+    draw_rect(dr, 0, 0,
+          state->w * TILE_SIZE + 2*BORDER + 1,
+          state->h * TILE_SIZE + 2*BORDER + 1, COL_BACKGROUND);
+    draw_rect(dr, COORD(0)-1, COORD(0)-1,
+          ds->w*TILE_SIZE+3, ds->h*TILE_SIZE+3, COL_LINE);
+    ds->started = true;
+    draw_update(dr, 0, 0,
+            state->w * TILE_SIZE + 2*BORDER + 1,
+            state->h * TILE_SIZE + 2*BORDER + 1);
     }
 
     for (x = 0; x < state->w; x++)
-	for (y = 0; y < state->h; y++) {
-	    unsigned long c = 0;
+    for (y = 0; y < state->h; y++) {
+        unsigned long c = 0;
 
-	    if (HRANGE(state,x,y))
+        if (HRANGE(state,x,y))
                 c |= index(state,hedge,x,y);
-	    if (HRANGE(state,x,y+1))
-		c |= index(state,hedge,x,y+1) << 2;
-	    if (VRANGE(state,x,y))
-		c |= index(state,vedge,x,y) << 4;
-	    if (VRANGE(state,x+1,y))
-		c |= index(state,vedge,x+1,y) << 6;
-	    c |= index(state,corners,x,y) << 8;
-	    if (x+1 < state->w)
-		c |= index(state,corners,x+1,y) << 10;
-	    if (y+1 < state->h)
-		c |= index(state,corners,x,y+1) << 12;
-	    if (x+1 < state->w && y+1 < state->h)
-		/* cast to prevent 2<<14 sign-extending on promotion to long */
-		c |= (unsigned long)index(state,corners,x+1,y+1) << 14;
-	    if (index(state, state->correct, x, y) && !flashtime)
-		c |= CORRECT;
+        if (HRANGE(state,x,y+1))
+        c |= index(state,hedge,x,y+1) << 2;
+        if (VRANGE(state,x,y))
+        c |= index(state,vedge,x,y) << 4;
+        if (VRANGE(state,x+1,y))
+        c |= index(state,vedge,x+1,y) << 6;
+        c |= index(state,corners,x,y) << 8;
+        if (x+1 < state->w)
+        c |= index(state,corners,x+1,y) << 10;
+        if (y+1 < state->h)
+        c |= index(state,corners,x,y+1) << 12;
+        if (x+1 < state->w && y+1 < state->h)
+        /* cast to prevent 2<<14 sign-extending on promotion to long */
+        c |= (unsigned long)index(state,corners,x+1,y+1) << 14;
+        if (index(state, state->correct, x, y) && !flashtime)
+        c |= CORRECT;
             if (ui->cur_visible && ui->cur_x == x && ui->cur_y == y)
                 c |= CURSOR;
 
-	    if (index(ds,ds->visible,x,y) != c) {
-		draw_tile(dr, ds, state, x, y, hedge, vedge, corners,
+        if (index(ds,ds->visible,x,y) != c) {
+        draw_tile(dr, ds, state, x, y, hedge, vedge, corners,
                           (c & (CORRECT|CURSOR)) );
-		index(ds,ds->visible,x,y) = c;
-	    }
-	}
+        index(ds,ds->visible,x,y) = c;
+        }
+    }
 
     {
-	char buf[256];
+    char buf[256];
 
-	if (ui->dragged &&
-	    ui->x1 >= 0 && ui->y1 >= 0 &&
-	    ui->x2 >= 0 && ui->y2 >= 0) {
-	    sprintf(buf, "%dx%d ",
-		    ui->x2-ui->x1,
-		    ui->y2-ui->y1);
-	} else {
-	    buf[0] = '\0';
-	}
+    if (ui->dragged &&
+        ui->x1 >= 0 && ui->y1 >= 0 &&
+        ui->x2 >= 0 && ui->y2 >= 0) {
+        sprintf(buf, "%dx%d ",
+            ui->x2-ui->x1,
+            ui->y2-ui->y1);
+    } else {
+        buf[0] = '\0';
+    }
 
         if (state->cheated)
             strcat(buf, "Auto-solved.");
@@ -2875,7 +2875,7 @@ static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
     if (!oldstate->completed && newstate->completed &&
-	!oldstate->cheated && !newstate->cheated)
+    !oldstate->cheated && !newstate->cheated)
         return FLASH_TIME;
     return 0.0F;
 }
@@ -2925,34 +2925,34 @@ static void game_print(drawing *dr, const game_state *state, int tilesize)
      */
     print_line_width(dr, TILE_SIZE / 256);
     for (x = 1; x < w; x++)
-	draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h), ink);
+    draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h), ink);
     for (y = 1; y < h; y++)
-	draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y), ink);
+    draw_line(dr, COORD(0), COORD(y), COORD(w), COORD(y), ink);
 
     /*
      * Solution.
      */
     print_line_width(dr, TILE_SIZE / 10);
     for (y = 0; y <= h; y++)
-	for (x = 0; x <= w; x++) {
-	    if (HRANGE(state,x,y) && hedge(state,x,y))
-		draw_line(dr, COORD(x), COORD(y), COORD(x+1), COORD(y), ink);
-	    if (VRANGE(state,x,y) && vedge(state,x,y))
-		draw_line(dr, COORD(x), COORD(y), COORD(x), COORD(y+1), ink);
-	}
+    for (x = 0; x <= w; x++) {
+        if (HRANGE(state,x,y) && hedge(state,x,y))
+        draw_line(dr, COORD(x), COORD(y), COORD(x+1), COORD(y), ink);
+        if (VRANGE(state,x,y) && vedge(state,x,y))
+        draw_line(dr, COORD(x), COORD(y), COORD(x), COORD(y+1), ink);
+    }
 
     /*
      * Clues.
      */
     for (y = 0; y < h; y++)
-	for (x = 0; x < w; x++)
-	    if (grid(state,x,y)) {
-		char str[80];
-		sprintf(str, "%d", grid(state,x,y));
-		draw_text(dr, COORD(x)+TILE_SIZE/2, COORD(y)+TILE_SIZE/2,
-			  FONT_VARIABLE, TILE_SIZE/2,
-			  ALIGN_HCENTRE | ALIGN_VCENTRE, ink, str);
-	    }
+    for (x = 0; x < w; x++)
+        if (grid(state,x,y)) {
+        char str[80];
+        sprintf(str, "%d", grid(state,x,y));
+        draw_text(dr, COORD(x)+TILE_SIZE/2, COORD(y)+TILE_SIZE/2,
+              FONT_VARIABLE, TILE_SIZE/2,
+              ALIGN_HCENTRE | ALIGN_VCENTRE, ink, str);
+        }
 }
 
 #ifdef COMBINED
@@ -2993,9 +2993,8 @@ const struct game thegame = {
     game_flash_length,
     game_status,
     true, false, game_print_size, game_print,
-    true,			       /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    0,                       /* flags */
 };
 
-/* vim: set shiftwidth=4 tabstop=8: */
