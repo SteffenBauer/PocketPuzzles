@@ -14,22 +14,36 @@ struct frontend {
   int height;               /* Height of main game canvas */
   int xoffset;              /* Main game canvas offset in X-direction */
   int yoffset;              /* Main game canvas offset in Y-direction */
-  int ncontrols;            /* Number of control buttons */
-  BUTTON *controls;         /* Array of control buttons */
+
+  int numGameButtons;       /* Number of menu + control buttons */
+  BUTTON *gameButton;       /* Array of game buttons */
+
+  int btnSwapIDX;
+  int btnUndoIDX;
+  int btnRedoIDX;
+  int btnBackIDX;
+  int btnDrawIDX;
+  int btnGameIDX;
+  int btnTypeIDX;
+
   bool with_twoctrllines;   /* Game needs two lines of control buttons */
   bool with_statusbar;      /* Game needs the statusbar */
   bool with_rightpointer;   /* Game operates with right/long-click */
   bool swapped;             /* Indicates if left/right click is swapped */
+
   int current_pointer;      /* Current pointer type (left/ right) */
   int pointerdown_x;        /* Coordinates of initial pointer down event */
   int pointerdown_y;
+
   bool finished;            /* Whether game was finished (for showing finish message) */
-  bool do_partial;          /* If game canvas is updated partial or full at end */
   irect cliprect;           /* Initial screen clip rectangle upon game init */
+
   const char *statustext;   /* Currently shown status text (needed for screen redraw) */
+
   struct timeval last_time;
   int time_int;
   bool isTimer;
+
   game_params *pparams;
   int ncolours;
   float *colours;
