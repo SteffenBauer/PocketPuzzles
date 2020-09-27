@@ -26,16 +26,17 @@ void button_to_normal(BUTTON *button, bool update) {
     if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
 void button_to_tapped(BUTTON *button) {
-    if (button->action == ACTION_CTRL) {
-        draw_buttonchar(button);
-        InvertArea(button->posx, button->posy, button->size, button->size);
+    if (button->bitmap_tap != NULL) {
+        StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap_tap, 0);
     }
-    else if (button->bitmap_tap == NULL) {
+    else if (button->bitmap != NULL) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
         InvertArea(button->posx, button->posy, button->size, button->size);
     }
-    else
-        StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap_tap, 0);
+    else if (button->action == ACTION_CTRL) {
+        draw_buttonchar(button);
+        InvertArea(button->posx, button->posy, button->size, button->size);
+    }
     PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
 static void draw_buttonchar(BUTTON *button) {
