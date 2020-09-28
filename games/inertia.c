@@ -1726,8 +1726,8 @@ static float *game_colours(frontend *fe, int *ncolours)
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND  * 3 + i] = 1.0F;
         ret[COL_OUTLINE     * 3 + i] = 0.0F;
-        ret[COL_PLAYER      * 3 + i] = 0.0F;
-        ret[COL_DEAD_PLAYER * 3 + i] = 0.2F;
+        ret[COL_PLAYER      * 3 + i] = 0.2F;
+        ret[COL_DEAD_PLAYER * 3 + i] = 0.4F;
         ret[COL_MINE        * 3 + i] = 0.0F;
         ret[COL_GEM         * 3 + i] = 0.8F;
         ret[COL_HIGHLIGHT   * 3 + i] = 0.9F;
@@ -1821,13 +1821,9 @@ static void draw_player(drawing *dr, game_drawstate *ds, int x, int y,
         draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
                     TILESIZE/3, COL_PLAYER, COL_OUTLINE);
         draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
-                    TILESIZE/4, COL_BACKGROUND, COL_BACKGROUND);
+                    TILESIZE/4, COL_GEM, COL_GEM);
         draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
-                    TILESIZE/6, COL_PLAYER, COL_PLAYER);
-        draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
-                    TILESIZE/9, COL_BACKGROUND, COL_BACKGROUND);
-        draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
-                    TILESIZE/16, COL_PLAYER, COL_PLAYER);
+                    TILESIZE/6, COL_DEAD_PLAYER, COL_DEAD_PLAYER);
     }
 
     if (!dead && hintdir >= 0) {
@@ -1919,16 +1915,21 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, int v)
     } else if (v == GEM) {
         int coords[8];
 
-        coords[0] = tx+TILESIZE/2;                coords[1] = ty+TILESIZE/2-7*TILESIZE/16;
+        coords[0] = tx+TILESIZE/2;               coords[1] = ty+TILESIZE/2-7*TILESIZE/16;
         coords[2] = tx+TILESIZE/2-7*TILESIZE/16; coords[3] = ty+TILESIZE/2;
-        coords[4] = tx+TILESIZE/2;                coords[5] = ty+TILESIZE/2+7*TILESIZE/16;
+        coords[4] = tx+TILESIZE/2;               coords[5] = ty+TILESIZE/2+7*TILESIZE/16;
         coords[6] = tx+TILESIZE/2+7*TILESIZE/16; coords[7] = ty+TILESIZE/2;
 
         draw_polygon(dr, coords, 4, COL_GEM, COL_GEM);
-        draw_line(dr, coords[0], coords[1], coords[2], coords[3], COL_OUTLINE);
-        draw_line(dr, coords[2], coords[3], coords[4], coords[5], COL_OUTLINE);
-        draw_line(dr, coords[4], coords[5], coords[6], coords[7], COL_OUTLINE);
-        draw_line(dr, coords[6], coords[7], coords[0], coords[1], COL_OUTLINE);
+        draw_thick_line(dr, 3.0, coords[0], coords[1], coords[2], coords[3], COL_OUTLINE);
+        draw_thick_line(dr, 3.0, coords[2], coords[3], coords[4], coords[5], COL_OUTLINE);
+        draw_thick_line(dr, 3.0, coords[4], coords[5], coords[6], coords[7], COL_OUTLINE);
+        draw_thick_line(dr, 3.0, coords[6], coords[7], coords[0], coords[1], COL_OUTLINE);
+        coords[1] += 5*TILESIZE/16;
+        coords[2] += 5*TILESIZE/16;
+        coords[5] -= 5*TILESIZE/16;
+        coords[6] -= 5*TILESIZE/16;
+        draw_polygon(dr, coords, 4, COL_BACKGROUND, COL_BACKGROUND);
     }
 
     unclip(dr);
