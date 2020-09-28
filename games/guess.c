@@ -784,14 +784,24 @@ static char *interpret_move(const game_state *from, game_ui *ui,
             }
         }
         else if (over_past_guess_y >= 0) {
-            int col = from->guesses[over_past_guess_y]->pegs[over_past_guess_x];
-            if (col) {
-                ui->display_cur = true;
+            if ((ui->peg_col == over_past_guess_x) && (ui->peg_row == over_past_guess_y)) {
+                ui->display_cur = false;
+                ui->select_colour = -1;
                 ui->colour_cur = -1;
-                ui->peg_col = over_past_guess_x;
-                ui->peg_row = over_past_guess_y;
-                ui->select_colour = col;
+                ui->peg_col = -1;
+                ui->peg_row = -1;
                 ret = UI_UPDATE;
+            }
+            else {
+                int col = from->guesses[over_past_guess_y]->pegs[over_past_guess_x];
+                if (col) {
+                    ui->display_cur = true;
+                    ui->colour_cur = -1;
+                    ui->peg_col = over_past_guess_x;
+                    ui->peg_row = over_past_guess_y;
+                    ui->select_colour = col;
+                    ret = UI_UPDATE;
+                }
             }
         }
         else if (over_hint && ui->markable) {
@@ -946,7 +956,7 @@ static float *game_colours(frontend *fe, int *ncolours)
 
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND    * 3 + i] = 1.0F;
-        ret[COL_EMPTY         * 3 + i] = 0.7F;
+        ret[COL_EMPTY         * 3 + i] = 0.8F;
         ret[COL_CORRECTCOLOUR * 3 + i] = 1.0F;
         ret[COL_CORRECTPLACE  * 3 + i] = 0.0F;
         ret[COL_MARK          * 3 + i] = 0.9F;
@@ -968,7 +978,8 @@ static float *game_colours(frontend *fe, int *ncolours)
     return ret;
 }
 
-static int COLINV[] = {COL_3, COL_4, COL_1, COL_3, COL_7, COL_8, COL_9, COL_6, COL_7};
+static int COLINV[] = {COL_BACKGROUND, COL_BACKGROUND, COL_SELECT, COL_SELECT, 
+                       COL_BACKGROUND, COL_BACKGROUND, COL_BACKGROUND, COL_SELECT, COL_SELECT};
 
 static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
 {
@@ -1038,11 +1049,11 @@ static void draw_peg(drawing *dr, game_drawstate *ds, int cx, int cy,
     if (selected) {
         if (labelled && col) {
             draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD, COL_SELECT, COL_SELECT);
-            draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD-CGAP, COLINV[col-1], COLINV[col-1]);
+            draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD-2*CGAP, COLINV[col-1], COLINV[col-1]);
         }
         else 
             draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD, COL_SELECT, COL_SELECT);
-        draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD-2*CGAP, COL_EMPTY + col, COL_EMPTY + col);
+        draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD-4*CGAP, COL_EMPTY + col, COL_EMPTY + col);
     }
     else {
         draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD, COL_EMPTY + col, (col ? COL_FRAME : COL_EMPTY));

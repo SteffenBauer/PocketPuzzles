@@ -1501,7 +1501,7 @@ static float *game_colours(frontend *fe, int *ncolours)
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0;
         ret[COL_BORDER     * 3 + i] = 0.0;
-        ret[COL_BLUE       * 3 + i] = 0.2;
+        ret[COL_BLUE       * 3 + i] = 0.5;
     }
 
     *ncolours = NCOLOURS;
@@ -1664,6 +1664,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         draw_polygon(dr, coords, poly->order,
                      state->facecolours[i] ? COL_BLUE : COL_BACKGROUND,
              COL_BORDER);
+        for (j = 0; j < poly->order; j++) {
+            int idx_from, idx_to;
+            idx_from = 2*j;
+            idx_to = (j < poly->order-1) ? 2*(j+1) : 0;
+            draw_thick_line(dr, 5.0, 
+                coords[idx_from], coords[idx_from+1],
+                coords[idx_to], coords[idx_to+1], COL_BORDER);
+        }
     }
     sfree(poly);
 
