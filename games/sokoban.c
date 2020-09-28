@@ -102,8 +102,6 @@
 #define DX(d) (d == 0 ? -1 : d == 2 ? +1 : 0)
 #define DY(d) (d == 1 ? -1 : d == 3 ? +1 : 0)
 
-#define FLASH_LENGTH 0.3F
-
 enum {
     COL_BACKGROUND,
     COL_TARGET,
@@ -1195,21 +1193,19 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
-        ret[COL_HIGHLIGHT  * 3 + i] = 0.9F;
-        ret[COL_LOWLIGHT   * 3 + i] = 0.6F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.25F;
         ret[COL_TARGET     * 3 + i] = 0.75F;
         ret[COL_OUTLINE    * 3 + i] = 0.0F;
-        ret[COL_PLAYER     * 3 + i] = 0.8F;
-        ret[COL_BARREL     * 3 + i] = 0.25F;
-        ret[COL_PIT        * 3 + i] = 0.6F;
-        ret[COL_DEEP_PIT   * 3 + i] = 0.6F;
+        ret[COL_PLAYER     * 3 + i] = 0.0F;
+        ret[COL_BARREL     * 3 + i] = 0.5F;
+        ret[COL_PIT        * 3 + i] = 0.75F;
+        ret[COL_DEEP_PIT   * 3 + i] = 0.75F;
         ret[COL_TEXT       * 3 + i] = 1.0F;
         ret[COL_GRID       * 3 + i] = 0.75F;
-        ret[COL_WALL       * 3 + i] = 0.75F;
+        ret[COL_WALL       * 3 + i] = 0.5F;
     }
 
     *ncolours = NCOLOURS;
@@ -1279,20 +1275,23 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, int v)
         }
         if (IS_PLAYER(v)) {
             int coords[8];
-            coords[0] = tx + TILESIZE/2;
-            coords[1] = ty + 15;
-            coords[2] = tx + TILESIZE - 15;
-            coords[3] = ty + TILESIZE/2;
-            coords[4] = tx + TILESIZE/2;
-            coords[5] = ty + TILESIZE - 15;
-            coords[6] = tx + 15;
-            coords[7] = ty + TILESIZE/2;
+            coords[0] = tx + TILESIZE/2;             coords[1] = ty + TILESIZE/10;
+            coords[2] = tx + TILESIZE - TILESIZE/10; coords[3] = ty + TILESIZE/2;
+            coords[4] = tx + TILESIZE/2;             coords[5] = ty + TILESIZE - TILESIZE/10;
+            coords[6] = tx + TILESIZE/10;            coords[7] = ty + TILESIZE/2;
             draw_polygon(dr, coords, 4, COL_PLAYER, COL_OUTLINE);
+            coords[1] += TILESIZE/4;
+            coords[2] -= TILESIZE/4;
+            coords[5] -= TILESIZE/4;
+            coords[6] += TILESIZE/4;
+            draw_polygon(dr, coords, 4, COL_BACKGROUND, COL_BACKGROUND);
         } else if (IS_BARREL(v)) {
             char str[2];
 
             draw_circle(dr, tx + TILESIZE/2, ty + TILESIZE/2,
                         TILESIZE/3, COL_BARREL, COL_OUTLINE);
+            draw_circle(dr, tx + TILESIZE/2, ty + TILESIZE/2,
+                        TILESIZE/12, COL_BACKGROUND, COL_BARREL);
             str[1] = '\0';
             str[0] = BARREL_LABEL(v);
             if (str[0]) {
@@ -1314,13 +1313,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int w = state->p.w, h = state->p.h /*, wh = w*h */;
     int x, y;
-    int flashtype;
-
-    if (flashtime &&
-    !((int)(flashtime * 3 / FLASH_LENGTH) % 2))
-    flashtype = 0x100;
-    else
-    flashtype = 0;
 
     /*
      * Initialise a fresh drawstate.
@@ -1363,11 +1355,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 }
             }
 
-        v |= flashtype;
-
         if (ds->grid[y*w+x] != v) {
-        draw_tile(dr, ds, x, y, v);
-        ds->grid[y*w+x] = v;
+            draw_tile(dr, ds, x, y, v);
+            ds->grid[y*w+x] = v;
         }
     }
 

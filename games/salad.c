@@ -1982,7 +1982,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
 {
     int mode = state->params->mode;
     int o = state->params->order;
-    int nums = state->params->nums;
     int x, y, i, j, tx, ty, color;
     char base = (mode == GAMEMODE_LETTERS ? 'A' - 1 : '0');
     char buf[80];
@@ -2000,11 +1999,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     {
         /* Draw background */
         draw_rect(dr, 0, 0, (o+2)*TILE_SIZE, (o+2)*TILE_SIZE, COL_BACKGROUND);
-
-        /* Draw the status bar only when there is no virtual keyboard */
-        sprintf(buf, "%c~%c", base + 1, base + nums);
-        status_bar(dr, buf);
-        
         draw_update(dr, 0, 0, (o+2)*TILE_SIZE, (o+2)*TILE_SIZE);
     }
     
@@ -2223,7 +2217,7 @@ const struct game thegame = {
     game_flash_length,
     game_status,
     false, false, NULL, NULL,
-    true,                   /* wants_statusbar */
+    false,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };

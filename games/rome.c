@@ -1856,9 +1856,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
 
             color = ui->hshow && !ui->hpencil && on_hint        ? COL_HIGHLIGHT : 
                     ui->sloops && (state->grid[i1] & FE_LOOP)   ? COL_ERRORBG : 
-                    ui->sgoals && (state->grid[i1] & FD_TOGOAL) ? COL_GOALBG : 
                     state->grid[i1] & FE_DOUBLE                 ? COL_ERRORBG :
                     state->grid[i1] & FE_BOUNDS                 ? COL_ERRORBG :
+                    ui->sgoals && (state->grid[i1] & FD_TOGOAL) ? COL_GOALBG : 
                                                                   COL_BACKGROUND;
 
             i2 = y*w+x-1; /* Left */
