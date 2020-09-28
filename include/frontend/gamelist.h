@@ -8,10 +8,10 @@ extern const struct game abcd, ascent, blackbox, boats, bridges,
                          map, mathrax, mines, mosaic, net,
                          netslide, palisade, pattern, pearl, pegs,
                          range, rect, rome, salad, samegame,
-                         signpost, singles, sixteen, slant, sokoban,
-                         solo, spokes, tents, towers, tracks,
-                         twiddle, undead, unequal, unruly, untangle,
-                         walls;
+                         signpost, singles, sixteen, slant, slide,
+                         sokoban, solo, spokes, tents, towers,
+                         tracks, twiddle, undead, unequal, unruly,
+                         untangle, walls;
 
 extern ibitmap game_abcd, game_ascent, game_blackbox, game_boats, game_bridges,
                game_clusters, game_cube, game_dominosa, game_fifteen, game_filling,
@@ -20,10 +20,10 @@ extern ibitmap game_abcd, game_ascent, game_blackbox, game_boats, game_bridges,
                game_map, game_mathrax, game_mines, game_mosaic, game_net,
                game_netslide, game_palisade, game_pattern, game_pearl, game_pegs,
                game_range, game_rect, game_rome, game_salad, game_samegame,
-               game_signpost, game_singles, game_sixteen, game_slant, game_sokoban,
-               game_solo, game_spokes, game_tents, game_towers, game_tracks,
-               game_twiddle, game_undead, game_unequal, game_unruly, game_untangle,
-               game_walls;
+               game_signpost, game_singles, game_sixteen, game_slant, game_slide,
+               game_sokoban, game_solo, game_spokes, game_tents, game_towers, 
+               game_tracks, game_twiddle, game_undead, game_unequal, game_unruly, 
+               game_untangle, game_walls;
 
 static GAMEINFO mygames[] = {
     { &game_abcd,     &abcd},
@@ -55,35 +55,37 @@ static GAMEINFO mygames[] = {
     { &game_mines,    &mines},
     { &game_mosaic,   &mosaic},
     { &game_net,      &net},
-//    { &game_netslide, &netslide},
 
+//    { &game_netslide, &netslide},
     { &game_palisade, &palisade},
     { &game_pattern,  &pattern},
     { &game_pearl,    &pearl},
     { &game_pegs,     &pegs},
-    { &game_range,    &range},
 
+    { &game_range,    &range},
     { &game_rect,     &rect},
     { &game_rome,     &rome},
     { &game_salad,    &salad},
 //    { &game_samegame, &samegame},
-    { &game_signpost, &signpost},
 
+    { &game_signpost, &signpost},
     { &game_singles,  &singles},
     { &game_sixteen,  &sixteen},
     { &game_slant,    &slant},
+//    { &game_slide,    &slide},
+
     { &game_sokoban,  &sokoban},
     { &game_solo,     &solo},
-
     { &game_spokes,   &spokes},
     { &game_tents,    &tents},
     { &game_towers,   &towers},
+
     { &game_tracks,   &tracks},
     { &game_twiddle,  &twiddle},
-
     { &game_undead,   &undead},
     { &game_unequal,  &unequal},
     { &game_unruly,   &unruly},
+
     { &game_untangle, &untangle},
     { &game_walls,    &walls},
 
