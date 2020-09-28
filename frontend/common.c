@@ -69,7 +69,7 @@ struct layout getLayout(LAYOUTTYPE screenlayout) {
     struct layout requestedLayout;
 
     requestedLayout.menubtn_size = PanelHeight();
-    requestedLayout.control_size = ScreenWidth()/12;
+    requestedLayout.control_size = ScreenWidth()/10;
     requestedLayout.chooser_size = ScreenWidth()/8;
 
     requestedLayout.menu.starty = 0;
