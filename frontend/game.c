@@ -293,13 +293,13 @@ void gameMenuHandler(int index) {
         case 102:
             midend_restart_game(me);
             fe->finished = false;
-            gameCheckButtonState();
-            if (fe->gamelayout.with_statusbar) gameDrawStatusBar();
+            gameShowPage();
             break;
         case 103:
             errorMsg = midend_solve(me);
             if (errorMsg) Message(ICON_WARNING, "", errorMsg, 3000);
             else fe->finished = true;
+            gameShowPage();
             break;
         case 104:
             Message(ICON_WARNING, "", "Help not implemented yet!", 3000);
@@ -533,7 +533,7 @@ static void gameDrawStatusBar() {
     gameSetupStatusBar();
     sprintf(buf, "%s                               ", fe->statustext);
     SetFont(gamefont, BLACK);
-    DrawString(10, fe->gamelayout.statusbar.starty+8, buf);
+    DrawString(10, fe->gamelayout.statusbar.starty+12, buf);
 }
 
 static void gameDrawControlButtons() {
@@ -653,8 +653,9 @@ void gameShowPage() {
     DrawPanel(NULL, "", "", 0);
     gameDrawMenu();
     gameDrawControlButtons();
-    midend_force_redraw(me);
     if (fe->gamelayout.with_statusbar) gameDrawStatusBar();
+    midend_force_redraw(me);
+    SoftUpdate();
 }
 
 void gameInit(const struct game *thegame) {
