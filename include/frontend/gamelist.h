@@ -39,7 +39,7 @@ static GAMEINFO mygames[] = {
     { &game_filling,  &filling},
 
     { &game_flip,     &flip},
-//    { &game_flood,    &flood},
+    { &game_flood,    &flood},
     { &game_galaxies, &galaxies},
     { &game_group,    &group},
     { &game_guess,    &guess},

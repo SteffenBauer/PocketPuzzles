@@ -39,7 +39,7 @@
 - [X] Cube: Thicker lines for cube
 - [X] Flip: Remove animation. Adjust colors.
 - [X] Fifteen: Remove animation. Adjust colors. Add solver hint mechanism.
-- [ ] Flood: Add color fill pattern
+- [X] Flood: Add color fill pattern
 - [X] Inertia: Remove animation
 - [X] Inertia: Adjust colors, thicker grid lines, modify gem icons
 - [ ] Map: Remove drag animation
