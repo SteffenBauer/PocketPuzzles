@@ -36,9 +36,8 @@
 #include "puzzles.h"
 
 enum {
-    COL_BACKGROUND, COL_SEPARATOR,
-    COL_1, COL_2, COL_3, COL_4, COL_5, COL_6, COL_7, COL_8, COL_9, COL_10,
-    COL_HIGHLIGHT, COL_LOWLIGHT,
+    COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT, COL_SEPARATOR,
+    COL_BLACK, COL_DARKGRAY, COL_LIGHTGRAY, COL_WHITE,
     NCOLOURS
 };
 
@@ -123,7 +122,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -139,14 +138,14 @@ static void decode_params(game_params *ret, char const *string)
     while (*string) {
         if (*string == 'c') {
             string++;
-	    ret->colours = atoi(string);
+        ret->colours = atoi(string);
             while (string[1] && isdigit((unsigned char)string[1])) string++;
-	} else if (*string == 'm') {
+    } else if (*string == 'm') {
             string++;
-	    ret->leniency = atoi(string);
+        ret->leniency = atoi(string);
             while (string[1] && isdigit((unsigned char)string[1])) string++;
-	}
-	string++;
+    }
+    string++;
     }
 }
 
@@ -540,7 +539,7 @@ static char choosemove(int w, int h, char *grid, int x0, int y0,
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     int w = params->w, h = params->h, wh = w*h;
     int i, moves;
@@ -666,7 +665,7 @@ static game_state *dup_game(const game_state *state)
     ret->cheated = state->cheated;
     ret->soln = state->soln;
     if (ret->soln)
-	ret->soln->refcount++;
+    ret->soln->refcount++;
     ret->solnpos = state->solnpos;
 
     return ret;
@@ -675,8 +674,8 @@ static game_state *dup_game(const game_state *state)
 static void free_game(game_state *state)
 {
     if (state->soln && --state->soln->refcount == 0) {
-	sfree(state->soln->moves);
-	sfree(state->soln);
+    sfree(state->soln->moves);
+    sfree(state->soln);
     }
     sfree(state->grid);
     sfree(state);
@@ -729,48 +728,12 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     return ret;
 }
 
-static bool game_can_format_as_text_now(const game_params *params)
-{
-    return true;
-}
-
-static char *game_text_format(const game_state *state)
-{
-    int w = state->w, h = state->h;
-    char *ret, *p;
-    int x, y, len;
-
-    len = h * (w+1);                   /* +1 for newline after each row */
-    ret = snewn(len+1, char);          /* and +1 for terminating \0 */
-    p = ret;
-
-    for (y = 0; y < h; y++) {
-	for (x = 0; x < w; x++) {
-            char colour = state->grid[y*w+x];
-            char textcolour = (colour > 9 ? 'A' : '0') + colour;
-            *p++ = textcolour;
-	}
-	*p++ = '\n';
-    }
-
-    assert(p - ret == len);
-    *p = '\0';
-
-    return ret;
-}
-
 struct game_ui {
-    bool cursor_visible;
-    int cx, cy;
-    enum { VICTORY, DEFEAT } flash_type;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
     struct game_ui *ui = snew(struct game_ui);
-    ui->cursor_visible = false;
-    ui->cx = FILLX;
-    ui->cy = FILLY;
     return ui;
 }
 
@@ -803,12 +766,9 @@ struct game_drawstate {
 #define PREFERRED_TILESIZE 32
 #define BORDER (TILESIZE / 2)
 #define SEP_WIDTH (TILESIZE / 32)
-#define CURSOR_INSET (TILESIZE / 8)
-#define HIGHLIGHT_WIDTH (TILESIZE / 10)
+#define HIGHLIGHT_WIDTH (TILESIZE / 5)
 #define COORD(x)  ( (x) * TILESIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILESIZE) / TILESIZE - 1 )
-#define VICTORY_FLASH_FRAME 0.03F
-#define DEFEAT_FLASH_FRAME 0.10F
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
@@ -818,31 +778,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     int tx = -1, ty = -1, move = -1;
 
     if (button == LEFT_BUTTON) {
-	tx = FROMCOORD(x);
+        tx = FROMCOORD(x);
         ty = FROMCOORD(y);
-        ui->cursor_visible = false;
-    } else if (button == CURSOR_LEFT && ui->cx > 0) {
-        ui->cx--;
-        ui->cursor_visible = true;
-        return UI_UPDATE;
-    } else if (button == CURSOR_RIGHT && ui->cx+1 < w) {
-        ui->cx++;
-        ui->cursor_visible = true;
-        return UI_UPDATE;
-    } else if (button == CURSOR_UP && ui->cy > 0) {
-        ui->cy--;
-        ui->cursor_visible = true;
-        return UI_UPDATE;
-    } else if (button == CURSOR_DOWN && ui->cy+1 < h) {
-        ui->cy++;
-        ui->cursor_visible = true;
-        return UI_UPDATE;
-    } else if (button == CURSOR_SELECT) {
-        tx = ui->cx;
-        ty = ui->cy;
-    } else if (button == CURSOR_SELECT2 &&
-               state->soln && state->solnpos < state->soln->nmoves) {
-	move = state->soln->moves[state->solnpos];
     } else {
         return NULL;
     }
@@ -870,7 +807,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         c >= 0 &&
         !state->complete) {
         int *queue = snewn(state->w * state->h, int);
-	ret = dup_game(state);
+    ret = dup_game(state);
         fill(ret->w, ret->h, ret->grid, FILLX, FILLY, c, queue);
         ret->moves++;
         ret->complete = completed(ret->w, ret->h, ret->grid);
@@ -899,16 +836,16 @@ static game_state *execute_move(const game_state *state, const char *move)
         sfree(queue);
         return ret;
     } else if (*move == 'S') {
-	soln *sol;
+    soln *sol;
         const char *p;
         int i;
 
-	/*
-	 * This is a solve move, so we don't actually _change_ the
-	 * grid but merely set up a stored solution path.
-	 */
-	move++;
-	sol = snew(soln);
+    /*
+     * This is a solve move, so we don't actually _change_ the
+     * grid but merely set up a stored solution path.
+     */
+    move++;
+    sol = snew(soln);
 
         sol->nmoves = 1;
         for (p = move; *p; p++) {
@@ -927,16 +864,16 @@ static game_state *execute_move(const game_state *state, const char *move)
             }
         }
 
-	ret = dup_game(state);
-	ret->cheated = true;
-	if (ret->soln && --ret->soln->refcount == 0) {
-	    sfree(ret->soln->moves);
-	    sfree(ret->soln);
-	}
-	ret->soln = sol;
-	ret->solnpos = 0;
-	sol->refcount = 1;
-	return ret;
+    ret = dup_game(state);
+    ret->cheated = true;
+    if (ret->soln && --ret->soln->refcount == 0) {
+        sfree(ret->soln->moves);
+        sfree(ret->soln);
+    }
+    ret->soln = sol;
+    ret->solnpos = 0;
+    sol->refcount = 1;
+    return ret;
     }
 
     return NULL;
@@ -965,63 +902,19 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-
-    ret[COL_SEPARATOR * 3 + 0] = 0.0F;
-    ret[COL_SEPARATOR * 3 + 1] = 0.0F;
-    ret[COL_SEPARATOR * 3 + 2] = 0.0F;
-
-    /* red */
-    ret[COL_1 * 3 + 0] = 1.0F;
-    ret[COL_1 * 3 + 1] = 0.0F;
-    ret[COL_1 * 3 + 2] = 0.0F;
-
-    /* yellow */
-    ret[COL_2 * 3 + 0] = 1.0F;
-    ret[COL_2 * 3 + 1] = 1.0F;
-    ret[COL_2 * 3 + 2] = 0.0F;
-
-    /* green */
-    ret[COL_3 * 3 + 0] = 0.0F;
-    ret[COL_3 * 3 + 1] = 1.0F;
-    ret[COL_3 * 3 + 2] = 0.0F;
-
-    /* blue */
-    ret[COL_4 * 3 + 0] = 0.2F;
-    ret[COL_4 * 3 + 1] = 0.3F;
-    ret[COL_4 * 3 + 2] = 1.0F;
-
-    /* orange */
-    ret[COL_5 * 3 + 0] = 1.0F;
-    ret[COL_5 * 3 + 1] = 0.5F;
-    ret[COL_5 * 3 + 2] = 0.0F;
-
-    /* purple */
-    ret[COL_6 * 3 + 0] = 0.5F;
-    ret[COL_6 * 3 + 1] = 0.0F;
-    ret[COL_6 * 3 + 2] = 0.7F;
-
-    /* brown */
-    ret[COL_7 * 3 + 0] = 0.5F;
-    ret[COL_7 * 3 + 1] = 0.3F;
-    ret[COL_7 * 3 + 2] = 0.3F;
-
-    /* light blue */
-    ret[COL_8 * 3 + 0] = 0.4F;
-    ret[COL_8 * 3 + 1] = 0.8F;
-    ret[COL_8 * 3 + 2] = 1.0F;
-
-    /* light green */
-    ret[COL_9 * 3 + 0] = 0.7F;
-    ret[COL_9 * 3 + 1] = 1.0F;
-    ret[COL_9 * 3 + 2] = 0.7F;
-
-    /* pink */
-    ret[COL_10 * 3 + 0] = 1.0F;
-    ret[COL_10 * 3 + 1] = 0.6F;
-    ret[COL_10 * 3 + 2] = 1.0F;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.25F;
+        ret[COL_SEPARATOR  * 3 + i] = 0.0F;
+        ret[COL_BLACK      * 3 + i] = 0.0F;
+        ret[COL_DARKGRAY   * 3 + i] = 0.3F;
+        ret[COL_LIGHTGRAY  * 3 + i] = 0.7F;
+        ret[COL_WHITE      * 3 + i] = 1.0F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1056,10 +949,335 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 #define CORNER_UR 0x020
 #define CORNER_DL 0x040
 #define CORNER_DR 0x080
-#define CURSOR    0x100
-#define BADFLASH  0x200
-#define SOLNNEXT  0x400
+#define SOLNNEXT  0x100
 #define COLOUR_SHIFT 11
+
+/* 
+ * 1 Solid dark
+ * 2 Solid light
+ * 3 Equal stripes down->up dark/light
+ * 4 Unequal stripes up->down dark fg /light bg
+ * 5 Checkerboard big dark/light
+ * 6 Dotted dark bg / light fg
+ * 7 Brick pattern
+ * 8 
+ * 9
+ * 10 Hex pattern
+ */
+
+static void draw_textured_tile(drawing *dr, int x, int y, int w, int h, int col) {
+    clip(dr, x, y, w, h);
+    if (col == 0) {
+        draw_rect(dr, x, y, w, h, COL_BLACK);
+    }
+    else if (col == 1) {
+        draw_rect(dr, x, y, w, h, COL_DARKGRAY);
+    }
+    else if (col == 2) {
+        draw_rect(dr, x, y, w, h, COL_LIGHTGRAY);
+    }
+    else if (col == 3) {
+        draw_rect(dr, x, y, w, h, COL_WHITE);
+    }
+    else if (col == 4) { /* Checkerboard */
+        draw_rect(dr, x, y, w, h, COL_LIGHTGRAY);
+        draw_rect(dr, x+w/2, y, w/2, h/2, COL_DARKGRAY);
+        draw_rect(dr, x, y+h/2, w/2, h/2, COL_DARKGRAY);
+    }
+    else if (col == 5) { /* Diagonal stripes */
+        int coords[8];
+        draw_rect(dr, x, y, w, h, COL_WHITE);
+        coords[0] = x;      coords[1] = y+h/2;
+        coords[2] = x+w/2;  coords[3] = y;
+        coords[4] = x+w;    coords[5] = y;
+        coords[6] = x;      coords[7] = y+h;
+        draw_polygon(dr, coords, 4, COL_DARKGRAY, COL_DARKGRAY);
+        coords[0] = x+w/2;  coords[1] = y+h;
+        coords[2] = x+w;    coords[3] = y+h/2;
+        coords[4] = x+w;    coords[5] = y+h;
+        draw_polygon(dr, coords, 3, COL_DARKGRAY, COL_DARKGRAY);
+    }
+    else if (col == 6) { /* Dots */
+        draw_rect(dr, x, y, w, h, COL_DARKGRAY);
+        draw_circle(dr, x+w/2, y+h/2, w/3, COL_WHITE, COL_WHITE);
+    }
+    else if (col == 7) { /* Chevron */
+        int coords[8];
+        draw_rect(dr, x, y, w, h, COL_BLACK);
+        coords[0] = x;      coords[1] = y+h/2;
+        coords[2] = x+w/2;  coords[3] = y;
+        coords[4] = x+w/2;  coords[5] = y+h/2;
+        coords[6] = x;      coords[7] = y+h;
+        draw_polygon(dr, coords, 4, COL_LIGHTGRAY, COL_LIGHTGRAY);
+        coords[0] = x+w/2;  coords[1] = y;
+        coords[2] = x+w;    coords[3] = y+h/2;
+        coords[4] = x+w;    coords[5] = y+h;
+        coords[6] = x+w/2;  coords[7] = y+h/2;
+        draw_polygon(dr, coords, 4, COL_LIGHTGRAY, COL_LIGHTGRAY);
+    }
+    else if (col == 8) { /* Diamond */
+        int coords[6];
+        draw_rect(dr, x, y, w, h, COL_DARKGRAY);
+        coords[0] = x;      coords[1] = y;
+        coords[2] = x+w;    coords[3] = y;
+        coords[4] = x+w/2;  coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_LIGHTGRAY, COL_LIGHTGRAY);
+        coords[0] = x;      coords[1] = y+h;
+        coords[2] = x+w;    coords[3] = y+h;
+        coords[4] = x+w/2;  coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_LIGHTGRAY, COL_LIGHTGRAY);
+    }
+    else if (col == 9) {
+        int coords[6];
+        draw_rect(dr, x, y, w, h, COL_WHITE);
+        coords[0] = x+w/2;  coords[1] = y;
+        coords[2] = x;      coords[3] = y+h;
+        coords[4] = x+w;    coords[5] = y+h;
+        draw_polygon(dr, coords, 3, COL_DARKGRAY, COL_DARKGRAY);
+    }
+/*    else if (col == 8) {
+        int coords[8];
+        draw_rect(dr, x, y, w, h, COL_2);
+        coords[0] = x+w/4; coords[1] = y;
+        coords[2] = x+3*w/4; coords[3] = y;
+        coords[4] = x+w/2; coords[5] = y+h/4;
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        coords[0] = x;      coords[1] = y+h/4;
+        coords[2] = x;      coords[3] = y+3*h/4;
+        coords[4] = x+w/4;  coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        coords[0] = x+w;        coords[1] = y+h/4;
+        coords[2] = x+w;        coords[3] = y+3*h/4;
+        coords[4] = x+3*w/4;    coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        coords[0] = x+w/4;      coords[1] = y+h;
+        coords[2] = x+3*w/4;    coords[3] = y+h;
+        coords[4] = x+w/2;      coords[5] = y+3*h/4;
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
+    }
+    else if (col == 9) {
+        int coords[8];
+        draw_rect(dr, x, y, w, h, COL_3);
+        coords[0] = x+w/2;  coords[1] = y;
+        coords[2] = x+w;    coords[3] = y;
+        coords[4] = x+w/4;  coords[5] = y+3*h/4;
+        coords[6] = x;      coords[7] = y+h/2;
+        draw_polygon(dr, coords, 4, COL_1, COL_1);
+        coords[0] = x+w/2;  coords[1] = y+h;
+        coords[2] = x+3*w/4; coords[3] = y+3*h/4;
+        coords[4] = x+w; coords[5] = y+h;
+        draw_polygon(dr, coords, 3, COL_1, COL_1);
+
+        coords[0] = x; coords[1] = y;
+        coords[2] = x+w/4; coords[3] = y+h/4;
+        coords[4] = x; coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_5, COL_5);
+        coords[0] = x+w; coords[1] = y;
+        coords[2] = x+w; coords[3] = y+h/2;
+        coords[4] = x+3*w/4; coords[5] = y+h/4;
+        draw_polygon(dr, coords, 3, COL_5, COL_5);
+        coords[0] = x+w/2; coords[1] = y+h/2;
+        coords[2] = x+3*w/4; coords[3] = y+3*h/4;
+        coords[4] = x+w/2; coords[5] = y+h;
+        coords[6] = x+w/4; coords[7] = y+3*h/4;
+        draw_polygon(dr, coords, 4, COL_5, COL_5);
+    }
+    else if (col == 1) { 
+        int coords[8];
+        draw_rect(dr, x, y, w, h, COL_2);
+        coords[0] = x+w/4; coords[1] = y;
+        coords[2] = x+3*w/4; coords[3] = y;
+        coords[4] = x+w/2; coords[5] = y+h/4;
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        coords[0] = x;      coords[1] = y+h/4;
+        coords[2] = x;      coords[3] = y+3*h/4;
+        coords[4] = x+w/4;  coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        coords[0] = x+w;        coords[1] = y+h/4;
+        coords[2] = x+w;        coords[3] = y+3*h/4;
+        coords[4] = x+3*w/4;    coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        coords[0] = x+w/4;      coords[1] = y+h;
+        coords[2] = x+3*w/4;    coords[3] = y+h;
+        coords[4] = x+w/2;      coords[5] = y+3*h/4;
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
+    }
+    else if (col == 2) { 
+        int coords[8];
+        draw_rect(dr, x, y, w, h, COL_1);
+        coords[0] = x; coords[1] = y;
+        coords[2] = x+(w/4); coords[3] = y;
+        coords[4] = x; coords[5] = y+(h/4);
+        draw_polygon(dr, coords, 3, COL_5, COL_5);
+        coords[0] = x+(w/2); coords[1] = y;
+        coords[2] = x+(3*w/4); coords[3] = y;
+        coords[4] = x; coords[5] = y+(3*h/4);
+        coords[6] = x; coords[7] = y+(h/2);
+        draw_polygon(dr, coords, 4, COL_5, COL_5);
+        coords[0] = x+w; coords[1] = y;
+        coords[2] = x+w; coords[3] = y+(h/4);
+        coords[4] = x+(w/4); coords[5] = y+h;
+        coords[6] = x; coords[7] = y+h;
+        draw_polygon(dr, coords, 4, COL_5, COL_5);
+        coords[0] = x+w; coords[1] = y+(h/2);
+        coords[2] = x+w; coords[3] = y+(3*h/4);
+        coords[4] = x+(3*w/4); coords[5] = y+h;
+        coords[6] = x+(w/2); coords[7] = y+h;
+        draw_polygon(dr, coords, 4, COL_5, COL_5);
+    }
+    else if (col == 3)
+        int coords[6];
+        draw_rect(dr, x, y, w, h, COL_2);
+        coords[0] = x;     coords[1] = y;
+        coords[2] = x+w/2; coords[3] = y;
+        coords[4] = x;     coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        coords[0] = x+w/2; coords[1] = y;
+        coords[2] = x+w;   coords[3] = y;
+        coords[4] = x+w;   coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        coords[0] = x;     coords[1] = y+h;
+        coords[2] = x+w/2; coords[3] = y+h/2;
+        coords[4] = x+w;   coords[5] = y+h;
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
+    }
+    else if (col == 4) { 
+        draw_rect(dr, x, y, w, h, COL_5);
+        draw_circle(dr, x, y, w/4, COL_1, COL_1);
+        draw_circle(dr, x+w, y, w/4, COL_1, COL_1);
+        draw_circle(dr, x+w/2, y+h/2, w/4, COL_1, COL_1);
+        draw_circle(dr, x, y+h, w/4, COL_1, COL_1);
+        draw_circle(dr, x+w, y+h, w/4, COL_1, COL_1);
+    }
+    
+    else if (col == 5) {
+        int coords[8];
+        int i,j, offset;
+        draw_rect(dr, x, y, w, h, COL_2);
+        for (i=0;i<3;i++)
+        for (j=-1;j<2;j++) {
+            offset = (i%2==0)? w/4 : 0;
+            if (j==-1 && offset==0) continue;
+            coords[0] = x+   j   *(w/2)+offset; coords[1] = y+ i   *(w/3);
+            coords[2] = x+(  j+1)*(w/2)+offset; coords[3] = y+ i   *(w/3);
+            coords[4] = x+(2*j+1)*(w/4)+offset; coords[5] = y+(i+1)*(w/3);
+            draw_polygon(dr, coords, 3, COL_4, COL_4);
+        }
+    }
+    else if (col == 6) {
+        int coords[8];
+        draw_rect(dr, x, y, w, h, COL_4);
+        coords[0] = x+w/2; coords[1] = y;
+        coords[2] = x+w;   coords[3] = y+h/4;
+        coords[4] = x+w/2; coords[5] = y+h/2;
+        coords[6] = x;     coords[7] = y+h/4;
+        draw_polygon(dr, coords, 4, COL_1, COL_1);
+        coords[0] = x;     coords[1] = y+h/4;
+        coords[2] = x+w/2; coords[3] = y+h/2;
+        coords[4] = x+w/2; coords[5] = y+h;
+        coords[6] = x;     coords[7] = y+3*h/4;
+        draw_polygon(dr, coords, 4, COL_2, COL_3);
+        coords[0] = x+w;   coords[1] = y+h/4;
+        coords[2] = x+w/2; coords[3] = y+h/2;
+        coords[4] = x+w/2; coords[5] = y+h;
+        coords[6] = x+w;     coords[7] = y+3*h/4;
+        draw_polygon(dr, coords, 4, COL_5, COL_5);
+    }
+    else if (col == 7) { 
+        draw_rect(dr, x, y, w, h, COL_3);
+        draw_circle(dr, x+3*w/4, y+h/4, w/6, COL_1, COL_1);
+        draw_circle(dr, x+w/4, y+3*h/4, w/6, COL_1, COL_1);
+        draw_circle(dr, x+w/4, y+h/4, w/8, COL_5, COL_5);
+        draw_circle(dr, x+3*w/4, y+3*h/4, w/8, COL_5, COL_5);
+    }
+    else if (col == 8) { 
+        int coords[8];
+        draw_rect(dr, x, y, w, h, COL_3);
+        coords[0] = x+w/2;  coords[1] = y;
+        coords[2] = x+w;    coords[3] = y;
+        coords[4] = x+w/4;  coords[5] = y+3*h/4;
+        coords[6] = x;      coords[7] = y+h/2;
+        draw_polygon(dr, coords, 4, COL_1, COL_1);
+        coords[0] = x+w/2;  coords[1] = y+h;
+        coords[2] = x+3*w/4; coords[3] = y+3*h/4;
+        coords[4] = x+w; coords[5] = y+h;
+        draw_polygon(dr, coords, 3, COL_1, COL_1);
+
+        coords[0] = x; coords[1] = y;
+        coords[2] = x+w/4; coords[3] = y+h/4;
+        coords[4] = x; coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_5, COL_5);
+        coords[0] = x+w; coords[1] = y;
+        coords[2] = x+w; coords[3] = y+h/2;
+        coords[4] = x+3*w/4; coords[5] = y+h/4;
+        draw_polygon(dr, coords, 3, COL_5, COL_5);
+        coords[0] = x+w/2; coords[1] = y+h/2;
+        coords[2] = x+3*w/4; coords[3] = y+3*h/4;
+        coords[4] = x+w/2; coords[5] = y+h;
+        coords[6] = x+w/4; coords[7] = y+3*h/4;
+        draw_polygon(dr, coords, 4, COL_5, COL_5);
+    }
+    else if (col == 9) {
+        int coords[8];
+        draw_rect(dr, x, y, w, h, COL_3);
+        coords[0] = x+w/2; coords[1] = y;
+        coords[2] = x+w;    coords[3] = y+h/2;
+        coords[4] = x+w/2; coords[5] = y+h;
+        coords[6] = x; coords[7] = y+h/2;
+        draw_polygon(dr, coords, 4, COL_5, COL_5);
+        coords[0] = x+w/2; coords[1] = y+h/4;
+        coords[2] = x+3*w/4; coords[3] = y+h/2;
+        coords[4] = x+w/2; coords[5] = y+3*h/4;
+        coords[6] = x+w/4; coords[7] = y+h/2;
+        draw_polygon(dr, coords, 4, COL_1, COL_1);
+        coords[0] = x;  coords[1] = y;
+        coords[2] = x+w/4; coords[3] = y;
+        coords[4] = x; coords[5] = y+h/4;
+        draw_polygon(dr, coords, 3, COL_1, COL_1);
+        coords[0] = x+3*w/4;    coords[1] = y;
+        coords[2] = x+w;    coords[3] = y;
+        coords[4] = x+w;    coords[5] = y+h/4;
+        draw_polygon(dr, coords, 3, COL_1, COL_1);
+        coords[0] = x;  coords[1] = y+3*h/4;
+        coords[2] = x;  coords[3] = y+h;
+        coords[4] = x+w/4;  coords[5] = y+h;
+        draw_polygon(dr, coords, 3, COL_1, COL_1);
+        coords[0] = x+w;    coords[1] = y+3*h/4;
+        coords[2] = x+w;    coords[3] = y+h;
+        coords[4] = x+3*w/4;    coords[5] = y+h;
+        draw_polygon(dr, coords, 3, COL_1, COL_1);
+    } */
+    else {
+        draw_rect(dr, x, y, w, h, COL_BACKGROUND);
+    }
+    unclip(dr);
+}
+
+static void draw_solution_circle(drawing *dr, int x, int y, int ts, int col) {
+    int colour1, colour2;
+    switch (col) {
+        case 0:
+        case 1:
+        case 7:
+        case 8:
+        case 9:
+            colour1 = COL_WHITE;
+            colour2 = COL_BLACK;
+            break;
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        default:
+            colour1 = COL_BLACK;
+            colour2 = COL_WHITE;
+            break;
+    }
+    draw_circle(dr, x + ts/2, y + ts/2, ts/6,  colour1, colour1);
+    draw_circle(dr, x + ts/2, y + ts/2, ts/12, colour2, colour2);
+}
+
 
 static void draw_tile(drawing *dr, game_drawstate *ds,
                       int x, int y, int tile)
@@ -1068,11 +1286,8 @@ static void draw_tile(drawing *dr, game_drawstate *ds,
     int tx = COORD(x), ty = COORD(y);
 
     colour = tile >> COLOUR_SHIFT;
-    if (tile & BADFLASH)
-        colour = COL_SEPARATOR;
-    else
-        colour += COL_1;
-    draw_rect(dr, tx, ty, TILESIZE, TILESIZE, colour);
+    /* colour += COL_1; */
+    draw_textured_tile(dr, tx, ty, TILESIZE, TILESIZE, colour);
 
     if (tile & BORDER_L)
         draw_rect(dr, tx, ty,
@@ -1100,15 +1315,9 @@ static void draw_tile(drawing *dr, game_drawstate *ds,
         draw_rect(dr, tx + TILESIZE - SEP_WIDTH, ty + TILESIZE - SEP_WIDTH,
                   SEP_WIDTH, SEP_WIDTH, COL_SEPARATOR);
 
-    if (tile & CURSOR)
-        draw_rect_outline(dr, tx + CURSOR_INSET, ty + CURSOR_INSET,
-                          TILESIZE - 1 - CURSOR_INSET * 2,
-                          TILESIZE - 1 - CURSOR_INSET * 2,
-                          COL_SEPARATOR);
-
     if (tile & SOLNNEXT) {
-        draw_circle(dr, tx + TILESIZE/2, ty + TILESIZE/2, TILESIZE/6,
-                    COL_SEPARATOR, COL_SEPARATOR);
+        draw_solution_circle(dr, tx, ty, TILESIZE, colour);
+/*         draw_circle(dr, tx + TILESIZE/2, ty + TILESIZE/2, TILESIZE/6, COL_SEPARATOR, COL_SEPARATOR); */
     }
 
     draw_update(dr, tx, ty, TILESIZE, TILESIZE);
@@ -1120,53 +1329,45 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         float animtime, float flashtime)
 {
     int w = state->w, h = state->h, wh = w*h;
-    int x, y, flashframe, solnmove;
+    int x, y, solnmove;
     char *grid;
 
     /* This was entirely cloned from fifteen.c; it should probably be
      * moved into some generic 'draw-recessed-rectangle' utility fn. */
     if (!ds->started) {
-	int coords[10];
+    int coords[10];
 
-	draw_rect(dr, 0, 0,
-		  TILESIZE * w + 2 * BORDER,
-		  TILESIZE * h + 2 * BORDER, COL_BACKGROUND);
-	draw_update(dr, 0, 0,
-		    TILESIZE * w + 2 * BORDER,
-		    TILESIZE * h + 2 * BORDER);
+    draw_rect(dr, 0, 0,
+          TILESIZE * w + 2 * BORDER,
+          TILESIZE * h + 2 * BORDER, COL_BACKGROUND);
+    draw_update(dr, 0, 0,
+            TILESIZE * w + 2 * BORDER,
+            TILESIZE * h + 2 * BORDER);
 
-	/*
-	 * Recessed area containing the whole puzzle.
-	 */
-	coords[0] = COORD(w) + HIGHLIGHT_WIDTH - 1;
-	coords[1] = COORD(h) + HIGHLIGHT_WIDTH - 1;
-	coords[2] = COORD(w) + HIGHLIGHT_WIDTH - 1;
-	coords[3] = COORD(0) - HIGHLIGHT_WIDTH;
-	coords[4] = coords[2] - TILESIZE;
-	coords[5] = coords[3] + TILESIZE;
-	coords[8] = COORD(0) - HIGHLIGHT_WIDTH;
-	coords[9] = COORD(h) + HIGHLIGHT_WIDTH - 1;
-	coords[6] = coords[8] + TILESIZE;
-	coords[7] = coords[9] - TILESIZE;
-	draw_polygon(dr, coords, 5, COL_HIGHLIGHT, COL_HIGHLIGHT);
+    /*
+     * Recessed area containing the whole puzzle.
+     */
+    coords[0] = COORD(w) + HIGHLIGHT_WIDTH - 1;
+    coords[1] = COORD(h) + HIGHLIGHT_WIDTH - 1;
+    coords[2] = COORD(w) + HIGHLIGHT_WIDTH - 1;
+    coords[3] = COORD(0) - HIGHLIGHT_WIDTH;
+    coords[4] = coords[2] - TILESIZE;
+    coords[5] = coords[3] + TILESIZE;
+    coords[8] = COORD(0) - HIGHLIGHT_WIDTH;
+    coords[9] = COORD(h) + HIGHLIGHT_WIDTH - 1;
+    coords[6] = coords[8] + TILESIZE;
+    coords[7] = coords[9] - TILESIZE;
+    draw_polygon(dr, coords, 5, COL_HIGHLIGHT, COL_HIGHLIGHT);
 
-	coords[1] = COORD(0) - HIGHLIGHT_WIDTH;
-	coords[0] = COORD(0) - HIGHLIGHT_WIDTH;
-	draw_polygon(dr, coords, 5, COL_LOWLIGHT, COL_LOWLIGHT);
+    coords[1] = COORD(0) - HIGHLIGHT_WIDTH;
+    coords[0] = COORD(0) - HIGHLIGHT_WIDTH;
+    draw_polygon(dr, coords, 5, COL_LOWLIGHT, COL_LOWLIGHT);
 
         draw_rect(dr, COORD(0) - SEP_WIDTH, COORD(0) - SEP_WIDTH,
                   TILESIZE * w + 2 * SEP_WIDTH, TILESIZE * h + 2 * SEP_WIDTH,
                   COL_SEPARATOR);
 
-	ds->started = true;
-    }
-
-    if (flashtime > 0) {
-        float frame = (ui->flash_type == VICTORY ?
-                       VICTORY_FLASH_FRAME : DEFEAT_FLASH_FRAME);
-        flashframe = (int)(flashtime / frame);
-    } else {
-        flashframe = -1;
+    ds->started = true;
     }
 
     grid = snewn(wh, char);
@@ -1199,22 +1400,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         solnmove = 0;                  /* placate optimiser */
     }
 
-    if (flashframe >= 0 && ui->flash_type == VICTORY) {
-        /*
-         * Modify the display grid by superimposing our rainbow flash
-         * on it.
-         */
-        for (x = 0; x < w; x++) {
-            for (y = 0; y < h; y++) {
-                int flashpos = flashframe - (abs(x - FILLX) + abs(y - FILLY));
-                if (flashpos >= 0 && flashpos < state->colours)
-                    grid[y*w+x] = flashpos;
-            }
-        }
-    }
-
     for (x = 0; x < w; x++) {
-	for (y = 0; y < h; y++) {
+    for (y = 0; y < h; y++) {
             int pos = y*w+x;
             int tile;
 
@@ -1240,23 +1427,18 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 tile |= CORNER_DL;
             if (x==w-1 || y==h-1 || grid[pos+w+1] != grid[pos])
                 tile |= CORNER_DR;
-            if (ui->cursor_visible && ui->cx == x && ui->cy == y)
-                tile |= CURSOR;
-
-            if (flashframe >= 0 && ui->flash_type == DEFEAT && flashframe != 1)
-                tile |= BADFLASH;
 
             if (ds->grid[pos] != tile) {
-		draw_tile(dr, ds, x, y, tile);
-		ds->grid[pos] = tile;
-	    }
-	}
+                draw_tile(dr, ds, x, y, tile);
+                ds->grid[pos] = tile;
+            }
+        }
     }
 
     sfree(grid);
 
     {
-	char status[255];
+    char status[255];
 
         sprintf(status, "%s%d / %d moves",
                 (state->complete && state->moves <= state->movelimit ?
@@ -1267,7 +1449,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 state->moves,
                 state->movelimit);
 
-	status_bar(dr, status);
+    status_bar(dr, status);
     }
 }
 
@@ -1291,36 +1473,12 @@ static int game_status(const game_state *state)
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (dir == +1) {
-        int old_status = game_status(oldstate);
-        int new_status = game_status(newstate);
-        if (old_status != new_status) {
-            assert(old_status == 0);
-
-            if (new_status == +1) {
-                int frames = newstate->w + newstate->h + newstate->colours - 2;
-                ui->flash_type = VICTORY;
-                return VICTORY_FLASH_FRAME * frames;
-            } else {
-                ui->flash_type = DEFEAT;
-                return DEFEAT_FLASH_FRAME * 3;
-            }
-        }
-    }
     return 0.0F;
 }
 
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     return true;
-}
-
-static void game_print_size(const game_params *params, float *x, float *y)
-{
-}
-
-static void game_print(drawing *dr, const game_state *state, int tilesize)
-{
 }
 
 #ifdef COMBINED
@@ -1343,7 +1501,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    true, game_can_format_as_text_now, game_text_format,
+    false, NULL, NULL,
     new_ui,
     free_ui,
     encode_ui,
@@ -1360,8 +1518,8 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, game_print_size, game_print,
-    true,			       /* wants_statusbar */
+    false, false, NULL, NULL,
+    true,                   /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    0,                       /* flags */
 };
