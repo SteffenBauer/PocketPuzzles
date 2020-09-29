@@ -873,9 +873,8 @@ static game_state *execute_move(const game_state *from, const char *move)
         } else {
             ret->next_go = from->next_go + 1;
             if (ret->next_go >= ret->params.nguesses)
-            ret->solved = -1; /* lose, meaning we show the pegs. */
+                ret->solved = -1; /* lose, meaning we show the pegs. */
         }
-
         return ret;
     } 
     else
@@ -963,23 +962,24 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_SELECT        * 3 + i] = 0.0F;
         ret[COL_FRAME         * 3 + i] = 0.0F;
         ret[COL_HOLD          * 3 + i] = 0.5F;
-        ret[COL_1             * 3 + i] = 0.2F;
-        ret[COL_2             * 3 + i] = 0.4F;
-        ret[COL_3             * 3 + i] = 0.6F;
-        ret[COL_4             * 3 + i] = 0.8F;
-        ret[COL_5             * 3 + i] = 0.1F;
-        ret[COL_6             * 3 + i] = 0.3F;
-        ret[COL_7             * 3 + i] = 0.5F;
-        ret[COL_8             * 3 + i] = 0.7F;
-        ret[COL_9             * 3 + i] = 0.9F;
+        ret[COL_1             * 3 + i] = 0.0F;
+        ret[COL_2             * 3 + i] = 0.2F;
+        ret[COL_3             * 3 + i] = 0.4F;
+        ret[COL_4             * 3 + i] = 0.6F;
+        ret[COL_5             * 3 + i] = 0.8F;
+        ret[COL_6             * 3 + i] = 1.0F;
+        ret[COL_7             * 3 + i] = 0.3F;
+        ret[COL_8             * 3 + i] = 0.5F;
+        ret[COL_9             * 3 + i] = 0.7F;
     }
 
     *ncolours = NCOLOURS;
     return ret;
 }
 
-static int COLINV[] = {COL_BACKGROUND, COL_BACKGROUND, COL_SELECT, COL_SELECT, 
-                       COL_BACKGROUND, COL_BACKGROUND, COL_BACKGROUND, COL_SELECT, COL_SELECT};
+static int COLINV[] = {COL_BACKGROUND, COL_BACKGROUND, COL_BACKGROUND, 
+                       COL_SELECT,     COL_SELECT,     COL_SELECT, 
+                       COL_BACKGROUND, COL_BACKGROUND, COL_SELECT};
 
 static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
 {
@@ -1049,11 +1049,11 @@ static void draw_peg(drawing *dr, game_drawstate *ds, int cx, int cy,
     if (selected) {
         if (labelled && col) {
             draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD, COL_SELECT, COL_SELECT);
-            draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD-2*CGAP, COLINV[col-1], COLINV[col-1]);
+            draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD-1*CGAP, COLINV[col-1], COLINV[col-1]);
         }
         else 
             draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD, COL_SELECT, COL_SELECT);
-        draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD-4*CGAP, COL_EMPTY + col, COL_EMPTY + col);
+        draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD-2*CGAP, COL_EMPTY + col, COL_EMPTY + col);
     }
     else {
         draw_circle(dr, cx+PEGRAD, cy+PEGRAD, PEGRAD, COL_EMPTY + col, (col ? COL_FRAME : COL_EMPTY));
