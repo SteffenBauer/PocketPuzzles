@@ -2,10 +2,10 @@
  * mosaic.c: A puzzle based on a square grid, with some of the tiles
  * having clues as to how many black squares are around them.
  * the purpose of the game is to find what should be on all tiles (black or unmarked)
- * 
+ *
  * The game is also known as: ArtMosaico, Count and Darken, Cuenta Y Sombrea, Fill-a-Pix,
  * Fill-In, Komsu Karala, Magipic, Majipiku, Mosaico, Mosaik, Mozaiek, Nampre Puzzle, Nurie-Puzzle, Oekaki-Pix, Voisimage.
- * 
+ *
  * Implementation is loosely based on https://github.com/mordechaim/Mosaic, UI interaction is based on
  * the range puzzle in the collection.
  */
@@ -23,12 +23,8 @@
 #define MAX_TILES 10000
 #define MAX_TILES_ERROR "Maximum size is 10000 tiles"
 #define DEFAULT_TILE_SIZE 32
-#define DEBUG_IMAGE 1
-#undef DEBUG_IMAGE
 
-/* To enable debug prints define DEBUG_PRINTS */
-
-/* Getting the coordinates and returning NULL when out of scope 
+/* Getting the coordinates and returning NULL when out of scope
  * The absurd amount of parentesis is needed to avoid order of operations issues */
 #define get_cords(params, array, x, y) (((x) >= 0 && (y) >= 0) && ((x)< params->width && (y)<params->height))? \
      array + ((y)*params->width)+x : NULL;
@@ -238,7 +234,7 @@ static void populate_cell(const game_params *params, const bool *image, const in
     bool yEdge = false;
     if (edge) {
         if (x > 0) {
-            clue += get_pixel(params, image, x-1, y); 
+            clue += get_pixel(params, image, x-1, y);
             if (y > 0) {
                 clue += get_pixel(params, image, x-1, y-1);
             }
@@ -280,7 +276,7 @@ static void populate_cell(const game_params *params, const bool *image, const in
         clue += get_pixel(params, image, x+1, y);
         clue += get_pixel(params, image, x+1, y+1);
     }
-    
+
     desc->value = get_pixel(params, image, x, y);
     clue += desc->value;
     if (clue == 0) {
@@ -295,7 +291,6 @@ static void populate_cell(const game_params *params, const bool *image, const in
         } else if (edge &&
             ((xEdge && yEdge && clue == 4) ||
             ((xEdge || yEdge) && clue == 6))) {
-            
             desc->full = true;
         }
     }
@@ -309,7 +304,7 @@ static void count_around(const game_params *params, struct solution_cell *sol, i
     (*total)=0;
     (*blank)=0;
     (*marked)=0;
- 
+
     for (i=-1; i < 2; i++) {
         for (j=-1; j < 2; j++) {
             curr=get_cords(params, sol, x+i, y+j);
@@ -331,7 +326,7 @@ static void count_around_state(const game_state *state, int x, int y, int *marke
     (*total)=0;
     (*blank)=0;
     (*marked)=0;
- 
+
     for (i=-1; i < 2; i++) {
         for (j=-1; j < 2; j++) {
             curr=get_cords(state, state->cells_contents, x+i, y+j);
@@ -352,7 +347,7 @@ static void count_clues_around(const game_params *params,  struct desc_cell *des
     struct desc_cell *curr = NULL;
     (*total)=0;
     (*clues)=0;
- 
+
     for (i=-1; i < 2; i++) {
         for (j=-1; j < 2; j++) {
             curr=get_cords(params, desc, x+i, y+j);
@@ -385,7 +380,7 @@ static void mark_around(const game_params *params, struct solution_cell *sol, in
 
 static char solve_cell(const game_params *params, struct desc_cell *desc, struct board_cell *board, struct solution_cell *sol, int x, int y) {
     struct desc_cell curr;
-    
+
     if (desc) {
         curr.shown = desc[(y*params->width)+x].shown;
         curr.clue = desc[(y*params->width)+x].clue;
@@ -453,35 +448,45 @@ static char solve_cell(const game_params *params, struct desc_cell *desc, struct
 static bool solve_check(const game_params *params, struct desc_cell *desc, random_state *rs, struct solution_cell **sol_return) {
     int x,y, xRand, yRand;
     int board_size = params->height*params->width;
-    struct solution_cell *sol = snewn(board_size, struct solution_cell);
+    struct solution_cell *sol = snewn(board_size, struct solution_cell), *curr_sol;
     bool *checked = snewn(board_size, bool), *cell_checked = NULL;
     bool made_progress = true, error = false;
-    int solved = 0, curr = 0;
+    int solved = 0, curr = 0, shown = 0;
+    needed_list_item *head = NULL, *curr_needed, *prev;
+    struct desc_cell *curr_desc;
 
     memset(sol, 0, board_size * sizeof(struct solution_cell));
+    if (!rs) {
+        for (y=0; y < params->height; y++) {
+            for (x=0; x < params->width; x++) {
+                curr_desc=get_cords(params, desc, x, y);
+                if (curr_desc->shown) {
+                    curr_needed = snew(needed_list_item);
+                    curr_needed->next = head;
+                    head = curr_needed;
+                    curr_needed->x = x;
+                    curr_needed->y = y;
+                    shown++;
+                }
+            }
+        }
+    }
     solved = 0;
-    while (solved < board_size && made_progress && !error) {
+    while (rs && solved < board_size && made_progress && !error) {
         memset(checked, 0, board_size*sizeof(bool));
         made_progress = false;
-        for (y=0; y< params->height; y++) {
+        for (y=0; y < params->height; y++) {
             for (x=0; x < params->width; x++) {
-                if (rs) {
-                    while (cell_checked == NULL || *cell_checked == true) {
-                        xRand = random_upto(rs, params->width);
-                        yRand = random_upto(rs, params->height);
-                        cell_checked = get_cords(params, checked, xRand, yRand);
-                    }
-                    curr = solve_cell(params, desc, NULL, sol, xRand, yRand);
-                    *cell_checked = true;
-                    cell_checked = NULL;
-                } else {
-                    curr = solve_cell(params, desc, NULL, sol, x, y);
+                while (cell_checked == NULL || *cell_checked == true) {
+                    xRand = random_upto(rs, params->width);
+                    yRand = random_upto(rs, params->height);
+                    cell_checked = get_cords(params, checked, xRand, yRand);
                 }
+                curr = solve_cell(params, desc, NULL, sol, xRand, yRand);
+                *cell_checked = true;
+                cell_checked = NULL;
                 if (curr < 0) {
                     error = true;
-#ifdef DEBUG_PRINTS
-                    printf("error in cell x=%d, y=%d\n", x, y);
-#endif
                     break;
                 }
                 if (curr > 0) {
@@ -491,6 +496,50 @@ static bool solve_check(const game_params *params, struct desc_cell *desc, rando
             }
         }
 
+    }
+    curr_needed = head;
+    made_progress = true;
+    while (made_progress && solved < shown) {
+        made_progress = false;
+        while (curr_needed) {
+            curr = solve_cell(params, desc, NULL, sol, curr_needed->x, curr_needed->y);
+            if (curr > 0) {
+                if (curr_needed == head) {
+                    head = curr_needed->next;
+                    sfree(curr_needed);
+                    curr_needed = head;
+                } else {
+                    prev = head;
+                    while (prev != curr_needed && prev->next != curr_needed) {
+                        prev = prev->next;
+                    }
+                    prev->next = curr_needed->next;
+                    sfree(curr_needed);
+                    curr_needed = head;
+                }
+                made_progress = true;
+                solved++;
+            } else {
+                curr_needed = curr_needed -> next;
+            }
+        }
+    }
+
+    while (head) {
+        curr_needed = head;
+        head = curr_needed->next;
+        sfree(curr_needed);
+    }
+    solved = 0;
+    if (made_progress) {
+        for (y=0; y < params->height; y++) {
+            for (x=0; x < params->width; x++) {
+                curr_sol = get_cords(params, sol, x, y);
+                if ((curr_sol->cell & (STATE_MARKED | STATE_BLANK)) > 0) {
+                    solved++;
+                }
+            }
+        }
     }
     if (sol_return) {
         *sol_return = sol;
@@ -512,7 +561,7 @@ static bool solve_game_actual(const game_params *params, struct board_cell *desc
     memset(sol, 0, params->height*params->width * sizeof(struct solution_cell));
     solved = 0;
     while (solved < params->height*params->width && made_progress && !error) {
-        for (y=0; y< params->height; y++) {
+        for (y=0; y < params->height; y++) {
             for (x=0; x < params->width; x++) {
                 if (rs) {
                     while (cell_checked == NULL || *cell_checked == true) {
@@ -524,13 +573,10 @@ static bool solve_game_actual(const game_params *params, struct board_cell *desc
                     *cell_checked = true;
                     cell_checked = NULL;
                 } else {
-                    curr = solve_cell(params, NULL, desc, sol, x, y);    
+                    curr = solve_cell(params, NULL, desc, sol, x, y);
                 }
                 if (curr < 0) {
                     error = true;
-#ifdef DEBUG_PRINTS
-                    printf("error in cell x=%d, y=%d\n", x, y);
-#endif
                     break;
                 }
                 if (curr > 0) {
@@ -555,14 +601,11 @@ static void hide_clues(const game_params *params, struct desc_cell *desc, random
     struct desc_cell *curr;
     struct solution_cell *sol = NULL, *curr_sol = NULL;
     needed_list_item *head = NULL, *curr_needed, **needed_array;
-    
-#ifdef DEBUG_PRINTS
-    printf("Hiding clues\n");
-#endif
+
     solve_check(params, desc, rs, &sol);
     for (y=0; y< params->height; y++) {
         for (x=0; x < params->width; x++) {
-            count_clues_around(params, desc, x, y, &shown, &total);                
+            count_clues_around(params, desc, x, y, &shown, &total);
             curr = get_cords(params, desc, x, y);
             curr_sol = get_cords(params, sol, x, y);
             if (curr_sol->needed) {
@@ -595,9 +638,6 @@ static void hide_clues(const game_params *params, struct desc_cell *desc, random
         if (curr) {
             curr->shown = false;
             if (!solve_check(params, desc, NULL, NULL)) {
-#ifdef DEBUG_PRINTS
-                printf("Hiding cell %d, %d not possible.\n", curr_needed->x, curr_needed->y);
-#endif
                 curr->shown = true;
             }
             sfree(curr_needed);
@@ -606,9 +646,6 @@ static void hide_clues(const game_params *params, struct desc_cell *desc, random
         curr_needed=NULL;
     }
     sfree(needed_array);
-#ifdef DEBUG_PRINTS
-    printf("needed %d\n", needed);
-#endif
     sfree(sol);
 }
 
@@ -641,22 +678,11 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     char *compressed_desc = snewn((params->height*params->width)+1, char);
     char space_count;
 
-    struct desc_cell* desc=snewn(params->height*params->width, struct desc_cell);    
+    struct desc_cell* desc=snewn(params->height*params->width, struct desc_cell);
     int x,y, location_in_str;
 
     while (!valid) {
         generate_image(params, rs, image);
-#ifdef DEBUG_IMAGE
-        image[0] = 1;
-        image[1] = 1;
-        image[2] = 0;
-        image[3] = 1;
-        image[4] = 1;
-        image[5] = 0;
-        image[6] = 0;
-        image[7] = 0;
-        image[8] = 0;
-#endif
 
         for (y=0; y< params->height; y++) {
             for (x=0; x < params->width; x++) {
@@ -664,17 +690,9 @@ static char *new_game_desc(const game_params *params, random_state *rs,
             }
         }
         valid = start_point_check((params->height-1) * (params->width-1), desc);
-        if (!valid) {
-#ifdef DEBUG_PRINTS
-            printf("Not valid, regenerating.\n");
-#endif
-        } else {
+        if (valid) {
             valid = solve_check(params, desc, rs, NULL);
-            if (!valid) {
-#ifdef DEBUG_PRINTS
-                printf("Couldn't solve, regenerating.");
-#endif
-            } else {
+            if (valid) {
                 hide_clues(params, desc, rs);
             }
         }
@@ -683,21 +701,12 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     for (y=0; y< params->height; y++) {
         for (x=0; x < params->width; x++) {
             if (desc[(y*params->width)+x].shown) {
-#ifdef DEBUG_PRINTS
-                printf("%d(%d)", desc[(y*params->width)+x].value, desc[(y*params->width)+x].clue);
-#endif
                 sprintf(desc_string + location_in_str, "%d", desc[(y*params->width)+x].clue);
             } else {
-#ifdef DEBUG_PRINTS
-                printf("%d( )", desc[(y*params->width)+x].value);
-#endif
                 sprintf(desc_string + location_in_str, " ");
             }
             location_in_str+=1;
         }
-#ifdef DEBUG_PRINTS
-        printf("\n");
-#endif
     }
     location_in_str = 0;
     space_count='a'-1;
@@ -707,7 +716,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
                 if (space_count >= 'a') {
                     sprintf(compressed_desc + location_in_str, "%c", space_count);
                     location_in_str++;
-                    space_count = 'a'-1; 
+                    space_count = 'a'-1;
                 }
                 sprintf(compressed_desc + location_in_str, "%d", desc[(y*params->width)+x].clue);
                 location_in_str++;
@@ -727,9 +736,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         location_in_str++;
     }
     compressed_desc[location_in_str] = '\0';
-#ifdef DEBUG_PRINTS
-    printf("compressed_desc: %s\n", compressed_desc);
-#endif
     return compressed_desc;
 }
 
@@ -871,11 +877,11 @@ static char *solve_game(const game_state *state, const game_state *currstate,
             i++;
             bits++;
         }
-        curr_ret <<= 8-bits; 
+        curr_ret <<= 8-bits;
         sprintf(ret + ret_loc, "%02x", curr_ret);
         ret_loc += 2;
     }
-    
+
     sfree(sol);
     return ret;
 }
@@ -1046,7 +1052,7 @@ static void update_board_state_around(game_state *state, int x, int y) {
     int total;
     int blank;
     int marked;
- 
+
     for (i=-1; i < 2; i++) {
         for (j=-1; j < 2; j++) {
             curr=get_cords(state, state->board->actual_board, x+i, y+j);
@@ -1179,7 +1185,7 @@ static game_state *execute_move(const game_state *state, const char *move)
             if ((*cell & STATE_OK_NUM) == 0) {
                 *cell = last_state;
                 update_board_state_around(new_state, x + (dirX * i), y + (dirY * i));
-            } 
+            }
         }
     }
     for (y=0; y < state->height; y++) {
@@ -1256,7 +1262,7 @@ static void draw_cell(drawing *dr, game_drawstate *ds,
     const int ts = ds->tilesize;
     int startX = ((x * ts) + ts/2)-1, startY = ((y * ts)+ ts/2)-1;
     int color, text_color = COL_TEXT_DARK;
-    
+
     char *cell_p = get_cords(state, state->cells_contents, x, y);
     char cell = *cell_p;
 
@@ -1388,7 +1394,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     game_status,
-    false, false, NULL, NULL,     
+    false, false, NULL, NULL,
     true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,                       /* flags */
