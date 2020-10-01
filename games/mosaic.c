@@ -156,23 +156,16 @@ static game_params *dup_params(const game_params *params)
 
 static void decode_params(game_params *params, char const *string)
 {
-    char *curr = strchr(string, 'x');
-    char temp[15] = "";
-    char *prev = NULL;
-    if (!curr) {
-        return;
+    char const *p = string;
+
+    params->width = atoi(p);
+    while (*p && isdigit((unsigned char)*p)) p++;
+    if (*p == 'x') {
+        p++;
+        params->height = atoi(p);
     }
-    strncpy(temp, string, curr-string);
-    params->width = atol(temp);
-    prev = curr;
-    curr = strchr(string, 'l');
-    if (curr) {
-        strncpy(temp, prev + 1, curr - prev);
-        params->height = atol(temp);
-    } else {
-        curr = strchr(string, 'a');
-        strncpy(temp, prev + 1, curr - prev);
-        params->height = atol(temp);
+    else {
+        params->height = params->width;
     }
 }
 
@@ -446,91 +439,63 @@ static char solve_cell(const game_params *params, struct desc_cell *desc, struct
 }
 
 static bool solve_check(const game_params *params, struct desc_cell *desc, random_state *rs, struct solution_cell **sol_return) {
-    int x,y, xRand, yRand;
+    int x,y, i;
     int board_size = params->height*params->width;
     struct solution_cell *sol = snewn(board_size, struct solution_cell), *curr_sol;
-    bool *checked = snewn(board_size, bool), *cell_checked = NULL;
     bool made_progress = true, error = false;
     int solved = 0, curr = 0, shown = 0;
-    needed_list_item *head = NULL, *curr_needed, *prev;
+    needed_list_item *head = NULL, *curr_needed, **needed_array;
     struct desc_cell *curr_desc;
 
     memset(sol, 0, board_size * sizeof(struct solution_cell));
-    if (!rs) {
-        for (y=0; y < params->height; y++) {
-            for (x=0; x < params->width; x++) {
-                curr_desc=get_cords(params, desc, x, y);
-                if (curr_desc->shown) {
-                    curr_needed = snew(needed_list_item);
-                    curr_needed->next = head;
-                    head = curr_needed;
-                    curr_needed->x = x;
-                    curr_needed->y = y;
-                    shown++;
-                }
+    for (y=0; y < params->height; y++) {
+        for (x=0; x < params->width; x++) {
+            curr_desc=get_cords(params, desc, x, y);
+            if (curr_desc->shown) {
+                curr_needed = snew(needed_list_item);
+                curr_needed->next = head;
+                head = curr_needed;
+                curr_needed->x = x;
+                curr_needed->y = y;
+                shown++;
             }
         }
+    }
+    needed_array = snewn(shown, needed_list_item*);
+    curr_needed = head;
+    i = 0;
+    while (curr_needed)
+    {
+        needed_array[i] = curr_needed;
+        curr_needed = curr_needed->next;
+        i++;
+    }
+    if (rs) {
+        shuffle(needed_array, shown, sizeof(needed_list_item*), rs);
     }
     solved = 0;
-    while (rs && solved < board_size && made_progress && !error) {
-        memset(checked, 0, board_size*sizeof(bool));
+    while (solved < shown && made_progress && !error) {
         made_progress = false;
-        for (y=0; y < params->height; y++) {
-            for (x=0; x < params->width; x++) {
-                while (cell_checked == NULL || *cell_checked == true) {
-                    xRand = random_upto(rs, params->width);
-                    yRand = random_upto(rs, params->height);
-                    cell_checked = get_cords(params, checked, xRand, yRand);
-                }
-                curr = solve_cell(params, desc, NULL, sol, xRand, yRand);
-                *cell_checked = true;
-                cell_checked = NULL;
-                if (curr < 0) {
-                    error = true;
-                    break;
-                }
-                if (curr > 0) {
-                    solved++;
-                    made_progress = true;
-                }
+        for (i=0; i < shown; i++) {
+            curr = solve_cell(params, desc, NULL, sol, needed_array[i]->x, needed_array[i]->y);
+            if (curr < 0) {
+                error = true;
+                break;
             }
-        }
-
-    }
-    curr_needed = head;
-    made_progress = true;
-    while (made_progress && solved < shown) {
-        made_progress = false;
-        while (curr_needed) {
-            curr = solve_cell(params, desc, NULL, sol, curr_needed->x, curr_needed->y);
             if (curr > 0) {
-                if (curr_needed == head) {
-                    head = curr_needed->next;
-                    sfree(curr_needed);
-                    curr_needed = head;
-                } else {
-                    prev = head;
-                    while (prev != curr_needed && prev->next != curr_needed) {
-                        prev = prev->next;
-                    }
-                    prev->next = curr_needed->next;
-                    sfree(curr_needed);
-                    curr_needed = head;
-                }
-                made_progress = true;
                 solved++;
-            } else {
-                curr_needed = curr_needed -> next;
+                made_progress = true;
             }
         }
     }
-
     while (head) {
         curr_needed = head;
         head = curr_needed->next;
         sfree(curr_needed);
     }
+    sfree(needed_array);
     solved = 0;
+    /* verifying all the board is solved */
     if (made_progress) {
         for (y=0; y < params->height; y++) {
             for (x=0; x < params->width; x++) {
@@ -546,15 +511,13 @@ static bool solve_check(const game_params *params, struct desc_cell *desc, rando
     } else {
         sfree(sol);
     }
-    sfree(checked);
     return solved == board_size;
 }
 
-static bool solve_game_actual(const game_params *params, struct board_cell *desc, random_state *rs, struct solution_cell **sol_return) {
-    int x, y, xRand, yRand;
+static bool solve_game_actual(const game_params *params, struct board_cell *desc, struct solution_cell **sol_return) {
+    int x, y;
     int board_size = params->height*params->width;
     struct solution_cell *sol = snewn(board_size, struct solution_cell);
-    bool *checked = snewn(board_size, bool), *cell_checked = NULL;
     bool made_progress = true, error = false;
     int solved = 0, iter = 0, curr = 0;
 
@@ -563,18 +526,7 @@ static bool solve_game_actual(const game_params *params, struct board_cell *desc
     while (solved < params->height*params->width && made_progress && !error) {
         for (y=0; y < params->height; y++) {
             for (x=0; x < params->width; x++) {
-                if (rs) {
-                    while (cell_checked == NULL || *cell_checked == true) {
-                        xRand = random_upto(rs, params->width);
-                        yRand = random_upto(rs, params->height);
-                        cell_checked = get_cords(params, checked, xRand, yRand);
-                    }
-                    curr = solve_cell(params, NULL, desc, sol, xRand, yRand);
-                    *cell_checked = true;
-                    cell_checked = NULL;
-                } else {
-                    curr = solve_cell(params, NULL, desc, sol, x, y);
-                }
+                curr = solve_cell(params, NULL, desc, sol, x, y);
                 if (curr < 0) {
                     error = true;
                     break;
@@ -596,56 +548,56 @@ static bool solve_game_actual(const game_params *params, struct board_cell *desc
 }
 
 static void hide_clues(const game_params *params, struct desc_cell *desc, random_state *rs){
-    int shown, total, x, y, i, rand_cell;
+    int shown, total, x, y, i;
     int needed = 0;
     struct desc_cell *curr;
     struct solution_cell *sol = NULL, *curr_sol = NULL;
     needed_list_item *head = NULL, *curr_needed, **needed_array;
-
+    
     solve_check(params, desc, rs, &sol);
     for (y=0; y< params->height; y++) {
         for (x=0; x < params->width; x++) {
             count_clues_around(params, desc, x, y, &shown, &total);
             curr = get_cords(params, desc, x, y);
             curr_sol = get_cords(params, sol, x, y);
-            if (curr_sol->needed) {
+            if (curr_sol->needed) { /*  && params->aggressive */
                 curr_needed = snew(needed_list_item);
                 curr_needed->x = x;
                 curr_needed->y = y;
                 curr_needed->next = head;
                 head=curr_needed;
                 needed++;
-            } else {
+            } else if (!curr_sol->needed) {
                 curr->shown=false;
             }
         }
     }
-    curr_needed = head;
-    needed_array = snewn(needed, needed_list_item*);
-    memset(needed_array, 0, needed * sizeof(needed_list_item*));
-    i = 0;
-    while (curr_needed) {
-        needed_array[i] = curr_needed;
-        curr_needed = curr_needed->next;
-        i++;
-    }
-    for (i=0; i < needed ; i++) {
-        while (curr_needed == NULL) {
-            rand_cell = random_upto(rs, needed);
-            curr_needed = needed_array[rand_cell];
+    { /* if (params->aggressive) */
+        curr_needed = head;
+        needed_array = snewn(needed, needed_list_item*);
+        memset(needed_array, 0, needed * sizeof(needed_list_item*));
+        i = 0;
+        while (curr_needed) {
+            needed_array[i] = curr_needed;
+            curr_needed = curr_needed->next;
+            i++;
         }
-        curr = get_cords(params, desc, curr_needed->x, curr_needed->y);
-        if (curr) {
-            curr->shown = false;
-            if (!solve_check(params, desc, NULL, NULL)) {
-                curr->shown = true;
+        shuffle(needed_array, needed, sizeof(needed_list_item*), rs);
+        for (i=0; i < needed ; i++) {
+            curr_needed = needed_array[i];
+            curr = get_cords(params, desc, curr_needed->x, curr_needed->y);
+            if (curr) {
+                curr->shown = false;
+                if (!solve_check(params, desc, NULL, NULL)) {
+                    curr->shown = true;
+                }
+                sfree(curr_needed);
+                needed_array[i]=NULL;
             }
-            sfree(curr_needed);
-            needed_array[rand_cell]=NULL;
+            curr_needed=NULL;
         }
-        curr_needed=NULL;
+        sfree(needed_array);
     }
-    sfree(needed_array);
     sfree(sol);
 }
 
@@ -856,7 +808,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
     param.width = state->width;
     param.height = state->height;
-    solved = solve_game_actual(&param, state->board->actual_board, NULL, &sol);
+    solved = solve_game_actual(&param, state->board->actual_board, &sol);
     if (!solved) {
         *error = dupstr("Could not solve this board");
         sfree(sol);
@@ -1080,10 +1032,9 @@ static game_state *execute_move(const game_state *state, const char *move)
     int srcX = -1, srcY = -1, size = state->height * state->width;
     char *comma, *cell, sol_char;
     char coordinate[30] = "";
-    int steps = 1, bits, sol_location, dirX, dirY, diff, last_state;
+    int steps = 1, bits, sol_location, dirX, dirY, diff, last_state = STATE_UNMARKED;
     unsigned int sol_value;
     struct board_cell *curr_cell;
-    last_state = 0;
     /* Check location */
     if (move[0] == 't' || move[0] == 'T' || move[0] == 'd' || move[0] == 'e') {
         i++;

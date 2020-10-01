@@ -107,8 +107,6 @@ typedef unsigned char digit;
 #define BORDER (TILE_SIZE / 2)
 #define GRIDEXTRA max((TILE_SIZE / 32),1)
 
-#define FLASH_TIME 0.4F
-
 enum { SYMM_NONE, SYMM_ROT2, SYMM_ROT4, SYMM_REF2, SYMM_REF2D, SYMM_REF4,
        SYMM_REF4D, SYMM_REF8 };
 
@@ -126,6 +124,7 @@ enum {
     COL_USER,
     COL_HIGHLIGHT,
     COL_NUMHIGHLIGHT,
+    COL_BGERROR,
     COL_ERROR,
     COL_PENCIL,
     COL_KILLER,
@@ -288,12 +287,14 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
         { "3x3 Basic", { 3, 3, SYMM_NONE, DIFF_SIMPLE, DIFF_KMINMAX, false, false } },
         { "3x3 Intermediate", { 3, 3, SYMM_NONE, DIFF_INTERSECT, DIFF_KMINMAX, false, false } },
         { "3x3 Advanced", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, false, false } },
-        { "3x3 Advanced X", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, true, false } },
         { "3x3 Extreme", { 3, 3, SYMM_NONE, DIFF_EXTREME, DIFF_KMINMAX, false, false } },
+        { "3x3 Advanced X", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, true, false } },
+        { "2x3 Advanced Killer", { 2, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, true } },
         { "6 Jigsaw Intermediate", { 6, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KMINMAX, false, false } },
         { "6 Jigsaw Advanced", { 6, 1, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, false, false } },
         { "9 Jigsaw Intermediate", { 9, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KMINMAX, false, false } },
         { "9 Jigsaw Advanced", { 9, 1, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, false, false } },
+        { "9 Jigsaw Extreme", { 9, 1, SYMM_NONE, DIFF_EXTREME, DIFF_KMINMAX, false, false } },
     };
 
     if (i < 0 || i >= lenof(presets))
@@ -1650,8 +1651,8 @@ static void solver(int cr, struct block_structure *blocks,
         }
 
         if (changed) {
-        kdiff = max(kdiff, DIFF_KSINGLE);
-        goto cont;
+            kdiff = max(kdiff, DIFF_KSINGLE);
+            goto cont;
         }
     }
     if (dlev->maxkdiff >= DIFF_KINTERSECT && usage->kclues != NULL) {
@@ -4041,35 +4042,32 @@ static char *interpret_move(const game_state *state, game_ui *ui,
      (button >= 'a' && button <= 'z' && button - 'a' + 10 <= cr) ||
      (button >= 'A' && button <= 'Z' && button - 'A' + 10 <= cr) ||
      button == CURSOR_SELECT2 || button == '\b')) {
-    int n = button - '0';
-    if (button >= 'A' && button <= 'Z')
-        n = button - 'A' + 10;
-    if (button >= 'a' && button <= 'z')
-        n = button - 'a' + 10;
-    if (button == CURSOR_SELECT2 || button == '\b')
-        n = 0;
-    ui->hhint = 0;
+        int n = button - '0';
+        if (button >= 'A' && button <= 'Z') n = button - 'A' + 10;
+        if (button >= 'a' && button <= 'z') n = button - 'a' + 10;
+        if (button == '\b')                 n = 0;
+        ui->hhint = 0;
 
         /*
          * Can't overwrite this square. This can only happen here
          * if we're using the cursor keys.
          */
-    if (state->immutable[ui->hy*cr+ui->hx])
-        return NULL;
+        if (state->immutable[ui->hy*cr+ui->hx])
+            return NULL;
 
         /*
          * Can't make pencil marks in a filled square. Again, this
          * can only become highlighted if we're using cursor keys.
          */
-    if (ui->hpencil && state->grid[ui->hy*cr+ui->hx])
-        return NULL;
+        if (ui->hpencil && state->grid[ui->hy*cr+ui->hx])
+            return NULL;
 
-    sprintf(buf, "%c%d,%d,%d",
-        (char)(ui->hpencil && n > 0 ? 'P' : 'R'), ui->hx, ui->hy, n);
+        sprintf(buf, "%c%d,%d,%d",
+            (char)(ui->hpencil && n > 0 ? 'P' : 'R'), ui->hx, ui->hy, n);
 
-        /* if (!ui->hcursor) ui->hshow = false; */
+        if (!ui->hpencil) ui->hshow = false;
 
-    return dupstr(buf);
+        return dupstr(buf);
     }
     if (!ui->hshow &&
        ((button >= '0' && button <= '9' && button - '0' <= cr) ||
@@ -4247,15 +4245,16 @@ static float *game_colours(frontend *fe, int *ncolours)
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND   * 3 + i] = 1.0F;
-        ret[COL_XDIAGONALS   * 3 + i] = 0.8F;
+        ret[COL_XDIAGONALS   * 3 + i] = 0.5F;
         ret[COL_GRID         * 3 + i] = 0.0F;
         ret[COL_CLUE         * 3 + i] = 0.0F;
         ret[COL_USER         * 3 + i] = 0.0F;
-        ret[COL_HIGHLIGHT    * 3 + i] = 0.65F;
-        ret[COL_NUMHIGHLIGHT * 3 + i] = 0.5F;
-        ret[COL_ERROR        * 3 + i] = 0.0F;
+        ret[COL_HIGHLIGHT    * 3 + i] = 0.75F;
+        ret[COL_NUMHIGHLIGHT * 3 + i] = 0.75F;
+        ret[COL_BGERROR      * 3 + i] = 0.25F;
+        ret[COL_ERROR        * 3 + i] = 1.0F;
         ret[COL_PENCIL       * 3 + i] = 0.0F;
-        ret[COL_KILLER       * 3 + i] = 0.25F;
+        ret[COL_KILLER       * 3 + i] = 0.0F;
     }
 
     *ncolours = NCOLOURS;
@@ -4321,35 +4320,36 @@ static void draw_number(drawing *dr, game_drawstate *ds,
     ch = th = TILE_SIZE-1-2*GRIDEXTRA;
 
     if (x > 0 && state->blocks->whichblock[y*cr+x] == state->blocks->whichblock[y*cr+x-1])
-    cx -= GRIDEXTRA, cw += GRIDEXTRA;
+        cx -= GRIDEXTRA, cw += GRIDEXTRA;
     if (x+1 < cr && state->blocks->whichblock[y*cr+x] == state->blocks->whichblock[y*cr+x+1])
-    cw += GRIDEXTRA;
+        cw += GRIDEXTRA;
     if (y > 0 && state->blocks->whichblock[y*cr+x] == state->blocks->whichblock[(y-1)*cr+x])
-    cy -= GRIDEXTRA, ch += GRIDEXTRA;
+        cy -= GRIDEXTRA, ch += GRIDEXTRA;
     if (y+1 < cr && state->blocks->whichblock[y*cr+x] == state->blocks->whichblock[(y+1)*cr+x])
-    ch += GRIDEXTRA;
-
-    clip(dr, cx, cy, cw, ch);
+        ch += GRIDEXTRA;
 
     /* background needs erasing */
     draw_rect(dr, cx, cy, cw, ch,
-              ((hl & 15) == 4 ? COL_NUMHIGHLIGHT :
-          ((hl & 15) == 1 ? COL_HIGHLIGHT :
-           (ds->xtype && (ondiag0(y*cr+x) || ondiag1(y*cr+x))) ? COL_XDIAGONALS :
-           COL_BACKGROUND)));
+        ( (hl & 15) == 4          ? COL_NUMHIGHLIGHT :
+        ( (hl & 15) == 1          ? COL_HIGHLIGHT :
+        (((hl & 16) || (hl & 32)) ? COL_BGERROR:
+        (ds->xtype && (ondiag0(y*cr+x) || ondiag1(y*cr+x))) ? COL_XDIAGONALS :
+                                    COL_BACKGROUND))));
 
     /*
      * Draw the corners of thick lines in corner-adjacent squares,
      * which jut into this square by one pixel.
      */
     if (x > 0 && y > 0 && state->blocks->whichblock[y*cr+x] != state->blocks->whichblock[(y-1)*cr+x-1])
-    draw_rect(dr, tx-GRIDEXTRA, ty-GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
+        draw_rect(dr, tx-GRIDEXTRA, ty-GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
     if (x+1 < cr && y > 0 && state->blocks->whichblock[y*cr+x] != state->blocks->whichblock[(y-1)*cr+x+1])
-    draw_rect(dr, tx+TILE_SIZE-1-2*GRIDEXTRA, ty-GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
+        draw_rect(dr, tx+TILE_SIZE-1-2*GRIDEXTRA, ty-GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
     if (x > 0 && y+1 < cr && state->blocks->whichblock[y*cr+x] != state->blocks->whichblock[(y+1)*cr+x-1])
-    draw_rect(dr, tx-GRIDEXTRA, ty+TILE_SIZE-1-2*GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
+        draw_rect(dr, tx-GRIDEXTRA, ty+TILE_SIZE-1-2*GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
     if (x+1 < cr && y+1 < cr && state->blocks->whichblock[y*cr+x] != state->blocks->whichblock[(y+1)*cr+x+1])
-    draw_rect(dr, tx+TILE_SIZE-1-2*GRIDEXTRA, ty+TILE_SIZE-1-2*GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
+        draw_rect(dr, tx+TILE_SIZE-1-2*GRIDEXTRA, ty+TILE_SIZE-1-2*GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
+
+    clip(dr, cx, cy, cw, ch);
 
     /* pencil-mode highlight */
     if ((hl & 15) == 2) {
@@ -4364,10 +4364,10 @@ static void draw_number(drawing *dr, game_drawstate *ds,
     }
 
     if (state->kblocks) {
-    int t = GRIDEXTRA * 3;
-    int kcx, kcy, kcw, kch;
-    int kl, kt, kr, kb;
-    bool has_left = false, has_right = false;
+        int t = GRIDEXTRA * 3;
+        int kcx, kcy, kcw, kch;
+        int kl, kt, kr, kb;
+        bool has_left = false, has_right = false;
         bool has_top = false, has_bottom = false;
 
     /*
@@ -4380,133 +4380,128 @@ static void draw_number(drawing *dr, game_drawstate *ds,
      * fixed amount from the _centre_ of the cell dividing
      * lines.
      */
-    if (state->blocks->r == 1) {
-        kcx = tx;
-        kcy = ty;
-        kcw = tw;
-        kch = th;
-    } else {
-        kcx = cx;
-        kcy = cy;
-        kcw = cw;
-        kch = ch;
-    }
-    kl = kcx - 1;
-    kt = kcy - 1;
-    kr = kcx + kcw;
-    kb = kcy + kch;
+        if (state->blocks->r == 1) {
+            kcx = tx;
+            kcy = ty;
+            kcw = tw;
+            kch = th;
+        } else {
+            kcx = cx;
+            kcy = cy;
+            kcw = cw;
+            kch = ch;
+        }
+
+        kl = kcx - 1;
+        kt = kcy - 1;
+        kr = kcx + kcw;
+        kb = kcy + kch;
 
     /*
      * First, draw the lines dividing this area from neighbouring
      * different areas.
      */
-    if (x == 0 || state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[y*cr+x-1])
-        has_left = true, kl += t;
-    if (x+1 >= cr || state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[y*cr+x+1])
-        has_right = true, kr -= t;
-    if (y == 0 || state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y-1)*cr+x])
-        has_top = true, kt += t;
-    if (y+1 >= cr || state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y+1)*cr+x])
-        has_bottom = true, kb -= t;
-    if (has_top)
-        draw_line(dr, kl, kt, kr, kt, col_killer);
-    if (has_bottom)
-        draw_line(dr, kl, kb, kr, kb, col_killer);
-    if (has_left)
-        draw_line(dr, kl, kt, kl, kb, col_killer);
-    if (has_right)
-        draw_line(dr, kr, kt, kr, kb, col_killer);
+        if (x == 0 || state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[y*cr+x-1])
+            has_left = true, kl += t;
+        if (x+1 >= cr || state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[y*cr+x+1])
+            has_right = true, kr -= t;
+        if (y == 0 || state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y-1)*cr+x])
+            has_top = true, kt += t;
+        if (y+1 >= cr || state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y+1)*cr+x])
+            has_bottom = true, kb -= t;
+        if (has_top)
+            draw_thick_line(dr, 3.0, kl, kt, kr, kt, col_killer);
+        if (has_bottom)
+            draw_thick_line(dr, 3.0, kl, kb, kr, kb, col_killer);
+        if (has_left)
+            draw_thick_line(dr, 3.0, kl, kt, kl, kb, col_killer);
+        if (has_right)
+            draw_thick_line(dr, 3.0, kr, kt, kr, kb, col_killer);
     /*
      * Now, take care of the corners (just as for the normal borders).
      * We only need a corner if there wasn't a full edge.
      */
-    if (x > 0 && y > 0 && !has_left && !has_top
-        && state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y-1)*cr+x-1])
-    {
-        draw_line(dr, kl, kt + t, kl + t, kt + t, col_killer);
-        draw_line(dr, kl + t, kt, kl + t, kt + t, col_killer);
-    }
-    if (x+1 < cr && y > 0 && !has_right && !has_top
-        && state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y-1)*cr+x+1])
-    {
-        draw_line(dr, kcx + kcw - t, kt + t, kcx + kcw, kt + t, col_killer);
-        draw_line(dr, kcx + kcw - t, kt, kcx + kcw - t, kt + t, col_killer);
-    }
-    if (x > 0 && y+1 < cr && !has_left && !has_bottom
-        && state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y+1)*cr+x-1])
-    {
-        draw_line(dr, kl, kcy + kch - t, kl + t, kcy + kch - t, col_killer);
-        draw_line(dr, kl + t, kcy + kch - t, kl + t, kcy + kch, col_killer);
-    }
-    if (x+1 < cr && y+1 < cr && !has_right && !has_bottom
-        && state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y+1)*cr+x+1])
-    {
-        draw_line(dr, kcx + kcw - t, kcy + kch - t, kcx + kcw - t, kcy + kch, col_killer);
-        draw_line(dr, kcx + kcw - t, kcy + kch - t, kcx + kcw, kcy + kch - t, col_killer);
-    }
+        if (x > 0 && y > 0 && !has_left && !has_top
+            && state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y-1)*cr+x-1])
+        {
+            draw_thick_line(dr, 3.0, kl, kt + t, kl + t, kt + t, col_killer);
+            draw_thick_line(dr, 3.0, kl + t, kt, kl + t, kt + t, col_killer);
+        }
+        if (x+1 < cr && y > 0 && !has_right && !has_top
+            && state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y-1)*cr+x+1])
+        {
+            draw_thick_line(dr, 3.0, kcx + kcw - t, kt + t, kcx + kcw, kt + t, col_killer);
+            draw_thick_line(dr, 3.0, kcx + kcw - t, kt, kcx + kcw - t, kt + t, col_killer);
+        }
+        if (x > 0 && y+1 < cr && !has_left && !has_bottom
+            && state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y+1)*cr+x-1])
+        {
+            draw_thick_line(dr, 3.0, kl, kcy + kch - t, kl + t, kcy + kch - t, col_killer);
+            draw_thick_line(dr, 3.0, kl + t, kcy + kch - t, kl + t, kcy + kch, col_killer);
+        }
+        if (x+1 < cr && y+1 < cr && !has_right && !has_bottom
+            && state->kblocks->whichblock[y*cr+x] != state->kblocks->whichblock[(y+1)*cr+x+1])
+        {
+            draw_thick_line(dr, 3.0, kcx + kcw - t, kcy + kch - t, kcx + kcw - t, kcy + kch, col_killer);
+            draw_thick_line(dr, 3.0, kcx + kcw - t, kcy + kch - t, kcx + kcw, kcy + kch - t, col_killer);
+        }
 
     }
 
     if (state->killer && state->kgrid[y*cr+x]) {
-    sprintf (str, "%d", state->kgrid[y*cr+x]);
-    draw_text(dr, tx + GRIDEXTRA * 4, ty + GRIDEXTRA * 4 + TILE_SIZE/4,
-          FONT_VARIABLE, TILE_SIZE/4, ALIGN_VNORMAL | ALIGN_HLEFT,
-          col_killer, str);
+        sprintf (str, "%d", state->kgrid[y*cr+x]);
+        draw_text(dr, tx + GRIDEXTRA * 4, ty + GRIDEXTRA * 4 + TILE_SIZE/8,
+              FONT_VARIABLE, TILE_SIZE/4, ALIGN_VCENTRE | ALIGN_HLEFT,
+              col_killer, str);
     }
 
     /* new number needs drawing? */
     if (state->grid[y*cr+x]) {
-    str[1] = '\0';
-    str[0] = state->grid[y*cr+x] + '0';
-    if (str[0] > '9')
-        str[0] += 'a' - ('9'+1);
-    if ((hl & 16) && !(state->immutable[y*cr+x])) {
-        draw_circle(dr, tx + TILE_SIZE/2 - 3, ty + TILE_SIZE/2 - 2, TILE_SIZE/2 - 5, COL_ERROR, COL_ERROR);
-        draw_circle(dr, tx + TILE_SIZE/2 - 3, ty + TILE_SIZE/2 - 2, TILE_SIZE/2 - 11, COL_BACKGROUND, COL_ERROR);
-    }
-    draw_text(dr, tx + TILE_SIZE/2 - 3, ty + TILE_SIZE/2,
-          FONT_VARIABLE, state->immutable[y*cr+x] ? TILE_SIZE/2 : TILE_SIZE/2 - 4, ALIGN_VCENTRE | ALIGN_HCENTRE,
-          state->immutable[y*cr+x] ? COL_CLUE : (hl & 16) ? COL_ERROR : COL_USER, str);
+        str[1] = '\0';
+        str[0] = state->grid[y*cr+x] + '0';
+        if (str[0] > '9') str[0] += 'a' - ('9'+1);
+        draw_text(dr, tx + TILE_SIZE/2 - 3, ty + TILE_SIZE/2, FONT_VARIABLE, 
+          state->immutable[y*cr+x] ? TILE_SIZE/2 : TILE_SIZE/2, ALIGN_VCENTRE | ALIGN_HCENTRE,
+          ((hl & 16) || (hl & 32)) ? COL_ERROR : state->immutable[y*cr+x] ? COL_CLUE : COL_USER, str);
     } else {
         int i, j, npencil;
-    int pl, pr, pt, pb;
-    float bestsize;
-    int pw, ph, minph, pbest, fontsize;
+        int pl, pr, pt, pb;
+        float bestsize;
+        int pw, ph, minph, pbest, fontsize;
 
         /* Count the pencil marks required. */
         for (i = npencil = 0; i < cr; i++)
             if (state->pencil[(y*cr+x)*cr+i])
-        npencil++;
-    if (npencil) {
-
-        minph = 2;
+                npencil++;
+        if (npencil) {
+            minph = 2;
 
         /*
          * Determine the bounding rectangle within which we're going
          * to put the pencil marks.
          */
         /* Start with the whole square */
-        pl = tx + GRIDEXTRA;
-        pr = pl + TILE_SIZE - GRIDEXTRA;
-        pt = ty + GRIDEXTRA;
-        pb = pt + TILE_SIZE - GRIDEXTRA;
-        if (state->killer) {
+            pl = tx + GRIDEXTRA;
+            pr = pl + TILE_SIZE - GRIDEXTRA;
+            pt = ty + GRIDEXTRA;
+            pb = pt + TILE_SIZE - GRIDEXTRA;
+            if (state->killer) {
         /*
          * Make space for the Killer cages. We do this
          * unconditionally, for uniformity between squares,
          * rather than making it depend on whether a Killer
          * cage edge is actually present on any given side.
          */
-        pl += GRIDEXTRA * 3;
-        pr -= GRIDEXTRA * 3;
-        pt += GRIDEXTRA * 3;
-        pb -= GRIDEXTRA * 3;
-        if (state->kgrid[y*cr+x] != 0) {
-            /* Make further space for the Killer number. */
-            pt += TILE_SIZE/4;
-            /* minph--; */
-        }
-        }
+                pl += GRIDEXTRA * 3;
+                pr -= GRIDEXTRA * 3;
+                pt += GRIDEXTRA * 3;
+                pb -= GRIDEXTRA * 3;
+                if (state->kgrid[y*cr+x] != 0) {
+                /* Make further space for the Killer number. */
+                    pt += TILE_SIZE/4;
+                /* minph--; */
+                }
+            }
 
         /*
          * We arrange our pencil marks in a grid layout, with
@@ -4515,26 +4510,25 @@ static void draw_number(drawing *dr, game_drawstate *ds,
          *
          * So now we work out what the grid size ought to be.
          */
-        bestsize = 0.0;
-        pbest = 0;
+            bestsize = 0.0;
+            pbest = 0;
         /* Minimum */
-        for (pw = 3; pw < max(npencil,4); pw++) {
-        float fw, fh, fs;
+            for (pw = 3; pw < max(npencil,4); pw++) {
+                float fw, fh, fs;
 
-        ph = (npencil + pw - 1) / pw;
-        ph = max(ph, minph);
-        fw = (pr - pl) / (float)pw;
-        fh = (pb - pt) / (float)ph;
-        fs = min(fw, fh);
-        if (fs > bestsize) {
-            bestsize = fs;
-            pbest = pw;
-        }
-        }
-        assert(pbest > 0);
-        pw = pbest;
-        ph = (npencil + pw - 1) / pw;
-        ph = max(ph, minph);
+                ph = (npencil + pw - 1) / pw;
+                ph = max(ph, minph);
+                fw = (pr - pl) / (float)pw;
+                fh = (pb - pt) / (float)ph;
+                fs = min(fw, fh);
+                if (fs > bestsize) {
+                    bestsize = fs;
+                    pbest = pw;
+                }
+            }
+            pw = pbest;
+            ph = (npencil + pw - 1) / pw;
+            ph = max(ph, minph);
 
         /*
          * Now we've got our grid dimensions, work out the pixel
@@ -4542,40 +4536,40 @@ static void draw_number(drawing *dr, game_drawstate *ds,
          * pixel. (We don't want rounding errors to make the
          * grid look uneven at low pixel sizes.)
          */
-        fontsize = min((pr - pl) / pw, (pb - pt) / ph);
+            fontsize = min((pr - pl) / pw, (pb - pt) / ph);
 
         /*
          * Centre the resulting figure in the square.
          */
-        pl = tx + (TILE_SIZE - fontsize * pw) / 2;
-        pt = ty + (TILE_SIZE - fontsize * ph) / 2;
+            pl = tx + (TILE_SIZE - fontsize * pw) / 2;
+            pt = ty + (TILE_SIZE - fontsize * ph) / 2;
 
         /*
          * And move it down a bit if it's collided with the
          * Killer cage number.
          */
-        if (state->killer && state->kgrid[y*cr+x] != 0) {
-        pt = max(pt, ty + GRIDEXTRA * 3 + TILE_SIZE/4);
-        }
+            if (state->killer && state->kgrid[y*cr+x] != 0) {
+                pt = max(pt, ty + GRIDEXTRA * 3 + TILE_SIZE/4);
+            }
 
         /*
          * Now actually draw the pencil marks.
          */
-        for (i = j = 0; i < cr; i++)
-        if (state->pencil[(y*cr+x)*cr+i]) {
-            int dx = j % pw, dy = j / pw;
+            for (i = j = 0; i < cr; i++)
+            if (state->pencil[(y*cr+x)*cr+i]) {
+                int dx = j % pw, dy = j / pw;
 
-            str[1] = '\0';
-            str[0] = i + '1';
-            if (str[0] > '9')
-            str[0] += 'a' - ('9'+1);
-            draw_text(dr, pl + fontsize * (2*dx+1) / 2,
-                  pt + fontsize * (2*dy+1) / 2,
-                  FONT_VARIABLE, fontsize,
-                  ALIGN_VCENTRE | ALIGN_HCENTRE, COL_PENCIL, str);
-            j++;
+                str[1] = '\0';
+                str[0] = i + '1';
+                if (str[0] > '9')
+                str[0] += 'a' - ('9'+1);
+                draw_text(dr, pl + fontsize * (2*dx+1) / 2,
+                      pt + fontsize * (2*dy+1) / 2,
+                      FONT_VARIABLE, fontsize,
+                      ALIGN_VCENTRE | ALIGN_HCENTRE, COL_PENCIL, str);
+                j++;
+            }
         }
-    }
     }
 
     unclip(dr);
@@ -4659,11 +4653,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (y = 0; y < cr; y++) {
             int highlight = 0;
             digit d = state->grid[y*cr+x];
-
-            if (flashtime > 0 &&
-                (flashtime <= FLASH_TIME/3 ||
-                 flashtime >= FLASH_TIME*2/3))
-                highlight = 1;
 
             /* Highlight active input areas. */
             if (x == ui->hx && y == ui->hy && ui->hshow)
