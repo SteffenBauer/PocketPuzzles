@@ -13,7 +13,6 @@
  *    - white-blink the edges (instead), a la loopy?
  */
 
-#include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -165,7 +164,6 @@ static const char *validate_params(const game_params *params, bool full)
 
     /* MAYBE FIXME: we (just?) don't have the UI for winning these. */
     if (k == wh) return "Region size must be less than the grid area";
-    assert (k < wh); /* or wh % k != 0 */
 
     if (k == 2 && w != 1 && h != 1)
         return "Region size can't be two unless width or height is one";
@@ -280,13 +278,11 @@ static void disconnect(solver_ctx *ctx, int i, int j, int dir)
 
 static bool disconnected(solver_ctx *ctx, int i, int j, int dir)
 {
-    assert (j == COMPUTE_J || j == i + dx[dir] + ctx->params->w*dy[dir]);
     return ctx->borders[i] & BORDER(dir);
 }
 
 static bool maybe(solver_ctx *ctx, int i, int j, int dir)
 {
-    assert (j == COMPUTE_J || j == i + dx[dir] + ctx->params->w*dy[dir]);
     return !disconnected(ctx, i, j, dir) && !connected(ctx, i, j, dir);
     /* the ordering is important: disconnected works for invalid
      * squares (i.e. out of bounds), connected doesn't. */
@@ -431,16 +427,12 @@ static bool solver_no_dangling_edges(solver_ctx *ctx)
                 } else ++noline;
 
             if (4 - noline == 1) {
-                assert (e != -1);
                 disconnect(ctx, e, COMPUTE_J, de);
                 changed = true;
                 continue;
             }
 
             if (4 - noline != 2) continue;
-
-            assert (e != -1);
-            assert (f != -1);
 
             if (ctx->borders[e] & BORDER(de)) {
                 if (!(ctx->borders[f] & BORDER(df))) {
@@ -522,8 +514,6 @@ static bool is_solved(const game_params *params, clue *clues,
     int w = params->w, h = params->h, wh = w*h, k = params->k;
     int i, x, y;
     int *dsf = snew_dsf(wh);
-
-    assert (dsf[0] == UNVISITED); /* check: UNVISITED and dsf.c match up */
 
     /*
      * A game is solved if:
@@ -635,7 +625,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
     init_borders(w, h, rim);
 
-    assert (!('@' & BORDER_MASK));
     *soln++ = 'S';
     soln[wh] = '\0';
 
@@ -711,7 +700,6 @@ static const char *validate_desc(const game_params *params, const char *desc)
         } else if (isdigit((unsigned char)*desc)) {
             if (*desc > '4') {
                 static char buf[] = "Invalid (too large) number: '5'";
-                assert (isdigit((unsigned char)buf[lenof(buf) - 3]));
                 buf[lenof(buf) - 3] = *desc; /* ... or 6, 7, 8, 9 :-) */
                 return buf;
             }
@@ -844,7 +832,6 @@ static char *encode_ui(const game_ui *ui)
 
 static void decode_ui(game_ui *ui, const char *encoding)
 {
-    assert (encoding == NULL);
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -861,7 +848,7 @@ struct game_drawstate {
 
 #define TILESIZE (ds->tilesize)
 #define MARGIN (ds->tilesize / 2)
-#define WIDTH (3 + (TILESIZE >= 16) + (TILESIZE >= 32) + (TILESIZE >= 64))
+#define WIDTH (5 + (TILESIZE >= 16) + (TILESIZE >= 32) + (TILESIZE >= 64))
 #define CENTER ((ds->tilesize / 2) + WIDTH/2)
 
 #define FROMCOORD(x) (((x) - MARGIN) / TILESIZE)
@@ -998,7 +985,7 @@ static float *game_colours(frontend *fe, int *ncolours)
     COLOUR(COL_GRID,   0.0F, 0.0F, 0.0F);
     COLOUR(COL_ERROR,  0.25F, 0.25F, 0.25F);
 
-    COLOUR(COL_LINE_MAYBE, 0.5F, 0.5F, 0.5F);
+    COLOUR(COL_LINE_MAYBE, 0.75F, 0.75F, 0.75F);
     COLOUR(COL_LINE_NO,    1.0F, 1.0F, 1.0F);
     
     COLOUR(COL_ERROR_TEXT, 0.75F, 0.75F, 0.75F);
@@ -1055,10 +1042,6 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int r, int c,
         char buf[2];
         buf[0] = '0' + clue;
         buf[1] = '\0';
-/*        if (flags & F_ERROR_CLUE) {
-            draw_circle(dr, x + CENTER, y + CENTER, TILESIZE/2-10, COL_ERROR, COL_ERROR);
-            draw_circle(dr, x + CENTER, y + CENTER, TILESIZE/2-15, COL_BACKGROUND, COL_ERROR);
-        } */
         draw_text(dr, x + CENTER, y + CENTER, FONT_VARIABLE,
                   TILESIZE / 2, ALIGN_VCENTRE | ALIGN_HCENTRE,
                   (flags & F_ERROR_CLUE ? COL_ERROR_TEXT : COL_CLUE), buf);
@@ -1143,13 +1126,15 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
             flags = state->borders[i];
 
-            if (clue != EMPTY && (on > clue || clue > 4 - off))
-                flags |= F_ERROR_CLUE;
-
             /* Finished regions */
-            
             if (dsf_size(black_border_dsf, i) == k)
                 flags |= F_FINISHED;
+
+            /* Clue errors */
+            if (!(flags & F_FINISHED) && (clue != EMPTY) && (on > clue || clue > (4 - off)))
+                flags |= F_ERROR_CLUE;
+            if ((flags & F_FINISHED) && (clue != EMPTY) && (clue != on))
+                flags |= F_ERROR_CLUE;
 
             /* border errors */
             for (dir = 0; dir < 4; ++dir) {
@@ -1218,7 +1203,6 @@ static int game_status(const game_state *state)
 
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
-    assert (!"this shouldn't get called");
     return false;                      /* placate optimiser */
 }
 

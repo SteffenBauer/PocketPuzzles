@@ -2100,13 +2100,13 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
               /* cluetype == C_DIV ? */ ds->divide_sign));
         if (tile & DF_ERR_CLUE) {
             int len = 2 + (clueval > 999 ? 4 : clueval > 99 ? 3 : clueval > 9 ? 2 : 1);
-            draw_rect(dr, tx + GRIDEXTRA, ty + GRIDEXTRA, len*TILESIZE/8, 3*TILESIZE/8, COL_ERROR);
-            draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2,
-                  FONT_FIXED, TILESIZE/4, ALIGN_VNORMAL | ALIGN_HLEFT, COL_BACKGROUND, str);
+            draw_rect(dr, tx + GRIDEXTRA, ty + GRIDEXTRA, len*TILESIZE/8, TILESIZE/4+2*GRIDEXTRA, COL_ERROR);
+            draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2 + TILESIZE/8,
+                  FONT_FIXED, TILESIZE/4, ALIGN_VCENTRE | ALIGN_HLEFT, COL_BACKGROUND, str);
         }
         else 
-            draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2,
-                  FONT_FIXED, TILESIZE/4, ALIGN_VNORMAL | ALIGN_HLEFT, COL_GRID, str);
+            draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2 + TILESIZE/8,
+                  FONT_FIXED, TILESIZE/4, ALIGN_VCENTRE | ALIGN_HLEFT, COL_GRID, str);
     }
 
     unclip(dr);

@@ -40,7 +40,7 @@ bool solver_verbose = false;
 #endif
 
 enum {
-    COL_OUTERBG, COL_INNERBG,
+    COL_OUTERBG, COL_INNERBG, COL_ERRORBG,
     COL_GRID,
     COL_BORDERLETTER, COL_TEXT,
     COL_GUESS, COL_ERROR, COL_PENCIL,
@@ -64,8 +64,6 @@ struct game_state {
 };
 
 #define PREFERRED_TILE_SIZE 36
-#define FLASH_TIME 0.7F
-#define FLASH_FRAME 0.1F
 
 #define CUBOID(x,y,i) ( (i) + ((x)*n) + ((y)*n*w) )
 #define HOR_CLUE(y,i) ( (i) + ((y)*n) )
@@ -77,11 +75,11 @@ struct game_state {
 const struct game_params abcd_presets[] = {
     {4, 4, 4, false, false},
     {4, 4, 4, false, true},
-    {5, 5, 4, false, false},
     {5, 5, 4, false, true},
-    {6, 6, 4, false, false},
-    {7, 7, 3, false, false},
-    {7, 7, 4, false, false},
+    {6, 6, 4, false, true},
+    {7, 7, 3, false, true},
+    {7, 7, 4, false, true},
+    {7, 7, 5, false, true},
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -1158,7 +1156,6 @@ struct game_drawstate {
     int *oldgridfs;
     unsigned char *clues;
     bool initial;
-    int flash;
 };
 
 static char *interpret_move(const game_state *state, game_ui *ui, const game_drawstate *ds,
@@ -1406,23 +1403,19 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 static float *game_colours(frontend *fe, int *ncolours)
 {
     float *ret = snewn(3 * NCOLOURS, float);
-
-    game_mkhighlight(fe, ret, COL_INNERBG, COL_HIGHLIGHT, COL_LOWLIGHT);
-    frontend_default_colour(fe, &ret[COL_OUTERBG * 3]);
-    
     int i;
     for (i = 0; i < 3; i++) {
-        ret[COL_INNERBG * 3 + i] = 0.75F;
-        ret[COL_OUTERBG * 3 + i] = 1.0F;
-        ret[COL_HIGHLIGHT * 3 + i] = 0.5F;
-        ret[COL_LOWLIGHT * 3 + i] = 1.0F;
+        ret[COL_INNERBG      * 3 + i] = 0.75F;
+        ret[COL_OUTERBG      * 3 + i] = 1.0F;
+        ret[COL_ERRORBG      * 3 + i] = 0.25F;
+        ret[COL_HIGHLIGHT    * 3 + i] = 0.5F;
+        ret[COL_LOWLIGHT     * 3 + i] = 1.0F;
         ret[COL_BORDERLETTER * 3 + i] = 0.0F;
-        ret[COL_GUESS * 3 + i] = 0.0F;
-        ret[COL_ERROR * 3 + i] = 0.5F;
-        ret[COL_PENCIL * 3 + i] = 0.0F;
-
-        ret[COL_TEXT * 3 + i] = 0.0F;
-        ret[COL_GRID * 3 + i] = 0.5F;
+        ret[COL_GUESS        * 3 + i] = 0.0F;
+        ret[COL_ERROR        * 3 + i] = 0.75F;
+        ret[COL_PENCIL       * 3 + i] = 0.0F;
+        ret[COL_TEXT         * 3 + i] = 0.0F;
+        ret[COL_GRID         * 3 + i] = 0.5F;
     }
 
     *ncolours = NCOLOURS;
@@ -1441,7 +1434,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     int l = w + h;
     
     ds->initial = false;
-    ds->flash = -1;
     
     ds->cluefs = snewn(l*n, int);
     ds->gridfs = snewn(w*h, int);
@@ -1582,10 +1574,10 @@ static void abcd_draw_clues(drawing *dr, game_drawstate *ds, const game_state *s
                     sprintf(buf, "%i", clue);
                     
                     draw_rect(dr, ox, oy, TILE_SIZE-1, TILE_SIZE-1, 
-                            (ds->cluefs[pos] & FD_ERROR ? COL_ERROR : COL_OUTERBG));
+                              ds->cluefs[pos] & FD_ERROR ? COL_ERRORBG : COL_OUTERBG);
                     draw_text(dr, ox + TILE_SIZE/2, oy + TILE_SIZE/2,
                             FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
-                            COL_TEXT, buf);
+                            ds->cluefs[pos] & FD_ERROR ? COL_ERROR : COL_TEXT, buf);
                 }
                 draw_update(dr, ox, oy, TILE_SIZE-1, TILE_SIZE-1);
                 ds->oldcluefs[pos] = ds->cluefs[pos];
@@ -1688,7 +1680,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     int x,y,i;
     int tx, ty, fs, bgcol;
     char buf[80];
-    int flash = -1;
     bool dirty;
     
     if (!ds->initial)
@@ -1705,9 +1696,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
         
         ds->initial = true;
     }
-    
-    if(flashtime > 0)
-        flash = (int)(flashtime / FLASH_FRAME) % 3;
     
     abcd_count_clues(state, ds->cluefs, true);
     abcd_count_clues(state, ds->cluefs, false);
@@ -1740,8 +1728,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             fs = ds->gridfs[y*w+x];
             dirty = false;
             
-            if(flash != ds->flash || fs != ds->oldgridfs[y*w+x] || 
-                    state->grid[y*w+x] != ds->grid[y*w+x])
+            if(fs != ds->oldgridfs[y*w+x] || state->grid[y*w+x] != ds->grid[y*w+x])
                 dirty = true;
             
             for(i = 0; i < n && !dirty; i++)
@@ -1756,20 +1743,15 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             tx = INNER_COORD(x);
             ty = INNER_COORD(y);
             
-            /*
-            * Determine background color. A diagonal stripe animation is shown
-            * when the puzzle has been solved.
-            */
-            bgcol = (flashtime > 0 && (x+y) % 3 == flash ? COL_HIGHLIGHT :
-                    flashtime > 0 && (x+y+2) % 3 == flash ? COL_LOWLIGHT :
-                    flashtime == 0 && fs & FD_CURSOR ? COL_HIGHLIGHT :
-                    COL_INNERBG);
+            bgcol = (fs & FD_CURSOR)  ? COL_HIGHLIGHT :
+                    (fs & FD_ERRMASK) ? COL_ERRORBG :
+                                        COL_INNERBG;
             
             /* Draw the tile background */
             draw_rect(dr, tx+1, ty, TILE_SIZE-1, TILE_SIZE-1, bgcol);
             
             /* Draw the pencil marker */
-            if (flashtime == 0 && fs & FD_PENCIL)
+            if (fs & FD_PENCIL)
             {
                 int coords[6];
                 coords[0] = tx;
@@ -1787,16 +1769,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
                 buf[0] = 'A' + state->grid[y*w+x];
                 buf[1] = '\0';
                             
-                /*
-                * TODO:
-                * We simply color the letter red if it violates an adjacency rule.
-                * This could be changed to the exclamation mark symbol which
-                * appears in Map and Tents.
-                */
-                if (fs & FD_ERRMASK) {
-                    draw_circle(dr, tx + (TILE_SIZE/2), ty + (TILE_SIZE/2), TILE_SIZE/2-5, COL_ERROR, COL_ERROR);
-                    draw_circle(dr, tx + (TILE_SIZE/2), ty + (TILE_SIZE/2), TILE_SIZE/2-10, COL_INNERBG, COL_ERROR);
-                }
                 draw_text(dr, tx + TILE_SIZE/2, ty + TILE_SIZE/2,
                         FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
                         (fs & FD_ERRMASK ? COL_ERROR : COL_GUESS),
@@ -1856,8 +1828,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
                 ds->clues[CUBOID(x,y,i)] = state->clues[CUBOID(x,y,i)];
             }
         }
-    
-    ds->flash = flash;
 }
 
 static float game_anim_length(const game_state *oldstate, const game_state *newstate,
