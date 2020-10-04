@@ -3,12 +3,15 @@
 #include "common.h"
 #include "puzzles.h"
 
+bool gameInitialized;
+
 typedef struct {
   int x;
   int y;
 } MWPOINT;
 
 struct frontend {
+  const struct game *currentgame;
   struct layout gamelayout; /* Dimensions of game panels */
   int width;                /* Width of main game canvas */
   int height;               /* Height of main game canvas */
@@ -47,6 +50,7 @@ struct frontend {
   game_params *pparams;
   int ncolours;
   float *colours;
+  ifont *gamefont;
 };
 
 struct blitter {
@@ -55,13 +59,11 @@ struct blitter {
   ibitmap *ibit;
 };
 
-const struct game *currentgame;
 static frontend *fe;
 static midend *me;
 static drawing *dr;
 struct preset_menu *presets;
 
-ifont *gamefont;
 extern ibitmap icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,
                icon_game, icon_game_tap, icon_type, icon_type_tap,
                menu_exit, menu_help, menu_new, menu_restart, menu_solve,
@@ -117,14 +119,20 @@ static void gameDrawStatusBar();
 
 static void checkGameEnd();
 static bool coord_in_gamecanvas(int x, int y);
-
-void gameInit(const struct game *thegame);
-static void gameExit();
-void gameShowPage();
-void gamePrepare();
-LAYOUTTYPE gameGetLayout();
-
+static void gamePrepareFrontend();
+static LAYOUTTYPE gameGetLayout();
+static void gameDrawFurniture();
 static void gameCheckButtonState();
+
+static void gameStartNewGame();
+static void gameRestartGame();
+static void gameSolveGame();
+static void gameSwitchPreset(int index);
+
+void gameScreenInit();
+void gameScreenShow();
+void gameScreenFree();
+void gameSetGame(const struct game *thegame);
 
 void gameTap(int x, int y);
 void gameLongTap(int x, int y);

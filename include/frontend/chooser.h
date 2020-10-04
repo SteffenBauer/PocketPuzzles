@@ -6,6 +6,8 @@
 #define CHOOSER_ROWS 5
 #define CONTROL_NUM 2
 
+bool chooserInitialized;
+
 struct chooserAttributes {
     struct layout chooserlayout;
     int current_chooserpage;
@@ -35,11 +37,9 @@ static void chooserDrawMenu();
 static void chooserDrawChooserButtons(int page);
 static void chooserDrawControlButtons(int page);
 
-extern void gameInit(const struct game *thegame);
-
-void chooserInit();
-void chooserExit();
-void chooserShowPage();
+void chooserScreenInit();
+void chooserScreenShow();
+void chooserScreenFree();
 
 void chooserTap(int x, int y);
 void chooserLongTap(int x, int y);
@@ -47,5 +47,7 @@ void chooserDrag(int x, int y);
 void chooserRelease(int x, int y);
 void chooserPrev();
 void chooserNext();
+
+extern void gameSetGame(const struct game *thegame);
 
 #endif

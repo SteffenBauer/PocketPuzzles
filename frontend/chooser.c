@@ -29,11 +29,10 @@ void chooserRelease(int x, int y) {
             if (release_button(x, y, &ca.chooserButton[i])) {
                 switch(ca.chooserButton[i].action) {
                     case ACTION_HOME:
-                        chooserExit();
                         exitApp();
                         break;
                     case ACTION_DRAW:
-                        chooserShowPage();
+                        chooserScreenShow();
                         break;
                     case ACTION_PREV:
                         chooserPrev();
@@ -42,8 +41,8 @@ void chooserRelease(int x, int y) {
                         chooserNext();
                         break;
                     case ACTION_LAUNCH:
-                        gameInit(ca.chooserButton[i].actionParm.thegame);
-                        showGameScreen();
+                        gameSetGame(ca.chooserButton[i].actionParm.thegame);
+                        switchToGameScreen();
                         break;
                 }
             }
@@ -54,14 +53,14 @@ void chooserRelease(int x, int y) {
 void chooserPrev() {
     if (ca.current_chooserpage > 0) {
         ca.current_chooserpage -= 1;
-        chooserShowPage();
+        chooserScreenShow();
     }
 }
 
 void chooserNext() {
     if (ca.current_chooserpage <= ca.chooser_lastpage) {
         ca.current_chooserpage += 1;
-        chooserShowPage();
+        chooserScreenShow();
     }
 }
 
@@ -121,7 +120,7 @@ static void chooserSetupButtons() {
     int i,c,r,p,pi;
 
     ca.numChooserButtons = ca.num_games + 4;
-    ca.chooserButton = malloc(ca.numChooserButtons*sizeof(BUTTON));
+    ca.chooserButton = smalloc(ca.numChooserButtons*sizeof(BUTTON));
 
     for(i=0;i<ca.num_games;i++) {
         p = i / (CHOOSER_COLS*CHOOSER_ROWS);
@@ -158,7 +157,7 @@ static void chooserSetupButtons() {
         ACTION_NEXT, ' ', &bt_east, NULL, NULL};
 }
 
-void chooserShowPage() {
+void chooserScreenShow() {
     ClearScreen();
     DrawPanel(NULL, "", "", 0);
     chooserDrawMenu();
@@ -167,7 +166,7 @@ void chooserShowPage() {
     FullUpdate();
 }
 
-void chooserInit() {
+void chooserScreenInit() {
     ca.chooserfont = OpenFont("LiberationSans-Bold", 32, 0);
 
     ca.num_games = 0;
@@ -183,9 +182,13 @@ void chooserInit() {
     ca.chooser_padding = (ScreenWidth()-(CHOOSER_COLS*ca.chooserlayout.chooser_size))/(CHOOSER_COLS+1);
 
     chooserSetupButtons();
+    chooserInitialized = true;
 }
 
-void chooserExit() {
-    free(ca.chooserButton);
-    CloseFont(ca.chooserfont);
+void chooserScreenFree() {
+    if (chooserInitialized) {
+        CloseFont(ca.chooserfont);
+        sfree(ca.chooserButton);
+        chooserInitialized = false;
+    }
 }

@@ -58,8 +58,6 @@ enum {
     NCOLOURS
 };
 
-#define FLASH_TIME 0.7F
-
 enum {
     TC_CON,
     TC_DIS,
@@ -84,13 +82,15 @@ struct game_state {
     bool completed, used_solve;
 };
 
-#define DEFAULT_PRESET 1
+#define DEFAULT_PRESET 3
 static const struct game_params walls_presets[] = {
-    {4, 5,  DIFF_EASY},
-    {5, 6,  DIFF_TRICKY},
-    {7, 8,  DIFF_TRICKY},
-    {8, 9,  DIFF_TRICKY},
-    {9, 10,  DIFF_TRICKY},
+    {4, 4,  DIFF_EASY},
+    {5, 5,  DIFF_EASY},
+    {5, 5,  DIFF_TRICKY},
+    {6, 6,  DIFF_TRICKY},
+    {7, 7,  DIFF_TRICKY},
+    {8, 8,  DIFF_TRICKY},
+    {9, 9,  DIFF_TRICKY},
 };
 
 static game_params *default_params(void) {
@@ -1101,36 +1101,19 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours) {
     float *ret = snewn(3 * NCOLOURS, float);
-
+    int i;
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
 
-    ret[COL_FLOOR_A * 3 + 0] = 0.9F;
-    ret[COL_FLOOR_A * 3 + 1] = 0.9F;
-    ret[COL_FLOOR_A * 3 + 2] = 0.9F;
-
-    ret[COL_FLOOR_B * 3 + 0] = 0.7F;
-    ret[COL_FLOOR_B * 3 + 1] = 0.7F;
-    ret[COL_FLOOR_B * 3 + 2] = 0.7F;
-
-    ret[COL_FIXED * 3 + 0] = 0.0F;
-    ret[COL_FIXED * 3 + 1] = 0.0F;
-    ret[COL_FIXED * 3 + 2] = 0.0F;
-
-    ret[COL_WALL * 3 + 0] = 0.25F;
-    ret[COL_WALL * 3 + 1] = 0.25F;
-    ret[COL_WALL * 3 + 2] = 0.25F;
-
-    ret[COL_GRID * 3 + 0] = 0.0F;
-    ret[COL_GRID * 3 + 1] = 0.0F;
-    ret[COL_GRID * 3 + 2] = 0.0F;
-
-    ret[COL_LINE * 3 + 0] = 0.25F;
-    ret[COL_LINE * 3 + 1] = 0.25F;
-    ret[COL_LINE * 3 + 2] = 0.25F;
-
-    ret[COL_ERROR * 3 + 0] = 0.5F;
-    ret[COL_ERROR * 3 + 1] = 0.5F;
-    ret[COL_ERROR * 3 + 2] = 0.5F;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_FLOOR_A    * 3 + i] = 0.9F;
+        ret[COL_FLOOR_B    * 3 + i] = 0.7F;
+        ret[COL_FIXED      * 3 + i] = 0.0F;
+        ret[COL_WALL       * 3 + i] = 0.25F;
+        ret[COL_GRID       * 3 + i] = 0.0F;
+        ret[COL_LINE       * 3 + i] = 0.25F;
+        ret[COL_ERROR      * 3 + i] = 0.5F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
