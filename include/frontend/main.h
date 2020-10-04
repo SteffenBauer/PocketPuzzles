@@ -25,6 +25,8 @@ extern void gameRelease(int x, int y);
 extern void gamePrev();
 extern void gameNext();
 
+extern void gamestateFree();
+
 typedef enum {
     SCREEN_CHOOSER,
     SCREEN_GAME,

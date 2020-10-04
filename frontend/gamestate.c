@@ -7,7 +7,7 @@
 #include "frontend/gamelist.h"
 #include "frontend/gamestate.h"
 
-static void serialise_write_callback(void *ctx, const void *buf, int len)
+static void serialiseWriteCallback(void *ctx, const void *buf, int len)
 {
     struct serialise_buf *ser = (struct serialise_buf *)ctx;
     int new_len;
@@ -21,7 +21,7 @@ static void serialise_write_callback(void *ctx, const void *buf, int len)
     ser->len = new_len;
 }
 
-static bool deserialise_read_callback(void *ctx, void *buf, int len)
+static bool deserialiseReadCallback(void *ctx, void *buf, int len)
 {
     struct serialise_buf *const rctx = ctx;
 
@@ -33,25 +33,29 @@ static bool deserialise_read_callback(void *ctx, void *buf, int len)
     return true;
 }
 
-void serialise_game(midend *me) {
+void gamestateSerialise(midend *me) {
     sfree(game_save.buf);
     game_save.buf = NULL;
     game_save.len = game_save.pos = 0;
-    midend_serialise(me, serialise_write_callback, &game_save);
+    midend_serialise(me, serialiseWriteCallback, &game_save);
+    gamestateInitialized = true;
 }
 
-const char *deserialise_game(midend *me) {
+const char *gamestateDeserialise(midend *me) {
     if (game_save.buf == NULL) return "No saved game state";
     game_save.pos = 0;
-    return midend_deserialise(me, deserialise_read_callback, &game_save);
+    return midend_deserialise(me, deserialiseReadCallback, &game_save);
 }
 
-const char *get_gamesave_name(char **name) {
+const char *gamestateGamesaveName(char **name) {
     game_save.pos = 0;
-    return identify_game(name, deserialise_read_callback, &game_save);
+    return identify_game(name, deserialiseReadCallback, &game_save);
 }
 
-void free_gamestate() {
-    sfree(game_save.buf);
+void gamestateFree() {
+    if (gamestateInitialized) {
+        sfree(game_save.buf);
+        gamestateInitialized = false;
+    }
 }
 

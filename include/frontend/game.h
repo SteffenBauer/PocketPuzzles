@@ -141,6 +141,8 @@ void gameRelease(int x, int y);
 void gamePrev();
 void gameNext();
 
+extern void gamestateSerialise(midend *me);
+
 void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
                int align, int colour, const char *text);
 void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour);

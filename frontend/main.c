@@ -38,7 +38,7 @@ static void setupApp() {
 }
 
 void exitApp() {
-    /* free_gamestate(); */
+    gamestateFree();
     chooserScreenFree();
     gameScreenFree();
     CloseApp();
