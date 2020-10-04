@@ -6,7 +6,7 @@
 #include "inkview.h"
 #include "frontend/main.h"
 
-void showChooserScreen() {
+void switchToChooserScreen() {
     SCREEN.currentScreen = SCREEN_CHOOSER;
     SCREEN.tap           = &chooserTap;
     SCREEN.long_tap      = &chooserLongTap;
@@ -15,10 +15,10 @@ void showChooserScreen() {
     SCREEN.prev          = &chooserPrev;
     SCREEN.next          = &chooserNext;
 
-    chooserShowPage();
+    chooserScreenShow();
 }
 
-void showGameScreen() {
+void switchToGameScreen() {
     SCREEN.currentScreen = SCREEN_GAME;
     SCREEN.tap           = &gameTap;
     SCREEN.long_tap      = &gameLongTap;
@@ -27,17 +27,20 @@ void showGameScreen() {
     SCREEN.prev          = &gamePrev;
     SCREEN.next          = &gameNext;
 
-    gameShowPage();
-    FullUpdate();
+    gameScreenShow();
 }
 
 static void setupApp() {
     SetPanelType(PANEL_ENABLED);
-    chooserInit();
-    showChooserScreen();
+    chooserScreenInit();
+    gameScreenInit();
+    switchToChooserScreen();
 }
 
 void exitApp() {
+    /* free_gamestate(); */
+    chooserScreenFree();
+    gameScreenFree();
     CloseApp();
 }
 

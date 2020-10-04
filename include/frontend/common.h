@@ -87,8 +87,8 @@ int init_tap_y;
 
 struct layout getLayout(LAYOUTTYPE screenlayout);
 
-extern void showChooserScreen();
-extern void showGameScreen();
+extern void switchToChooserScreen();
+extern void switchToGameScreen();
 extern void exitApp();
 
 #endif

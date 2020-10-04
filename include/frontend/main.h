@@ -3,8 +3,10 @@
 
 #include "common.h"
 
-extern void chooserInit();
-extern void chooserShowPage();
+extern void chooserScreenInit();
+extern void chooserScreenShow();
+extern void chooserScreenFree();
+
 extern void chooserTap(int x, int y);
 extern void chooserLongTap(int x, int y);
 extern void chooserDrag(int x, int y);
@@ -12,7 +14,10 @@ extern void chooserRelease(int x, int y);
 extern void chooserPrev();
 extern void chooserNext();
 
-extern void gameShowPage();
+extern void gameScreenInit();
+extern void gameScreenShow();
+extern void gameScreenFree();
+
 extern void gameTap(int x, int y);
 extern void gameLongTap(int x, int y);
 extern void gameDrag(int x, int y);
@@ -37,11 +42,12 @@ struct screen {
     void (*next)();
 } SCREEN;
 
-void showChooserScreen();
-void showGameScreen();
+void switchToChooserScreen();
+void switchToGameScreen();
 
 static void setupApp();
 void exitApp();
+extern void free_gamestate();
 
 #endif
 
