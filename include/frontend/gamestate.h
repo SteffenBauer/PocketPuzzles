@@ -4,6 +4,8 @@
 #include "common.h"
 #include "puzzles.h"
 
+bool gamestateInitialized;
+
 struct serialise_buf {
     char *buf;
     int len, pos;
@@ -14,10 +16,10 @@ struct savefile_write {
     int error;
 };
 
-void serialise_game(midend *me);
-const char *deserialise_game(midend *me);
-const char *get_gamesave_name(char **name);
-void free_gamestate();
+void gamestateSerialise(midend *me);
+const char *gamestateDeserialise(midend *me);
+const char *gamestateGamesaveName(char **name);
+void gamestateFree();
 
 #endif
 

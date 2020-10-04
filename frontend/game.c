@@ -447,6 +447,7 @@ void gameRelease(int x, int y) {
                 switch(fe->gameButton[i].action) {
                     case ACTION_BACK:
                         deactivate_timer(fe);
+                        gamestateSerialise(me);
                         switchToChooserScreen();
                         return;
                     case ACTION_DRAW:
@@ -709,8 +710,22 @@ static void gameDrawFurniture() {
 }
 
 static void gameStartNewGame() {
+    char *name;
+    const char *result;
     ShowPureHourglassForce();
-    midend_new_game(me);
+    result = gamestateGamesaveName(&name);
+    if (result != NULL) {
+        midend_new_game(me);
+    }
+    else {
+        if (strcmp(fe->currentgame->name, name) == 0) {
+            gamestateDeserialise(me);
+        }
+        else {
+            midend_new_game(me);
+        }
+        sfree(name);
+    }
     HideHourglass();
     gamePrepareFrontend();
 }
