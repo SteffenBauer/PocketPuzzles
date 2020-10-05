@@ -52,6 +52,7 @@ enum {
     COL_USER,
     COL_HIGHLIGHT,
     COL_ERROR,
+    COL_ERROR_NUM,
     COL_PENCIL,
     COL_DONE,
     NCOLOURS
@@ -1133,8 +1134,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 #define X_3D_DISP(height, w) ((height) * TILESIZE / (8 * (w)))
 #define Y_3D_DISP(height, w) ((height) * TILESIZE / (4 * (w)))
 
-#define FLASH_TIME 0.4F
-
 #define DF_PENCIL_SHIFT 16
 #define DF_CLUE_DONE 0x10000
 #define DF_ERROR 0x8000
@@ -1509,7 +1508,8 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_GRID       * 3 + i] = 0.0F;
         ret[COL_USER       * 3 + i] = 0.25F;
         ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
-        ret[COL_ERROR      * 3 + i] = 0.5F;
+        ret[COL_ERROR      * 3 + i] = 0.25F;
+        ret[COL_ERROR_NUM  * 3 + i] = 0.75F;
         ret[COL_PENCIL     * 3 + i] = 0.25F;
         ret[COL_DONE       * 3 + i] = 0.75F;
     }
@@ -1554,7 +1554,9 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
     tx = COORD(x);
     ty = COORD(y);
 
-    bg = (tile & DF_HIGHLIGHT) ? COL_HIGHLIGHT : COL_BACKGROUND;
+    bg = (tile & DF_HIGHLIGHT) ? COL_HIGHLIGHT :
+         (tile & DF_ERROR)     ? COL_ERROR :
+                                 COL_BACKGROUND;
 
     /* draw tower */
     if (ds->three_d && (tile & DF_PLAYAREA) && (tile & DF_DIGIT_MASK)) {
@@ -1629,9 +1631,13 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
 
         if (tile & DF_CLUE_DONE)
             color = COL_DONE;
-        else if (x < 0 || y < 0 || x >= w || y >= w)
-            color = COL_GRID;
         else if (tile & DF_IMMUTABLE)
+            color = COL_GRID;
+        else if (tile & DF_HIGHLIGHT)
+            color = COL_USER;
+        else if (tile & DF_ERROR)
+            color = COL_ERROR_NUM;
+        else if (x < 0 || y < 0 || x >= w || y >= w)
             color = COL_GRID;
         else
             color = COL_USER;
@@ -1781,11 +1787,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         if (state->clues->immutable[y*w+x])
         tile |= DF_IMMUTABLE;
-
-            if (flashtime > 0 &&
-                (flashtime <= FLASH_TIME/3 ||
-                 flashtime >= FLASH_TIME*2/3))
-                tile |= DF_HIGHLIGHT;  /* completion flash */
 
         if (ds->errtmp[(y+1)*(w+2)+(x+1)])
         tile |= DF_ERROR;

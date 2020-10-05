@@ -57,6 +57,7 @@ enum {
     COL_USER,
     COL_HIGHLIGHT,
     COL_ERROR,
+    COL_ERROR_USER,
     COL_PENCIL,
     NCOLOURS
 };
@@ -1567,8 +1568,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 #define COORD(x) ((x)*TILESIZE + BORDER)
 #define FROMCOORD(x) (((x)+(TILESIZE-BORDER)) / TILESIZE - 1)
 
-#define FLASH_TIME 0.4F
-
 #define DF_PENCIL_SHIFT 16
 #define DF_ERR_LATIN 0x8000
 #define DF_ERR_CLUE 0x4000
@@ -1865,14 +1864,14 @@ static float *game_colours(frontend *fe, int *ncolours)
     int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
-    frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
         ret[COL_GRID       * 3 + i] = 0.0F;
-        ret[COL_USER       * 3 + i] = 0.2F;
-        ret[COL_HIGHLIGHT  * 3 + i] = 0.78F;
-        ret[COL_ERROR      * 3 + i] = 0.5F;
-        ret[COL_PENCIL     * 3 + i] = 0.2F;
+        ret[COL_USER       * 3 + i] = 0.0F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
+        ret[COL_ERROR      * 3 + i] = 0.25F;
+        ret[COL_ERROR_USER * 3 + i] = 0.75F;
+        ret[COL_PENCIL     * 3 + i] = 0.25F;
     }
 
     *ncolours = NCOLOURS;
@@ -1941,7 +1940,9 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
 
     /* background needs erasing */
     draw_rect(dr, cx, cy, cw, ch,
-          (tile & DF_HIGHLIGHT) ? COL_HIGHLIGHT : COL_BACKGROUND);
+          (tile & DF_HIGHLIGHT) ? COL_HIGHLIGHT : 
+          (tile & DF_ERR_LATIN) ? COL_ERROR :
+                                  COL_BACKGROUND);
 
     /* pencil-mode highlight */
     if (tile & DF_HIGHLIGHT_PENCIL) {
@@ -1972,13 +1973,10 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
     if (tile & DF_DIGIT_MASK) {
         str[1] = '\0';
         str[0] = (tile & DF_DIGIT_MASK) + '0';
-        if (tile & DF_ERR_LATIN) {
-            draw_circle(dr, tx + TILESIZE/2, ty+TILESIZE/2, TILESIZE/3, COL_ERROR, COL_ERROR);
-            draw_circle(dr, tx + TILESIZE/2, ty+TILESIZE/2, TILESIZE/4, COL_BACKGROUND, COL_BACKGROUND);
-        }
         draw_text(dr, tx + TILESIZE/2, ty + TILESIZE/2,
               FONT_VARIABLE, TILESIZE/2, ALIGN_VCENTRE | ALIGN_HCENTRE,
-              (tile & DF_ERR_LATIN) ? COL_ERROR : COL_USER, str);
+              (tile & DF_HIGHLIGHT) ? COL_USER :
+              (tile & DF_ERR_LATIN) ? COL_ERROR_USER : COL_USER, str);
     } else {
         int i, j, npencil;
     int pl, pr, pt, pb;
@@ -2102,7 +2100,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
             int len = 2 + (clueval > 999 ? 4 : clueval > 99 ? 3 : clueval > 9 ? 2 : 1);
             draw_rect(dr, tx + GRIDEXTRA, ty + GRIDEXTRA, len*TILESIZE/8, TILESIZE/4+2*GRIDEXTRA, COL_ERROR);
             draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2 + TILESIZE/8,
-                  FONT_FIXED, TILESIZE/4, ALIGN_VCENTRE | ALIGN_HLEFT, COL_BACKGROUND, str);
+                  FONT_FIXED, TILESIZE/4, ALIGN_VCENTRE | ALIGN_HLEFT, COL_ERROR_USER, str);
         }
         else 
             draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2 + TILESIZE/8,
@@ -2157,11 +2155,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         if (ui->hshow && ui->hx == x && ui->hy == y)
         tile |= (ui->hpencil ? DF_HIGHLIGHT_PENCIL : DF_HIGHLIGHT);
 
-            if (flashtime > 0 &&
-                (flashtime <= FLASH_TIME/3 ||
-                 flashtime >= FLASH_TIME*2/3))
-                tile |= DF_HIGHLIGHT;  /* completion flash */
-
         tile |= ds->errors[y*w+x];
 
         if (ds->tiles[y*w+x] != tile) {
@@ -2182,9 +2175,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-    !oldstate->cheated && !newstate->cheated)
-        return FLASH_TIME;
     return 0.0F;
 }
 
@@ -2195,8 +2185,6 @@ static int game_status(const game_state *state)
 
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
-    if (state->completed)
-    return false;
     return true;
 }
 
