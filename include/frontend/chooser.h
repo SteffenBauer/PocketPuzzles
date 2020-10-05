@@ -62,5 +62,6 @@ void chooserNext();
 extern void gameSetGame(const struct game *thegame);
 extern void gameStartNewGame();
 extern bool gameResumeGame();
+extern void configDelItem(char *key);
 
 #endif

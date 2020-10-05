@@ -24,6 +24,14 @@ struct savefile_write {
     int error;
 };
 
+int configLen();
+void configAddItem(char *key, char *value);
+void configDel();
+char *configGetItem(char *key);
+void configDelItem(char *key);
+void configSave();
+void configLoad();
+
 void stateSerialise(midend *me);
 const char *stateDeserialise(midend *me);
 const char *stateGamesaveName(char **name);

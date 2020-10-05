@@ -53,6 +53,7 @@ void chooserRelease(int x, int y) {
             if (release_button(x, y, &ca.chooserButton[i])) {
                 switch(ca.chooserButton[i].action) {
                     case ACTION_HOME:
+                        configDelItem("savegame");
                         exitApp();
                         break;
                     case ACTION_DRAW:
