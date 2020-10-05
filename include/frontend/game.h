@@ -96,12 +96,12 @@ static BUTTON btn_rome_n      = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'U',
 static BUTTON btn_rome_s      = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'D', &bt_south, NULL, NULL};
 
 static imenuex gameMenu[] = {
-    { ITEM_HEADER,   0, "Game",          NULL, NULL,          NULL, NULL },
-    { ITEM_ACTIVE, 101, "New",           NULL, &menu_new,     NULL, NULL },
-    { ITEM_ACTIVE, 102, "Restart",       NULL, &menu_restart, NULL, NULL },
-    { ITEM_ACTIVE, 103, "Show Solution", NULL, &menu_solve,   NULL, NULL },
-    { ITEM_ACTIVE, 104, "How to play",   NULL, &menu_help,    NULL, NULL },
-    { ITEM_ACTIVE, 199, "Quit app",      NULL, &menu_exit,    NULL, NULL },
+    { ITEM_HEADER,   0, "Game",               NULL, NULL,          NULL, NULL },
+    { ITEM_ACTIVE, 101, "New",                NULL, &menu_new,     NULL, NULL },
+    { ITEM_ACTIVE, 102, "Restart",            NULL, &menu_restart, NULL, NULL },
+    { ITEM_ACTIVE, 103, "Show Solution",      NULL, &menu_solve,   NULL, NULL },
+    { ITEM_ACTIVE, 104, "How to play",        NULL, &menu_help,    NULL, NULL },
+    { ITEM_ACTIVE, 199, "Save game and exit", NULL, &menu_exit,    NULL, NULL },
     { 0, 0, NULL, NULL, NULL, NULL, NULL }
 };
 static int gameMenu_selectedIndex = 1;

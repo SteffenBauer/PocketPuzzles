@@ -14,6 +14,7 @@ extern void chooserRelease(int x, int y);
 extern void chooserPrev();
 extern void chooserNext();
 
+extern bool gameResumeGame();
 extern void gameScreenInit();
 extern void gameScreenShow();
 extern void gameScreenFree();
