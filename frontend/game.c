@@ -6,6 +6,7 @@
 #include "inkview.h"
 #include "frontend/game.h"
 #include "frontend/gamestate.h"
+#include "frontend/gamelist.h"
 #include "puzzles.h"
 
 #define DOTTED 0xFF000000
@@ -269,6 +270,8 @@ static bool coord_in_gamecanvas(int x, int y) {
 void gameMenuHandler(int index) {
     gameMenu_selectedIndex = index;
 
+    button_to_normal(&fe->gameButton[fe->btnGameIDX], true);
+
     switch (index) {
         case 101:  /* New Game */
             gameStartNewGame();
@@ -289,13 +292,14 @@ void gameMenuHandler(int index) {
         default:
             break;
     }
-    button_to_normal(&btn_game, true);
 };
 
 void typeMenuHandler(int index) {
     typeMenu_selectedIndex = index;
     char buf[256];
     int currentindex = midend_which_preset(me);
+
+    button_to_normal(&fe->gameButton[fe->btnTypeIDX], true);
 
     if (index == 200)
         Message(ICON_WARNING, "", "Custom preset not implemented yet!", 3000);
@@ -306,7 +310,6 @@ void typeMenuHandler(int index) {
         gameSwitchPreset(index-201);
         gameScreenShow();
     }
-    button_to_normal(&btn_type, true);
 };
 
 static void gameBuildTypeMenu() {
@@ -483,16 +486,19 @@ void gameRelease(int x, int y) {
     }
 
     gameDrawFurniture();
+    SoftUpdate();
 }
 
 void gamePrev() {
     if (midend_can_undo(me)) midend_process_key(me, 0, 0 , UI_UNDO);
     gameDrawFurniture();
+    SoftUpdate();
 }
 
 void gameNext() {
     if (midend_can_redo(me)) midend_process_key(me, 0, 0, UI_REDO);
     gameDrawFurniture();
+    SoftUpdate();
 }
 
 static void gameDrawStatusBar() {
@@ -706,28 +712,6 @@ static LAYOUTTYPE gameGetLayout() {
 static void gameDrawFurniture() {
     gameCheckButtonState();
     gameDrawStatusBar();
-    SoftUpdate();
-}
-
-static void gameStartNewGame() {
-    char *name;
-    const char *result;
-    ShowPureHourglassForce();
-    result = gamestateGamesaveName(&name);
-    if (result != NULL) {
-        midend_new_game(me);
-    }
-    else {
-        if (strcmp(fe->currentgame->name, name) == 0) {
-            gamestateDeserialise(me);
-        }
-        else {
-            midend_new_game(me);
-        }
-        sfree(name);
-    }
-    HideHourglass();
-    gamePrepareFrontend();
 }
 
 static void gameRestartGame() {
@@ -749,18 +733,43 @@ static void gameSwitchPreset(int index) {
     gameStartNewGame();
 }
 
-/*
-void gameResumeGame() {
-    deserialise_game(me);
+void gameStartNewGame() {
+    ShowPureHourglassForce();
+    midend_new_game(me);
+    HideHourglass();
     gamePrepareFrontend();
 }
-*/
+
+bool gameResumeGame() {
+    char *name;
+    const char *result;
+    bool validSavegame = false;
+    int i = 0;
+    result = gamestateGamesaveName(&name);
+    if (result == NULL && name != NULL) {
+        while (mygames[i].thegame != NULL) {
+            if (strcmp(mygames[i].thegame->name, name) == 0) {
+                gameSetGame(mygames[i].thegame);
+                gamestateDeserialise(me);
+                validSavegame = true;
+                fe->finished = (midend_status(me) != 0);
+                break;
+            }
+            i++;
+        }
+    }
+    if (!validSavegame) {
+        return false;
+    }
+    sfree(name);
+    gamePrepareFrontend();
+    return true;
+}
 
 void gameSetGame(const struct game *thegame) {
     fe->currentgame = thegame;
     sfree(me);
     me = midend_new(fe, thegame, &ink_drawing, fe);
-    gameStartNewGame();
 }
 
 void gameScreenShow() {
@@ -771,7 +780,7 @@ void gameScreenShow() {
     midend_force_redraw(me);
     gameDrawControlButtons();
     gameDrawStatusBar();
-    SoftUpdate();
+    FullUpdate();
 }
 
 void gameScreenInit() {

@@ -124,10 +124,12 @@ static LAYOUTTYPE gameGetLayout();
 static void gameDrawFurniture();
 static void gameCheckButtonState();
 
-static void gameStartNewGame();
 static void gameRestartGame();
 static void gameSolveGame();
 static void gameSwitchPreset(int index);
+
+void gameStartNewGame();
+bool gameResumeGame();
 
 void gameScreenInit();
 void gameScreenShow();

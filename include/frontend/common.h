@@ -42,6 +42,7 @@ typedef enum {
 typedef enum {
     ACTION_HOME,
     ACTION_DRAW,
+    ACTION_MENU,
     ACTION_NEXT,
     ACTION_PREV,
     ACTION_LAUNCH,

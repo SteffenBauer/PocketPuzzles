@@ -3,7 +3,10 @@
 PBSDK ?= ../../pocketbook-sdk5
 CC = $(PBSDK)/bin/arm-obreey-linux-gnueabi-gcc
 PBRES = $(PBSDK)/bin/pbres
-CFLAGS = -DCOMBINED -std=c99 -DNDEBUG -fsigned-char -fomit-frame-pointer -fPIC -O2 -march=armv7-a -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp -linkview -lfreetype -lm -D_XOPEN_SOURCE=632
+
+GIT_VERSION := "$(shell git describe --dirty --always --tags)"
+
+CFLAGS = -DCOMBINED -std=c99 -DNDEBUG -fsigned-char -fomit-frame-pointer -fPIC -O2 -march=armv7-a -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp -linkview -lfreetype -lm -D_XOPEN_SOURCE=632 -DVERSION=\"$(GIT_VERSION)\"
 
 UTILSRCS := $(wildcard utils/*.c)
 UTILOBJS := $(UTILSRCS:%.c=%.o)
@@ -20,7 +23,8 @@ HEADERS := $(wildcard include /*.h)
 all: build/SGTPuzzles.app
 
 build/SGTPuzzles.app: icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS)
-	LC_ALL=C $(CC) -s icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS) -I./include -o build/SGTPuzzles.app $(CFLAGS)
+	mkdir -p ./build
+	LC_ALL=C $(CC) -s icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS) -I./include -o ./build/SGTPuzzles.app $(CFLAGS)
 
 icons/icons.c: ./icons/*.bmp
 	LC_ALL=C $(PBRES) -c ./icons/icons.c -4 ./icons/*.bmp

@@ -24,12 +24,23 @@ struct chooserAttributes {
 
     int btnHomeIDX;
     int btnDrawIDX;
+    int btnMenuIDX;
     int btnPrevIDX;
     int btnNextIDX;
 } ca;
 
 extern ibitmap icon_home, icon_home_tap, icon_redraw, icon_redraw_tap,
-               bt_west, bt_east;
+               bt_west, bt_east, 
+               icon_menu, icon_menu_tap, 
+               menu_settings, menu_restart, menu_help;
+
+static imenuex chooserMenu[] = {
+    { ITEM_HEADER,   0, "Puzzles",          NULL, NULL,           NULL, NULL },
+    { ITEM_ACTIVE, 101, "Settings",         NULL, &menu_settings, NULL, NULL },
+    { ITEM_ACTIVE, 102, "Resume last game", NULL, &menu_restart,  NULL, NULL },
+    { ITEM_ACTIVE, 103, "About",            NULL, &menu_help,     NULL, NULL },
+    { 0, 0, NULL, NULL, NULL, NULL, NULL }
+};
 
 static void chooserSetupButtons();
 
@@ -49,5 +60,7 @@ void chooserPrev();
 void chooserNext();
 
 extern void gameSetGame(const struct game *thegame);
+extern void gameStartNewGame();
+extern bool gameResumeGame();
 
 #endif
