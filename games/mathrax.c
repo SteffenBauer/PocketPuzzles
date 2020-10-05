@@ -90,9 +90,8 @@ enum {
 #define FE_BOTRIGHT    0x20
 #define FE_ERRORMASK   0x3E
 
-#define FD_FLASH      0x100
-#define FD_CURSOR     0x200
-#define FD_PENCIL     0x400
+#define FD_CURSOR     0x100
+#define FD_PENCIL     0x200
 
 typedef unsigned int marks_t;
 
@@ -1390,8 +1389,8 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_BORDER     * 3 + i] = 0.0F;
         ret[COL_GUESS      * 3 + i] = 0.0F;
         ret[COL_PENCIL     * 3 + i] = 0.0F;
-        ret[COL_ERROR      * 3 + i] = 0.5F;
-        ret[COL_ERRORBG    * 3 + i] = 0.5F;
+        ret[COL_ERROR      * 3 + i] = 0.75F;
+        ret[COL_ERRORBG    * 3 + i] = 0.25F;
     }
     
     *ncolours = NCOLOURS;
@@ -1436,9 +1435,6 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
     sfree(ds);
 }
 
-#define FLASH_TIME 0.7F
-#define FLASH_FRAME 0.1F
-
 static int mathrax_clue_label(struct mathrax_symbols symbols, char *buf, clue_t clue)
 {
     switch(clue & CLUEMASK)
@@ -1474,7 +1470,7 @@ static void mathrax_draw_clue(drawing *dr, game_drawstate *ds, clue_t clue, int 
     mathrax_clue_label(ds->symbols, buf, clue);
 
     draw_circle(dr, x, y, tilesize/3, error ? COL_ERRORBG : COL_HIGHLIGHT, error ? COL_ERROR : COL_BORDER);
-    draw_text(dr, x, y, FONT_VARIABLE, tilesize/3, ALIGN_HCENTRE|ALIGN_VCENTRE, COL_BORDER, buf);
+    draw_text(dr, x, y, FONT_VARIABLE, tilesize/3, ALIGN_HCENTRE|ALIGN_VCENTRE, error ? COL_ERROR : COL_BORDER, buf);
 }
 
 static void game_redraw(drawing *dr, game_drawstate *ds,
@@ -1487,10 +1483,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y, tx, ty, fs;
     int tilesize = ds->tilesize;
     char buf[8];
-    int flash = -1;
-    
-    if(flashtime > 0)
-        flash = (int)(flashtime / FLASH_FRAME) % 3;
     
     if(ds->redraw)
     {
@@ -1507,10 +1499,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         
         fs = state->flags[y*o+x];
         
-        if(flashtime > 0 && (x+y) % 3 == flash)
-            fs |= FD_FLASH;
-        
-        if(flashtime == 0 && ui->cshow && ui->hx == x && ui->hy == y)
+        if(ui->cshow && ui->hx == x && ui->hy == y)
             fs |= ui->cpencil ? FD_PENCIL : FD_CURSOR;
         
         if(state->marks[y*o+x] == ds->marks[y*o+x] && 
@@ -1526,7 +1515,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         draw_update(dr, tx, ty, tilesize, tilesize);
         
         draw_rect(dr, tx, ty, tilesize, tilesize,
-            fs & (FD_FLASH|FD_CURSOR) ? COL_LOWLIGHT : COL_BACKGROUND);
+            (fs & FD_CURSOR) ? COL_LOWLIGHT : 
+            (fs & FE_COUNT)  ? COL_ERRORBG : COL_BACKGROUND);
         
         if(fs & FD_PENCIL)
         {
@@ -1557,16 +1547,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         {
             buf[0] = state->grid[y*o+x] + '0';
             buf[1] = '\0';
-            
-            if (fs & FE_COUNT) {
-                draw_circle(dr, tx + (tilesize/2), ty + (tilesize/2), tilesize/2-5, COL_ERRORBG, COL_ERRORBG);
-                draw_circle(dr, tx + (tilesize/2), ty + (tilesize/2), tilesize/2-10, COL_BACKGROUND, COL_ERRORBG);
-            }
-            
+
             draw_text(dr, tx + (tilesize/2), ty + (tilesize/2),
                 FONT_VARIABLE, (fs & F_IMMUTABLE) ? tilesize/2 : tilesize/2-5, ALIGN_HCENTRE|ALIGN_VCENTRE,
-                fs & F_IMMUTABLE ? COL_BORDER : 
-                fs & FE_COUNT ? COL_ERROR : COL_GUESS,
+                (fs & F_IMMUTABLE) ? COL_BORDER : 
+                (fs & FD_CURSOR) ? COL_GUESS : 
+                (fs & FE_COUNT) ? COL_ERROR : 
+                                  COL_GUESS,
                 buf);
         }
         else if(state->marks[y*o+x]) /* Draw pencil marks */
