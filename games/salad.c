@@ -51,6 +51,7 @@ enum {
     COL_G_BALL,
     COL_G_BALLBG,
     COL_G_HOLE,
+    COL_E_BG,
     COL_E_BORDERCLUE,
     COL_E_NUM, /* Error */
     COL_E_HOLE,
@@ -1007,7 +1008,7 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
 {
     int i;
     int n = params->nums;
-    int addkeys = params->mode == GAMEMODE_LETTERS ? 3 : 4;
+    int addkeys = 4;
     char base = params->mode == GAMEMODE_LETTERS ? 'A' : '1';
 
     key_label *keys = snewn(n + addkeys, key_label);
@@ -1020,20 +1021,12 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
     }
     keys[n].button = 'X';
     keys[n].label = "None";
-    if (params->mode == GAMEMODE_LETTERS) {
-        keys[n+1].button = '\b';
-        keys[n+1].label = NULL;
-        keys[n+2].button = '+';
-        keys[n+2].label = "Add";
-    }
-    else {
-        keys[n+1].button = 'O';
-        keys[n+1].label = "Any";
-        keys[n+2].button = '\b';
-        keys[n+2].label = NULL;
-        keys[n+3].button = '+';
-        keys[n+3].label = "Add";
-    }
+    keys[n+1].button = 'O';
+    keys[n+1].label = "Any";
+    keys[n+2].button = '\b';
+    keys[n+2].label = NULL;
+    keys[n+3].button = '+';
+    keys[n+3].label = "Add";
     return keys;
 }
 
@@ -1392,7 +1385,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 struct game_drawstate {
     int tilesize;
     bool redraw;
-    int oldflash;
     int *gridfs;
     int *borderfs;
     
@@ -1408,8 +1400,6 @@ struct game_drawstate {
 
 #define TILE_SIZE (ds->tilesize)
 #define DEFAULT_TILE_SIZE 40
-#define FLASH_TIME 0.7F
-#define FLASH_FRAME 0.1F
 #define FROMCOORD(x) ( ((x)/ TILE_SIZE) - 1 )
 
 static char *interpret_move(const game_state *state, game_ui *ui, const game_drawstate *ds,
@@ -1733,8 +1723,9 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_G_HOLE       * 3 + i] = 0.0F;
         ret[COL_G_BALL       * 3 + i] = 0.0F;
         ret[COL_G_BALLBG     * 3 + i] = 0.9F;
-        ret[COL_E_BORDERCLUE * 3 + i] = 0.5F;
-        ret[COL_E_NUM        * 3 + i] = 0.5F;
+        ret[COL_E_BG         * 3 + i] = 0.25F;
+        ret[COL_E_BORDERCLUE * 3 + i] = 0.25F;
+        ret[COL_E_NUM        * 3 + i] = 0.75F;
         ret[COL_E_HOLE       * 3 + i] = 0.5F;
     }
     *ncolours = NCOLOURS;
@@ -1751,7 +1742,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
 
     ds->tilesize = DEFAULT_TILE_SIZE;
     ds->redraw = true;
-    ds->oldflash = -1;
     ds->gridfs = snewn(o2, int);
     ds->grid = snewn(o2, digit);
     ds->marks = snewn(o2, unsigned int);
@@ -1929,7 +1919,7 @@ static void salad_set_drawflags(game_drawstate *ds, const game_ui *ui, const gam
     }
 }
 
-static void salad_draw_balls(drawing *dr, game_drawstate *ds, int x, int y, int flash, const game_state *state)
+static void salad_draw_balls(drawing *dr, game_drawstate *ds, int x, int y, const game_state *state)
 {
     int mode = state->params->mode;
     int o = state->params->order;
@@ -1945,10 +1935,12 @@ static void salad_draw_balls(drawing *dr, game_drawstate *ds, int x, int y, int 
     ty = (y+1)*TILE_SIZE + (TILE_SIZE/2);
     
     /* Draw ball background */
-    if(mode == GAMEMODE_NUMBERS)
+    if(mode == GAMEMODE_LETTERS)
         bgcolor = COL_I_BALLBG;
     else /* Transparent */
-        bgcolor = (ds->gridfs[i] & FD_CURSOR ? COL_LOWLIGHT : COL_BACKGROUND);
+        bgcolor = (ds->gridfs[i] & FD_CURSOR ? COL_LOWLIGHT : 
+                   ds->gridfs[i] & FD_ERROR  ? COL_E_BG :
+                                               COL_BACKGROUND);
     color = (state->gridclues[i] ? COL_I_BALL : COL_G_BALL);
     
     draw_circle(dr, tx, ty, TILE_SIZE*0.4, color, color);
@@ -1965,7 +1957,10 @@ static void salad_draw_cross(drawing *dr, game_drawstate *ds, int x, int y, doub
     tx = (x+1)*TILE_SIZE;
     ty = (y+1)*TILE_SIZE;
     
-    color = (state->gridclues[i] ? COL_I_HOLE : COL_G_HOLE);
+    color = (state->gridclues[i]       ? COL_I_HOLE : 
+             ds->gridfs[i] & FD_CURSOR ? COL_G_NUM :
+             ds->gridfs[i] & FD_ERROR  ? COL_E_NUM : 
+                                         COL_G_HOLE);
     draw_thick_line(dr, thick,
         tx + (TILE_SIZE*0.2), ty + (TILE_SIZE*0.2),
         tx + (TILE_SIZE*0.8), ty + (TILE_SIZE*0.8),
@@ -1988,13 +1983,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     bool hshow = ui->hshow;
     double thick = (TILE_SIZE <= 21 ? 1 : 2.5);
     
-    int flash = -1;
-    if(flashtime > 0)
-    {
-        flash = (int)(flashtime / FLASH_FRAME) % 3;
-        hshow = false;
-    }
-    
     if(ds->redraw)
     {
         /* Draw background */
@@ -2014,8 +2002,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             
             if(!ds->redraw && ds->oldgridfs[i] == ds->gridfs[i] && 
                     ds->grid[i] == state->grid[i] && 
-                    ds->marks[i] == state->marks[i] &&
-                    ds->oldflash == flash)
+                    ds->marks[i] == state->marks[i])
                 continue;
             
             ds->oldgridfs[i] = ds->gridfs[i];
@@ -2025,9 +2012,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             draw_update(dr, tx, ty, TILE_SIZE, TILE_SIZE);
             
             draw_rect(dr, tx, ty, TILE_SIZE, TILE_SIZE, 
-                ds->gridfs[i] & FD_ERROR ? COL_E_NUM : COL_BACKGROUND);
+                ds->gridfs[i] & FD_ERROR ? COL_E_BG : COL_BACKGROUND);
             
-            if(flash == -1 && ds->gridfs[y*o+x] & FD_PENCIL)
+            if(ds->gridfs[y*o+x] & FD_PENCIL)
             {
                 int coords[6];
                 coords[0] = tx;
@@ -2038,7 +2025,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
                 coords[5] = ty+(TILE_SIZE/2);
                 draw_polygon(dr, coords, 3, COL_LOWLIGHT, COL_LOWLIGHT);
             }
-            else if(flash == -1 && ds->gridfs[y*o+x] & FD_CURSOR)
+            else if(ds->gridfs[y*o+x] & FD_CURSOR)
             {
                 draw_rect(dr, tx, ty, TILE_SIZE, TILE_SIZE, COL_LOWLIGHT);
             }
@@ -2056,7 +2043,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             draw_polygon(dr, sqc, 4, -1, COL_BORDER);
             
             if(ds->gridfs[i] & FD_CIRCLE)
-                salad_draw_balls(dr, ds, x, y, flash, state);
+                salad_draw_balls(dr, ds, x, y, state);
             else if(ds->gridfs[i] & FD_CROSS)
                 salad_draw_cross(dr, ds, x, y, thick, state);
             
@@ -2079,6 +2066,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             else if(state->grid[i] != 0)
             {
                 color = (state->gridclues[i] > 0 && state->gridclues[i] <= o ? COL_I_NUM :
+                    ds->gridfs[i] & FD_CURSOR ? COL_G_NUM : 
                     ds->gridfs[i] & FD_ERROR ? COL_E_NUM : COL_G_NUM);
                 buf[0] = state->grid[i] + base;
                 
@@ -2102,7 +2090,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             draw_update(dr, tx, ty, tx+TILE_SIZE-1, ty+TILE_SIZE-1);
             buf[0] = state->borderclues[j] + base;
             draw_text(dr, tx + TILE_SIZE/2, ty + TILE_SIZE/2,
-                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, COL_BORDERCLUE,
+                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, 
+                ds->borderfs[j] & FD_ERROR ? COL_E_NUM : COL_BORDERCLUE,
                 buf);
             ds->oldborderfs[j] = ds->borderfs[j];
         }
@@ -2117,7 +2106,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             draw_update(dr, tx, ty, tx+TILE_SIZE-1, ty+TILE_SIZE-1);
             buf[0] = state->borderclues[j] + base;
             draw_text(dr, tx + TILE_SIZE/2, ty + TILE_SIZE/2,
-                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, COL_BORDERCLUE,
+                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, 
+                ds->borderfs[j] & FD_ERROR ? COL_E_NUM : COL_BORDERCLUE,
                 buf);
             ds->oldborderfs[j] = ds->borderfs[j];
         }
@@ -2132,7 +2122,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             draw_update(dr, tx, ty, tx+TILE_SIZE-1, ty+TILE_SIZE-1);
             buf[0] = state->borderclues[j] + base;
             draw_text(dr, tx + TILE_SIZE/2, ty + TILE_SIZE/2,
-                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, COL_BORDERCLUE,
+                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, 
+                ds->borderfs[j] & FD_ERROR ? COL_E_NUM : COL_BORDERCLUE,
                 buf);
             ds->oldborderfs[j] = ds->borderfs[j];
         }
@@ -2147,14 +2138,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             draw_update(dr, tx+1, ty+1, tx+TILE_SIZE-2, ty+TILE_SIZE-2);
             buf[0] = state->borderclues[j] + base;
             draw_text(dr, tx + TILE_SIZE/2, ty + TILE_SIZE/2,
-                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, COL_BORDERCLUE,
+                FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, 
+                ds->borderfs[j] & FD_ERROR ? COL_E_NUM : COL_BORDERCLUE,
                 buf);
             ds->oldborderfs[j] = ds->borderfs[j];
         }
     }
     
     ds->redraw = false;
-    ds->oldflash = flash;
 }
 
 static float game_anim_length(const game_state *oldstate, const game_state *newstate,
