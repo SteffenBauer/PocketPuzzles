@@ -5,7 +5,7 @@
 
 #include "inkview.h"
 #include "frontend/game.h"
-#include "frontend/gamestate.h"
+#include "frontend/state.h"
 #include "frontend/gamelist.h"
 #include "puzzles.h"
 
@@ -287,6 +287,9 @@ void gameMenuHandler(int index) {
             Message(ICON_WARNING, "", "Help not implemented yet!", 3000);
             break;
         case 199:  /* Exit app */
+            deactivate_timer(fe);
+            stateSerialise(me);
+            stateSaveParams(me, fe->currentgame);
             exitApp();
             break;
         default:
@@ -450,7 +453,8 @@ void gameRelease(int x, int y) {
                 switch(fe->gameButton[i].action) {
                     case ACTION_BACK:
                         deactivate_timer(fe);
-                        gamestateSerialise(me);
+                        stateSerialise(me);
+                        stateSaveParams(me, fe->currentgame);
                         switchToChooserScreen();
                         return;
                     case ACTION_DRAW:
@@ -745,14 +749,20 @@ bool gameResumeGame() {
     const char *result;
     bool validSavegame = false;
     int i = 0;
-    result = gamestateGamesaveName(&name);
+    result = stateGamesaveName(&name);
     if (result == NULL && name != NULL) {
         while (mygames[i].thegame != NULL) {
             if (strcmp(mygames[i].thegame->name, name) == 0) {
                 gameSetGame(mygames[i].thegame);
-                gamestateDeserialise(me);
+                if (stateDeserialise(me) == NULL) {
+                    fe->finished = (midend_status(me) != 0);
+                }
+                else {
+                    ShowPureHourglassForce();
+                    midend_new_game(me);
+                    HideHourglass();
+                }
                 validSavegame = true;
-                fe->finished = (midend_status(me) != 0);
                 break;
             }
             i++;
@@ -768,8 +778,10 @@ bool gameResumeGame() {
 
 void gameSetGame(const struct game *thegame) {
     fe->currentgame = thegame;
-    sfree(me);
+    if (me != NULL)
+        midend_free(me);
     me = midend_new(fe, thegame, &ink_drawing, fe);
+    stateLoadParams(me, thegame);
 }
 
 void gameScreenShow() {

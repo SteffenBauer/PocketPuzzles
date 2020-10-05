@@ -32,13 +32,17 @@ void switchToGameScreen() {
 
 static void setupApp() {
     SetPanelType(PANEL_ENABLED);
+    stateInit();
     chooserScreenInit();
     gameScreenInit();
-    switchToChooserScreen();
+    if (gameResumeGame())
+        switchToGameScreen();
+    else
+        switchToChooserScreen();
 }
 
 void exitApp() {
-    gamestateFree();
+    stateFree();
     chooserScreenFree();
     gameScreenFree();
     CloseApp();
