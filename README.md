@@ -29,7 +29,7 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 
 ### ToDo
 
-#### Milestones for beta version
+#### Milestones for alpha version
 
 - [X] Basic GUI framework
 - [X] Generate game bitmaps (game icons, menu buttons, control buttons)
@@ -48,11 +48,11 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 - [X] Handling of physical device buttons
 - [X] Setup of game specific control buttons
 - [X] Setup of game specific type presets
-- [ ] Save / restore current game preset on screen change / app exit / relaunch
-- [ ] Save / restore of game state on screen change / app exit / relaunch
+- [X] Save / restore game presets on screen change / app exit / relaunch
+- [X] Save / restore of current game state on screen change / app exit / relaunch
 - [X] 'About' box
 
-#### Milestones for 1.0 version
+#### Milestones for beta version
 
 - [ ] Implement custom game type entry screen
 - [ ] Implement help screen and/or separate documentation eBook

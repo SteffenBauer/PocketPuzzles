@@ -25,7 +25,8 @@ extern void gameRelease(int x, int y);
 extern void gamePrev();
 extern void gameNext();
 
-extern void gamestateFree();
+extern void stateInit();
+extern void stateFree();
 
 typedef enum {
     SCREEN_CHOOSER,
@@ -49,7 +50,6 @@ void switchToGameScreen();
 
 static void setupApp();
 void exitApp();
-extern void free_gamestate();
 
 #endif
 
