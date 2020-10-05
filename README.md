@@ -20,11 +20,10 @@ Modify the path to your local copy of the SDK in the `Makefile` at the line `PBS
 
 Run:  
 ```
-mkdir build
 make
 ```
 
-When everything compiles successfully, you find `build/SGTPuzzles.app` in the build directory. Copy this to the folder `/applications` on your device. Reboot if necessary after transfer.
+When everything compiles successfully, you find `build/SGTPuzzles.app`. Copy this to the folder `/applications` on your device. Reboot if necessary after transfer.
 
 Tested only on the **PocketBook Touch HD 3**, because that is the device I own. Could possibly also work on other devices with firmware 5 or higher.
 
@@ -51,7 +50,7 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 - [X] Setup of game specific type presets
 - [ ] Save / restore current game preset on screen change / app exit / relaunch
 - [ ] Save / restore of game state on screen change / app exit / relaunch
-- [ ] 'About' box
+- [X] 'About' box
 
 #### Milestones for 1.0 version
 

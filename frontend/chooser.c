@@ -7,6 +7,30 @@
 #include "frontend/chooser.h"
 #include "frontend/gamelist.h"
 
+void chooserMenuHandler(int index) {
+    char buf[256];
+
+    button_to_normal(&ca.chooserButton[ca.btnMenuIDX], true);
+
+    switch (index) {
+        case 101:  /* Settings */
+            Message(ICON_WARNING, "", "Settings not implemented yet!", 3000);
+            break;
+        case 102:  /* Resume Game */
+            if (gameResumeGame())
+                switchToGameScreen();
+            else
+                Message(ICON_WARNING, "", "No game to resume", 2000);
+            break;
+        case 103:  /* About */
+            sprintf(buf, "Simon Tatham's Portable Puzzle Collection\n\nPort to PocketBook by Steffen Bauer\n\nVersion: %s", VERSION);
+            Dialog(ICON_INFORMATION, "About", buf, "OK", NULL, NULL);
+            break;
+        default:
+            break;
+    }
+};
+
 void chooserTap(int x, int y) {
     init_tap_x = x;
     init_tap_y = y;
@@ -34,6 +58,11 @@ void chooserRelease(int x, int y) {
                     case ACTION_DRAW:
                         chooserScreenShow();
                         break;
+                    case ACTION_MENU:
+                        OpenMenuEx(chooserMenu, 0, 
+                            ScreenWidth()-10-ca.chooserlayout.menubtn_size ,
+                            ca.chooserlayout.menubtn_size +2, chooserMenuHandler);
+                        break;
                     case ACTION_PREV:
                         chooserPrev();
                         break;
@@ -42,6 +71,7 @@ void chooserRelease(int x, int y) {
                         break;
                     case ACTION_LAUNCH:
                         gameSetGame(ca.chooserButton[i].actionParm.thegame);
+                        gameStartNewGame();
                         switchToGameScreen();
                         break;
                 }
@@ -111,6 +141,7 @@ static void chooserDrawMenu() {
 
     button_to_normal(&ca.chooserButton[ca.btnHomeIDX], false);
     button_to_normal(&ca.chooserButton[ca.btnDrawIDX], false);
+    button_to_normal(&ca.chooserButton[ca.btnMenuIDX], false);
 
     SetFont(ca.chooserfont, BLACK);
     DrawTextRect(0, (ca.chooserlayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, "PUZZLES", ALIGN_CENTER);
@@ -119,7 +150,7 @@ static void chooserDrawMenu() {
 static void chooserSetupButtons() {
     int i,c,r,p,pi;
 
-    ca.numChooserButtons = ca.num_games + 4;
+    ca.numChooserButtons = ca.num_games + 5;
     ca.chooserButton = smalloc(ca.numChooserButtons*sizeof(BUTTON));
 
     for(i=0;i<ca.num_games;i++) {
@@ -142,9 +173,14 @@ static void chooserSetupButtons() {
         ACTION_HOME, ' ', &icon_home, &icon_home_tap, NULL};
 
     ca.chooserButton[ca.btnDrawIDX = i++] = (BUTTON){ true,  BTN_MENU, 
-        ScreenWidth() - ca.chooserlayout.menubtn_size - 10, ca.chooserlayout.menu.starty, 
+        ScreenWidth() - 2*ca.chooserlayout.menubtn_size - 20, ca.chooserlayout.menu.starty, 
         ca.chooserlayout.menubtn_size, 0,
         ACTION_DRAW, ' ', &icon_redraw, &icon_redraw_tap, NULL};
+
+    ca.chooserButton[ca.btnMenuIDX = i++] = (BUTTON){ true,  BTN_MENU, 
+        ScreenWidth() - 1*ca.chooserlayout.menubtn_size - 10, ca.chooserlayout.menu.starty, 
+        ca.chooserlayout.menubtn_size, 0,
+        ACTION_MENU, ' ', &icon_menu, &icon_menu_tap, NULL};
 
     ca.chooserButton[ca.btnPrevIDX = i++] = (BUTTON){ false, BTN_CTRL, 
         ca.control_padding, ca.chooserlayout.buttonpanel.starty + 2, 
