@@ -3554,9 +3554,6 @@ static int boats_draw_fleet(drawing *dr, int w, int y, int fleet,
     return y + 1;
 }
 
-#define FLASH_FRAME 0.12F
-#define FLASH_TIME (FLASH_FRAME * 5)
-
 static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldstate,
             const game_state *state, int dir, const game_ui *ui,
             float animtime, float flashtime)
@@ -3572,10 +3569,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     int ymax = max(ui->dsy, ui->dey);
     char ship;
     bool redraw = ds->redraw;
-    bool flash = false;
-    
-    if(flashtime > 0)
-        flash = (int)(flashtime/FLASH_FRAME) & 1;
     
     if(redraw)
     {
@@ -3654,10 +3647,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
         tx = x*tilesize + (0.5 * tilesize);
         ty = y*tilesize + (0.5 * tilesize);
         
-        if(flashtime == 0 && ui->cursor && ui->cx == x && ui->cy == y)
+        if(ui->cursor && ui->cx == x && ui->cy == y)
             ds->gridfs[y*w+x] |= FD_CURSOR;
-        else
-            ds->gridfs[y*w+x] &= ~FD_CURSOR;
         
         ship = state->gridclues[y*w+x] != EMPTY ? state->gridclues[y*w+x]
             : state->grid[y*w+x];
@@ -3676,7 +3667,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
                 ui->drag_to == 'W' ? WATER : EMPTY;
         }
 
-        if(redraw || flash != ds->oldflash || ds->oldgridfs[y*w+x] 
+        if(redraw || ds->oldgridfs[y*w+x] 
             != ds->gridfs[y*w+x] || ds->grid[y*w+x] != ship)
         {
             draw_update(dr, tx, ty, tilesize + 1, tilesize + 1);
@@ -3688,7 +3679,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             draw_rect(dr, tx, ty, tilesize, tilesize, bgcol);
             draw_rect_outline(dr, tx, ty, tilesize+1, tilesize+1, COL_GRID);
             
-            if(!flash && IS_SHIP(ship))
+            if(IS_SHIP(ship))
             {
                 if (ds->gridfs[y*w+x] & FE_MISMATCH)
                     draw_rect(dr, tx, ty, tilesize, tilesize, COL_SHIP_ERROR);
@@ -3697,7 +3688,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
                     COL_SHIP_CLUE;
                 boats_draw_ship(dr, tx, ty, tilesize + 1, ship, bgcol);
             }
-            else if(!flash && state->gridclues[y*w+x] == WATER)
+            else if(state->gridclues[y*w+x] == WATER)
             {
                 draw_text(dr, tx + tilesize/2, ty + (tilesize * 0.42F),
                   FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
@@ -3741,7 +3732,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
         ds->fleetcount, ds->oldfleetcount, redraw, tilesize, -1);
     
     ds->redraw = false;
-    ds->oldflash = flash;
 }
 
 static void game_set_size(drawing *dr, game_drawstate *ds,
@@ -3774,9 +3764,6 @@ static float game_anim_length(const game_state *oldstate, const game_state *news
 static float game_flash_length(const game_state *oldstate, const game_state *newstate,
                    int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-        !oldstate->cheated && !newstate->cheated)
-        return FLASH_TIME;
     return 0.0F;
 }
 

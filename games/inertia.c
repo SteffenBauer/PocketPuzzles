@@ -1434,7 +1434,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
 struct game_ui {
     float anim_length;
-    int flashtype;
     int deaths;
     bool just_made_move;
     bool just_died;
@@ -1444,7 +1443,6 @@ static game_ui *new_ui(const game_state *state)
 {
     game_ui *ui = snew(game_ui);
     ui->anim_length = 0.0F;
-    ui->flashtype = 0;
     ui->deaths = 0;
     ui->just_made_move = false;
     ui->just_died = false;
@@ -1726,14 +1724,14 @@ static float *game_colours(frontend *fe, int *ncolours)
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND  * 3 + i] = 1.0F;
         ret[COL_OUTLINE     * 3 + i] = 0.0F;
-        ret[COL_PLAYER      * 3 + i] = 0.2F;
-        ret[COL_DEAD_PLAYER * 3 + i] = 0.4F;
+        ret[COL_PLAYER      * 3 + i] = 0.25F;
+        ret[COL_DEAD_PLAYER * 3 + i] = 0.5F;
         ret[COL_MINE        * 3 + i] = 0.0F;
-        ret[COL_GEM         * 3 + i] = 0.8F;
-        ret[COL_HIGHLIGHT   * 3 + i] = 0.9F;
-        ret[COL_LOWLIGHT    * 3 + i] = 0.7F;
-        ret[COL_WALL        * 3 + i] = 0.8F;
-        ret[COL_HINT        * 3 + i] = 0.7F;
+        ret[COL_GEM         * 3 + i] = 0.5F;
+        ret[COL_HIGHLIGHT   * 3 + i] = 0.75F;
+        ret[COL_LOWLIGHT    * 3 + i] = 0.25F;
+        ret[COL_WALL        * 3 + i] = 0.5F;
+        ret[COL_HINT        * 3 + i] = 0.75F;
     }
 
     *ncolours = NCOLOURS;
@@ -1821,9 +1819,7 @@ static void draw_player(drawing *dr, game_drawstate *ds, int x, int y,
         draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
                     TILESIZE/3, COL_PLAYER, COL_OUTLINE);
         draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
-                    TILESIZE/4, COL_GEM, COL_GEM);
-        draw_circle(dr, x + TILESIZE/2, y + TILESIZE/2,
-                    TILESIZE/6, COL_DEAD_PLAYER, COL_DEAD_PLAYER);
+                    TILESIZE/6, COL_HIGHLIGHT, COL_HIGHLIGHT);
     }
 
     if (!dead && hintdir >= 0) {
@@ -1861,17 +1857,10 @@ static void draw_player(drawing *dr, game_drawstate *ds, int x, int y,
     draw_update(dr, x, y, TILESIZE, TILESIZE);
 }
 
-#define FLASH_DEAD 0x100
-#define FLASH_WIN  0x200
-#define FLASH_MASK 0x300
-
 static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, int v)
 {
     int tx = COORD(x), ty = COORD(y);
-    int bg = (v & FLASH_DEAD ? COL_DEAD_PLAYER :
-          v & FLASH_WIN ? COL_HIGHLIGHT : COL_BACKGROUND);
-
-    v &= ~FLASH_MASK;
+    int bg = COL_BACKGROUND;
 
     clip(dr, tx+2, ty+2, TILESIZE-4, TILESIZE-4);
     draw_rect(dr, tx+2, ty+2, TILESIZE-4, TILESIZE-4, bg);
@@ -1902,7 +1891,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, int v)
         draw_circle(dr, cx, cy, 5*r/6, COL_MINE, COL_MINE);
         draw_rect(dr, cx - r/6, cy - r, 2*(r/6)+1, 2*r+1, COL_MINE);
         draw_rect(dr, cx - r, cy - r/6, 2*r+1, 2*(r/6)+1, COL_MINE);
-        draw_rect(dr, cx-r/3, cy-r/3, r/3, r/4, COL_HIGHLIGHT);
+        draw_rect(dr, cx-r/3, cy-r/3, r/3, r/4, COL_BACKGROUND);
     } else if (v == STOP) {
         draw_circle(dr, tx + TILESIZE/2, ty + TILESIZE/2,
                 TILESIZE*3/7, COL_OUTLINE, COL_OUTLINE);
@@ -1921,10 +1910,12 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, int v)
         coords[6] = tx+TILESIZE/2+7*TILESIZE/16; coords[7] = ty+TILESIZE/2;
 
         draw_polygon(dr, coords, 4, COL_GEM, COL_GEM);
+        /*
         draw_thick_line(dr, 3.0, coords[0], coords[1], coords[2], coords[3], COL_OUTLINE);
         draw_thick_line(dr, 3.0, coords[2], coords[3], coords[4], coords[5], COL_OUTLINE);
         draw_thick_line(dr, 3.0, coords[4], coords[5], coords[6], coords[7], COL_OUTLINE);
         draw_thick_line(dr, 3.0, coords[6], coords[7], coords[0], coords[1], COL_OUTLINE);
+        */
         coords[1] += 5*TILESIZE/16;
         coords[2] += 5*TILESIZE/16;
         coords[5] -= 5*TILESIZE/16;
@@ -1937,7 +1928,6 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, int v)
 }
 
 #define BASE_ANIM_LENGTH 0.1F
-#define FLASH_LENGTH 0.3F
 
 static void game_redraw(drawing *dr, game_drawstate *ds,
                         const game_state *oldstate, const game_state *state,
@@ -1948,11 +1938,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y;
     float ap;
     int player_dist;
-    int flashtype;
     int gems, deaths;
     char status[256];
-
-    flashtype = 0;
 
     /*
      * Erase the player sprite.
@@ -2049,8 +2036,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         if (v == GEM)
         gems++;
-
-        v |= flashtype;
 
         if (ds->grid[y*w+x] != v) {
         draw_tile(dr, ds, x, y, v);
