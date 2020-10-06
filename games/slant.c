@@ -3002,10 +3002,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-        !oldstate->used_solve && !newstate->used_solve)
-        return FLASH_TIME;
-
     return 0.0F;
 }
 

@@ -1177,7 +1177,7 @@ static void decode_ui(game_ui *ui, const char *encoding)
 
 typedef struct drawcell {
     puzzle_size value;
-    bool error, cursor, flash;
+    bool error, cursor;
 } drawcell;
 
 struct game_drawstate {
@@ -1492,13 +1492,9 @@ static float game_anim_length(const game_state *oldstate,
     return 0.0F;
 }
 
-#define FLASH_TIME 0.7F
-
 static float game_flash_length(const game_state *from,
                                const game_state *to, int dir, game_ui *ui)
 {
-    if (!from->was_solved && to->was_solved && !to->has_cheated)
-        return FLASH_TIME;
     return 0.0F;
 }
 
@@ -1555,14 +1551,12 @@ static float *game_colours(frontend *fe, int *ncolours)
     return ret;
 }
 
-static drawcell makecell(puzzle_size value,
-                         bool error, bool cursor, bool flash)
+static drawcell makecell(puzzle_size value, bool error, bool cursor)
 {
     drawcell ret;
     setmember(ret, value);
     setmember(ret, error);
     setmember(ret, cursor);
-    setmember(ret, flash);
     return ret;
 }
 
@@ -1577,7 +1571,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
 
     ds->grid = snewn(n, drawcell);
     for (i = 0; i < n; ++i)
-        ds->grid[i] = makecell(w + h, false, false, false);
+        ds->grid[i] = makecell(w + h, false, false);
 
     return ds;
 }
@@ -1595,8 +1589,7 @@ static bool cell_eq(drawcell a, drawcell b)
     return
         cmpmember(a, b, value) &&
         cmpmember(a, b, error) &&
-        cmpmember(a, b, cursor) &&
-        cmpmember(a, b, flash);
+        cmpmember(a, b, cursor);
 }
 
 static void draw_cell(drawing *dr, game_drawstate *ds, int r, int c,
@@ -1609,7 +1602,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int const w = state->params.w, h = state->params.h, n = w * h;
     int const wpx = (w+1) * ds->tilesize, hpx = (h+1) * ds->tilesize;
-    int const flash = ((int) (flashtime * 5 / FLASH_TIME)) % 2;
 
     int r, c, i;
 
@@ -1627,7 +1619,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
     for (i = r = 0; r < h; ++r) {
         for (c = 0; c < w; ++c, ++i) {
-            drawcell cell = makecell(state->grid[i], errors[i], false, flash);
+            drawcell cell = makecell(state->grid[i], errors[i], false);
             if (r == ui->r && c == ui->c && ui->cursor_show)
                 cell.cursor = true;
             if (!cell_eq(cell, ds->grid[i])) {
