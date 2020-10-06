@@ -10,7 +10,13 @@ Inspired by and building on the work of [Port to Android by Chris Boyle](https:/
 
 **16.8.2020 Next milestone** Game control buttons now working. All games playable (but those using blitter / animations still need rewriting)
 
-Lots of work still to do. See ToDo list below. eInk screens are limited in response time and color availability, so most of the games need individual tweaking to make them fun to play.
+**6.10.2020 Alpha version ready!** Persistence of game params and current game now working. Most games UI are reworked suitable for eInk screen.
+
+There is still work to do. See ToDo list below. eInk screens are limited in response time and color availability, so most of the games need individual tweaking to make them fun to play.
+
+### Binary app
+
+Connect your PocketBook with you PC with an USB cable. Copy `build/SGTPuzzles.app` to the folder `/applications` on your device. Unmount the USB connection, and reboot the PocketBook. You should now see an entry `@SGTPuzzles` among your apps.
 
 ### Build and Compatibility
 

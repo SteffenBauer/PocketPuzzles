@@ -2301,6 +2301,22 @@ static void ui_backtrack(game_ui *ui, const game_state *state)
     ui_seek(ui, state);
 }
 
+static key_label *game_request_keys(const game_params *params, int *nkeys)
+{
+    int i;
+    key_label *keys = snewn(11, key_label);
+    *nkeys = 11;
+
+    for (i = 0; i < 10; i++) {
+        keys[i].button = '0' + i;
+        keys[i].label = NULL;
+    }
+    keys[i].button = '\b';
+    keys[i].label = NULL;
+
+    return keys;
+}
+
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -2476,7 +2492,6 @@ static char *ascent_mouse_click(const game_state *state, game_ui *ui,
     {
     case LEFT_BUTTON:
         ui->doubleclick_cell = ui->held == i ? i : -1;
-
         /* Click on edge number */
         if (IS_NUMBER_EDGE(n) && ui->positions[NUMBER_EDGE(n)] == CELL_NONE)
         {
@@ -2764,8 +2779,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui_clear(ui);
 
     /* Pressing Enter, Spacebar or Backspace when not typing will emulate a mouse click */
-    if (button == '\b' && ui->typing_cell == CELL_NONE)
-        button = CURSOR_SELECT2;
     if (IS_CURSOR_SELECT(button) && ui->cshow == CSHOW_KEYBOARD && ui->typing_cell == CELL_NONE)
     {
         ret = ascent_mouse_click(state, ui, ui->cx, ui->cy,
@@ -2794,6 +2807,17 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->typing_number = n;
         return UI_UPDATE;
     }
+    if (button == '\b' && ui->held >= 0 && ui->typing_cell == CELL_NONE) {
+        char buf[20];
+        if (!GET_BIT(state->immutable, ui->held)) {
+            sprintf(buf, "C%d",ui->held);
+            return dupstr(buf);
+        }
+        else {
+            ui_clear(ui);
+            return UI_UPDATE;
+        }
+    }
 
     /* Remove the last digit when typing */
     if (button == '\b' && ui->typing_cell != CELL_NONE)
@@ -2803,7 +2827,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->typing_cell = CELL_NONE;
         return UI_UPDATE;
     }
-
     if (gx >= 0 && gx < w && gy >= 0 && gy < h)
     {
         if(IS_MOUSE_DRAG(button) && ui->held >= 0 && !IS_NUMBER_EDGE(ui->select))
@@ -3160,16 +3183,14 @@ static float *game_colours(frontend *fe, int *ncolours)
     int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
-    game_mkhighlight(fe, ret, COL_MIDLIGHT, COL_HIGHLIGHT, COL_LOWLIGHT);
-
     for (i=0;i<3;i++) {
         ret[COL_MIDLIGHT  * 3 + i] = 1.0F;
         ret[COL_HIGHLIGHT * 3 + i] = 0.75F;
-        ret[COL_LOWLIGHT  * 3 + i] = 0.5F;
+        ret[COL_LOWLIGHT  * 3 + i] = 0.25F;
         ret[COL_BORDER    * 3 + i] = 0.0F;
         ret[COL_LINE      * 3 + i] = 0.0F;
         ret[COL_IMMUTABLE * 3 + i] = 0.0F;
-        ret[COL_ERROR     * 3 + i] = 0.25F;
+        ret[COL_ERROR     * 3 + i] = 0.5F;
         ret[COL_CURSOR    * 3 + i] = 0.0F;
         ret[COL_ARROW     * 3 + i] = 0.75F;
     }
@@ -3341,8 +3362,6 @@ static number ascent_display_number(cell i, const game_drawstate *ds, const game
     return n;
 }
 
-#define FLASH_FRAME 0.03F
-#define FLASH_SIZE  4
 #define ERROR_MARGIN 0.1F
 static void game_redraw(drawing *dr, game_drawstate *ds,
                         const game_state *oldstate, const game_state *state,
@@ -3357,13 +3376,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     number n, fn;
     char buf[20];
     const cell *positions = ui->positions;
-    int flash = -2, colour;
+    int colour;
     int margin = tilesize*ERROR_MARGIN;
     const ascent_movement *movement = ascent_movement_for_mode(state->mode);
 
-    if(flashtime > 0)
-        flash = (int)(flashtime/FLASH_FRAME);
-    
     if (ds->bl_on)
     {
         blitter_load(dr, ds->bl,
@@ -3497,10 +3513,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             continue;
 
         colour = n == NUMBER_WALL ? COL_BORDER :
-            flash >= n && flash <= n + FLASH_SIZE ? COL_LOWLIGHT :
             ui->dragx == i%w || ui->dragy == i/w ? COL_HIGHLIGHT :
             ui->held == i || ui->typing_cell == i ||
-                (ui->cshow == CSHOW_MOUSE && ui->cy*w+ui->cx == i) ? COL_LOWLIGHT :
+                (ui->cshow == CSHOW_MOUSE && ui->cy*w+ui->cx == i) ? COL_HIGHLIGHT :
+            n <= state->last && positions[n] == CELL_MULTIPLE && ui->typing_cell != i ? COL_LOWLIGHT :
             ds->old_next_target >= 0 && positions[ds->old_next_target] == i ? COL_HIGHLIGHT :
             ds->old_prev_target >= 0 && positions[ds->old_prev_target] == i ? COL_HIGHLIGHT :
             COL_MIDLIGHT;
@@ -3654,14 +3670,16 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             draw_text(dr, tx1, ty1,
                     FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
                     GET_BIT(state->immutable, i) ? COL_IMMUTABLE : 
-                    state->grid[i] == NUMBER_EMPTY && ui->typing_cell != i ? COL_LOWLIGHT :
                     n <= state->last && positions[n] == CELL_MULTIPLE && ui->typing_cell != i ? COL_ERROR :
+                    state->grid[i] == NUMBER_EMPTY && ui->typing_cell != i ? COL_LOWLIGHT :
                     COL_BORDER, buf);
             
             if(ds->path[i] & FLAG_ERROR)
             {
-                draw_thick_line(dr, 2, tx+margin, ty+margin,
+                draw_thick_line(dr, 5, tx+margin, ty+margin,
                     (tx+tilesize)-margin, (ty+tilesize)-margin, COL_ERROR);
+                draw_thick_line(dr, 5, tx+margin, (ty+tilesize)-margin,
+                    (tx+tilesize)-margin, ty+margin, COL_ERROR);
             }
         }
         else if (IS_NUMBER_EDGE(n))
@@ -3670,7 +3688,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             bool error = i2 >= 0 && !is_edge_valid(i, i2, w, h);
             sprintf(buf, "%d", NUMBER_EDGE(n) + 1);
 
-            ascent_draw_arrow(dr, i, w, h, tx1, ty1, COL_ARROW, COL_BORDER, tilesize);
+            ascent_draw_arrow(dr, i, w, h, tx1, ty1, error ? COL_LOWLIGHT : COL_ARROW, COL_BORDER, tilesize);
 
             draw_text(dr, tx1, ty1,
                 FONT_VARIABLE, tilesize / 2, ALIGN_HCENTRE | ALIGN_VCENTRE,
@@ -3723,9 +3741,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-            !oldstate->cheated && !newstate->cheated)
-        return FLASH_FRAME * (newstate->w*newstate->h + FLASH_SIZE);
     return 0.0F;
 }
 
@@ -3764,7 +3779,7 @@ const struct game thegame = {
     free_ui,
     encode_ui,
     decode_ui,
-    NULL, /* game_request_keys */
+    game_request_keys,
     game_changed_state,
     interpret_move,
     execute_move,

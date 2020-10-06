@@ -1,6 +1,6 @@
 ### ToDo for individual games
 
-- [ ] Ascent: Add number keys; better error display, allow number erase by backspace
+- [X] Ascent: Add number keys; better error display, allow number erase by backspace
 - [X] Boats: Change error for incomplete boats, adjacent boats, and wrong boat numbers
 - [X] Dominosa: Error coloring, thicker line
 - [X] Dominosa: Number highlighting 

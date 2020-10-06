@@ -2183,7 +2183,7 @@ static int game_status(const game_state *state)
 static bool game_timing_state(const game_state *state, game_ui *ui)
 {
     if (state->completed)
-    return false;
+        return false;
     return true;
 }
 
