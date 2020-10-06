@@ -620,7 +620,6 @@ static void gamePrepareFrontend() {
     char buf[256];
 
     fe->gameButton = NULL;
-    fe->statustext = "";
     fe->current_pointer = 0;
     fe->pointerdown_x = 0;
     fe->pointerdown_y = 0;
@@ -719,9 +718,11 @@ static void gameDrawFurniture() {
 }
 
 static void gameRestartGame() {
+    fe->statustext = "";
     midend_restart_game(me);
     fe->finished = false;
     gameDrawFurniture();
+    SoftUpdate();
 }
 
 static void gameSolveGame() {
@@ -730,6 +731,7 @@ static void gameSolveGame() {
     if (errorMsg) Message(ICON_WARNING, "", errorMsg, 3000);
     else fe->finished = true;
     gameDrawFurniture();
+    SoftUpdate();
 }
 
 static void gameSwitchPreset(int index) {
@@ -739,6 +741,7 @@ static void gameSwitchPreset(int index) {
 
 void gameStartNewGame() {
     ShowPureHourglassForce();
+    fe->statustext = "";
     midend_new_game(me);
     HideHourglass();
     gamePrepareFrontend();
@@ -759,6 +762,7 @@ bool gameResumeGame() {
                 }
                 else {
                     ShowPureHourglassForce();
+                    fe->statustext = "";
                     midend_new_game(me);
                     HideHourglass();
                 }
@@ -778,6 +782,7 @@ bool gameResumeGame() {
 
 void gameSetGame(const struct game *thegame) {
     fe->currentgame = thegame;
+    fe->statustext = "";
     if (me != NULL)
         midend_free(me);
     me = midend_new(fe, thegame, &ink_drawing, fe);
