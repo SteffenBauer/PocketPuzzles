@@ -122,7 +122,6 @@ void configLoad() {
     fclose(fp);
   }
   sfree(buf);
-
 }
 
 static void serialiseWriteCallback(void *ctx, const void *buf, int len)

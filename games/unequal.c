@@ -30,8 +30,6 @@
  * Constant and structure definitions
  */
 
-#define FLASH_TIME 0.4F
-
 #define PREFERRED_TILE_SIZE 32
 
 #define TILE_SIZE (ds->tilesize)
@@ -1557,7 +1555,6 @@ struct game_drawstate {
 
     int hx, hy;
     bool hshow, hpencil;        /* as for game_ui. */
-    bool hflash;
 };
 
 static char *interpret_move(const game_state *state, game_ui *ui,
@@ -1841,7 +1838,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->started = false;
     ds->hshow = false;
     ds->hpencil = false;
-    ds->hflash = false;
 
     return ds;
 }
@@ -1990,13 +1986,13 @@ static void draw_krps(drawing *dr, game_drawstate *ds, int ox, int oy,
 
 static void draw_furniture(drawing *dr, game_drawstate *ds,
                            const game_state *state, const game_ui *ui,
-                           int x, int y, bool hflash)
+                           int x, int y)
 {
     int ox = COORD(x), oy = COORD(y), bg;
     bool hon;
     unsigned long f = GRID(state, flags, x, y);
 
-    bg = hflash ? COL_HIGHLIGHT : COL_BACKGROUND;
+    bg = (!(f & F_IMMUTABLE) && (f & F_ERROR)) ? COL_LOWLIGHT : COL_BACKGROUND;
 
     hon = (ui->hshow && x == ui->hx && y == ui->hy);
 
@@ -2030,24 +2026,25 @@ static void draw_furniture(drawing *dr, game_drawstate *ds,
         draw_gts(dr, ds, ox, oy, f, COL_BACKGROUND, COL_TEXT);
 }
 
-static void draw_num(drawing *dr, game_drawstate *ds, int x, int y)
+static void draw_num(drawing *dr, game_drawstate *ds, const game_ui *ui, int x, int y)
 {
     int ox = COORD(x), oy = COORD(y);
     unsigned long f = GRID(ds,flags,x,y);
     char str[2];
+    bool hon;
 
+    hon = (ui->hshow && x == ui->hx && y == ui->hy);
     /* (can assume square has just been cleared) */
 
     /* Draw number, choosing appropriate colour */
     str[0] = n2c(GRID(ds, nums, x, y), ds->order);
     str[1] = '\0';
-    if (!(f & F_IMMUTABLE) && (f & F_ERROR)) {
-        draw_circle(dr, ox + TILE_SIZE/2, oy + TILE_SIZE/2, 2*TILE_SIZE/5, COL_ERROR, COL_ERROR);
-        draw_circle(dr, ox + TILE_SIZE/2, oy + TILE_SIZE/2, 2*TILE_SIZE/6, COL_BACKGROUND, COL_BACKGROUND);
-    }
     draw_text(dr, ox + TILE_SIZE/2, oy + TILE_SIZE/2,
               FONT_VARIABLE, 2*TILE_SIZE/3, ALIGN_VCENTRE | ALIGN_HCENTRE,
-              (f & F_IMMUTABLE) ? COL_TEXT : (f & F_ERROR) ? COL_ERROR : COL_GUESS, str);
+              (f & F_IMMUTABLE) ? COL_TEXT : 
+              (hon && !ui->hpencil) ? COL_GUESS :
+              (f & F_ERROR) ? COL_HIGHLIGHT : 
+              COL_GUESS, str);
 }
 
 static void draw_hints(drawing *dr, game_drawstate *ds, int x, int y)
@@ -2093,13 +2090,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         float animtime, float flashtime)
 {
     int x, y, i;
-    bool hchanged = false, stale, hflash = false;
+    bool hchanged = false, stale;
 
     debug(("highlight old (%d,%d), new (%d,%d)", ds->hx, ds->hy, ui->hx, ui->hy));
-
-    if (flashtime > 0 &&
-        (flashtime <= FLASH_TIME/3 || flashtime >= FLASH_TIME*2/3))
-         hflash = true;
 
     if (!ds->started) {
         draw_rect(dr, 0, 0, DRAW_SIZE, DRAW_SIZE, COL_BACKGROUND);
@@ -2111,12 +2104,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
     for (x = 0; x < ds->order; x++) {
         for (y = 0; y < ds->order; y++) {
-            if (!ds->started)
-                stale = true;
-            else if (hflash != ds->hflash)
-                stale = true;
-            else
-                stale = false;
+            stale = (!ds->started);
 
             if (hchanged) {
                 if ((x == ui->hx && y == ui->hy) ||
@@ -2143,9 +2131,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 }
             }
             if (stale) {
-                draw_furniture(dr, ds, state, ui, x, y, hflash);
+                draw_furniture(dr, ds, state, ui, x, y);
                 if (GRID(ds, nums, x, y) > 0)
-                    draw_num(dr, ds, x, y);
+                    draw_num(dr, ds, ui, x, y);
                 else
                     draw_hints(dr, ds, x, y);
             }
@@ -2156,7 +2144,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     ds->hpencil = ui->hpencil;
 
     ds->started = true;
-    ds->hflash = hflash;
 }
 
 static float game_anim_length(const game_state *oldstate,
@@ -2168,9 +2155,6 @@ static float game_anim_length(const game_state *oldstate,
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    if (!oldstate->completed && newstate->completed &&
-        !oldstate->cheated && !newstate->cheated)
-        return FLASH_TIME;
     return 0.0F;
 }
 

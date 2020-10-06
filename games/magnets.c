@@ -68,8 +68,6 @@ static const char *cellnames[3] = { "neutral", "positive", "negative" };
                                        1 --> 2,
                                        2 --> 4 --> 1 */
 
-#define FLASH_TIME 0.7F
-
 /* Macro ickery copied from slant.c */
 #define DIFFLIST(A) \
     A(EASY,Easy,e) \
@@ -1665,7 +1663,6 @@ struct game_drawstate {
 #define DS_NOTPOS   0x80
 #define DS_NOTNEG   0x100
 #define DS_NOTNEU   0x200
-#define DS_FLASH    0x400
 
 #define PREFERRED_TILE_SIZE 32
 #define TILE_SIZE (ds->tilesize)
@@ -1853,23 +1850,21 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-
-
     for (i = 0; i < 3; i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
-        ret[COL_LOWLIGHT   * 3 + i] = 0.75F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.25F;
 
-        ret[COL_TEXT * 3 + i] = 0.0F;
-        ret[COL_DONE * 3 + i] = 0.75F;
+        ret[COL_TEXT       * 3 + i] = 0.0F;
+        ret[COL_DONE       * 3 + i] = 0.75F;
 
-        ret[COL_NEGATIVE * 3 + i] = 0.4F;
-        ret[COL_POSITIVE * 3 + i] = 0.6F;
+        ret[COL_NEGATIVE   * 3 + i] = 0.25F;
+        ret[COL_POSITIVE   * 3 + i] = 0.75F;
 
-        ret[COL_CURSOR * 3 + i] = 0.9F;
-        ret[COL_NEUTRAL * 3 + i] = 0.5F;
-        ret[COL_NOT * 3 + i] = 0.25F;
-        ret[COL_ERROR * 3 + i] = 0.25F;
+        ret[COL_CURSOR     * 3 + i] = 0.9F;
+        ret[COL_NEUTRAL    * 3 + i] = 0.5F;
+        ret[COL_NOT        * 3 + i] = 0.25F;
+        ret[COL_ERROR      * 3 + i] = 0.5F;
     }
 
     *ncolours = NCOLOURS;
@@ -1928,7 +1923,7 @@ static void draw_num(drawing *dr, game_drawstate *ds, int rowcol, int which,
 
     draw_rect(dr, cx, cy, TILE_SIZE, TILE_SIZE, (col == COL_ERROR) ? COL_LOWLIGHT : colbg);
     draw_text(dr, cx + TILE_SIZE/2, cy + TILE_SIZE/2, FONT_VARIABLE, tsz,
-              ALIGN_VCENTRE | ALIGN_HCENTRE, col, buf);
+              ALIGN_VCENTRE | ALIGN_HCENTRE, (col == COL_ERROR) ? COL_HIGHLIGHT : col, buf);
 
     draw_update(dr, cx, cy, TILE_SIZE, TILE_SIZE);
 }
@@ -1950,8 +1945,8 @@ static void draw_sym(drawing *dr, game_drawstate *ds, int x, int y, int which, i
         draw_text(dr, ccx, ccy, FONT_VARIABLE, 7*TILE_SIZE/10,
                   ALIGN_VCENTRE | ALIGN_HCENTRE, col, qu);
     } else {
-        draw_line(dr, ccx - roff, ccy - roff, ccx + roff, ccy + roff, col);
-        draw_line(dr, ccx + roff, ccy - roff, ccx - roff, ccy + roff, col);
+        draw_thick_line(dr, 5.0, ccx - roff, ccy - roff, ccx + roff, ccy + roff, col);
+        draw_thick_line(dr, 5.0, ccx + roff, ccy - roff, ccx - roff, ccy + roff, col);
     }
 }
 
@@ -2032,16 +2027,14 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int *dominoes,
 
     draw_rect(dr, cx, cy, TILE_SIZE, TILE_SIZE, COL_BACKGROUND);
 
-    if (flags & DS_CURSOR)
-        bg = COL_CURSOR;        /* off-white white for cursor */
-    else if (which == POSITIVE)
+    if (which == POSITIVE)
         bg = COL_POSITIVE;
     else if (which == NEGATIVE)
         bg = COL_NEGATIVE;
     else if (flags & DS_SET)
         bg = COL_NEUTRAL;       /* green inner for neutral cells */
     else
-        bg = COL_LOWLIGHT;      /* light grey for empty cells. */
+        bg = COL_HIGHLIGHT;      /* light grey for empty cells. */
 
     if (which == EMPTY && !(flags & DS_SET)) {
         int notwhich = -1;
@@ -2055,16 +2048,10 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int *dominoes,
             fg = COL_NOT;
         }
     } else
-        fg = (flags & DS_ERROR) ? COL_ERROR :
-             (flags & DS_CURSOR) ? COL_TEXT : COL_BACKGROUND;
+        fg = (flags & DS_ERROR) ? COL_ERROR : COL_BACKGROUND;
 
     draw_rect(dr, cx, cy, TILE_SIZE, TILE_SIZE, COL_BACKGROUND);
 
-    if (flags & DS_FLASH) {
-        int bordercol = COL_HIGHLIGHT;
-        draw_tile_col(dr, ds, dominoes, x, y, which, bordercol, -1, perc);
-        perc = 3*perc/4;
-    }
     draw_tile_col(dr, ds, dominoes, x, y, which, bg, fg, perc);
 
     draw_update(dr, cx, cy, TILE_SIZE, TILE_SIZE);
@@ -2098,9 +2085,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         float animtime, float flashtime)
 {
     int x, y, w = state->w, h = state->h, which, i, j;
-    bool flash;
-
-    flash = (int)(flashtime * 5 / FLASH_TIME) % 2;
 
     if (!ds->started) {
         /* draw background, corner +-. */
@@ -2130,9 +2114,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
             if (x == ui->cur_x && y == ui->cur_y && ui->cur_visible)
                 c |= DS_CURSOR;
-
-            if (flash)
-                c |= DS_FLASH;
 
             if (state->flags[idx] & GS_NOTPOSITIVE)
                 c |= DS_NOTPOS;

@@ -75,16 +75,14 @@ int verbose = 0;
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILE_SIZE) / TILE_SIZE - 1 )
 
-#define FLASH_TIME 0.30F
-
 enum {
-    COL_BACKGROUND,
-    COL_GRID,
+    COL_BACKGROUND,              /* white */
+    COL_GRID,                    /* medium gray */
     COL_BLACK,                   /* black */
     COL_LIGHT,                   /* white */
-    COL_LIT,                   /* yellow */
-    COL_ERROR,                   /* red */
-    COL_CURSOR,
+    COL_LIT,                     /* light gray (was yellow) */
+    COL_ERROR,                   /* dark gray (was red) */
+    COL_CURSOR,                  /* medium gray */
     NCOLOURS
 };
 
@@ -1794,8 +1792,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 #define DF_OVERLAP      16      /* display light as overlapped */
 #define DF_CURSOR       32      /* display cursor */
 #define DF_NUMBERWRONG  64      /* display black numbered square as error. */
-#define DF_FLASH        128     /* background flash is on. */
-#define DF_IMPOSSIBLE   256     /* display non-light little square */
+#define DF_IMPOSSIBLE   128     /* display non-light little square */
 
 struct game_drawstate {
     int tilesize, crad;
@@ -1956,15 +1953,14 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-
     for (i = 0; i < 3; i++) {
-        ret[COL_BLACK  * 3 + i] = 0.0F;
-        ret[COL_LIGHT  * 3 + i] = 1.0F;
-        ret[COL_CURSOR * 3 + i] = 0.5F;
-        ret[COL_GRID   * 3 + i] = 0.5F;
-        ret[COL_ERROR  * 3 + i] = 0.25F;
-        ret[COL_LIT    * 3 + i] = 0.75F;
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_BLACK      * 3 + i] = 0.0F;
+        ret[COL_LIGHT      * 3 + i] = 1.0F;
+        ret[COL_CURSOR     * 3 + i] = 0.5F;
+        ret[COL_GRID       * 3 + i] = 0.5F;
+        ret[COL_ERROR      * 3 + i] = 0.25F;
+        ret[COL_LIT        * 3 + i] = 0.75F;
     }
 
     *ncolours = NCOLOURS;
@@ -2002,13 +1998,12 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 #define HINT_NUMBERS
 
 static unsigned int tile_flags(game_drawstate *ds, const game_state *state,
-                               const game_ui *ui, int x, int y, bool flashing)
+                               const game_ui *ui, int x, int y)
 {
     unsigned int flags = GRID(state, flags, x, y);
     int lights = GRID(state, lights, x, y);
     unsigned int ret = 0;
 
-    if (flashing) ret |= DF_FLASH;
     if (ui && ui->cur_visible && x == ui->cur_x && y == ui->cur_y)
         ret |= DF_CURSOR;
 
@@ -2041,12 +2036,17 @@ static void tile_redraw(drawing *dr, game_drawstate *ds,
 {
     unsigned int ds_flags = GRID(ds, flags, x, y);
     int dx = COORD(x), dy = COORD(y);
-    int lit = (ds_flags & DF_FLASH) ? COL_GRID : COL_LIT;
+    int lit = COL_LIT;
 
     if (ds_flags & DF_BLACK) {
         draw_rect(dr, dx, dy, TILE_SIZE, TILE_SIZE, COL_BLACK);
+        if (ds_flags & DF_NUMBERWRONG) {
+            int t = TILE_SIZE/10;
+            draw_rect(dr, dx+t, dy+t, TILE_SIZE-2*t, TILE_SIZE-2*t, COL_GRID);
+            draw_rect(dr, dx+2*t, dy+2*t, TILE_SIZE-4*t, TILE_SIZE-4*t, COL_BLACK);
+        }
         if (ds_flags & DF_NUMBERED) {
-            int ccol = (ds_flags & DF_NUMBERWRONG) ? COL_ERROR : COL_LIGHT;
+            int ccol = (ds_flags & DF_NUMBERWRONG) ? COL_GRID : COL_LIGHT;
             char str[32];
 
             /* We know that this won't change over the course of the game
@@ -2095,10 +2095,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime)
 {
-    bool flashing = false;
     int x,y;
-
-    if (flashtime) flashing = (int)(flashtime * 3 / FLASH_TIME) != 1;
 
     if (!ds->started) {
         draw_rect(dr, 0, 0,
@@ -2118,7 +2115,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
     for (x = 0; x < ds->w; x++) {
         for (y = 0; y < ds->h; y++) {
-            unsigned int ds_flags = tile_flags(ds, state, ui, x, y, flashing);
+            unsigned int ds_flags = tile_flags(ds, state, ui, x, y);
             if (ds_flags != GRID(ds, flags, x, y)) {
                 GRID(ds, flags, x, y) = ds_flags;
                 tile_redraw(dr, ds, state, x, y);
