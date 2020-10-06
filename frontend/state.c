@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+#include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -97,14 +99,30 @@ void configSave() {
 }
 
 void configLoad() {
-    char key[128], value[65536]; /* TODO Dynamically realloc value buffer */
-    FILE *fp = fopen(configFileName, "r");
-    if (fp) {
-        while(fscanf(fp, "%s\t%s\n", &key, &value) != EOF) {
+  size_t buflen = 16;
+  size_t linelen;
+  char *buf;
+  char key[256];
+  FILE *fp;
+
+  buf = smalloc(buflen);
+  fp = fopen(configFileName, "r");
+  if (fp != NULL) {
+    while(getline(&buf, &buflen, fp) != EOF) {
+      linelen = strlen(buf);
+      if (buf[linelen-1] == '\n') buf[linelen-1] = '\0';
+      if (strlen(buf) > 0) {
+        char value[linelen];
+        sscanf(buf, "%s %s", &key, &value);
+        if ((strncmp("params_",  key, 7) == 0) ||
+            (strncmp("savegame", key, 8) == 0))
             configAddItem(key, value);
-        }
-        fclose(fp);
+      }
     }
+    fclose(fp);
+  }
+  sfree(buf);
+
 }
 
 static void serialiseWriteCallback(void *ctx, const void *buf, int len)
