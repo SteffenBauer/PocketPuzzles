@@ -1725,8 +1725,13 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame singles
 #endif
 
+static const char rules[] = "You have a grid of white squares, all of which contain numbers. Your task is to colour some of the squares black (removing the number) so as to satisfy all of the following conditions:\n\n"
+"- No number occurs more than once in any row or column.\n"
+"- No black square is horizontally or vertically adjacent to any other black square.\n"
+"- The remaining white squares must all form one contiguous region (connected by edges, not just touching at corners).";
+
 const struct game thegame = {
-    "Singles", "games.singles", "singles",
+    "Singles", "games.singles", "singles", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

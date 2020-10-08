@@ -1485,8 +1485,11 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame flood
 #endif
 
+static const char rules[] = "You are given a grid of squares, coloured at random in multiple textures. In each move, you can flood-fill the top left square in a texture of your choice (i.e. every square reachable from the starting square by an orthogonally connected path of squares all the same texture will be filled in the new texture). As you do this, more and more of the grid becomes connected to the starting square.\n\n"
+"Your aim is to make the whole grid the same texture, in as few moves as possible. The game will set a limit on the number of moves, based on running its own internal solver. You win if you can make the whole grid the same texture in that many moves or fewer.";
+
 const struct game thegame = {
-    "Flood", "games.flood", "flood",
+    "Flood", "games.flood", "flood", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

@@ -1477,8 +1477,17 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame blackbox
 #endif
 
+static const char rules[] = "Deduce the positions of the hidden balls by firing lasers positioned at the edges of the arena and observing how their beams are deflected.\n\n"
+"- A beam unaffected by a ball will travel straight from their origin.\n"
+"- A beam hitting a ball head-on the beam is absorbed, and indicated as 'H'.\n"
+"- A beam with a ball in its front-left / front-right square and no ball ahead of it gets deflected 90 degrees to the right / left.\n"
+"- A beam that would re-emerge from its entry location is considered to be ‘reflected’, indicated as 'R'.\n"
+"- A beam which would get deflected before entering the arena by a ball to the front-left or front-right of its entry point is also ‘reflected’ back.\n"
+"- Otherwise a number appears at the firing point and the location where the beam emerges.\n\n"
+"You can place guesses as to the location of the balls; once you have placed enough balls a button appears to have your guesses checked.";
+
 const struct game thegame = {
-    "BlackBox", "games.blackbox", "blackbox",
+    "BlackBox", "games.blackbox", "blackbox", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

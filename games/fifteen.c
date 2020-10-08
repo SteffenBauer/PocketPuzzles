@@ -960,8 +960,12 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame fifteen
 #endif
 
+static const char rules[] = "This is the good old ‘15-puzzle’ with sliding tiles.\n\n"
+"You have a grid; all but one squares contain numbered tiles, and one is empty.\n\n"
+"Your move is to choose a tile next to the empty space, and slide it into the space. The aim is to end up with the tiles in numerical order, with the space in the bottom right.";
+
 const struct game thegame = {
-    "Fifteen", "games.fifteen", "fifteen",
+    "Fifteen", "games.fifteen", "fifteen", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

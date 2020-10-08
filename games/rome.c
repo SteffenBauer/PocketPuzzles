@@ -1939,8 +1939,12 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame rome
 #endif
 
+static const char rules[] = "Place arrows in each empty grid cell, pointing in one direction (N, E, W, S), such that:\n\n"
+"- When following these arrows, the path from each cell must ultimately end in one of the goals.\n"
+"- All arrows in one area must point in different directions.";
+
 const struct game thegame = {
-    "Rome", NULL, NULL,
+    "Rome", NULL, NULL, rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

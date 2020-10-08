@@ -1840,8 +1840,12 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame pattern
 #endif
 
+static const char rules[] = "You have a grid of squares, which must all be filled in either black or white.\n\n"
+"Beside each row of the grid are listed the lengths of the runs of black squares on that row; above each column are listed the lengths of the runs of black squares in that column.\n\n"
+"Your aim is to fill in the entire grid black or white.";
+
 const struct game thegame = {
-    "Pattern", "games.pattern", "pattern",
+    "Pattern", "games.pattern", "pattern", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

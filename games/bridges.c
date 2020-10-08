@@ -3094,8 +3094,15 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame bridges
 #endif
 
+static const char rules[] = "You have a set of islands distributed across the playing area. Each island contains a number. Your aim is to connect the islands together with bridges, in such a way that:\n\n"
+"- Bridges run horizontally or vertically.\n"
+"- The number of bridges terminating at any island is equal to the number written in that island.\n"
+"- Two bridges may run in parallel between the same two islands, but no more than two may do so.\n"
+"- No bridge crosses another bridge.\n"
+"- All the islands are connected together.";
+
 const struct game thegame = {
-    "Bridges", "games.bridges", "bridges",
+    "Bridges", "games.bridges", "bridges", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

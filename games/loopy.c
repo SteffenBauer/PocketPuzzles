@@ -3334,8 +3334,11 @@ static int game_status(const game_state *state)
 #define thegame loopy
 #endif
 
+static const char rules[] = "You are given a grid of dots, marked with light lines to indicate which dots you are allowed to connect directly together. Your aim is to use some subset of those light lines to draw a single unbroken loop from dot to dot within the grid.\n\n"
+"Some of the spaces between the lines contain numbers. These numbers indicate how many of the lines around that space form part of the loop. The loop you draw must correctly satisfy all of these clues to be considered a correct solution.";
+
 const struct game thegame = {
-    "Loopy", "games.loopy", "loopy",
+    "Loopy", "games.loopy", "loopy", rules,
     default_params,
     NULL, game_preset_menu,
     decode_params,
