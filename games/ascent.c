@@ -3758,8 +3758,13 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame ascent
 #endif
 
+static const char rules[] = "Create a path of numbers, using each number exactly once. Contains several modes:\n\n"
+"- Rectangular grid: Numbers must be orthogonally or diagonally adjacent.\n"
+"- Honeycomb and Hexagonal grid: The path can't cross itself.\n"
+"- Edges: Arrows outside the grid point to the row, column or diagonal where the number is located.";
+
 const struct game thegame = {
-    "Ascent", NULL, NULL,
+    "Ascent", NULL, NULL, rules,
     default_params,
     NULL, game_preset_menu,
     decode_params,

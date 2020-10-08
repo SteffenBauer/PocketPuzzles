@@ -2133,8 +2133,14 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame inertia
 #endif
 
+static const char rules[] = "You are a small ball sitting in a grid full of obstacles. Your aim is to collect all the gems without running into any mines. You can move the ball in any orthogonal or diagonal direction. Once the ball starts moving, it will continue until something stops it:\n\n"
+"- Walls: A wall directly in its path will stop it (but if it is moving diagonally, it will move through a diagonal gap between two other walls without stopping).\n"
+"- Stops: When the ball moves onto a stop, it will stop moving no matter what direction it was going in.\n"
+"- Gems: They do not stop the ball; it picks them up and keeps on going.\n"
+"- Mines: Running into one is fatal. Even if you picked up the last gem in the same move which then hit a mine, the game will count you as dead.";
+
 const struct game thegame = {
-    "Inertia", "games.inertia", "inertia",
+    "Inertia", "games.inertia", "inertia", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

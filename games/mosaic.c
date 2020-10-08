@@ -1312,8 +1312,10 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame mosaic
 #endif
 
+static const char rules[] = "Paint all grid cells in black or white, so that the number of black cells around each clue (including the square with the clue) matches the value of the clue.";
+
 const struct game thegame = {
-    "Mosaic", "games.mosaic", "mosaic",
+    "Mosaic", "games.mosaic", "mosaic", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

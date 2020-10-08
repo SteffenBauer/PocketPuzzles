@@ -83,15 +83,15 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
         const char *title;
         game_params params;
     } const presets[] = {
-        { "3x3 rows only", { 3, 3, 2, true, false } },
-        { "3x3 normal", { 3, 3, 2, false, false } },
-        { "3x3 rows orientable", { 3, 3, 2, true, true } },
-        { "3x3 orientable", { 3, 3, 2, false, true } },
-        { "4x4 normal", { 4, 4, 2, false } },
-        { "4x4 orientable", { 4, 4, 2, false, true } },
-        { "4x4, rotating 3x3 blocks", { 4, 4, 3, false } },
-        { "5x5, rotating 3x3 blocks", { 5, 5, 3, false } },
-        { "6x6, rotating 4x4 blocks", { 6, 6, 4, false } },
+        { "3x3 Rows only", { 3, 3, 2, true, false } },
+        { "3x3 Normal", { 3, 3, 2, false, false } },
+        { "3x3 Rows orientable", { 3, 3, 2, true, true } },
+        { "3x3 Orientable", { 3, 3, 2, false, true } },
+        { "4x4 Normal", { 4, 4, 2, false } },
+        { "4x4 Orientable", { 4, 4, 2, false, true } },
+        { "4x4, Rotating 3x3 blocks", { 4, 4, 3, false } },
+        { "5x5, Rotating 3x3 blocks", { 5, 5, 3, false } },
+        { "6x6, Rotating 4x4 blocks", { 6, 6, 4, false } },
     };
 
     if (i < 0 || i >= lenof(presets))
@@ -1200,8 +1200,14 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame twiddle
 #endif
 
+static const char rules[] = "You are given a grid of square tiles, each containing a number, and your aim is to arrange the numbers into ascending order. Your move is to rotate a square group of four tiles about their common centre. This puzzle has several modes:\n\n"
+"- Normal: Orientation is not significant in the basic puzzle.\n"
+"- Orientable: Each tile will have a triangle drawn in it. All the triangles must be pointing upwards to complete the puzzle.\n"
+"- Rows only: Your aim is to arrange all the 1s into the first row, all the 2s into the second row, and so on.\n"
+"- Bigger size: A bigger group of tiles is rotated.";
+
 const struct game thegame = {
-    "Twiddle", "games.twiddle", "twiddle",
+    "Twiddle", "games.twiddle", "twiddle", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

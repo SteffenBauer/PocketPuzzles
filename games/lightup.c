@@ -2150,8 +2150,16 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame lightup
 #endif
 
+static const char rules[] = "You have a grid of squares. Some are filled in black; some of the black squares are numbered. Your aim is to 'light up' all the empty squares by placing light bulbs in some of them.\n\n"
+"Each light bulb illuminates the square it is on, plus all squares in line with it horizontally or vertically unless a black square is blocking the way.\n\n"
+"To win the game, you must satisfy the following conditions:\n\n"
+"- All non-black squares are lit.\n"
+"- No light is lit by another light.\n"
+"- All numbered black squares have exactly that number of lights adjacent to them (in the four squares above, below, and to the side).\n\n"
+"Non-numbered black squares may have any number of lights adjacent to them.";
+
 const struct game thegame = {
-    "LightUp", "games.lightup", "lightup",
+    "LightUp", "games.lightup", "lightup", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

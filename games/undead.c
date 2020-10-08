@@ -3049,8 +3049,15 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame undead
 #endif
 
+static const char rules[] = "You are given a grid of squares, some of which contain diagonal mirrors. Every square which is not a mirror must be filled with one of three types of undead monster: a ghost, a vampire, or a zombie:\n\n"
+"- Vampires can be seen directly, but are invisible when reflected in mirrors.\n"
+"- Ghosts can be seen in mirrors, but are invisible when looked at directly.\n"
+"- Zombies are visible by any means.\n\n"
+"You are told the total number of each type of monster in the grid. Also around the edge of the grid are written numbers, which indicate how many monsters can be seen if you look into the grid along a row or column starting from that position. (The diagonal mirrors are reflective on both sides).\n"
+"If your reflected line of sight crosses the same monster more than once, the number will count it each time it is visible, not just once.";
+
 const struct game thegame = {
-    "Undead", "games.undead", "undead",
+    "Undead", "games.undead", "undead", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

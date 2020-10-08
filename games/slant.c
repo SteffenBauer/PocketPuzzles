@@ -3019,8 +3019,16 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame slant
 #endif
 
+static const char rules[] = "You have a grid of squares, and some circles with clues. This puzzle contains two modes:\n\n"
+"Slant: Your aim is to draw a diagonal line through each square, and choose which way each line slants so that the following conditions are met\n\n"
+"- The diagonal lines never form a loop.\n"
+"- Any point with a circled number has precisely that many lines meeting at it.\n\n"
+"Creek: Color each square either black or white, so that:\n\n"
+"- All white squares must form a connected area.\n"
+"- The circled clues indicate how many black squares are around it.";
+
 const struct game thegame = {
-    "Slant", "games.slant", "slant",
+    "Slant", "games.slant", "slant", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

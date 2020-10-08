@@ -2193,8 +2193,15 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame keen
 #endif
 
+static const char rules[] = "Fill a latin square such that the digits in each block can be combined to form the number stated in the clue, using the arithmetic operation given in the clue:\n\n"
+"- A '+' clue means that the sum of the digits in the block must be the given number.\n"
+"- A '*' clue means that the product of the digits in the block must be the given number.\n"
+"- A '-' clue will always be written in a block of size two, and it means that one of the digits in the block is greater than the other by the given amount.\n"
+"- A '/' clue similarly is always in a block of size two and means that one digit divided by the other is equal to the given amount.\n\n"
+"Note that a block may contain the same digit more than once (provided the identical ones are not in the same row and column).";
+
 const struct game thegame = {
-    "Keen", "games.keen", "keen",
+    "Keen", "games.keen", "keen", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

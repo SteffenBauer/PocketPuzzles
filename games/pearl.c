@@ -2506,8 +2506,13 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame pearl
 #endif
 
+static const char rules[] = "You have a grid of squares. Your job is to draw lines between the centres of horizontally or vertically adjacent squares, so that the lines form a single closed loop. In the resulting grid, some of the squares that the loop passes through will contain corners, and some will be straight horizontal or vertical lines. And some squares can be completely empty - the loop doesn't have to pass through every square.\n\n"
+"Some of the squares contain clues that the loop must satisfy:\n\n"
+"- A black circle in a square indicates that the line through the square is a corner, but must NOT make a corner in both of the squares adjacent to it.\n"
+"- A white circle indicates that the line through the square is a straight edge, but makes a corner in at least one of the squares adjacent to it.";
+
 const struct game thegame = {
-    "Pearl", "games.pearl", "pearl",
+    "Pearl", "games.pearl", "pearl", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

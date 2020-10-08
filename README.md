@@ -61,7 +61,7 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 #### Milestones for beta version
 
 - [ ] Implement custom game parameters entry screen
-- [ ] Implement help screen and/or separate documentation eBook
+- [X] Implement help screen
 - [X] Better color palette for greyscale screen (done for all active games)
 - [X] Better error visualization suitable for greyscale screen (done for all active games)
 - [X] Modify games with dragging for better handling of eInk screen limitations (done for all active games)
@@ -73,6 +73,7 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 - [ ] General settings (show/hide statusbar, orientation, chooser style)
 - [ ] Screen orientation handling
 - [ ] Entry buttons indicating status (Bridges, Dominosa, Solo)
+- [ ] Generate separate documentation eBook
 - [ ] Review left->right->empty handling for games with select / hint select
 
 ToDos for individual games see [ToDo.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/ToDo.md)

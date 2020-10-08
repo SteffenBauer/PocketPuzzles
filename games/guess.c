@@ -1290,8 +1290,14 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame guess
 #endif
 
+static const char rules[] = "You have a set of coloured pegs, and have to reproduce a secret, predetermined sequence of them (chosen by the computer) within a certain number of guesses.\n\n"
+"Each guess is marked with a peg by the computer:\n"
+"- Black Peg: The number of correctly-coloured pegs in the correct places.\n"
+"- White Peg: The number of correctly-coloured pegs, but in the wrong places.\n\n"
+"To play, tap on one of the pegs in the left side to select a color, then click onto a cell in the current guess line to fill it with that color. When all pegs in the guess line are filled, tap on the right side rectangle to reveal the black/white hint pegs for that line.";
+
 const struct game thegame = {
-    "Guess", "games.guess", "guess",
+    "Guess", "games.guess", "guess", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

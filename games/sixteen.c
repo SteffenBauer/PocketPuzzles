@@ -1114,8 +1114,11 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame sixteen
 #endif
 
+static const char rules[] = "Your move is to shift an entire row left or right, or shift an entire column up or down; every time you do that, the tile you shift off the grid re-appears at the other end of the same row, in the space you just vacated.\n\n"
+"To win, arrange the tiles into numerical order.";
+
 const struct game thegame = {
-    "Sixteen", "games.sixteen", "sixteen",
+    "Sixteen", "games.sixteen", "sixteen", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

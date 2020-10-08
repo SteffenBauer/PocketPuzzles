@@ -1856,8 +1856,13 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame abcd
 #endif
 
+static const char rules[] = "Fill the grid with the given letters, in such a way that:\n\n"
+"- The numbers on the top / left for each letter match how often the letter appears in the according row / column.\n"
+"- A letter with no given number for a row / column may appear there in any number (including not at all)\n"
+"- The letters in neighboring cells must be different. Letters in diagonally neighbouring cells may be the same.\n";
+
 const struct game thegame = {
-    "ABCD", NULL, NULL,
+    "ABCD", NULL, NULL, rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,
