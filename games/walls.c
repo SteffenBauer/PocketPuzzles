@@ -1303,8 +1303,14 @@ static bool game_timing_state(const game_state *state, game_ui *ui) {
 #define thegame walls
 #endif
 
+static const char rules[] = "Draw a single continuous line through all cells in the grid, such that:\n\n"
+"- The line enters the grid from one open border, and leaves the grid through another open border.\n"
+"- All grid cells are visited once.\n"
+"- The line may not cross itself or form loops.\n"
+"- The line cannot go through a wall.";
+
 const struct game thegame = {
-    "Walls", "games.walls", "walls",
+    "Walls", "games.walls", "walls", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

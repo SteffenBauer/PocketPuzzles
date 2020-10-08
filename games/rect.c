@@ -2706,8 +2706,13 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame rect
 #endif
 
+static const char rules[] = "You have a grid of squares, with numbers written in some (but not all) of the squares.\n\n"
+"Your task is to subdivide the grid into rectangles of various sizes, such that:\n\n"
+"- Every rectangle contains exactly one numbered square\n"
+"- The area of each rectangle is equal to the number written in its numbered square.";
+
 const struct game thegame = {
-    "Rectangles", "games.rectangles", "rect",
+    "Rectangles", "games.rectangles", "rect", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

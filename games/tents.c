@@ -2491,8 +2491,14 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame tents
 #endif
 
+static const char rules[] = "You have a grid of squares, some of which contain trees. Your aim is to place tents in some of the remaining squares, in such a way that the following conditions are met:\n\n"
+"- There are exactly as many tents as trees.\n"
+"- The tents and trees can be matched up in such a way that each tent is directly adjacent (horizontally or vertically, but not diagonally) to its own tree. A tent may be adjacent to other trees as well as its own.\n"
+"- No two tents are adjacent horizontally, vertically or diagonally.\n"
+"- The number of tents in each row, and in each column, matches the numbers given round the sides of the grid.";
+
 const struct game thegame = {
-    "Tents", "games.tents", "tents",
+    "Tents", "games.tents", "tents", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

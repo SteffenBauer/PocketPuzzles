@@ -1631,8 +1631,14 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame mathrax
 #endif
 
+static const char rules[] = "Fill the latin square with numbers. Some grid intersections contain clues, which indicate the result of the operation applied to the top-left / bottom-right, and simultaneously applied to the top-right / bottom-left numbers:\n\n"
+"- Arithmetic operation (+, -, *, /): The operation on both diagonal numbers must result in the given number.\n"
+"- Equal (=): Both diagonal numbers must be the same.\n"
+"- Even (E): All numbers around the clue must be even.\n"
+"- Odd (O): All numbers around the clue must be odd.\n";
+
 const struct game thegame = {
-    "Mathrax", NULL, NULL,
+    "Mathrax", NULL, NULL, rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

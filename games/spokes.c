@@ -1465,8 +1465,13 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame spokes
 #endif
 
+static const char rules[] = "Connect all hubs using horizontal, vertical and diagonal lines, in a way that:\n\n"
+"- A digit on a hub tells how many spokes meet there.\n"
+"- No spokes may cross each other.\n"
+"- All hubs and spokes must form a connected graph in the end.";
+
 const struct game thegame = {
-    "Spokes", NULL, NULL,
+    "Spokes", NULL, NULL, rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

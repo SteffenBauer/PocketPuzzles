@@ -3266,8 +3266,11 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame dominosa
 #endif
 
+static const char rules[] = "A set of dominoes has been arranged irregularly into a rectangle; then the number in each square has been written down and the dominoes themselves removed.\n\n"
+"Your task is to reconstruct the pattern by arranging the set of dominoes to match the provided array of numbers.";
+
 const struct game thegame = {
-    "Dominosa", "games.dominosa", "dominosa",
+    "Dominosa", "games.dominosa", "dominosa", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

@@ -284,7 +284,7 @@ void gameMenuHandler(int index) {
             gameSolveGame();
             break;
         case 104:  /* How to Play */
-            Message(ICON_WARNING, "", "Help not implemented yet!", 3000);
+            Dialog(0, "Rules", fe->currentgame->rules, "OK", NULL, NULL);
             break;
         case 199:  /* Exit app */
             deactivate_timer(fe);

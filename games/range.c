@@ -1676,8 +1676,14 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame range
 #endif
 
+static const char rules[] = "You have a grid of squares; some squares contain numbers. Your job is to colour some of the squares black, such that several criteria are satisfied:\n\n"
+"- No square with a number is black.\n"
+"- No two black squares are adjacent (horizontally or vertically).\n"
+"- All white squares must be connected by a path with white squares.\n"
+"- For each square with a number, that number denotes the total number of white squares reachable from that square going in a straight line in any horizontal or vertical direction until hitting a wall or a black square; the number square is included in the total (once).";
+
 struct game const thegame = {
-    "Range", "games.range", "range",
+    "Range", "games.range", "range", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

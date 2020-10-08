@@ -1820,8 +1820,13 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame unruly
 #endif
 
+static const char rules[] = "You are given a grid of squares, which you must colour either black or white. Some squares are provided as clues; the rest are left for you to fill in, such that:\n\n"
+"- Each row and column must contain the same number of black and white squares.\n"
+"- No row or column may contain three consecutive squares of the same colour.\n"
+"- No two rows may have the same arrangement of colors (same for columns)";
+
 const struct game thegame = {
-    "Unruly", "games.unruly", "unruly",
+    "Unruly", "games.unruly", "unruly", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

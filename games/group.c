@@ -2191,8 +2191,12 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame group
 #endif
 
+static const char rules[] = "A rather esoteric Latin-square puzzle, played with mathematical groups' Cayley tables.\n\n"
+"You are given a Cayley table of a group with most elements blank and a few clues, and you must fill it in so as to preserve the group axioms.\n\n"
+"Consult Wikipedia about Groups and Cayley tables before playing :-)";
+
 const struct game thegame = {
-    "Group", NULL, NULL,
+    "Group", NULL, NULL, rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

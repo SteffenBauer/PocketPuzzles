@@ -1980,8 +1980,12 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame filling
 #endif
 
+static const char rules[] = "You have a grid of squares, some of which contain digits, and the rest of which are empty. Your job is to fill in digits in the empty squares, in such a way that each connected region of squares all containing the same digit has an area equal to that digit.\n\n"
+"'Connected region' does not count diagonally separated squares as adjacent.\n\n"
+"No square can contain a zero, and two adjacent squares can not both contain a one. No region has an area greater than 9.";
+
 const struct game thegame = {
-    "Filling", "games.filling", "filling",
+    "Filling", "games.filling", "filling", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

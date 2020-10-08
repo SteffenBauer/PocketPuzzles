@@ -1221,8 +1221,12 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame flip
 #endif
 
+static const char rules[] = "You have a grid of squares, some light and some dark.\n\n"
+"Your aim is to light all the squares up at the same time. You can choose any square and flip its state from light to dark or dark to light, but when you do so, other squares around it change state as well.\n\n"
+"Each square contains a small diagram showing which other squares change when you flip it.";
+
 const struct game thegame = {
-    "Flip", "games.flip", "flip",
+    "Flip", "games.flip", "flip", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,

@@ -631,6 +631,7 @@ void arraysort_fn(void *array, size_t nmemb, size_t size,
 struct game {
     const char *name;
     const char *winhelp_topic, *htmlhelp_topic;
+    const char *rules;
     game_params *(*default_params)(void);
     bool (*fetch_preset)(int i, char **name, game_params **params);
     struct preset_menu *(*preset_menu)(void);
