@@ -619,7 +619,6 @@ static void checkGameEnd() {
 static void gamePrepareFrontend() {
     char buf[256];
 
-    fe->gameButton = NULL;
     fe->current_pointer = 0;
     fe->pointerdown_x = 0;
     fe->pointerdown_y = 0;
@@ -783,8 +782,7 @@ bool gameResumeGame() {
 void gameSetGame(const struct game *thegame) {
     fe->currentgame = thegame;
     fe->statustext = "";
-    if (me != NULL)
-        midend_free(me);
+    if (me) midend_free(me);
     me = midend_new(fe, thegame, &ink_drawing, fe);
     stateLoadParams(me, thegame);
 }
@@ -804,6 +802,7 @@ void gameScreenInit() {
     fe = snew(frontend);
     fe->cliprect = GetClipRect();
     fe->gamefont = OpenFont("LiberationSans-Bold", 32, 0);
+    fe->gameButton = NULL;
 }
 
 void gameScreenFree() {
@@ -814,7 +813,7 @@ void gameScreenFree() {
         sfree(fe->gameButton);
         sfree(fe);
         sfree(typeMenu);
-        midend_free(me);
+        if (me) midend_free(me);
         gameInitialized = false;
     }
 }

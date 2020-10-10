@@ -4,7 +4,7 @@ PBSDK ?= ../../pocketbook-sdk5
 CC = $(PBSDK)/bin/arm-obreey-linux-gnueabi-gcc
 PBRES = $(PBSDK)/bin/pbres
 
-GIT_VERSION := "$(shell git describe --always --tags)"
+GIT_VERSION := "$(shell date -I)-$(shell git describe --always --tags)"
 
 CFLAGS = -DCOMBINED -std=c99 -DNDEBUG -fsigned-char -fomit-frame-pointer -fPIC -O2 -march=armv7-a -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp -linkview -lfreetype -lm -D_XOPEN_SOURCE=632 -DVERSION=\"$(GIT_VERSION)\"
 
