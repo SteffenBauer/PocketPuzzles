@@ -70,11 +70,11 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 #### For future versions
 
 - [ ] Ability to mark games as favorite
-- [ ] General settings (show/hide statusbar, orientation, chooser style)
+- [ ] General settings (show/hide statusbar, orientation, chooser style, color/grey mode)
+- [ ] Color mode
 - [ ] Screen orientation handling
 - [ ] Entry buttons indicating status (Bridges, Dominosa, Solo)
 - [ ] Generate separate documentation eBook
-- [ ] Review left->right->empty handling for games with select / hint select
 
 ToDos for individual games see [ToDo.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/ToDo.md)
 

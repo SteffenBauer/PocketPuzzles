@@ -290,6 +290,7 @@ void gameMenuHandler(int index) {
             deactivate_timer(fe);
             stateSerialise(me);
             stateSaveParams(me, fe->currentgame);
+            configAddItem("config_resume", "game");
             exitApp();
             break;
         default:
