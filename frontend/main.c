@@ -31,11 +31,13 @@ void switchToGameScreen() {
 }
 
 static void setupApp() {
+    char *buf;
     SetPanelType(PANEL_ENABLED);
     stateInit();
     chooserScreenInit();
     gameScreenInit();
-    if (gameResumeGame())
+    buf = configGetItem("config_resume");
+    if (buf && strcmp(buf, "game") == 0 && gameResumeGame())
         switchToGameScreen();
     else
         switchToChooserScreen();

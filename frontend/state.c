@@ -115,7 +115,8 @@ void configLoad() {
         char value[linelen];
         sscanf(buf, "%s %s", &key, &value);
         if ((strncmp("params_",  key, 7) == 0) ||
-            (strncmp("savegame", key, 8) == 0))
+            (strncmp("savegame", key, 8) == 0) ||
+            (strncmp("config_",  key, 7) == 0))
             configAddItem(key, value);
       }
     }

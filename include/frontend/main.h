@@ -28,6 +28,7 @@ extern void gameNext();
 
 extern void stateInit();
 extern void stateFree();
+extern char *configGetItem(char *key);
 
 typedef enum {
     SCREEN_CHOOSER,
