@@ -23,6 +23,7 @@ int configLen() {
 void configAddItem(char *key, char *value) {
     dict_t *ptr;
     dict_t *new;
+    configDelItem(key);
     for (ptr = config; ptr != NULL; ptr = ptr->next) {
         if (strcmp(ptr->key, key) == 0) {
             ptr->value = srealloc(ptr->value, strlen(value)+1);
@@ -99,7 +100,7 @@ void configSave() {
 }
 
 void configLoad() {
-  size_t buflen = 16;
+  size_t buflen = 65536;
   size_t linelen;
   char *buf;
   char key[256];
@@ -110,8 +111,7 @@ void configLoad() {
   if (fp != NULL) {
     while(getline(&buf, &buflen, fp) != EOF) {
       linelen = strlen(buf);
-      if (buf[linelen-1] == '\n') buf[linelen-1] = '\0';
-      if (strlen(buf) > 0) {
+      if (linelen > 0) {
         char value[linelen];
         sscanf(buf, "%s %s", &key, &value);
         if ((strncmp("params_",  key, 7) == 0) ||
