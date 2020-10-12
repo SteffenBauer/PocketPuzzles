@@ -261,7 +261,7 @@ static game_params *default_params(void)
     ret->killer = false;
     ret->symm = SYMM_NONE;           /* a plausible default */
     ret->diff = DIFF_INTERSECT;           /* so is this */
-    ret->kdiff = DIFF_KMINMAX;      /* so is this */
+    ret->kdiff = DIFF_KINTERSECT;      /* so is this */
 
     return ret;
 }
@@ -284,17 +284,17 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
         const char *title;
         game_params params;
     } const presets[] = {
-        { "3x3 Basic", { 3, 3, SYMM_NONE, DIFF_SIMPLE, DIFF_KMINMAX, false, false } },
-        { "3x3 Intermediate", { 3, 3, SYMM_NONE, DIFF_INTERSECT, DIFF_KMINMAX, false, false } },
-        { "3x3 Advanced", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, false, false } },
-        { "3x3 Extreme", { 3, 3, SYMM_NONE, DIFF_EXTREME, DIFF_KMINMAX, false, false } },
-        { "3x3 Advanced X", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, true, false } },
+        { "3x3 Basic", { 3, 3, SYMM_NONE, DIFF_SIMPLE, DIFF_KINTERSECT, false, false } },
+        { "3x3 Intermediate", { 3, 3, SYMM_NONE, DIFF_INTERSECT, DIFF_KINTERSECT, false, false } },
+        { "3x3 Advanced", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, false } },
+        { "3x3 Extreme", { 3, 3, SYMM_NONE, DIFF_EXTREME, DIFF_KINTERSECT, false, false } },
+        { "3x3 Advanced X", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, true, false } },
         { "2x3 Advanced Killer", { 2, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, true } },
-        { "6 Jigsaw Intermediate", { 6, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KMINMAX, false, false } },
-        { "6 Jigsaw Advanced", { 6, 1, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, false, false } },
-        { "9 Jigsaw Intermediate", { 9, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KMINMAX, false, false } },
-        { "9 Jigsaw Advanced", { 9, 1, SYMM_NONE, DIFF_SET, DIFF_KMINMAX, false, false } },
-        { "9 Jigsaw Extreme", { 9, 1, SYMM_NONE, DIFF_EXTREME, DIFF_KMINMAX, false, false } },
+        { "6 Jigsaw Intermediate", { 6, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KINTERSECT, false, false } },
+        { "6 Jigsaw Advanced", { 6, 1, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, false } },
+        { "9 Jigsaw Intermediate", { 9, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KINTERSECT, false, false } },
+        { "9 Jigsaw Advanced", { 9, 1, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, false } },
+        { "9 Jigsaw Extreme", { 9, 1, SYMM_NONE, DIFF_EXTREME, DIFF_KINTERSECT, false, false } },
     };
 
     if (i < 0 || i >= lenof(presets))
@@ -332,6 +332,7 @@ static void decode_params(game_params *ret, char const *string)
     } else if (*string == 'k') {
         string++;
         ret->killer = true;
+        ret->kdiff = DIFF_KINTERSECT;
     } else if (*string == 'r' || *string == 'm' || *string == 'a') {
             int sn, sc;
             bool sd;
