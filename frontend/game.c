@@ -426,7 +426,7 @@ void gameDrag(int x, int y) {
 void gameRelease(int x, int y) {
     int i;
 
-    if (coord_in_gamecanvas(x, y)) {
+    if (coord_in_gamecanvas(init_tap_x, init_tap_y)) {
         if (fe->current_pointer == LEFT_BUTTON) {
             if (fe->with_rightpointer && !fe->swapped)
                 midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), LEFT_BUTTON);
@@ -446,11 +446,11 @@ void gameRelease(int x, int y) {
         fe->current_pointer = 0;
         checkGameEnd();
     }
-    else {
-        for (i=0;i<fe->numGameButtons;i++) {
+    for (i=0;i<fe->numGameButtons;i++) {
+        if (release_button(init_tap_x, init_tap_y, &fe->gameButton[i])) {
+            if (fe->gameButton[i].action != ACTION_SWAP)
+                button_to_normal(&fe->gameButton[i], true);
             if (release_button(x, y, &fe->gameButton[i])) {
-                if (fe->gameButton[i].action != ACTION_SWAP)
-                    button_to_normal(&fe->gameButton[i], true);
                 switch(fe->gameButton[i].action) {
                     case ACTION_BACK:
                         deactivate_timer(fe);
@@ -489,7 +489,6 @@ void gameRelease(int x, int y) {
             }
         }
     }
-
     gameDrawFurniture();
     SoftUpdate();
 }
