@@ -1298,6 +1298,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     ds->bg = bg;
 
     game_compute_size(&state->params, ds->tilesize, &w, &h);
+    clip(dr, 0, 0, w, h);
     draw_rect(dr, 0, 0, w, h, bg);
 
     /*
@@ -1353,8 +1354,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             }
         }
     }
-
     draw_update(dr, 0, 0, w, h);
+    unclip(dr);
 }
 
 static float game_anim_length(const game_state *oldstate,
