@@ -444,7 +444,6 @@ void gameRelease(int x, int y) {
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_RELEASE);
         }
         fe->current_pointer = 0;
-        checkGameEnd();
     }
     for (i=0;i<fe->numGameButtons;i++) {
         if (release_button(init_tap_x, init_tap_y, &fe->gameButton[i])) {
@@ -474,7 +473,6 @@ void gameRelease(int x, int y) {
                         return;
                     case ACTION_CTRL:
                         midend_process_key(me, 0, 0, fe->gameButton[i].actionParm.c);
-                        checkGameEnd();
                         break;
                     case ACTION_UNDO:
                         if (midend_can_undo(me)) midend_process_key(me, 0, 0 , UI_UNDO);
@@ -491,6 +489,7 @@ void gameRelease(int x, int y) {
     }
     gameDrawFurniture();
     SoftUpdate();
+    checkGameEnd();
 }
 
 void gamePrev() {
