@@ -16,9 +16,9 @@ There is still work to do. See ToDo list below. eInk screens are limited in resp
 
 ### Binary app
 
-Connect your PocketBook with you PC with an USB cable. Copy `build/SGTPuzzles.app` to the folder `/applications` on your device. Unmount the USB connection, and reboot the PocketBook. You should now see an entry `@SGTPuzzles` among your apps.
+Connect your PocketBook with you PC with an USB cable. Copy `release/SGTPuzzles.app` to the folder `/applications` on your device. Unmount the USB connection, and reboot the PocketBook. You should now see an entry `@SGTPuzzles` among your apps.
 
-### Build and Compatibility
+### Build
 
 Clone the [pocketbook SDK](https://github.com/blchinezu/pocketbook-sdk/) and set it up for the firmware of your device.
 
@@ -31,7 +31,17 @@ make
 
 When everything compiles successfully, you find `build/SGTPuzzles.app`. Copy this to the folder `/applications` on your device. Reboot if necessary after transfer.
 
-Tested only on the **PocketBook Touch HD 3**, because that is the device I own. Could possibly also work on other devices with firmware 5 or higher.
+### Compatibility
+
+Tested only on the **PocketBook Touch HD 3**, because that is the device I own. Should principally work on all devices with firmware 5 or higher.
+
+I received reports that the app works with these devices:
+
+* PB632 / Touch HD 3
+* PB631 / Touch HD
+* PB740 / InkPad 3
+
+I'm interested in reports from more devices; especially how it looks like on color screen.
 
 ### ToDo
 
