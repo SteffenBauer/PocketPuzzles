@@ -63,7 +63,6 @@ enum {
     COL_TEXT,
     COL_ERROR,
     COL_HIGHLIGHT,
-    COL_FLASH,
     COL_GHOST,
     COL_ZOMBIE,
     COL_VAMPIRE,
@@ -1382,6 +1381,7 @@ static int determine_difficulty(game_state *new, struct solution sol) {
         !sol.solved_combinative &&
         !sol.solved_bruteforce &&
          sol.iterative_depth > 1 &&
+        !new->common->contains_loop &&
         !sol.contains_inconsistency) {
             return DIFF_NORMAL;
     }
@@ -1565,8 +1565,8 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         /* paths generation */
         make_paths(new);
 
-        /* Easy games should not contain a loop (a grid position is seen twice) */
-        if (new->common->params.diff == DIFF_EASY &&
+        /* Easy/Normal games should not contain a loop (a grid position is seen twice) */
+        if (new->common->params.diff <= DIFF_NORMAL &&
             new->common->contains_loop) {
             free_game(new);
             continue;
@@ -2075,7 +2075,6 @@ struct game_drawstate {
 
     int hx, hy;
     bool hshow, hpencil; /* as for game_ui. */
-    bool hflash;
 };
 
 static bool is_clue(const game_state *state, int x, int y)
@@ -2511,7 +2510,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_TEXT       * 3 + i] = 0.0F;
         ret[COL_ERROR      * 3 + i] = 0.5F;
         ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
-        ret[COL_FLASH      * 3 + i] = 1.0F;
         ret[COL_GHOST      * 3 + i] = 1.0F;
         ret[COL_VAMPIRE    * 3 + i] = 0.9F;
         ret[COL_ZOMBIE     * 3 + i] = 0.7F;
@@ -2555,7 +2553,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
 
     ds->hshow = false;
     ds->hpencil = false;
-    ds->hflash = false;
     ds->hx = ds->hy = 0;
     return ds;
 }
@@ -2608,7 +2605,7 @@ static void draw_circle_or_point(drawing *dr, int cx, int cy, int radius,
 }
 
 static void draw_monster(drawing *dr, game_drawstate *ds, int x, int y,
-                         int tilesize, bool hflash, int monster)
+                         int tilesize, int monster)
 {
     int black = COL_TEXT;
     float thl = 3.0;
@@ -2755,7 +2752,7 @@ static void draw_monster(drawing *dr, game_drawstate *ds, int x, int y,
 }
 
 static void draw_monster_count(drawing *dr, game_drawstate *ds,
-                               const game_state *state, int c, bool hflash) {
+                               const game_state *state, int c) {
     int dx,dy;
     char buf[8];
     char bufm[8];
@@ -2782,7 +2779,7 @@ static void draw_monster_count(drawing *dr, game_drawstate *ds,
     draw_rect(dr, dx-2*TILESIZE/3, dy, 3*TILESIZE/2, TILESIZE,
               (state->count_errors[c] ? COL_ERROR : COL_BACKGROUND));
     draw_monster(dr, ds, dx-TILESIZE/3, dy+TILESIZE/2,
-                 2*TILESIZE/3, hflash, 1<<c);
+                 2*TILESIZE/3, 1<<c);
     draw_text(dr, dx, dy+TILESIZE/2, FONT_VARIABLE, TILESIZE/2,
               ALIGN_HLEFT|ALIGN_VCENTRE, COL_TEXT, buf);
     draw_update(dr, dx-2*TILESIZE/3, dy, 3*TILESIZE/2, TILESIZE);
@@ -2792,7 +2789,7 @@ static void draw_monster_count(drawing *dr, game_drawstate *ds,
 
 static void draw_path_hint(drawing *dr, game_drawstate *ds,
                            const struct game_params *params,
-                           int hint_index, bool hflash, int hint) {
+                           int hint_index, int hint) {
     int x, y, color, dx, dy, text_dx, text_dy, text_size;
     char buf[4];
 
@@ -2824,8 +2821,7 @@ static void draw_path_hint(drawing *dr, game_drawstate *ds,
 }
 
 static void draw_mirror(drawing *dr, game_drawstate *ds,
-                        const game_state *state, int x, int y,
-                        bool hflash, int mirror) {
+                        const game_state *state, int x, int y, int mirror) {
     int dx,dy,mx1,my1,mx2,my2;
     dx = BORDER+(x* ds->tilesize)+(TILESIZE/2);
     dy = BORDER+(y* ds->tilesize)+(TILESIZE/2)+TILESIZE;
@@ -2842,21 +2838,19 @@ static void draw_mirror(drawing *dr, game_drawstate *ds,
         mx2 = dx+(TILESIZE/4);
         my2 = dy-(TILESIZE/4);
     }
-    draw_thick_line(dr,(float)(TILESIZE/16),mx1,my1,mx2,my2,
-                    hflash ? COL_FLASH : COL_TEXT);
+    draw_thick_line(dr,(float)(TILESIZE/16),mx1,my1,mx2,my2, COL_TEXT);
     draw_update(dr,dx-(TILESIZE/2)+1,dy-(TILESIZE/2)+1,TILESIZE-1,TILESIZE-1);
 
     return;
 }
 
 static void draw_big_monster(drawing *dr, game_drawstate *ds,
-                             const game_state *state, int x, int y,
-                             bool hflash, int monster)
+                             const game_state *state, int x, int y, int monster)
 {
     int dx,dy;
     dx = BORDER+(x* ds->tilesize)+(TILESIZE/2);
     dy = BORDER+(y* ds->tilesize)+(TILESIZE/2)+TILESIZE;
-    draw_monster(dr, ds, dx, dy, 3*TILESIZE/4, hflash, monster);
+    draw_monster(dr, ds, dx, dy, 3*TILESIZE/4, monster);
     return;
 }
 
@@ -2879,7 +2873,7 @@ static void draw_pencils(drawing *dr, game_drawstate *ds,
         for (px = 0; px < 2; px++)
             if (monsters[py*2+px]) {
                 draw_monster(dr, ds, dx + TILESIZE/2 * px, dy + TILESIZE/2 * py,
-                             TILESIZE/2, false, monsters[py*2+px]);
+                             TILESIZE/2, monsters[py*2+px]);
             }
     draw_update(dr,dx-(TILESIZE/4)+2,dy-(TILESIZE/4)+2,
                 (TILESIZE/2)-3,(TILESIZE/2)-3);
@@ -2887,14 +2881,10 @@ static void draw_pencils(drawing *dr, game_drawstate *ds,
     return;
 }
 
-#define FLASH_TIME 0.7F
-
-static bool is_hint_stale(const game_drawstate *ds, bool hflash,
-                          const game_state *state, int index)
+static bool is_hint_stale(const game_drawstate *ds, const game_state *state, int index)
 {
     bool ret = false;
     if (!ds->started) ret = true;
-    if (ds->hflash != hflash) ret = true;
 
     if (ds->hint_errors[index] != state->hint_errors[index]) {
         ds->hint_errors[index] = state->hint_errors[index];
@@ -2916,9 +2906,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int i,j,x,y,xy;
     int xi, c;
-    bool stale, hflash, hchanged;
-
-    hflash = (int)(flashtime * 5 / FLASH_TIME) % 2;
+    bool stale, hchanged;
 
     /* Draw static grid components at startup */
     if (!ds->started) {
@@ -2945,14 +2933,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (i=0;i<3;i++) {
         stale = false;
         if (!ds->started) stale = true;
-        if (ds->hflash != hflash) stale = true;
         if (ds->count_errors[i] != state->count_errors[i]) {
             stale = true;
             ds->count_errors[i] = state->count_errors[i];
         }
 
         if (stale) {
-            draw_monster_count(dr, ds, state, i, hflash);
+            draw_monster_count(dr, ds, state, i);
         }
     }
 
@@ -2960,14 +2947,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (i=0;i<state->common->num_paths;i++) {
         struct path *path = &state->common->paths[i];
 
-        if (is_hint_stale(ds, hflash, state, path->grid_start)) {
+        if (is_hint_stale(ds, state, path->grid_start)) {
             draw_path_hint(dr, ds, &state->common->params, path->grid_start,
-                           hflash, path->sightings_start);
+                           path->sightings_start);
         }
 
-        if (is_hint_stale(ds, hflash, state, path->grid_end)) {
+        if (is_hint_stale(ds, state, path->grid_end)) {
             draw_path_hint(dr, ds, &state->common->params, path->grid_end,
-                           hflash, path->sightings_end);
+                           path->sightings_end);
         }
     }
 
@@ -2980,7 +2967,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             c = state->common->grid[xy];
 
             if (!ds->started) stale = true;
-            if (ds->hflash != hflash) stale = true;
 
             if (hchanged) {
                 if ((x == ui->hx && y == ui->hy) ||
@@ -3006,10 +2992,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             if (stale) {
                 draw_cell_background(dr, ds, state, ui, x, y);
                 if (xi < 0)
-                    draw_mirror(dr, ds, state, x, y, hflash, c);
+                    draw_mirror(dr, ds, state, x, y, c);
                 else if (state->guess[xi] == 1 || state->guess[xi] == 2 ||
                          state->guess[xi] == 4)
-                    draw_big_monster(dr, ds, state, x, y, hflash, state->guess[xi]);
+                    draw_big_monster(dr, ds, state, x, y, state->guess[xi]);
                 else
                     draw_pencils(dr, ds, state, x, y, state->pencils[xi]);
             }
@@ -3018,7 +3004,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     ds->hx = ui->hx; ds->hy = ui->hy;
     ds->hshow = ui->hshow;
     ds->hpencil = ui->hpencil;
-    ds->hflash = hflash;
     ds->started = true;
     return;
 }
