@@ -216,7 +216,6 @@ enum line_drawstate { DS_LINE_YES, DS_LINE_UNKNOWN,
 struct game_drawstate {
     bool started;
     int tilesize;
-    bool flashing;
     int *textx, *texty;
     char *lines;
     bool *clue_error;
@@ -300,7 +299,6 @@ static grid *loopy_generate_grid(const game_params *params,
 /* General constants */
 #define PREFERRED_TILE_SIZE 32
 #define BORDER(tilesize) ((tilesize) / 2)
-#define FLASH_TIME 0.5F
 
 #define BIT_SET(field, bit) ((field) & (1<<(bit)))
 
@@ -874,7 +872,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->clue_satisfied = snewn(num_faces, bool);
     ds->textx = snewn(num_faces, int);
     ds->texty = snewn(num_faces, int);
-    ds->flashing = false;
 
     memset(ds->lines, LINE_UNKNOWN, num_edges);
     memset(ds->clue_error, 0, num_faces * sizeof(bool));
@@ -2942,22 +2939,36 @@ static void game_redraw_clue(drawing *dr, game_drawstate *ds,
 {
     grid *g = state->game_grid;
     grid_face *f = g->faces + i;
-    int x, y;
+    int x, y, j, x1, y1;
     char c[20];
+    int coords[2+2*f->order];
+    int bgcol;
 
     sprintf(c, "%d", state->clues[i]);
 
     face_text_pos(ds, g, f, &x, &y);
+    for (j=0;j<f->order;j++) {
+        grid_to_screen(ds, g, f->dots[j]->x, f->dots[j]->y, &x1, &y1);
+        coords[2*j+0] = x1;
+        coords[2*j+1] = y1;
+    }
 
+    bgcol = ds->clue_error[i]     ? COL_MISTAKE : 
+            /* ds->clue_satisfied[i] ? COL_SATISFIED: */
+                                    COL_BACKGROUND;
+    draw_polygon(dr, coords, f->order, bgcol, bgcol);
+/*
     draw_rect(dr, x-ds->tilesize/4, y-ds->tilesize/4, ds->tilesize/2, ds->tilesize/2, 
             ds->clue_error[i]     ? COL_MISTAKE : 
             ds->clue_satisfied[i] ? COL_SATISFIED: 
                                     COL_BACKGROUND);
+*/
     draw_text(dr, x, y,
           FONT_VARIABLE, ds->tilesize/2,
           ALIGN_VCENTRE | ALIGN_HCENTRE,
           ds->clue_error[i] ? COL_BACKGROUND :
-          ds->clue_satisfied[i] ? COL_FOREGROUND : COL_FOREGROUND, c);
+          /* ds->clue_satisfied[i] ? COL_FOREGROUND : */
+                              COL_FOREGROUND, c);
 }
 
 static void edge_bbox(game_drawstate *ds, grid *g, grid_edge *e,
@@ -3027,8 +3038,8 @@ static void draw_dotted_line(drawing *dr, int x1, int y1, int x2, int y2, int co
 
     w = x2-x1;
     h = y2-y1;
-    ws = (int)((float)w/(float)STEP);
-    hs = (int)((float)h/(float)STEP);
+    ws = ((float)w/(float)STEP);
+    hs = ((float)h/(float)STEP);
     for (i=0;i<STEP;i+=2) {
         draw_thick_line(dr, 5.0, x1+ i   *ws, y1+ i   * hs, x1+(i+1)*ws, y1+(i+1)*hs, colour);
         draw_thick_line(dr, 5.0, x1+(i+1)*ws, y1+(i+1)* hs, x1+(i+2)*ws, y1+(i+2)*hs, COL_BACKGROUND);
@@ -3046,7 +3057,6 @@ static void game_redraw_line(drawing *dr, game_drawstate *ds,
     if (state->line_errors[i])                line_colour = COL_MISTAKE;
     else if (state->lines[i] == LINE_UNKNOWN) line_colour = COL_LINEUNKNOWN;
     else if (state->lines[i] == LINE_NO)      line_colour = COL_FAINT;
-    else if (ds->flashing)                    line_colour = COL_HIGHLIGHT;
     else                                      line_colour = COL_FOREGROUND;
 
     if (line_colour != loopy_line_redraw_phases[phase]) return;
@@ -3085,7 +3095,7 @@ static void game_redraw_line(drawing *dr, game_drawstate *ds,
         }
         else {
             if (state->line_errors[i])
-                draw_dotted_line(dr, x1, y1, x2, y2, line_colour);
+                draw_dotted_line(dr, x1+0.5, y1+0.5, x2+0.5, y2+0.5, line_colour);
             else
                 draw_thick_line(dr, 5.0, x1 + 0.5, y1 + 0.5, x2 + 0.5, y2 + 0.5, line_colour);
         }
@@ -3159,7 +3169,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     grid *g = state->game_grid;
     int border = BORDER(ds->tilesize);
     int i;
-    bool flash_changed;
     bool redraw_everything = false;
 
     int edges[REDRAW_OBJECTS_LIMIT], nedges = 0;
@@ -3261,23 +3270,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         }
     }
 
-    /* Work out what the flash state needs to be. */
-    if (flashtime > 0 &&
-        (flashtime <= FLASH_TIME/3 ||
-         flashtime >= FLASH_TIME*2/3)) {
-        flash_changed = !ds->flashing;
-        ds->flashing = true;
-    } else {
-        flash_changed = ds->flashing;
-        ds->flashing = false;
-    }
 
     /* Now, trundle through the edges. */
     for (i = 0; i < g->num_edges; i++) {
         char new_ds =
             state->line_errors[i] ? DS_LINE_ERROR : state->lines[i];
-        if (new_ds != ds->lines[i] ||
-            (flash_changed && state->lines[i] == LINE_YES)) {
+        if (new_ds != ds->lines[i]) {
             ds->lines[i] = new_ds;
             if (nedges == REDRAW_OBJECTS_LIMIT)
                 redraw_everything = true;
@@ -3285,7 +3283,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 edges[nedges++] = i;
         }
     }
-
+    redraw_everything = true;
     /* Pass one is now done.  Now we do the actual drawing. */
     if (redraw_everything) {
         int grid_width = g->highest_x - g->lowest_x;
