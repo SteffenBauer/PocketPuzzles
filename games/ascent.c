@@ -31,7 +31,7 @@ int solver_verbose = false;
 #endif
 
 enum {
-    COL_MIDLIGHT,
+    COL_BACKGROUND,
     COL_LOWLIGHT,
     COL_HIGHLIGHT,
     COL_BORDER,
@@ -169,15 +169,16 @@ const static ascent_movement *ascent_movement_for_mode(int mode)
 }
 
 const static struct game_params ascent_presets[] = {
-    { 5,  6, DIFF_NORMAL, MODE_RECT, false, false },
-    { 5,  6, DIFF_TRICKY, MODE_RECT, false, false },
-    { 5,  6, DIFF_HARD, MODE_RECT, false, false },
-    { 8, 10, DIFF_NORMAL, MODE_RECT, false, false },
-    { 8, 10, DIFF_TRICKY, MODE_RECT, false, false },
+    { 5,  5, DIFF_NORMAL, MODE_RECT, false, false },
+    { 7,  7, DIFF_TRICKY, MODE_RECT, false, false },
+    { 8,  8, DIFF_HARD, MODE_RECT, false, false },
+    { 10, 10, DIFF_NORMAL, MODE_RECT, false, false },
+    { 10, 10, DIFF_TRICKY, MODE_RECT, false, false },
     { 5, 5, DIFF_NORMAL, MODE_EDGES, true, false },
-    { 5, 5, DIFF_TRICKY, MODE_EDGES, true, false },
-    { 5, 6, DIFF_NORMAL, MODE_HONEYCOMB, false, false },
+    { 7, 7, DIFF_TRICKY, MODE_EDGES, true, false },
+    { 7, 7, DIFF_NORMAL, MODE_HONEYCOMB, false, false },
     { 7, 7, DIFF_NORMAL, MODE_HEXAGON, false, false },
+    { 9, 9, DIFF_TRICKY, MODE_HEXAGON, false, false },
 };
 
 #define DEFAULT_PRESET 1
@@ -3184,7 +3185,7 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
 
     for (i=0;i<3;i++) {
-        ret[COL_MIDLIGHT  * 3 + i] = 1.0F;
+        ret[COL_BACKGROUND  * 3 + i] = 1.0F;
         ret[COL_HIGHLIGHT * 3 + i] = 0.75F;
         ret[COL_LOWLIGHT  * 3 + i] = 0.25F;
         ret[COL_BORDER    * 3 + i] = 0.0F;
@@ -3392,7 +3393,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
     if(ds->redraw)
     {
-        draw_rect(dr, 0, 0, ds->w, ds->h, COL_MIDLIGHT);
+        draw_rect(dr, 0, 0, ds->w, ds->h, COL_BACKGROUND);
         draw_update(dr, 0, 0, ds->w, ds->h);
     }
     
@@ -3519,7 +3520,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             n <= state->last && positions[n] == CELL_MULTIPLE && ui->typing_cell != i ? COL_LOWLIGHT :
             ds->old_next_target >= 0 && positions[ds->old_next_target] == i ? COL_HIGHLIGHT :
             ds->old_prev_target >= 0 && positions[ds->old_prev_target] == i ? COL_HIGHLIGHT :
-            COL_MIDLIGHT;
+            COL_BACKGROUND;
         
         if(ds->colours[i] == colour) continue;
         
@@ -3530,7 +3531,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         clip(dr, tx, ty, tilesize+1, tilesize+1);
         draw_update(dr, tx, ty, tilesize+1, tilesize+1);
         draw_rect(dr, tx+1, ty+1, tilesize-1, tilesize-1,
-            IS_NUMBER_EDGE(n) ? COL_MIDLIGHT : colour);
+            IS_NUMBER_EDGE(n) ? COL_BACKGROUND : colour);
         ds->colours[i] = colour;
         
         if (ui->typing_cell != i)
@@ -3688,12 +3689,11 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             bool error = i2 >= 0 && !is_edge_valid(i, i2, w, h);
             sprintf(buf, "%d", NUMBER_EDGE(n) + 1);
 
-            ascent_draw_arrow(dr, i, w, h, tx1, ty1, error ? COL_LOWLIGHT : COL_ARROW, COL_BORDER, tilesize);
+            ascent_draw_arrow(dr, i, w, h, tx1, ty1, error ? COL_LOWLIGHT : i2 >= 0 ? COL_BACKGROUND : COL_ARROW, COL_BORDER, tilesize);
 
             draw_text(dr, tx1, ty1,
                 FONT_VARIABLE, tilesize / 2, ALIGN_HCENTRE | ALIGN_VCENTRE,
-                error ? COL_ERROR : i2 >= 0 ? COL_LOWLIGHT :
-                COL_BORDER, buf);
+                error ? COL_ERROR : COL_BORDER, buf);
         }
         else if(n != NUMBER_CLEAR)
         {
@@ -3759,9 +3759,9 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #endif
 
 static const char rules[] = "Create a path of numbers, using each number exactly once. Contains several modes:\n\n"
-"- Rectangular grid: Numbers must be orthogonally or diagonally adjacent.\n"
+"- Rectangular grid: Consecutive numbers must be orthogonally or diagonally adjacent.\n"
 "- Honeycomb and Hexagonal grid: The path can't cross itself.\n"
-"- Edges: Arrows outside the grid point to the row, column or diagonal where the number is located.";
+"- Edges: Arrows outside the grid point to the row, column or diagonal where the number is located. Consecutive numbers must be orthogonally or diagonally adjacent.";
 
 const struct game thegame = {
     "Ascent", NULL, NULL, rules,
