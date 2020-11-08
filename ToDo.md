@@ -47,7 +47,7 @@
 - [X] Twiddle: Remove animation
 - [ ] Dominosa: Number highlighting in numerical buttons
 - [ ] Galaxies: Rework right-drag / arrow handling
-- [ ] Loopy: Reverse whole cell on hint number error
+- [X] Loopy: Reverse whole cell on hint number error
 - [ ] Map: Remove drag animation
 - [ ] Map: Color fill pattern?
 - [ ] Netslide: Remove animation. Thicker lines.
