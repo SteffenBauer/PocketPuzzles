@@ -3693,7 +3693,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
             draw_text(dr, tx1, ty1,
                 FONT_VARIABLE, tilesize / 2, ALIGN_HCENTRE | ALIGN_VCENTRE,
-                error ? COL_ERROR : COL_BORDER, buf);
+                error ? COL_ERROR : i2 >= 0 ? COL_HIGHLIGHT : COL_BORDER, buf);
         }
         else if(n != NUMBER_CLEAR)
         {
