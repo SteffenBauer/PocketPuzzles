@@ -90,6 +90,7 @@ struct layout getLayout(LAYOUTTYPE screenlayout);
 
 extern void switchToChooserScreen();
 extern void switchToGameScreen();
+extern void switchToParamScreen();
 extern void exitApp();
 
 #endif

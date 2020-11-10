@@ -146,6 +146,8 @@ void gameNext();
 extern void stateSerialise(midend *me);
 extern void configAddItem(char *key, char *value);
 
+extern void paramPrepare(midend *me);
+
 void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
                int align, int colour, const char *text);
 void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour);
