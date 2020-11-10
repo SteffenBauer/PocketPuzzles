@@ -6,6 +6,18 @@
 #include "inkview.h"
 #include "frontend/main.h"
 
+void switchToParamScreen() {
+    SCREEN.currentScreen = SCREEN_PARAMS;
+    SCREEN.tap           = &paramTap;
+    SCREEN.long_tap      = &paramLongTap;
+    SCREEN.drag          = &paramDrag;
+    SCREEN.release       = &paramRelease;
+    SCREEN.prev          = &paramPrev;
+    SCREEN.next          = &paramNext;
+
+    paramScreenShow();
+}
+
 void switchToChooserScreen() {
     SCREEN.currentScreen = SCREEN_CHOOSER;
     SCREEN.tap           = &chooserTap;
@@ -34,6 +46,7 @@ static void setupApp() {
     char *buf;
     SetPanelType(PANEL_ENABLED);
     stateInit();
+    paramScreenInit();
     chooserScreenInit();
     gameScreenInit();
     buf = configGetItem("config_resume");
@@ -45,6 +58,7 @@ static void setupApp() {
 
 void exitApp() {
     stateFree();
+    paramScreenFree();
     chooserScreenFree();
     gameScreenFree();
     CloseApp();

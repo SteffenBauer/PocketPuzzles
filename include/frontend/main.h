@@ -3,6 +3,17 @@
 
 #include "common.h"
 
+extern void paramScreenInit();
+extern void paramScreenShow();
+extern void paramScreenFree();
+
+extern void paramTap(int x, int y);
+extern void paramLongTap(int x, int y);
+extern void paramDrag(int x, int y);
+extern void paramRelease(int x, int y);
+extern void paramPrev();
+extern void paramNext();
+
 extern void chooserScreenInit();
 extern void chooserScreenShow();
 extern void chooserScreenFree();
@@ -47,6 +58,7 @@ struct screen {
     void (*next)();
 } SCREEN;
 
+void switchToParamScreen();
 void switchToChooserScreen();
 void switchToGameScreen();
 

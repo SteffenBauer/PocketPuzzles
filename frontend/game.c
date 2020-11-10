@@ -305,8 +305,11 @@ void typeMenuHandler(int index) {
 
     button_to_normal(&fe->gameButton[fe->btnTypeIDX], true);
 
-    if (index == 200)
-        Message(ICON_WARNING, "", "Custom preset not implemented yet!", 3000);
+    if (index == 200) {
+        /* Message(ICON_WARNING, "", "Custom preset not implemented yet!", 3000); */
+        paramPrepare(me);
+        switchToParamScreen();
+    }
     if (index > 200) {
         if (currentindex >= 0) typeMenu[currentindex+2].type = ITEM_ACTIVE;
         else typeMenu[1].type = ITEM_ACTIVE;
@@ -814,6 +817,7 @@ void gameScreenFree() {
         sfree(typeMenu);
         if (me) midend_free(me);
         gameInitialized = false;
+        Message(ICON_INFORMATION, "", "Exit app", 1000);
     }
 }
 
