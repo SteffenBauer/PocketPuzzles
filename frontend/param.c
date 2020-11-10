@@ -60,7 +60,7 @@ static void paramDrawMenu() {
     button_to_normal(&pa.paramButton[pa.btnDrawIDX], false);
 
     SetFont(pa.paramfont, BLACK);
-    DrawTextRect(0, (pa.paramlayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, pa.title, ALIGN_CENTER);
+    DrawTextRect(0, (pa.paramlayout.menubtn_size/2)-(PFONTSIZE/2), ScreenWidth(), PFONTSIZE, pa.title, ALIGN_CENTER);
 }
 
 static void paramDrawPanel(bool inverse) {
@@ -73,8 +73,48 @@ static void paramDrawPanel(bool inverse) {
         FillArea(0, pa.paramlayout.buttonpanel.starty, ScreenWidth(), pa.paramlayout.buttonpanel.height, 0x00000000);    
         SetFont(pa.paramfont, WHITE);
     }
-    DrawTextRect(0, pa.paramlayout.buttonpanel.starty+pa.paramlayout.buttonpanel.height/2-16, ScreenWidth(), 32, "OK", ALIGN_CENTER);
+    DrawTextRect(0, pa.paramlayout.buttonpanel.starty+pa.paramlayout.buttonpanel.height/2-(PFONTSIZE/2), ScreenWidth(), PFONTSIZE, "OK", ALIGN_CENTER);
     PartialUpdate(0, pa.paramlayout.buttonpanel.starty, ScreenWidth(), pa.paramlayout.buttonpanel.height);
+}
+
+static void paramDrawParams() {
+    int i, x, y;
+    /*int c;
+    const char *p, *q;
+    char **choices; */
+    char buf[256];
+    x = pa.paramlayout.menubtn_size;
+    for (i=0;i<pa.numParams;i++) {
+        FillArea(0, pa.paramItem[i].y, ScreenWidth(), pa.paramlayout.menubtn_size+3, 0x00FFFFFF);
+        FillArea(x, pa.paramItem[i].y+pa.paramlayout.menubtn_size+1, ScreenWidth(), 1, 0x00000000);
+        SetFont(pa.paramfont, BLACK);
+        y = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(PFONTSIZE/2);
+        DrawTextRect(2*x+10, y, ScreenWidth()-10, PFONTSIZE, pa.cfg[i].name, ALIGN_LEFT);
+        switch(pa.cfg[i].type) {
+            case C_STRING:
+                DrawTextRect(ScreenWidth()/2, y, ScreenWidth()/2,PFONTSIZE, pa.cfg[i].u.string.sval, ALIGN_CENTER);
+                break;
+            case C_CHOICES:
+                /*
+                c = pa.cfg[i]->u.choices.choicenames;
+                p = pa.cfg[i]->u.choices.choicenames+1;
+                while (*p) {
+                    q = p;
+                    while (*q && *q != c) q++;
+                    name = snewn(q-p+1, char);
+                    strncpy(name, p, q-p);
+                    name[q-p] = '\0';
+                    if (*q) q++;
+                    p = q;
+                } */
+                sprintf(buf, "%i", pa.cfg[i].u.choices.selected);
+                DrawTextRect(ScreenWidth()/2, y, ScreenWidth()/2,PFONTSIZE, buf, ALIGN_CENTER);
+                break;
+            case C_BOOLEAN:
+                DrawTextRect(ScreenWidth()/2, y, ScreenWidth()/2,PFONTSIZE, pa.cfg[i].u.boolean.bval ? "Yes": "No", ALIGN_CENTER);
+                break;
+        }
+    }
 }
 
 void paramPrepare(midend *me) {
@@ -83,15 +123,28 @@ void paramPrepare(midend *me) {
     pa.me = me;
     if (pa.title) sfree(pa.title);
     if (pa.cfg) free_cfg(pa.cfg);
+    if (pa.paramItem) sfree(pa.paramItem);
     
     pa.cfg = midend_get_config(pa.me, CFG_SETTINGS, &pa.title);
     pa.paramlayout = getLayout(LAYOUT_BUTTONBAR); 
 
+    pa.numParams = 0;
+    while (pa.cfg[pa.numParams].type != C_END) {
+        pa.numParams++;
+        if (pa.numParams > 32) break;
+    }
+
+    pa.paramItem = smalloc(pa.numParams * sizeof(PARAMITEM));
+    for (i=0;i<pa.numParams;i++) {
+        pa.paramItem[i].bitmap = NULL;
+        pa.paramItem[i].y = pa.paramlayout.maincanvas.starty +
+                            i*(pa.paramlayout.menubtn_size+3);
+    }
+
     pa.numParamButtons = 2;
-    if (pa.paramButton)
-        sfree(pa.paramButton);
+    if (pa.paramButton) sfree(pa.paramButton);
     pa.paramButton = smalloc(pa.numParamButtons*sizeof(BUTTON));
-    
+    i=0;
     pa.paramButton[pa.btnBackIDX = i++] = (BUTTON){ true,  BTN_MENU, 
         10, pa.paramlayout.menu.starty, 
         pa.paramlayout.menubtn_size, 0, 
@@ -108,11 +161,12 @@ void paramScreenShow() {
     DrawPanel(NULL, "", "", 0);
     paramDrawMenu();
     paramDrawPanel(false);
+    paramDrawParams();
     FullUpdate();
 }
 
 void paramScreenInit() {
-    pa.paramfont = OpenFont("LiberationSans-Bold", 32, 0);
+    pa.paramfont = OpenFont("LiberationSans-Bold", PFONTSIZE, 0);
     pa.paramButton = NULL;
     pa.title = NULL;
     pa.cfg = NULL;
