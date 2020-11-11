@@ -13,8 +13,7 @@
 void *smalloc(size_t size) {
     void *p;
     p = malloc(size);
-    if (!p)
-	fatal("out of memory");
+    if (!p) fatal("out of memory");
     return p;
 }
 
@@ -23,7 +22,8 @@ void *smalloc(size_t size) {
  */
 void sfree(void *p) {
     if (p) {
-	free(p);
+        free(p);
+        p = NULL;
     }
 }
 
@@ -33,12 +33,11 @@ void sfree(void *p) {
 void *srealloc(void *p, size_t size) {
     void *q;
     if (p) {
-	q = realloc(p, size);
+        q = realloc(p, size);
     } else {
-	q = malloc(size);
+        q = malloc(size);
     }
-    if (!q)
-	fatal("out of memory");
+    if (!q) fatal("out of memory");
     return q;
 }
 

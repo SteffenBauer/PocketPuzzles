@@ -248,13 +248,12 @@ void activate_timer(frontend *fe) {
   fe->isTimer=true;
   gettimeofday(&fe->last_time, NULL);
   SetWeakTimer("timername", tproc, fe->time_int);
-
-};
+}
 
 void deactivate_timer(frontend *fe) {
   fe->isTimer=false;
   ClearTimer(tproc);
-};
+}
 
 void fatal(const char *fmt, ...) {
     exitApp();
@@ -296,7 +295,7 @@ void gameMenuHandler(int index) {
         default:
             break;
     }
-};
+}
 
 void typeMenuHandler(int index) {
     typeMenu_selectedIndex = index;
@@ -306,7 +305,6 @@ void typeMenuHandler(int index) {
     button_to_normal(&fe->gameButton[fe->btnTypeIDX], true);
 
     if (index == 200) {
-        /* Message(ICON_WARNING, "", "Custom preset not implemented yet!", 3000); */
         paramPrepare(me);
         switchToParamScreen();
     }
@@ -317,7 +315,7 @@ void typeMenuHandler(int index) {
         gameSwitchPreset(index-201);
         gameScreenShow();
     }
-};
+}
 
 static void gameBuildTypeMenu() {
     int i, np, chosen;
@@ -351,8 +349,7 @@ static void gameBuildTypeMenu() {
 
     chosen = midend_which_preset(me);
     typeMenu[(chosen >= 0) ? chosen+2 : 1].type = ITEM_BULLET;
-
-};
+}
 
 static void gameCheckButtonState() {
     BUTTON *undo, *redo, *swap;
@@ -539,7 +536,7 @@ static void gameDrawMenu() {
     button_to_normal(&fe->gameButton[fe->btnTypeIDX], false);
 
     SetFont(fe->gamefont, BLACK);
-    DrawTextRect(0, (fe->gamelayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, fe->currentgame->name, ALIGN_CENTER);
+    DrawTextRect(0, (fe->gamelayout.menubtn_size/2)-(GFONTSIZE/2), ScreenWidth(), GFONTSIZE, fe->currentgame->name, ALIGN_CENTER);
 }
 static void gameSetupStatusBar() {
     if (!fe->gamelayout.with_statusbar) return;
@@ -803,7 +800,7 @@ void gameScreenShow() {
 void gameScreenInit() {
     fe = snew(frontend);
     fe->cliprect = GetClipRect();
-    fe->gamefont = OpenFont("LiberationSans-Bold", 32, 0);
+    fe->gamefont = OpenFont("LiberationSans-Bold", GFONTSIZE, 0);
     fe->gameButton = NULL;
 }
 

@@ -3,6 +3,8 @@
 #include "common.h"
 #include "puzzles.h"
 
+#define GFONTSIZE 36
+
 bool gameInitialized;
 
 typedef struct {

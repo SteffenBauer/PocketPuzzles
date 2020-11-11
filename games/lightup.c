@@ -296,7 +296,7 @@ static config_item *game_configure(const game_params *params)
     sprintf(buf, "%d", params->h);
     ret[1].u.string.sval = dupstr(buf);
 
-    ret[2].name = "%age of black squares";
+    ret[2].name = "\% of black squares";
     ret[2].type = C_STRING;
     sprintf(buf, "%d", params->blackpc);
     ret[2].u.string.sval = dupstr(buf);

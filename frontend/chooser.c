@@ -112,7 +112,7 @@ static void chooserDrawChooserButtons(int page) {
             button_to_normal(&ca.chooserButton[i], false);
             DrawTextRect(ca.chooserButton[i].posx-(ca.chooser_padding/2),
                          ca.chooserButton[i].posy+ca.chooserButton[i].size+5,
-                         ca.chooserButton[i].size+ca.chooser_padding, 32,
+                         ca.chooserButton[i].size+ca.chooser_padding, CFONTSIZE,
                          ca.chooserButton[i].actionParm.thegame->name, ALIGN_CENTER);
         }
         else if (ca.chooserButton[i].action == ACTION_LAUNCH) {
@@ -152,7 +152,7 @@ static void chooserDrawMenu() {
     button_to_normal(&ca.chooserButton[ca.btnMenuIDX], false);
 
     SetFont(ca.chooserfont, BLACK);
-    DrawTextRect(0, (ca.chooserlayout.menubtn_size/2)-(32/2), ScreenWidth(), 32, "PUZZLES", ALIGN_CENTER);
+    DrawTextRect(0, (ca.chooserlayout.menubtn_size/2)-(CFONTSIZE/2), ScreenWidth(), CFONTSIZE, "PUZZLES", ALIGN_CENTER);
 }
 
 static void chooserSetupButtons() {
@@ -167,7 +167,7 @@ static void chooserSetupButtons() {
         c = pi % CHOOSER_COLS;
         r = pi / CHOOSER_COLS;
         ca.chooserButton[i].posx = (c+1)*ca.chooser_padding + c*ca.chooserlayout.chooser_size;
-        ca.chooserButton[i].posy = 50 + ca.chooserlayout.maincanvas.starty + r*(20+32+ca.chooserlayout.chooser_size);
+        ca.chooserButton[i].posy = 50 + ca.chooserlayout.maincanvas.starty + r*(32+CFONTSIZE+ca.chooserlayout.chooser_size);
         ca.chooserButton[i].page = p;
         ca.chooserButton[i].action = ACTION_LAUNCH;
         ca.chooserButton[i].size = ca.chooserlayout.chooser_size;
@@ -211,7 +211,7 @@ void chooserScreenShow() {
 }
 
 void chooserScreenInit() {
-    ca.chooserfont = OpenFont("LiberationSans-Bold", 32, 0);
+    ca.chooserfont = OpenFont("LiberationSans-Bold", CFONTSIZE, 0);
 
     ca.num_games = 0;
     while (true) {
