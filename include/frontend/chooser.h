@@ -5,6 +5,7 @@
 #define CHOOSER_COLS 5
 #define CHOOSER_ROWS 5
 #define CONTROL_NUM 2
+#define CFONTSIZE 36
 
 bool chooserInitialized;
 

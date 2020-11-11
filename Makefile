@@ -2,6 +2,7 @@
 
 PBSDK ?= ../../pocketbook-sdk5
 CC = $(PBSDK)/bin/arm-obreey-linux-gnueabi-gcc
+STRIP = $(PBSDK)/bin/arm-obreey-linux-gnueabi-strip
 PBRES = $(PBSDK)/bin/pbres
 
 GIT_VERSION := "$(shell date -I)-$(shell git describe --always --tags)"
@@ -25,6 +26,7 @@ all: build/SGTPuzzles.app
 build/SGTPuzzles.app: icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS)
 	mkdir -p ./build
 	LC_ALL=C $(CC) -s icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS) -I./include -o ./build/SGTPuzzles.app $(CFLAGS)
+	LC_ALL=C $(STRIP) ./build/SGTPuzzles.app
 
 icons/icons.c: ./icons/*.bmp
 	LC_ALL=C $(PBRES) -c ./icons/icons.c -4 ./icons/*.bmp

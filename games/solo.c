@@ -429,11 +429,11 @@ static config_item *game_configure(const game_params *params)
     sprintf(buf, "%d", params->r);
     ret[1].u.string.sval = dupstr(buf);
 
-    ret[2].name = "\"X\" (require every number in each main diagonal)";
+    ret[2].name = "\"X\" (incl. diagonals)";
     ret[2].type = C_BOOLEAN;
     ret[2].u.boolean.bval = params->xtype;
 
-    ret[3].name = "Jigsaw (irregularly shaped sub-blocks)";
+    ret[3].name = "Jigsaw mode";
     ret[3].type = C_BOOLEAN;
     ret[3].u.boolean.bval = (params->r == 1);
 
@@ -443,8 +443,8 @@ static config_item *game_configure(const game_params *params)
 
     ret[5].name = "Symmetry";
     ret[5].type = C_CHOICES;
-    ret[5].u.choices.choicenames = ":None:2-way rotation:4-way rotation:2-way mirror:"
-        "2-way diagonal mirror:4-way mirror:4-way diagonal mirror:"
+    ret[5].u.choices.choicenames = ":None:2-way rot:4-way rot:2-way mirror:"
+        "2-way diag mirror:4-way mirror:4-way diag mirror:"
         "8-way mirror";
     ret[5].u.choices.selected = params->symm;
 
