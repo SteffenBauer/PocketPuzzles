@@ -211,9 +211,12 @@ static void paramDrawParams() {
     for (i=0;i<pa.numParams;i++) {
         FillArea(0, pa.paramItem[i].y, ScreenWidth(), pa.paramlayout.menubtn_size+3, 0x00FFFFFF);
         FillArea(xn, pa.paramItem[i].y+pa.paramlayout.menubtn_size+1, ScreenWidth(), 1, 0x00000000);
+        if (pa.paramItem[i].bitmap != NULL)
+            StretchBitmap(10, pa.paramItem[i].y, pa.paramlayout.menubtn_size, 
+                          pa.paramlayout.menubtn_size, pa.paramItem[i].bitmap, 0);
         SetFont(pa.paramfont, BLACK);
         y = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(PFONTSIZE/2);
-        DrawTextRect(2*xn+10, y, ScreenWidth()-10, PFONTSIZE, pa.cfg[i].name, ALIGN_LEFT);
+        DrawTextRect(2*xn+20, y, ScreenWidth()-10, PFONTSIZE, pa.cfg[i].name, ALIGN_LEFT);
         switch(pa.paramItem[i].type) {
             case C_STRING:
                 button_to_normal(&pa.paramItem[i].item.n.decrease, false);
@@ -348,6 +351,8 @@ void paramPrepare(midend *me) {
     pa.paramItem = smalloc(pa.numParams * sizeof(PARAMITEM));
     for (i=0;i<pa.numParams;i++) {
         pa.paramItem[i].bitmap = NULL;
+        if (strcmp(pa.cfg[i].name, "Difficulty") == 0)
+            pa.paramItem[i].bitmap = &cfg_difficulty;
         pa.paramItem[i].type = pa.cfg[i].type;
         pa.paramItem[i].y = pa.paramlayout.maincanvas.starty +
                             i*(pa.paramlayout.menubtn_size+3);
