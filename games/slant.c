@@ -111,23 +111,23 @@ static game_params *default_params(void)
     game_params *ret = snew(game_params);
 
     ret->w = 8;
-    ret->h = 10;
+    ret->h = 8;
     ret->diff = DIFF_TRICKY;
     ret->mode = MODE_SLANT;
     return ret;
 }
 
 static const struct game_params slant_presets[] = {
-    { 5,  6, DIFF_EASY,   MODE_SLANT},
-    { 5,  6, DIFF_EASY,   MODE_CREEK},
-    { 5,  6, DIFF_TRICKY, MODE_SLANT},
-    { 5,  6, DIFF_TRICKY, MODE_CREEK},
-    { 5,  6, DIFF_HARD,   MODE_CREEK},
-    { 8, 10, DIFF_TRICKY, MODE_SLANT},
-    { 8, 10, DIFF_TRICKY, MODE_CREEK},
-    { 8, 10, DIFF_HARD,   MODE_CREEK},
-    {10, 12, DIFF_TRICKY, MODE_SLANT},
-    {10, 12, DIFF_TRICKY, MODE_CREEK}
+    { 5,  5, DIFF_EASY,   MODE_SLANT},
+    { 6,  6, DIFF_TRICKY, MODE_SLANT},
+    { 8,  8, DIFF_TRICKY, MODE_SLANT},
+    {10, 10, DIFF_TRICKY, MODE_SLANT},
+    { 6,  6, DIFF_EASY,   MODE_CREEK},
+    { 6,  6, DIFF_TRICKY, MODE_CREEK},
+    { 8,  8, DIFF_TRICKY, MODE_CREEK},
+    { 8,  8, DIFF_HARD,   MODE_CREEK},
+    {10, 10, DIFF_TRICKY, MODE_CREEK},
+    {10, 10, DIFF_HARD,   MODE_CREEK}
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -257,6 +257,8 @@ static const char *validate_params(const game_params *params, bool full)
 
     if (params->w < 3 || params->h < 3)
         return "Width and height must both be at least three";
+    if (params->w > 12 || params->h > 12)
+        return "Width and height must both be at most 12";
     if (params->mode == MODE_SLANT && params->diff == DIFF_HARD)
         return "Hard mode not implemented for Slant games";
     return NULL;
@@ -2443,8 +2445,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 #define COORD(x)  ( (x) * TILESIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILESIZE) / TILESIZE - 1 )
 
-#define FLASH_TIME 0.30F
-
 /*
  * Bit fields in the `grid' and `todraw' elements of the drawstate.
  */
@@ -2635,8 +2635,6 @@ static float *game_colours(frontend *fe, int *ncolours)
     int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
-    /* CURSOR colour is a background highlight. */
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_CURSOR, -1);
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND   * 3 + i] = 1.0F;
         ret[COL_FILLEDSQUARE * 3 + i] = 0.9F;
@@ -2649,6 +2647,7 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_CREEK_FILLED * 3 + i] = 0.0F;
         ret[COL_CREEK_EMPTY  * 3 + i] = 1.0F;
         ret[COL_CURSOR_CREEK * 3 + i] = 0.5F;
+        ret[COL_CURSOR       * 3 + i] = 0.5F;
     }
 
     *ncolours = NCOLOURS;
@@ -2707,7 +2706,6 @@ static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
     clip(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
 
     draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE,
-              (v & FLASH) ? COL_GRID :
               (v & CURSOR) ? COL_CURSOR :
               (v & ERRSLASH) ? COL_ERROR : 
               (v & (BACKSLASH | FORWSLASH)) ? COL_FILLEDSQUARE :
@@ -2797,7 +2795,6 @@ static void draw_tile_creek(drawing *dr, game_drawstate *ds, game_clues *clues,
     clip(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
 
     draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE,
-          (v & FLASH)    ? COL_GRID :
           (v & CR_ERR)   ? COL_CREEK_EMPTY :
           (v & CURSOR)   ? COL_CURSOR_CREEK :
           (v & CR_BLACK) ? COL_CREEK_FILLED :
@@ -2852,12 +2849,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int w = state->p.w, h = state->p.h, W = w+1, H = h+1;
     int x, y;
-    bool flashing;
-
-    if (flashtime > 0)
-        flashing = (int)(flashtime * 3 / FLASH_TIME) != 1;
-    else
-        flashing = false;
 
     if (!ds->started) {
         int ww, wh;
@@ -2877,10 +2868,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
          */
         for (y = -1; y <= h; y++)
             for (x = -1; x <= w; x++) {
-                if (x >= 0 && x < w && y >= 0 && y < h)
-                    ds->todraw[(y+1)*(w+2)+(x+1)] = flashing ? FLASH : 0;
-                else
-                    ds->todraw[(y+1)*(w+2)+(x+1)] = 0;
+                ds->todraw[(y+1)*(w+2)+(x+1)] = 0;
             }
 
         for (y = 0; y < h; y++) {
@@ -2942,10 +2930,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     {
         for (y = -1; y <= h; y++) {
             for (x = -1; x <= w; x++) {
-                if (x >= 0 && x < w && y >= 0 && y < h)
-                    ds->todraw[(y+1)*(w+2)+(x+1)] = flashing ? FLASH : 0;
-                else
-                    ds->todraw[(y+1)*(w+2)+(x+1)] = 0;
+                ds->todraw[(y+1)*(w+2)+(x+1)] = 0;
             }
         }
 

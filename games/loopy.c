@@ -247,40 +247,41 @@ static solver_state *solve_game_rec(const solver_state *sstate);
  * Do not add values to this list _except_ at the end, or old game ids
  * will stop working!
  */
-#define GRIDLIST(A)                                             \
-    A("Squares",SQUARE,3,3)                                     \
-    A("Triangular",TRIANGULAR,3,3)                              \
-    A("Honeycomb",HONEYCOMB,3,3)                                \
-    A("Snub-Square",SNUBSQUARE,3,3)                             \
-    A("Cairo",CAIRO,3,4)                                        \
-    A("Great-Hexagonal",GREATHEXAGONAL,3,3)                     \
-    A("Octagonal",OCTAGONAL,3,3)                                \
-    A("Kites",KITE,3,3)                                         \
-    A("Floret",FLORET,1,2)                                      \
-    A("Dodecagonal",DODECAGONAL,2,2)                            \
-    A("Great-Dodecagonal",GREATDODECAGONAL,2,2)                 \
-    A("Penrose (kite/dart)",PENROSE_P2,3,3)                     \
-    A("Penrose (rhombs)",PENROSE_P3,3,3)                        \
-    A("Great-Great-Dodecagonal",GREATGREATDODECAGONAL,2,2)      \
-    A("Kagome",KAGOME,3,3)                                      \
+#define GRIDLIST(A)                                                \
+    A("Squares",SQUARE,3,3,16)                                     \
+    A("Triangular",TRIANGULAR,2,3,8)                              \
+    A("Honeycomb",HONEYCOMB,2,3,12)                                \
+    A("Snub-Square",SNUBSQUARE,3,3,8)                             \
+    A("Cairo",CAIRO,3,4,8)                                        \
+    A("Great-Hexagonal",GREATHEXAGONAL,3,3,5)                     \
+    A("Octagonal",OCTAGONAL,3,3,8)                                \
+    A("Kites",KITE,3,3,5)                                         \
+    A("Floret",FLORET,1,2,4)                                      \
+    A("Dodecagonal",DODECAGONAL,2,2,4)                            \
+    A("Great-Dodecagonal",GREATDODECAGONAL,2,2,4)                 \
+    A("Penrose (kite/dart)",PENROSE_P2,4,5,12)                     \
+    A("Penrose (rhombs)",PENROSE_P3,3,3,12)                        \
+    A("Great-Great-Dodecagonal",GREATGREATDODECAGONAL,2,2,3)      \
+    A("Kagome",KAGOME,3,3,6)                                      \
     /* end of list */
 
-#define GRID_NAME(title,type,amin,omin) title,
-#define GRID_CONFIG(title,type,amin,omin) ":" title
-#define GRID_LOOPYTYPE(title,type,amin,omin) LOOPY_GRID_ ## type,
-#define GRID_GRIDTYPE(title,type,amin,omin) GRID_ ## type,
-#define GRID_SIZES(title,type,amin,omin) \
-    {amin, omin, \
+#define GRID_NAME(title,type,amin,omin,amax) title,
+#define GRID_CONFIG(title,type,amin,omin,amax) ":" title
+#define GRID_LOOPYTYPE(title,type,amin,omin,amax) LOOPY_GRID_ ## type,
+#define GRID_GRIDTYPE(title,type,amin,omin,amax) GRID_ ## type,
+#define GRID_SIZES(title,type,amin,omin,amax) \
+    {amin, omin, amax, \
      "Width and height for this grid type must both be at least " #amin, \
-     "At least one of width and height for this grid type must be at least " #omin,},
+     "At least one of width and height for this grid type must be at least " #omin, \
+     "Width and height for this grid type must both be at most " #amax,},
 enum { GRIDLIST(GRID_LOOPYTYPE) LOOPY_GRID_DUMMY_TERMINATOR };
 static char const *const gridnames[] = { GRIDLIST(GRID_NAME) };
 #define GRID_CONFIGS GRIDLIST(GRID_CONFIG)
 static grid_type grid_types[] = { GRIDLIST(GRID_GRIDTYPE) };
 #define NUM_GRID_TYPES (sizeof(grid_types) / sizeof(grid_types[0]))
 static const struct {
-    int amin, omin;
-    const char *aerr, *oerr;
+    int amin, omin, amax;
+    const char *aerr, *oerr, *merr;
 } grid_size_limits[] = { GRIDLIST(GRID_SIZES) };
 
 /* Generates a (dynamically allocated) new grid, according to the
@@ -477,7 +478,7 @@ static game_params *default_params(void)
 {
     game_params *ret = snew(game_params);
 
-    ret->h = 7;
+    ret->h = 6;
     ret->w = 6;
     ret->diff = DIFF_NORMAL;
     ret->type = 0;
@@ -494,19 +495,15 @@ static game_params *dup_params(const game_params *params)
 }
 
 static const game_params loopy_presets_top[] = {
-    {  6,  7, DIFF_EASY,   LOOPY_GRID_SQUARE },
-    {  6,  7, DIFF_NORMAL, LOOPY_GRID_SQUARE },
-    {  6,  7, DIFF_HARD,   LOOPY_GRID_SQUARE },
-    {  6,  6, DIFF_NORMAL, LOOPY_GRID_HONEYCOMB },
-    {  6,  6, DIFF_HARD,   LOOPY_GRID_HONEYCOMB },
-    {  4,  5, DIFF_NORMAL, LOOPY_GRID_CAIRO },
-    {  4,  5, DIFF_HARD,   LOOPY_GRID_CAIRO },
-    {  8, 10, DIFF_NORMAL, LOOPY_GRID_SQUARE },
-    {  8, 10, DIFF_HARD,   LOOPY_GRID_SQUARE },
-    {  8,  8, DIFF_NORMAL, LOOPY_GRID_HONEYCOMB },
-    {  8,  8, DIFF_HARD,   LOOPY_GRID_HONEYCOMB },
-    {  6,  7, DIFF_NORMAL, LOOPY_GRID_CAIRO },
-    {  6,  7, DIFF_HARD,   LOOPY_GRID_CAIRO },
+    {  6,  6, DIFF_EASY,   LOOPY_GRID_SQUARE },
+    {  6,  6, DIFF_NORMAL, LOOPY_GRID_SQUARE },
+    {  6,  6, DIFF_HARD,   LOOPY_GRID_SQUARE },
+    {  7,  6, DIFF_NORMAL, LOOPY_GRID_HONEYCOMB },
+    {  7,  6, DIFF_HARD,   LOOPY_GRID_HONEYCOMB },
+    {  8,  8, DIFF_NORMAL, LOOPY_GRID_SQUARE },
+    {  8,  8, DIFF_HARD,   LOOPY_GRID_SQUARE },
+    {  9,  8, DIFF_NORMAL, LOOPY_GRID_HONEYCOMB },
+    {  9,  8, DIFF_HARD,   LOOPY_GRID_HONEYCOMB },
 };
 
 
@@ -626,11 +623,14 @@ static const char *validate_params(const game_params *params, bool full)
     if (params->type < 0 || params->type >= NUM_GRID_TYPES)
         return "Illegal grid type";
     if (params->w < grid_size_limits[params->type].amin ||
-    params->h < grid_size_limits[params->type].amin)
+        params->h < grid_size_limits[params->type].amin)
         return grid_size_limits[params->type].aerr;
     if (params->w < grid_size_limits[params->type].omin &&
-    params->h < grid_size_limits[params->type].omin)
+        params->h < grid_size_limits[params->type].omin)
         return grid_size_limits[params->type].oerr;
+    if (params->w > grid_size_limits[params->type].amax ||
+        params->h > grid_size_limits[params->type].amax)
+        return grid_size_limits[params->type].merr;
 
     /*
      * This shouldn't be able to happen at all, since decode_params

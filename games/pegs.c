@@ -47,8 +47,6 @@ static char const *const pegs_titletypes[] = { TYPELIST(TITLE) };
 static char const *const pegs_lowertypes[] = { TYPELIST(LOWER) };
 #define TYPECONFIG TYPELIST(CONFIG)
 
-#define FLASH_FRAME 0.13F
-
 struct game_params {
     int w, h;
     int type;
@@ -182,7 +180,9 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (full && (params->w <= 3 || params->h <= 3))
-    return "Width and height must both be greater than three";
+        return "Width and height must both be greater than three";
+    if (full && (params->w > 16 || params->h > 16))
+        return "Width and height must both not be greater than 16";
 
     /*
      * It might be possible to implement generalisations of Cross

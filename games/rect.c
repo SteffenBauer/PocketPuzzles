@@ -182,9 +182,9 @@ static config_item *game_configure(const game_params *params)
     ret[1].u.string.sval = dupstr(buf);
 
     ret[2].name = "Expansion factor";
-    ret[2].type = C_STRING;
-    sprintf(buf, "%g", params->expandfactor);
-    ret[2].u.string.sval = dupstr(buf);
+    ret[2].type = C_CHOICES;
+    ret[2].u.choices.choicenames = ":0%:10%:20%:30%:40%:50%:60%:70%:80%:90%:100%";
+    ret[2].u.choices.selected = (int)(params->expandfactor * 10.0);
 
     ret[3].name = "Ensure unique solution";
     ret[3].type = C_BOOLEAN;
@@ -202,7 +202,7 @@ static game_params *custom_params(const config_item *cfg)
 
     ret->w = atoi(cfg[0].u.string.sval);
     ret->h = atoi(cfg[1].u.string.sval);
-    ret->expandfactor = (float)atof(cfg[2].u.string.sval);
+    ret->expandfactor = (float)cfg[2].u.choices.selected / 10.0;
     ret->unique = cfg[3].u.boolean.bval;
 
     return ret;
@@ -212,6 +212,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w <= 0 || params->h <= 0)
         return "Width and height must both be greater than zero";
+    if (params->w > 16 || params->h > 16)
+        return "Width and height must both not be greater than 16";
     if (params->w*params->h < 2)
         return "Grid area must be greater than one";
     if (params->expandfactor < 0.0F)

@@ -93,12 +93,11 @@ struct game_params {
 #define DEFAULT_PRESET 1
 
 static const struct game_params magnets_presets[] = {
-    {5, 6, DIFF_EASY, 1},
-    {5, 6, DIFF_TRICKY, 1},
-    {7, 8, DIFF_EASY, 1},
-    {7, 8, DIFF_TRICKY, 1},
-    {9, 10, DIFF_EASY, 1},
-    {9, 10, DIFF_TRICKY, 1}
+    {4, 4, DIFF_EASY, 0},
+    {6, 6, DIFF_EASY, 1},
+    {6, 6, DIFF_TRICKY, 1},
+    {8, 8, DIFF_TRICKY, 1},
+    {10, 10, DIFF_TRICKY, 1}
 };
 
 static game_params *default_params(void)
@@ -228,6 +227,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 2) return "Width must be at least one";
     if (params->h < 2) return "Height must be at least one";
+    if (params->w > 12) return "Width must be at most 12";
+    if (params->h > 12) return "Height must be at most 12";
     if (params->diff < 0 || params->diff >= DIFFCOUNT)
         return "Unknown difficulty level";
 

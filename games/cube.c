@@ -543,30 +543,29 @@ static const char *validate_params(const game_params *params, bool full)
     return "Unrecognised solid type";
 
     if (solids[params->solid]->order == 4) {
-    if (params->d1 <= 1 || params->d2 <= 1)
-        return "Both grid dimensions must be greater than one";
+        if (params->d1 <= 1 || params->d2 <= 1)
+            return "Both grid dimensions must be greater than one";
+        if (params->d1 > 8 || params->d2 > 8)
+            return "Grid is too big";
     } else {
-    if (params->d1 <= 0 && params->d2 <= 0)
-        return "At least one grid dimension must be greater than zero";
+        if (params->d1 <= 0 && params->d2 <= 0)
+            return "At least one grid dimension must be greater than zero";
+        if (params->d1 > 4 || params->d2 > 4)
+            return "Grid is too big";
     }
 
-    for (i = 0; i < 4; i++)
-    classes[i] = 0;
-    if (params->solid == TETRAHEDRON)
-    classes[4] = 4;
-    else if (params->solid == OCTAHEDRON)
-    classes[4] = 2;
-    else
-    classes[4] = 1;
+    for (i = 0; i < 4; i++) classes[i] = 0;
+    if (params->solid == TETRAHEDRON)     classes[4] = 4;
+    else if (params->solid == OCTAHEDRON) classes[4] = 2;
+    else                                  classes[4] = 1;
     enum_grid_squares(params, count_grid_square_callback, classes);
 
     for (i = 0; i < classes[4]; i++)
     if (classes[i] < solids[params->solid]->nfaces / classes[4])
         return "Not enough grid space to place all blue faces";
 
-    if (grid_area(params->d1, params->d2, solids[params->solid]->order) <
-    solids[params->solid]->nfaces + 1)
-    return "Not enough space to place the solid on an empty square";
+    if (grid_area(params->d1, params->d2, solids[params->solid]->order) < solids[params->solid]->nfaces + 1)
+        return "Not enough space to place the solid on an empty square";
 
     return NULL;
 }

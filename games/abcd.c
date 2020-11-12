@@ -35,10 +35,6 @@
 
 #include "puzzles.h"
 
-#ifdef STANDALONE_SOLVER
-bool solver_verbose = false;
-#endif
-
 enum {
     COL_OUTERBG, COL_INNERBG, COL_ERRORBG,
     COL_GRID,
@@ -219,10 +215,11 @@ static game_params *custom_params(const config_item *cfg)
 
 static const char *validate_params(const game_params *params, bool full)
 {
-    /* A width or height under 2 could possibly break the solver */
-    if (params->w < 2) return "Width must be at least 2";
-    if (params->h < 2) return "Height must be at least 2";
+    if (params->w < 3) return "Width must be at least 3";
+    if (params->h < 3) return "Height must be at least 3";
     
+    if (params->w > 12) return "Width must be no more than 12";
+    if (params->h > 12) return "Height must be no more than 12";
     /*
     * It is actually possible for puzzles with 2 letters to exist, but they're
     * not really interesting. There are also no puzzles with unique solutions
@@ -592,13 +589,6 @@ static int abcd_solver_runs(game_state *state, int *remaining, int horizontal, c
                         x = (horizontal ? b : x);
                         y = (horizontal ? y : b);
                         
-#ifdef STANDALONE_SOLVER
-if(solver_verbose)
-    printf("Solver: Run on %s %i confirms %c at %i,%i\n",
-            horizontal ? "Row" : "Column",
-            a, 'A'+c, x+1,y+1);
-#endif
-                        
                         abcd_place_letter(state, x, y, c, remaining);
                     }
                 }
@@ -756,10 +746,6 @@ static int abcd_solve_game(int *numbers, game_state *state)
     int busy = true;
     int error = 0;
 
-#ifdef STANDALONE_SOLVER
-char *debug;
-#endif
-    
     /* Create a new game. Copy only the number clues and parameters */
     memcpy(state->numbers, numbers, l*n * sizeof(int));
     
@@ -787,10 +773,6 @@ char *debug;
             for (y = 0; y < h; y++)
                 if(remaining[HOR_CLUE(y,c)] == 0)
                 {
-#ifdef STANDALONE_SOLVER
-if(solver_verbose)
-    printf("Solver: %c satisfied for Row %i \n", 'A'+c, y+1);
-#endif
                     busy = true;
                     remaining[HOR_CLUE(y,c)] = NO_NUMBER;
                     for (x = 0; x < w; x++)
@@ -801,10 +783,6 @@ if(solver_verbose)
             for (x = 0; x < w; x++)
                 if(remaining[VER_CLUE(x,c)] == 0)
                 {
-#ifdef STANDALONE_SOLVER
-if(solver_verbose)
-    printf("Solver: %c satisfied for Column %i \n", 'A'+c, x+1);
-#endif
                     busy = true;
                     remaining[VER_CLUE(x,c)] = NO_NUMBER;
                     for (y = 0; y < h; y++)
@@ -836,10 +814,6 @@ if(solver_verbose)
                 else if (let != MULTIPLE)
                 {
                     /* One possibility found */
-#ifdef STANDALONE_SOLVER
-if(solver_verbose)
-    printf("Solver: Single possibility %c on %i,%i\n", 'A'+let, x+1,y+1);
-#endif
                     busy = true;
                     abcd_place_letter(state, x, y, let, remaining);
                 }
@@ -868,28 +842,10 @@ if(solver_verbose)
         
     } /* while busy */
     
-#ifdef STANDALONE_SOLVER
-if(solver_verbose)
-{
-    debug = abcd_format_letters(state, false);
-    printf("Solver letters: %s \n", abcd_format_letters(state, false));
-    sfree(debug);
-}
-#endif
-    
     /* Check if the puzzle has been solved. */
     if (error == 0)
         error = abcd_validate_puzzle(state);
 
-#ifdef STANDALONE_SOLVER
-if(solver_verbose)
-{
-    printf("Solver result: %s \n\n",
-    error == 0 ? "Success" : error == 1 ? "No solution found" : "Error"
-    );
-}
-#endif
-    
     sfree(remaining);
     return error;
 }
@@ -935,10 +891,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     
     bool valid_puzzle = false;
 
-#ifdef STANDALONE_SOLVER
-char *debug;
-#endif
-    
     game_state *state = NULL;
     game_state *solved = NULL;
     
@@ -987,15 +939,6 @@ char *debug;
         }
     }
 
-#ifdef STANDALONE_SOLVER
-if(solver_verbose)
-{
-    debug = abcd_format_letters(state, false);
-    printf("Letters: %s\n", debug);
-    sfree(debug);
-}
-#endif
-    
     /* Create clues */
     for (y = 0; y < h; y++)
     {
@@ -1021,10 +964,6 @@ if(solver_verbose)
     
     } /* while !valid_puzzle */
 
-#ifdef STANDALONE_SOLVER
-printf("Valid puzzle generated after %i attempt(s) \n", attempts);
-#endif
-    
     if(params->removenums)
     {
         /* Create an array with a randomized order of each clue */

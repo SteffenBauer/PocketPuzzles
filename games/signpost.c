@@ -21,8 +21,6 @@
 
 #define INGRID(s,x,y) ((x) >= 0 && (x) < (s)->w && (y) >= 0 && (y) < (s)->h)
 
-#define FLASH_SPIN 0.7F
-
 #define NBACKGROUNDS 16
 
 enum {
@@ -352,6 +350,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 1) return "Width must be at least one";
     if (params->h < 1) return "Height must be at least one";
+    if (params->w > 16) return "Width must be at most 16";
+    if (params->h > 16) return "Height must be at most 16";
     if (full && params->w == 1 && params->h == 1)
     /* The UI doesn't let us move these from unsolved to solved,
      * so we disallow generating (but not playing) them. */
@@ -1893,8 +1893,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     game_state *postdrop = NULL;
     xd = FROMCOORD(ui->dx); yd = FROMCOORD(ui->dy);
 
-    if (flashtime > 0.0F)
-        angle_offset = 2.0 * PI * (flashtime / FLASH_SPIN);
     if (angle_offset != ds->angle_offset) {
         ds->angle_offset = angle_offset;
         force = true;

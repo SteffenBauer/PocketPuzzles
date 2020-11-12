@@ -38,16 +38,6 @@
 
 #include "puzzles.h"
 
-#ifdef STANDALONE_SOLVER
-bool solver_verbose = false;
-bool solver_steps = false;
-
-#define solver_printf if(!solver_verbose) {} else printf
-
-#else
-#define solver_printf(...)
-#endif
-
 enum {
     COL_BACKGROUND,
     COL_GRID,
@@ -178,16 +168,14 @@ const static struct game_params boats_presets[] = {
     { 6, 6, 3, NULL, DIFF_EASY, false },
     { 6, 6, 3, NULL, DIFF_NORMAL, true },
     { 6, 6, 3, NULL, DIFF_TRICKY, true },
-    { 6, 6, 3, NULL, DIFF_HARD, true },
-    { 8, 8, 4, NULL, DIFF_NORMAL, true },
     { 8, 8, 4, NULL, DIFF_TRICKY, true },
     { 8, 8, 4, NULL, DIFF_HARD, true },
-    { 10, 10, 4, NULL, DIFF_NORMAL, true },
     { 10, 10, 4, NULL, DIFF_TRICKY, true },
     { 10, 10, 4, NULL, DIFF_HARD, true },
+    { 12, 12, 5, NULL, DIFF_HARD, true},
 };
 
-#define DEFAULT_PRESET 7
+#define DEFAULT_PRESET 3
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
 {
@@ -316,7 +304,7 @@ static config_item *game_configure(const game_params *params)
     char buf[80];
     int *fleet = boats_default_fleet(params->fleet);
 
-    ret = snewn(7, config_item);
+    ret = snewn(6, config_item);
 
     ret[0].name = "Width";
     ret[0].type = C_STRING;
@@ -333,25 +321,17 @@ static config_item *game_configure(const game_params *params)
     sprintf(buf, "%d", params->fleet);
     ret[2].u.string.sval = dupstr(buf);
 
-    ret[3].name = "Fleet configuration";
-    ret[3].type = C_STRING;
-    /* Only fill this field if the fleet is non-standard */
-    if(memcmp(params->fleetdata, fleet, params->fleet*sizeof(int)))
-        ret[3].u.string.sval = boats_encode_fleet(params->fleetdata, params->fleet);
-    else
-        ret[3].u.string.sval = dupstr("");
+    ret[3].name = "Difficulty";
+    ret[3].type = C_CHOICES;
+    ret[3].u.choices.choicenames = DIFFCONFIG;
+    ret[3].u.choices.selected = params->diff;
     
-    ret[4].name = "Difficulty";
-    ret[4].type = C_CHOICES;
-    ret[4].u.choices.choicenames = DIFFCONFIG;
-    ret[4].u.choices.selected = params->diff;
-    
-    ret[5].name = "Remove numbers";
-    ret[5].type = C_BOOLEAN;
-    ret[5].u.boolean.bval = params->strip;
+    ret[4].name = "Remove numbers";
+    ret[4].type = C_BOOLEAN;
+    ret[4].u.boolean.bval = params->strip;
 
-    ret[6].name = NULL;
-    ret[6].type = C_END;
+    ret[5].name = NULL;
+    ret[5].type = C_END;
 
     sfree(fleet);
     return ret;
@@ -364,15 +344,9 @@ static game_params *custom_params(const config_item *cfg)
     ret->w = atoi(cfg[0].u.string.sval);
     ret->h = atoi(cfg[1].u.string.sval);
     ret->fleet = atoi(cfg[2].u.string.sval);
-    ret->diff = cfg[4].u.choices.selected;
-    ret->strip = cfg[5].u.boolean.bval;
-
-    if(ret->fleet < 1 || ret->fleet > 9)
-        ret->fleetdata = NULL;
-    else if(strcmp(cfg[3].u.string.sval, ""))
-        ret->fleetdata = boats_decode_fleet(cfg[3].u.string.sval, ret->fleet);
-    else
-        ret->fleetdata = boats_default_fleet(ret->fleet);
+    ret->diff = cfg[3].u.choices.selected;
+    ret->strip = cfg[4].u.boolean.bval;
+    ret->fleetdata = boats_default_fleet(ret->fleet);
     
     return ret;
 }
@@ -1238,7 +1212,6 @@ static int boats_solver_place_water(game_state *state, int x, int y)
     {
         ret++;
         state->grid[y*w+x] = WATER;
-        solver_printf("Place water at %i,%i\n", x, y);
     }
     
     return ret;
@@ -1267,7 +1240,6 @@ static int boats_solver_place_ship(game_state *state, int x, int y)
     {
         ret++;
         state->grid[y*w+x] = SHIP_VAGUE;
-        solver_printf("Place ship at %i,%i\n", x, y);
         
         ret += boats_solver_place_water(state, x-1, y-1);
         ret += boats_solver_place_water(state, x+1, y-1);
@@ -1289,11 +1261,9 @@ static int boats_solver_initial(game_state *state)
     int h = state->h;
     int ret = 0;
     int x, y;
-    
+
     memset(state->grid, EMPTY, w*h*sizeof(char));
-    
-    solver_printf("Processing grid clues\n");
-    
+
     for(x = 0; x < w; x++)
     for(y = 0; y < h; y++)
     {
@@ -1387,8 +1357,6 @@ static int boats_solver_check_fill(game_state *state, int *blankcounts)
     
     if(count == w*h)
     {
-        solver_printf("Fill the rest of the grid with ships\n");
-        
         for(i = 0; i < w*h; i++)
         {
             if(state->grid[i] == EMPTY)
@@ -1419,12 +1387,10 @@ static int boats_solver_check_counts(game_state *state, int *blankcounts, int *s
         
         if(shipcounts[i] == state->borderclues[i] && blankcounts[i] != (h - state->borderclues[i]))
         {
-            solver_printf("Complete column %i with water\n", i);
             ret += boats_solver_fill_row(state, i, 0, i, h-1, WATER);
         }
         else if(shipcounts[i] != state->borderclues[i] && blankcounts[i] == (h - state->borderclues[i]))
         {
-            solver_printf("Complete column %i with ships\n", i);
             ret += boats_solver_fill_row(state, i, 0, i, h-1, SHIP_VAGUE);
         }
     }
@@ -1436,12 +1402,10 @@ static int boats_solver_check_counts(game_state *state, int *blankcounts, int *s
         
         if(shipcounts[i+w] == state->borderclues[i+w] && blankcounts[i+w] != (w - state->borderclues[i+w]))
         {
-            solver_printf("Complete row %i with water\n", i);
             ret += boats_solver_fill_row(state, 0, i, w-1, i, WATER);
         }
         else if(shipcounts[i+w] != state->borderclues[i+w] && blankcounts[i+w] == (w - state->borderclues[i+w]))
         {
-            solver_printf("Complete row %i with ships\n", i);
             ret += boats_solver_fill_row(state, 0, i, w-1, i, SHIP_VAGUE);
         }
     }
@@ -1485,7 +1449,6 @@ static int boats_solver_remove_singles(game_state *state, int *fleetcount)
             sup == WATER && sdown == WATER &&
             state->grid[y*w+x] == EMPTY)
         {
-            solver_printf("Single square at %i,%i cannot contain boat\n", x, y);
             ret += boats_solver_place_water(state, x, y);
         }
         
@@ -1494,25 +1457,21 @@ static int boats_solver_remove_singles(game_state *state, int *fleetcount)
         
         if(sleft == WATER && sright == WATER && sup == WATER && sdown == EMPTY)
         {
-            solver_printf("Single ship at %i,%i must extend downward\n", x, y);
             ret += boats_solver_place_ship(state, x, y+1);
         }
         
         else if(sleft == WATER && sright == WATER && sdown == WATER && sup == EMPTY)
         {
-            solver_printf("Single ship at %i,%i must extend upward\n", x, y);
             ret += boats_solver_place_ship(state, x, y-1);
         }
         
         else if(sdown == WATER && sright == WATER && sup == WATER && sleft == EMPTY)
         {
-            solver_printf("Single ship at %i,%i must extend to the left\n", x, y);
             ret += boats_solver_place_ship(state, x-1, y);
         }
         
         else if(sdown == WATER && sleft == WATER && sup == WATER && sright == EMPTY)
         {
-            solver_printf("Single ship at %i,%i must extend to the right\n", x, y);
             ret += boats_solver_place_ship(state, x+1, y);
         }
     }
@@ -1556,13 +1515,11 @@ static int boats_solver_centers_trivial(game_state *state, bool *hascenters)
         
         if(sleft == WATER || sright == WATER)
         {
-            solver_printf("Center clue at %i,%i confirmed vertical\n", x, y);
             ret += boats_solver_place_ship(state, x, y-1);
             ret += boats_solver_place_ship(state, x, y+1);
         }
         else if(sup == WATER || sdown == WATER)
         {
-            solver_printf("Center clue at %i,%i confirmed horizontal\n", x, y);
             ret += boats_solver_place_ship(state, x-1, y);
             ret += boats_solver_place_ship(state, x+1, y);
         }
@@ -1606,7 +1563,6 @@ static int boats_solver_centers_normal(game_state *state, int *shipcounts)
             /* The row must support at least 2 more ships */
             if(state->borderclues[y+w] - shipcounts[y+w] < 2)
             {
-                solver_printf("Center clue %d,%d: Horizontal ship will violate border clue\n", x, y);
                 ret += boats_solver_place_water(state, x+1, y);
             }
         }
@@ -1615,7 +1571,6 @@ static int boats_solver_centers_normal(game_state *state, int *shipcounts)
             /* The column must support at least 2 more ships */
             if(state->borderclues[x] - shipcounts[x] < 2)
             {
-                solver_printf("Center clue %d,%d: Vertical ship will violate border clue\n", x, y);
                 ret += boats_solver_place_water(state, x, y+1);
             }
         }
@@ -1652,8 +1607,7 @@ static int boats_solver_min_expand_dsf_forward(game_state *state, int *fleetcoun
         s = dsf_size(dsf, i2) - 1;
         if(s < 1 || s >= state->fleet || state->fleetdata[s] != fleetcount[s])
             continue;
-        
-        solver_printf("Boat of size %d must expand to %d,%d\n", s+1, x, y);
+
         return boats_solver_place_ship(state, x, y);
     }
     
@@ -1689,7 +1643,6 @@ static int boats_solver_min_expand_dsf_back(game_state *state, int *fleetcount, 
         
         i2 = c1 - d;
         
-        solver_printf("Boat of size %d must expand to %d,%d\n", s+1, i2%w, i2/w);
         return boats_solver_place_ship(state, i2%w, i2/w);
     }
     
@@ -1765,7 +1718,6 @@ static int boats_solver_max_expand_dsf(game_state *state, int *fleetcount, int *
         
         if(count > max+1)
         {
-            solver_printf("Ship at %d,%d will result in boat of size %d\n", x, y, count);
             ret += boats_solver_place_water(state, x, y);
         }
     }
@@ -1847,10 +1799,7 @@ static int boats_solver_find_max_fleet(game_state *state, int *shipcounts,
         for(i = 0; i < r; i++)
         {
             struct boats_run *run = &runs[idx[i]];
-            solver_printf("Possible position for ship: row=%i start=%i len=%i ships=%i %s\n",
-                run->row, run->start, run->len, run->ships,
-                run->horizontal ? "Horizontal" : "Vertical");
-                        
+
             /* On lower difficulties, only include runs that fit a boat exactly */
             if(simple && run->len > (max+1))
                 continue;
@@ -1861,10 +1810,6 @@ static int boats_solver_find_max_fleet(game_state *state, int *shipcounts,
             /* Confirm single cell in certain direction */
             if(end - start == 1)
             {
-                solver_printf("Required position for ship: row=%i start=%i end=%i Single cell %s\n",
-                    run->row, start, end,
-                    run->horizontal ? "Horizontal" : "Vertical"); 
-                
                 if(run->horizontal)
                 {
                     ret += boats_solver_place_ship(state, start, run->row);
@@ -1880,10 +1825,6 @@ static int boats_solver_find_max_fleet(game_state *state, int *shipcounts,
             }
             else if(end - start > 1)
             {
-                solver_printf("Required position for ship: row=%i start=%i end=%i Multiple cells %s\n",
-                    run->row, start, end,
-                    run->horizontal ? "Horizontal" : "Vertical"); 
-                
                 if(run->horizontal)
                 {
                     ret += boats_solver_fill_row(state, start, run->row, end-1, run->row, SHIP_VAGUE);
@@ -1924,9 +1865,6 @@ static int boats_solver_split_runs(game_state *state, int *fleetcount,
         
         if(state->fleetdata[len-1] == fleetcount[len-1])
         {
-            solver_printf("Run of size %d at %s %d must not be filled\n",
-                len, run->horizontal ? "row" : "column", run->row); 
-            
             if(run->horizontal)
             {
                 ret += boats_solver_fill_row(state, run->start, run->row, run->start+len-1, run->row, WATER);
@@ -2004,13 +1942,6 @@ static int boats_solver_shared_diagonals(game_state *state, int *watercounts, in
             }
         }
     }
-    
-#ifdef STANDALONE_SOLVER
-    if (solver_verbose && ret) {
-        printf("%i shared diagonal%s filled with water\n", ret, ret != 1 ? "s" : ""); 
-    }
-#endif
-    
     return ret;
 }
 
@@ -2026,12 +1957,7 @@ static int boats_solver_attempt_ship_rows(game_state *state, char *tmpgrid, int 
     int h = state->h;
     int ret = 0;
     int x = 0, y = 0;
-    
-#ifdef STANDALONE_SOLVER
-    bool temp_verbose = solver_verbose;
-    solver_verbose = false;
-#endif
-    
+
     memcpy(tmpgrid, state->grid, w*h*sizeof(char));
     
     /* Rows */
@@ -2051,11 +1977,6 @@ static int boats_solver_attempt_ship_rows(game_state *state, char *tmpgrid, int 
                     
                     if(boats_validate_state(state) == STATUS_INVALID)
                     {
-#ifdef STANDALONE_SOLVER
-                        if (temp_verbose) {
-                            printf("Row %i: Water at %i,%i leads to violation\n", y, x, y);
-                        }
-#endif
                         memcpy(state->grid, tmpgrid, w*h*sizeof(char));
                         ret += boats_solver_place_ship(state, x, y);
                         memcpy(tmpgrid, state->grid, w*h*sizeof(char));
@@ -2087,11 +2008,6 @@ static int boats_solver_attempt_ship_rows(game_state *state, char *tmpgrid, int 
                     
                     if(boats_validate_state(state) == STATUS_INVALID)
                     {
-#ifdef STANDALONE_SOLVER
-                        if (temp_verbose) {
-                            printf("Column %i: Water at %i,%i leads to violation\n", x, x, y);
-                        }
-#endif
                         memcpy(state->grid, tmpgrid, w*h*sizeof(char));
                         ret += boats_solver_place_ship(state, x, y);
                         memcpy(tmpgrid, state->grid, w*h*sizeof(char));
@@ -2104,11 +2020,6 @@ static int boats_solver_attempt_ship_rows(game_state *state, char *tmpgrid, int 
             }
         }
     }
-    
-#ifdef STANDALONE_SOLVER
-    solver_verbose = temp_verbose;
-#endif
-
     memcpy(state->grid, tmpgrid, w*h*sizeof(char));
     return ret;
 }
@@ -2125,12 +2036,7 @@ static int boats_solver_attempt_water_rows(game_state *state, char *tmpgrid, int
     int h = state->h;
     int ret = 0;
     int x = 0, y = 0;
-    
-#ifdef STANDALONE_SOLVER
-    bool temp_verbose = solver_verbose;
-    solver_verbose = false;
-#endif
-    
+
     memcpy(tmpgrid, state->grid, w*h*sizeof(char));
     
     /* Rows */
@@ -2149,11 +2055,6 @@ static int boats_solver_attempt_water_rows(game_state *state, char *tmpgrid, int
                     
                     if(boats_validate_state(state) == STATUS_INVALID)
                     {
-#ifdef STANDALONE_SOLVER
-                        if (temp_verbose) {
-                            printf("Row %i: Ship at %i,%i leads to violation\n", y, x, y);
-                        }
-#endif
                         memcpy(state->grid, tmpgrid, w*h*sizeof(char));
                         ret += boats_solver_place_water(state, x, y);
                         memcpy(tmpgrid, state->grid, w*h*sizeof(char));
@@ -2184,11 +2085,6 @@ static int boats_solver_attempt_water_rows(game_state *state, char *tmpgrid, int
                     
                     if(boats_validate_state(state) == STATUS_INVALID)
                     {
-#ifdef STANDALONE_SOLVER
-                        if (temp_verbose) {
-                            printf("Column %i: Ship at %i,%i leads to violation\n", x, x, y);
-                        }
-#endif
                         memcpy(state->grid, tmpgrid, w*h*sizeof(char));
                         ret += boats_solver_place_water(state, x, y);
                         memcpy(tmpgrid, state->grid, w*h*sizeof(char));
@@ -2201,11 +2097,6 @@ static int boats_solver_attempt_water_rows(game_state *state, char *tmpgrid, int
             }
         }
     }
-    
-#ifdef STANDALONE_SOLVER
-    solver_verbose = temp_verbose;
-#endif
-
     memcpy(state->grid, tmpgrid, w*h*sizeof(char));
     return ret;
 }
@@ -2224,11 +2115,6 @@ static int boats_solver_centers_attempt(game_state *state, char *tmpgrid)
     
     char sleft, sright, sup, sdown;
 
-#ifdef STANDALONE_SOLVER
-    bool temp_verbose = solver_verbose;
-    solver_verbose = false;
-#endif
-    
     memcpy(tmpgrid, state->grid, w*h*sizeof(char));
     
     for(x = 0; x < w; x++)
@@ -2250,11 +2136,6 @@ static int boats_solver_centers_attempt(game_state *state, char *tmpgrid)
         
         if(boats_validate_state(state) == STATUS_INVALID)
         {
-#ifdef STANDALONE_SOLVER
-            if (temp_verbose) {
-                printf("Horizontal ship at %i,%i leads to violation\n", x, y);
-            }
-#endif
             memcpy(state->grid, tmpgrid, w*h*sizeof(char));
             ret += boats_solver_place_water(state, x+1, y);
             memcpy(tmpgrid, state->grid, w*h*sizeof(char));
@@ -2271,11 +2152,6 @@ static int boats_solver_centers_attempt(game_state *state, char *tmpgrid)
         
         if(boats_validate_state(state) == STATUS_INVALID)
         {
-#ifdef STANDALONE_SOLVER
-            if (temp_verbose) {
-                printf("Vertical ship at %i,%i leads to violation\n", x, y);
-            }
-#endif
             memcpy(state->grid, tmpgrid, w*h*sizeof(char));
             ret += boats_solver_place_water(state, x, y+1);
             memcpy(tmpgrid, state->grid, w*h*sizeof(char));
@@ -2287,11 +2163,6 @@ static int boats_solver_centers_attempt(game_state *state, char *tmpgrid)
             memcpy(state->grid, tmpgrid, w*h*sizeof(char));
         }
     }
-    
-#ifdef STANDALONE_SOLVER
-    solver_verbose = temp_verbose;
-#endif
-    
     return ret;
 }
 
@@ -2313,7 +2184,6 @@ static bool boats_solver_borderclues_fill(game_state *state, int *blankcounts, i
         found = true;
         if(shipcounts[i] + blankcounts[i] == h)
         {
-            solver_printf("Column %d is finished, add clue %d\n", i, shipcounts[i]);
             state->borderclues[i] = shipcounts[i];
         }
     }
@@ -2326,7 +2196,6 @@ static bool boats_solver_borderclues_fill(game_state *state, int *blankcounts, i
         found = true;
         if(shipcounts[i+w] + blankcounts[i+w] == w)
         {
-            solver_printf("Row %d is finished, add clue %d\n", i, shipcounts[i+w]);
             state->borderclues[i+w] = shipcounts[i+w];
         }
     }
@@ -2365,7 +2234,6 @@ static int boats_solver_borderclues_last(game_state *state)
     
     if(found >= 0)
     {
-        solver_printf("Last Column clue is at %d, add clue %d\n", found, maxships - shipcount);
         state->borderclues[found] = maxships - shipcount;
         ret++;
     }
@@ -2386,7 +2254,6 @@ static int boats_solver_borderclues_last(game_state *state)
     
     if(found >= 0)
     {
-        solver_printf("Last Row clue is at %d, add clue %d\n", found, maxships - shipcount);
         state->borderclues[found+w] = maxships - shipcount;
         ret++;
     }
@@ -2399,11 +2266,7 @@ static int boats_solve_game(game_state *state, int maxdiff)
     int w = state->w;
     int h = state->h;
     int i;
-    
-#ifdef STANDALONE_SOLVER
-    char *debug;
-#endif
-    
+
     struct boats_run *runs = NULL;
     char *tmpgrid = NULL;
     int *dsf = NULL;
@@ -2698,9 +2561,9 @@ static const char *validate_params(const game_params *params, bool full)
     
     if(full && params->diff >= DIFFCOUNT)
         return "Unknown difficulty level";
-    if(w > 99)
+    if(w > 16)
         return "Width is too high";
-    if(h > 99)
+    if(h > 16)
         return "Height is too high";
     if(fleet < 1)
         return "Fleet size must be at least 1";
@@ -2726,21 +2589,9 @@ static const char *validate_params(const game_params *params, bool full)
     
     memset(state->grid, EMPTY, w*h*sizeof(char));
 
-#ifdef STANDALONE_SOLVER
-    bool temp_steps = solver_steps;
-    bool temp_verbose = solver_verbose;
-    solver_verbose = false;
-    solver_steps = false;
-#endif
-    
     if(!boats_generate_fleet(state, NULL, runs, spaces))
         ret = "Fleet does not fit into the grid";
 
-#ifdef STANDALONE_SOLVER
-    solver_verbose = temp_verbose;
-    solver_steps = temp_steps;
-#endif
-        
     free_game(state);
     sfree(runs);
     sfree(spaces);
@@ -3015,7 +2866,6 @@ struct game_drawstate {
     
     bool redraw;
 
-    char oldflash;
     int *oldgridfs;
     int *oldfleetcount;
     int *oldborder;
@@ -3332,7 +3182,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->grid = snewn(w * h, int);
     
     ds->redraw = true;
-    ds->oldflash = false;
     
     memset(ds->grid, 0, w*h * sizeof(int));
     memset(ds->gridfs, 0, w*h * sizeof(int));

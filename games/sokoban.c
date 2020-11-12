@@ -236,6 +236,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 4 || params->h < 4)
     return "Width and height must both be at least 4";
+    if (params->w > 16 || params->h > 16)
+    return "Width and height must both be at most 16";
 
     return NULL;
 }

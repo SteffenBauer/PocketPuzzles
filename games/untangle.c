@@ -201,6 +201,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->n < 4)
         return "Number of points must be at least four";
+    if (params->n > 50)
+        return "Number of points must be at most 50";
     return NULL;
 }
 
@@ -1199,8 +1201,8 @@ static float *game_colours(frontend *fe, int *ncolours)
 #endif
         ret[COL_OUTLINE     * 3 + i] = 0.0F;
         ret[COL_POINT       * 3 + i] = 0.0F;
-        ret[COL_DRAGPOINT   * 3 + i] = 1.0F;
-        ret[COL_NEIGHBOUR   * 3 + i] = 0.5F;
+        ret[COL_DRAGPOINT   * 3 + i] = 0.5F;
+        ret[COL_NEIGHBOUR   * 3 + i] = 1.0F;
     }
 
     *ncolours = NCOLOURS;

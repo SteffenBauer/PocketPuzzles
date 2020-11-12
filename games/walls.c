@@ -199,6 +199,8 @@ static game_params *custom_params(const config_item *cfg) {
 static const char *validate_params(const game_params *params, bool full) {
     if (params->w < 3) return "Width must be at least three";
     if (params->h < 3) return "Height must be at least three";
+    if (params->w > 9) return "Width must be at most 9";
+    if (params->h > 9) return "Height must be at most 9";
     if (params->difficulty < 0 || params->difficulty >= DIFFCOUNT)
         return "Unknown difficulty level";
     return NULL;
@@ -1102,7 +1104,6 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 static float *game_colours(frontend *fe, int *ncolours) {
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
-    frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
 
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;

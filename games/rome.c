@@ -111,19 +111,14 @@ struct game_state {
     bool completed, cheated;
 };
 
-#define DEFAULT_PRESET 3
+#define DEFAULT_PRESET 2
 
 static const struct game_params rome_presets[] = {
     { 4,  4, DIFF_EASY},
-    { 4,  4, DIFF_NORMAL},
-    { 4,  4, DIFF_TRICKY},
     { 6,  6, DIFF_EASY},
     { 6,  6, DIFF_NORMAL},
-    { 6,  6, DIFF_TRICKY},
-    { 8,  8, DIFF_EASY},
     { 8,  8, DIFF_NORMAL},
     { 8,  8, DIFF_TRICKY},
-    {10, 10, DIFF_EASY},
     {10, 10, DIFF_NORMAL},
     {10, 10, DIFF_TRICKY},
 };
@@ -251,6 +246,10 @@ static const char *validate_params(const game_params *params, bool full)
         return "Width must be at least 3";
     if(params->h < 3)
         return "Height must be at least 3";
+    if(params->w > 16)
+        return "Width must be at most 16";
+    if(params->h > 16)
+        return "Height must be at most 16";
     if(params->diff >= DIFFCOUNT)
         return "Unknown difficulty level";
     

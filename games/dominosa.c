@@ -58,8 +58,6 @@
 /* map a pair of numbers to a unique domino index from 0 upwards. */
 #define DINDEX(n1,n2) ( TRI(max(n1,n2)) + min(n1,n2) )
 
-#define FLASH_TIME 0.13F
-
 /*
  * Difficulty levels. I do some macro ickery here to ensure that my
  * enum and the various forms of my name list always match up.
@@ -135,9 +133,6 @@ static const struct game_params dominosa_presets[] = {
     {  4, DIFF_HARD    },
     {  5, DIFF_HARD    },
     {  6, DIFF_HARD    },
-    {  3, DIFF_EXTREME },
-    {  4, DIFF_EXTREME },
-    {  5, DIFF_EXTREME },
     {  6, DIFF_EXTREME },
 };
 
@@ -213,7 +208,7 @@ static config_item *game_configure(const game_params *params)
 
     ret = snewn(3, config_item);
 
-    ret[0].name = "Maximum number on dominoes";
+    ret[0].name = "Maximum domino order";
     ret[0].type = C_STRING;
     sprintf(buf, "%d", params->n);
     ret[0].u.string.sval = dupstr(buf);
@@ -243,6 +238,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->n < 1)
         return "Maximum face number must be at least one";
+    if (params->n > 9)
+        return "Maximum face number must be at most nine";
     if (params->diff >= DIFFCOUNT)
         return "Unknown difficulty rating";
     return NULL;
@@ -251,13 +248,6 @@ static const char *validate_params(const game_params *params, bool full)
 /* ----------------------------------------------------------------------
  * Solver.
  */
-
-#ifdef STANDALONE_SOLVER
-#define SOLVER_DIAGNOSTICS
-bool solver_diagnostics = false;
-#elif defined SOLVER_DIAGNOSTICS
-const bool solver_diagnostics = true;
-#endif
 
 struct solver_domino;
 struct solver_placement;
@@ -272,11 +262,6 @@ struct solver_domino {
     /* List of placements not yet ruled out for this domino. */
     int nplacements;
     struct solver_placement **placements;
-
-#ifdef SOLVER_DIAGNOSTICS
-    /* A textual name we can easily reuse in solver diagnostics. */
-    char *name;
-#endif
 };
 
 /*
@@ -305,10 +290,6 @@ struct solver_placement {
     int noverlaps;
     struct solver_placement *overlaps[6];
 
-#ifdef SOLVER_DIAGNOSTICS
-    /* A textual name we can easily reuse in solver diagnostics. */
-    char *name;
-#endif
 };
 
 /*
@@ -325,10 +306,6 @@ struct solver_square {
     /* The number in the square. */
     int number;
 
-#ifdef SOLVER_DIAGNOSTICS
-    /* A textual name we can easily reuse in solver diagnostics. */
-    char *name;
-#endif
 };
 
 struct solver_scratch {
@@ -371,14 +348,6 @@ static struct solver_scratch *solver_make_scratch(int n)
             sc->dominoes[di].lo = lo;
             sc->dominoes[di].index = di;
 
-#ifdef SOLVER_DIAGNOSTICS
-            {
-                char buf[128];
-                sprintf(buf, "%d-%d", hi, lo);
-                sc->dominoes[di].name = dupstr(buf);
-            }
-#endif
-
             di++;
         }
     }
@@ -391,13 +360,6 @@ static struct solver_scratch *solver_make_scratch(int n)
             sq->index = y * w + x;
             sq->nplacements = 0;
 
-#ifdef SOLVER_DIAGNOSTICS
-            {
-                char buf[128];
-                sprintf(buf, "(%d,%d)", x, y);
-                sq->name = dupstr(buf);
-            }
-#endif
         }
     }
 
@@ -407,13 +369,6 @@ static struct solver_scratch *solver_make_scratch(int n)
             assert(pi < pc);
             sc->placements[pi].squares[0] = &sc->squares[y*w+x];
             sc->placements[pi].squares[1] = &sc->squares[(y+1)*w+x];
-#ifdef SOLVER_DIAGNOSTICS
-            {
-                char buf[128];
-                sprintf(buf, "(%d,%d-%d)", x, y, y+1);
-                sc->placements[pi].name = dupstr(buf);
-            }
-#endif
             pi++;
         }
     }
@@ -422,13 +377,6 @@ static struct solver_scratch *solver_make_scratch(int n)
             assert(pi < pc);
             sc->placements[pi].squares[0] = &sc->squares[y*w+x];
             sc->placements[pi].squares[1] = &sc->squares[y*w+(x+1)];
-#ifdef SOLVER_DIAGNOSTICS
-            {
-                char buf[128];
-                sprintf(buf, "(%d-%d,%d)", x, x+1, y);
-                sc->placements[pi].name = dupstr(buf);
-            }
-#endif
             pi++;
         }
     }
@@ -479,17 +427,6 @@ static struct solver_scratch *solver_make_scratch(int n)
 
 static void solver_free_scratch(struct solver_scratch *sc)
 {
-#ifdef SOLVER_DIAGNOSTICS
-    {
-        int i;
-        for (i = 0; i < sc->dc; i++)
-            sfree(sc->dominoes[i].name);
-        for (i = 0; i < sc->pc; i++)
-            sfree(sc->placements[i].name);
-        for (i = 0; i < sc->wh; i++)
-            sfree(sc->squares[i].name);
-    }
-#endif
     sfree(sc->dominoes);
     sfree(sc->placements);
     sfree(sc->squares);
@@ -573,11 +510,6 @@ static void rule_out_placement(
     struct solver_domino *d = p->domino;
     int i, j, si;
 
-#ifdef SOLVER_DIAGNOSTICS
-    if (solver_diagnostics)
-        printf("  ruling out placement %s for domino %s\n", p->name, d->name);
-#endif
-
     p->active = false;
 
     i = p->dpi;
@@ -619,11 +551,6 @@ static bool deduce_domino_single_placement(struct solver_scratch *sc, int di)
         if (q->active) {
             if (!done_something) {
                 done_something = true;
-#ifdef SOLVER_DIAGNOSTICS
-                if (solver_diagnostics)
-                    printf("domino %s has unique placement %s\n",
-                           d->name, p->name);
-#endif
             }
             rule_out_placement(sc, q);
         }
@@ -649,12 +576,6 @@ static bool deduce_square_single_placement(struct solver_scratch *sc, int si)
 
     if (d->nplacements <= 1)
         return false;   /* we already knew everything this would tell us */
-
-#ifdef SOLVER_DIAGNOSTICS
-    if (solver_diagnostics)
-        printf("square %s has unique placement %s (domino %s)\n",
-               sq->name, p->name, p->domino->name);
-#endif
 
     while (d->nplacements > 1)
         rule_out_placement(
@@ -690,11 +611,6 @@ static bool deduce_square_single_domino(struct solver_scratch *sc, int si)
 
     if (d->nplacements <= sq->nplacements)
         return false;       /* no other placements of d to rule out */
-
-#ifdef SOLVER_DIAGNOSTICS
-    if (solver_diagnostics)
-        printf("square %s can only contain domino %s\n", sq->name, d->name);
-#endif
 
     for (i = d->nplacements; i-- > 0 ;) {
         struct solver_placement *p = d->placements[i];
@@ -757,15 +673,6 @@ static bool deduce_domino_must_overlap(struct solver_scratch *sc, int di)
     for (i = 0; i < nintersection; i++) {
         p = intersection[i];
 
-#ifdef SOLVER_DIAGNOSTICS
-        if (solver_diagnostics) {
-            printf("placement %s of domino %s overlaps all placements "
-                   "of domino %s:", p->name, p->domino->name, d->name);
-            for (j = 0; j < d->nplacements; j++)
-                printf(" %s", d->placements[j]->name);
-            printf("\n");
-        }
-#endif
         rule_out_placement(sc, p);
     }
 
@@ -802,13 +709,6 @@ static bool deduce_local_duplicate(struct solver_scratch *sc, int pi)
 
         /* If we get here, every possible placement for sq is either q
          * itself, or another copy of d. Success! We can rule out p. */
-#ifdef SOLVER_DIAGNOSTICS
-        if (solver_diagnostics) {
-            printf("placement %s of domino %s would force another copy of %s "
-                   "in square %s\n", p->name, d->name, d->name, sq->name);
-        }
-#endif
-
         rule_out_placement(sc, p);
         return true;
 
@@ -899,14 +799,6 @@ static bool deduce_local_duplicate_2(struct solver_scratch *sc, int pi)
             /* If we get here, then every placement for either of sqi
              * and sqj is a copy of di, except for the ones that
              * overlap p. Success! We can rule out p. */
-#ifdef SOLVER_DIAGNOSTICS
-            if (solver_diagnostics) {
-                printf("placement %s of domino %s would force squares "
-                       "%s and %s to both be domino %s\n",
-                       p->name, p->domino->name,
-                       sqi->name, sqj->name, di->name);
-            }
-#endif
             rule_out_placement(sc, p);
             return true;
 
@@ -994,12 +886,6 @@ static bool deduce_parity(struct solver_scratch *sc)
         if ((size0 | size1) & 1)
             continue;
 
-#ifdef SOLVER_DIAGNOSTICS
-        if (solver_diagnostics) {
-            printf("placement %s of domino %s would create two odd-sized "
-                   "areas\n", p->name, p->domino->name);
-        }
-#endif
         rule_out_placement(sc, p);
         done_something = true;
     }
@@ -1130,9 +1016,6 @@ static bool deduce_set(struct solver_scratch *sc, bool doubles)
             bool reported = false;
             bool rule_out_nondoubles;
             int min_nused_for_double;
-#ifdef SOLVER_DIAGNOSTICS
-            const char *rule_out_text;
-#endif
 
             /*
              * We don't do set analysis on the same square of the grid
@@ -1191,9 +1074,6 @@ static bool deduce_set(struct solver_scratch *sc, bool doubles)
                     continue;
                 rule_out_nondoubles = true;
                 min_nused_for_double = 1;
-#ifdef SOLVER_DIAGNOSTICS
-                rule_out_text = "all of them elsewhere";
-#endif
             } else {
                 if (!doubles)
                     continue;          /* not at this difficulty level */
@@ -1235,10 +1115,6 @@ static bool deduce_set(struct solver_scratch *sc, bool doubles)
                      */
                     rule_out_nondoubles = true;
                     min_nused_for_double = 2;
-#ifdef SOLVER_DIAGNOSTICS
-                    rule_out_text = "all of them elsewhere "
-                        "(including the double if it fails to use both)";
-#endif
                 } else if (ndominoes == nsquares) {
                     /*
                      * A restricted form of the deduction is still
@@ -1262,9 +1138,6 @@ static bool deduce_set(struct solver_scratch *sc, bool doubles)
                      */
                     rule_out_nondoubles = false;
                     min_nused_for_double = 1;
-#ifdef SOLVER_DIAGNOSTICS
-                    rule_out_text = "the double elsewhere";
-#endif
                 } else {
                     /*
                      * If none of those cases has happened, then our
@@ -1337,26 +1210,6 @@ static bool deduce_set(struct solver_scratch *sc, bool doubles)
                         /* In case we didn't do this above */
                         squares_done |= squares;
 
-#ifdef SOLVER_DIAGNOSTICS
-                        if (solver_diagnostics) {
-                            int b;
-                            const char *sep;
-                            printf("squares {");
-                            for (sep = "", b = 0; b < nsq; b++)
-                                if (1 & (squares >> b)) {
-                                    printf("%s%s", sep, sqs[b]->name);
-                                    sep = ",";
-                                }
-                            printf("} can contain only dominoes {");
-                            for (sep = "", b = 0; b < nsq; b++)
-                                if (1 & (dominoes >> b)) {
-                                    printf("%s%s", sep, ds[b]->name);
-                                    sep = ",";
-                                }
-                            printf("}, so rule out %s", rule_out_text);
-                            printf("\n");
-                        }
-#endif
                     }
 
                     rule_out_placement(sc, p);
@@ -1485,16 +1338,6 @@ static bool deduce_forcing_chain(struct solver_scratch *sc)
         if (!duplicated_domino)
             continue;
 
-#ifdef SOLVER_DIAGNOSTICS
-        if (solver_diagnostics) {
-            printf("domino %s occurs more than once in forced chain:",
-                   duplicated_domino->name);
-            for (k = cstart; k < climit; k++)
-                printf(" %s", sc->placements[sc->pc_scratch2[k]].name);
-            printf("\n");
-        }
-#endif
-
         for (k = cstart; k < climit; k++)
             rule_out_placement(sc, &sc->placements[sc->pc_scratch2[k]]);
 
@@ -1592,16 +1435,6 @@ static bool deduce_forcing_chain(struct solver_scratch *sc)
             /*
              * We've found a chain we can rule out.
              */
-#ifdef SOLVER_DIAGNOSTICS
-            if (solver_diagnostics) {
-                printf("all choices for square %s would be ruled out "
-                       "by forced chain:", sq->name);
-                for (pi = 0; pi < sc->pc; pi++)
-                    if (sc->pc_scratch[pi] == chain)
-                        printf(" %s", sc->placements[pi].name);
-                printf("\n");
-            }
-#endif
 
             for (pi = 0; pi < sc->pc; pi++)
                 if (sc->pc_scratch[pi] == chain)
@@ -1641,21 +1474,6 @@ static bool deduce_forcing_chain(struct solver_scratch *sc)
                      */
                     int i;
 
-#ifdef SOLVER_DIAGNOSTICS
-                    if (solver_diagnostics) {
-                        printf("domino %s occurs in both complementary "
-                               "forced chains:", d->name);
-                        for (i = 0; i < sc->pc; i++)
-                            if (sc->pc_scratch[i] == cj)
-                                printf(" %s", sc->placements[i].name);
-                        printf(" and");
-                        for (i = 0; i < sc->pc; i++)
-                            if (sc->pc_scratch[i] == ck)
-                                printf(" %s", sc->placements[i].name);
-                        printf("\n");
-                    }
-#endif
-
                     for (i = d->nplacements; i-- > 0 ;)
                         if (i != j && i != k)
                             rule_out_placement(sc, d->placements[i]);
@@ -1685,20 +1503,6 @@ static int run_solver(struct solver_scratch *sc, int max_diff_allowed)
 {
     int di, si, pi;
     bool done_something;
-
-#ifdef SOLVER_DIAGNOSTICS
-    if (solver_diagnostics) {
-        int di, j;
-        printf("Initial possible placements:\n");
-        for (di = 0; di < sc->dc; di++) {
-            struct solver_domino *d = &sc->dominoes[di];
-            printf("  %s:", d->name);
-            for (j = 0; j < d->nplacements; j++)
-                printf(" %s", d->placements[j]->name);
-            printf("\n");
-        }
-    }
-#endif
 
     do {
         done_something = false;
@@ -1789,20 +1593,6 @@ static int run_solver(struct solver_scratch *sc, int max_diff_allowed)
         }
 
     } while (done_something);
-
-#ifdef SOLVER_DIAGNOSTICS
-    if (solver_diagnostics) {
-        int di, j;
-        printf("Final possible placements:\n");
-        for (di = 0; di < sc->dc; di++) {
-            struct solver_domino *d = &sc->dominoes[di];
-            printf("  %s:", d->name);
-            for (j = 0; j < d->nplacements; j++)
-                printf(" %s", d->placements[j]->name);
-            printf("\n");
-        }
-    }
-#endif
 
     for (di = 0; di < sc->dc; di++)
         if (sc->dominoes[di].nplacements == 0)
@@ -2970,10 +2760,10 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_BACKGROUND  * 3 + i] = 1.0F;
         ret[COL_TEXT        * 3 + i] = 0.0F;
         ret[COL_DOMINO      * 3 + i] = 0.0F;
-        ret[COL_DOMINOCLASH * 3 + i] = 0.3F;
+        ret[COL_DOMINOCLASH * 3 + i] = 0.25F;
         ret[COL_DOMINOTEXT  * 3 + i] = 1.0F;
         ret[COL_EDGE        * 3 + i] = 0.0F;
-        ret[COL_HIGHLIGHT_1 * 3 + i] = 0.5F;
+        ret[COL_HIGHLIGHT_1 * 3 + i] = 0.75F;
         ret[COL_HIGHLIGHT_2 * 3 + i] = 0.5F;
     }
 
@@ -3214,9 +3004,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 c |= DF_HIGHLIGHT_1;
             if (n1 == ui->highlight_2)
                 c |= DF_HIGHLIGHT_2;
-
-            if (flashtime != 0)
-                c |= DF_FLASH;             /* we're flashing */
 
             if (ui->cur_visible) {
         unsigned curx = (unsigned)(ui->cur_x - (2*x-1));

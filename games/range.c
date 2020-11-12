@@ -911,8 +911,10 @@ static const char *validate_params(const game_params *params, bool full)
     int const w = params->w, h = params->h;
     if (w < 1) return "Error: width is less than 1";
     if (h < 1) return "Error: height is less than 1";
+    if (w > 16) return "Error: width must be most 16";
+    if (h > 16) return "Error: height must be most 16";
     if (w * h < 1) return "Error: size is less than 1";
-    if (w + h - 1 > SCHAR_MAX) return "Error: w + h is too big";
+
     /* I might be unable to store clues in my puzzle_size *grid; */
     if (full) {
         if (w == 2 && h == 2) return "Error: can't create 2x2 puzzles";
@@ -1542,8 +1544,9 @@ static float *game_colours(frontend *fe, int *ncolours)
 {
     float *ret = snewn(3 * NCOLOURS, float);
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
     COLOUR(ret, COL_BACKGROUND, 1.0F, 1.0F, 1.0F);
+    COLOUR(ret, COL_HIGHLIGHT, 0.75F,0.75F,0.75F);
+    COLOUR(ret, COL_LOWLIGHT, 0.25F, 0.25F, 0.25F);
     COLOUR(ret, COL_GRID,  0.0F, 0.0F, 0.0F);
     COLOUR(ret, COL_ERROR, 0.5F, 0.5F, 0.5F);
 

@@ -269,8 +269,8 @@ static game_params *custom_params(const config_item *cfg)
 
 static const char *validate_params(const game_params *params, bool full)
 {
-    if (params->order < 3 || params->order > 32)
-        return "Order must be between 3 and 32";
+    if (params->order < 3 || params->order > 9)
+        return "Order must be between 3 and 9";
     if (params->diff >= DIFFCOUNT)
         return "Unknown difficulty rating";
     if (params->order < 5 && params->mode == MODE_ADJACENT &&

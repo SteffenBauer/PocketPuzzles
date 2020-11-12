@@ -79,8 +79,6 @@ bool verbose = false;
 
 #define INGRID(s,x,y) ((x) >= 0 && (x) < (s)->w && (y) >= 0 && (y) < (s)->h)
 
-#define FLASH_TIME 0.7F
-
 enum {
     COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT,
     COL_BLACK, COL_WHITE, COL_BLACKNUM, COL_GRID,
@@ -254,9 +252,9 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 2 || params->h < 2)
-	return "Width and neight must be at least two";
-    if (params->w > 10+26+26 || params->h > 10+26+26)
-        return "Puzzle is too large";
+	return "Width and height must be at least two";
+    if (params->w > 16 || params->h > 16)
+        return "Width and height must be at most 16";
     if (full) {
         if (params->diff < 0 || params->diff >= DIFF_MAX)
             return "Unknown difficulty rating";
@@ -1433,7 +1431,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 #define DS_CURSOR       0x4
 #define DS_BLACK_NUM    0x8
 #define DS_ERROR        0x10
-#define DS_FLASH        0x20
 #define DS_IMPOSSIBLE   0x40
 
 struct game_drawstate {
@@ -1656,10 +1653,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime)
 {
-    int x, y, i, flash;
+    int x, y, i;
     unsigned int f;
-
-    flash = (int)(flashtime * 5 / FLASH_TIME) % 2;
 
     if (!ds->started) {
         int wsz = TILE_SIZE * state->w + 2 * BORDER;
@@ -1675,7 +1670,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             i = y*state->w + x;
             f = 0;
 
-            if (flash) f |= DS_FLASH;
             if (state->impossible) f |= DS_IMPOSSIBLE;
 
             if (ui->cshow && x == ui->cx && y == ui->cy)

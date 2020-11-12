@@ -61,7 +61,7 @@ struct game_state {
 
 #define DEFAULT_PRESET 1
 static struct game_params presets[] = {
-    {6, 8, 4}, {5, 5, 5}, {6, 8, 6}, {8, 10, 8}
+    {6, 6, 4}, {5, 5, 5}, {6, 8, 6}, {8, 8, 8}
     /* I definitely want 5x5n5 since that gives "Five Cells" its name.
      * But how about the others?  By which criteria do I choose? */
 };
@@ -158,6 +158,8 @@ static const char *validate_params(const game_params *params, bool full)
     if (k < 1) return "Region size must be at least one";
     if (w < 1) return "Width must be at least one";
     if (h < 1) return "Height must be at least one";
+    if (w > 16) return "Width must be at most 16";
+    if (h > 16) return "Height must be at most 16";
     if (wh % k) return "Region size must divide grid area";
 
     if (!full) return NULL; /* succeed partial validation */

@@ -1379,13 +1379,10 @@ static float *game_colours(frontend *fe, int *ncolours)
     int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
-    frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-    
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
-        ret[COL_HIGHLIGHT  * 3 + i] = 0.85F;
-        ret[COL_LOWLIGHT   * 3 + i] = 0.85F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.75F;
         ret[COL_BORDER     * 3 + i] = 0.0F;
         ret[COL_GUESS      * 3 + i] = 0.0F;
         ret[COL_PENCIL     * 3 + i] = 0.0F;

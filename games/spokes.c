@@ -243,6 +243,10 @@ static const char *validate_params(const game_params *params, bool full)
         return "Width must be at least 2";
     if(params->h < 2)
         return "Height must be at least 2";
+    if(params->w > 8)
+        return "Width must be at most 8";
+    if(params->h > 8)
+        return "Height must be at most 8";
     
     return NULL;
 }
@@ -1214,8 +1218,8 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_TEXT           * 3 + i] = 0.0F;
         ret[COL_TEXT_ERROR     * 3 + i] = 0.5F;
         ret[COL_TEXT_DONE      * 3 + i] = 1.0F;
-        ret[COL_FILL_HOLDING   * 3 + i] = 0.7F;
-        ret[COL_FILL_ERROR     * 3 + i] = 0.3F;
+        ret[COL_FILL_HOLDING   * 3 + i] = 0.75F;
+        ret[COL_FILL_ERROR     * 3 + i] = 0.25F;
         ret[COL_FILL_DONE      * 3 + i] = 0.0F;
         ret[COL_LINE           * 3 + i] = 0.0F;
         ret[COL_MARK           * 3 + i] = 0.0F;
