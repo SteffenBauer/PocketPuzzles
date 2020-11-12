@@ -21,15 +21,6 @@
 #include "puzzles.h"
 #include "matching.h"
 
-#ifdef STANDALONE_SOLVER
-int solver_verbose = false;
-
-#define solver_printf if(!solver_verbose) {} else printf
-
-#else
-#define solver_printf(...)
-#endif
-
 enum {
     COL_BACKGROUND,
     COL_LOWLIGHT,
@@ -374,20 +365,18 @@ static const char *validate_params(const game_params *params, bool full)
     int w = params->w;
     int h = params->h;
     
-    if(w*h >= 1000) return "Puzzle is too large";
+    if(w*h >= 150) return "Puzzle is too large";
     
-    if(w < 2) return "Width must be at least 2";
-    if(h < 2) return "Height must be at least 2";
+    if(w < 3) return "Width must be at least 3";
+    if(h < 3) return "Height must be at least 3";
     
-    if(w > 50) return "Width must be no more than 50";
-    if(h > 50) return "Height must be no more than 50";
+    if(w > 16) return "Width must be no more than 16";
+    if(h > 16) return "Height must be no more than 16";
 
     if (params->mode == MODE_HEXAGON && (h & 1) == 0)
         return "Height must be an odd number";
     if (params->mode == MODE_HEXAGON && w <= h / 2)
         return "Width is too low for hexagon grid";
-    if (params->mode == MODE_EDGES && w == 2 && h == 2)
-        return "Grid for Edges mode must be bigger than 2x2";
     if (full && params->mode == MODE_EDGES && params->diff < DIFF_NORMAL)
         return "Difficulty level for Edges mode must be at least Normal";
     if (full && params->symmetrical && params->mode == MODE_EDGES)
@@ -843,9 +832,6 @@ static int solver_place(struct solver_scratch *scratch, cell pos, number num)
         if(n == num) continue;
         CLR_BIT(scratch->marks, pos*s+n);
     }
-    
-    solver_printf("Placing %d at %d,%d\n", num+1, pos%w, pos/w);
-    
     return 1;
 }
 
@@ -873,7 +859,6 @@ static int solver_single_position(struct solver_scratch *scratch)
         assert(found != CELL_NONE);
         if(found >= 0)
         {
-            solver_printf("Single possibility for number %d\n", n+1);
             ret += solver_place(scratch, found, n);
         }
     }
@@ -908,11 +893,8 @@ static int solver_single_number(struct solver_scratch *scratch, bool simple)
                 (found == 0 || scratch->positions[found-1] == -1) && 
                 (found == scratch->end || scratch->positions[found+1] == -1))
             {
-                solver_printf("Ignoring possibility %d for cell %d,%d\n", found+1, i%w,i/w);
                 continue;
             }
-            
-            solver_printf("Single possibility for cell %d,%d\n", i%w,i/w);
             ret += solver_place(scratch, i, found);
         }
     }
@@ -950,13 +932,6 @@ static int solver_near(struct solver_scratch *scratch, cell near, number num, in
         CLR_BIT(scratch->marks, i*s+num);
         ret++;
     }
-    
-    if(ret)
-    {
-        solver_printf("Removed %d mark%s of %d for being too far away from %d,%d (%d)\n", 
-            ret, ret != 1 ? "s" : "", num+1, near%w, near/w, scratch->grid[near]+1);
-    }
-    
     return ret;
 }
 
@@ -1023,44 +998,6 @@ static int ascent_find_direction(cell i1, cell i2, int w, const ascent_movement 
     return -1;
 }
 
-#ifdef STANDALONE_SOLVER
-static void solver_debug_path(struct solver_scratch *scratch)
-{
-    if(!solver_verbose || scratch->movement->dircount != 8) return;
-    
-    int w = scratch->w, h = scratch->h;
-    int x, y, path;
-    char c;
-    
-    for(y = 0; y < h; y++)
-    {
-        for(x = 0; x < w; x++)
-        {
-            path = scratch->path[y*w+x];
-            printf("%c%c%c", path & 1 ? '\\' : ' ', path & 2 ? '|' : ' ', path & 4 ? '/' : ' ');
-        }
-        printf("\n");
-        for(x = 0; x < w; x++)
-        {
-            path = scratch->path[y*w+x];
-            c = path & FLAG_ENDPOINT && path & FLAG_COMPLETE ? '#' : 
-                path & FLAG_ENDPOINT ? 'O' : 
-                path & FLAG_COMPLETE ? 'X' : '*';
-            printf("%c%c%c", path & 8 ? '-' : ' ', c, path & 16 ? '-' : ' ');
-        }
-        printf("\n");
-        for(x = 0; x < w; x++)
-        {
-            path = scratch->path[y*w+x];
-            printf("%c%c%c", path & 32 ? '/' : ' ', path & 64 ? '|' : ' ', path & 128 ? '\\' : ' ');
-        }
-        printf("\n");
-    }
-}
-#else
-#define solver_debug_path(...)
-#endif
-
 static void solver_initialize_path(struct solver_scratch *scratch)
 {
     int w = scratch->w, h = scratch->h;
@@ -1079,8 +1016,6 @@ static void solver_initialize_path(struct solver_scratch *scratch)
             scratch->path[y*w + x] |= (1<<dir);
         }
     }
-
-    solver_debug_path(scratch);
 }
 
 static int solver_update_path(struct solver_scratch *scratch)
@@ -1159,7 +1094,6 @@ static int solver_update_path(struct solver_scratch *scratch)
         {
             int x, y, dir;
             scratch->path[i] |= FLAG_COMPLETE;
-            solver_printf("Completed path segment at %d,%d\n", i%w, i/w);
             ret++;
             for (dir = 0; dir < MAXIMUM_DIRS; dir++)
             {
@@ -1177,10 +1111,6 @@ static int solver_update_path(struct solver_scratch *scratch)
         }
     }
     
-    if(ret)
-    {
-        solver_debug_path(scratch);
-    }
     return ret;
 }
 
@@ -1201,7 +1131,6 @@ static int solver_remove_endpoints(struct solver_scratch *scratch)
                 continue;
             
             scratch->path[i] &= ~FLAG_ENDPOINT;
-            solver_printf("Remove possible endpoint at %d,%d\n", i%w, i/w);
             ret++;
         }
         else
@@ -1210,13 +1139,11 @@ static int solver_remove_endpoints(struct solver_scratch *scratch)
             if(GET_BIT(scratch->marks, i*s))
             {
                 CLR_BIT(scratch->marks, i*s);
-                solver_printf("Clear mark for 1 on middle %d,%d\n", i%w, i/w);
                 ret++;
             }
             if(GET_BIT(scratch->marks, i*s+end))
             {
                 CLR_BIT(scratch->marks, i*s+end);
-                solver_printf("Clear mark for %d on middle %d,%d\n", end+1, i%w, i/w);
                 ret++;
             }
         }
@@ -1237,9 +1164,6 @@ static int solver_adjacent_path(struct solver_scratch *scratch)
         /* Find empty cells with a confirmed path */
         if (scratch->path[i] & FLAG_COMPLETE && scratch->grid[i] == NUMBER_EMPTY)
         {
-            solver_printf("Found an unfilled %s at %d,%d", 
-                scratch->path[i] & FLAG_ENDPOINT ? "endpoint" : "path segment", i%w, i/w);
-            
             /* Check if one of the directions is a known number */
             for(dir = 0; dir < MAXIMUM_DIRS; dir++)
             {
@@ -1248,7 +1172,6 @@ static int solver_adjacent_path(struct solver_scratch *scratch)
                 n1 = scratch->grid[i2];
                 if(n1 >= 0)
                 {
-                    solver_printf(" connected to %d", n1+1);
                     /* 
                      * Rule out all pencil marks, 
                      * except those in sequence with the other number. 
@@ -1259,7 +1182,6 @@ static int solver_adjacent_path(struct solver_scratch *scratch)
                         
                         if(!GET_BIT(scratch->marks, i*s+n)) continue;
                         CLR_BIT(scratch->marks, i*s+n);
-                        solver_printf("\nClear mark for %d", n+1);
                         ret++;
                     }
                 }
@@ -1272,12 +1194,9 @@ static int solver_adjacent_path(struct solver_scratch *scratch)
                 {
                     if(!GET_BIT(scratch->marks, i*s+n)) continue;
                     CLR_BIT(scratch->marks, i*s+n);
-                    solver_printf("\nClear mark for %d on endpoint", n+1);
                     ret++;
                 }
             }
-            
-            solver_printf("\n");
         }
     }
     
@@ -1306,17 +1225,11 @@ static int solver_remove_path(struct solver_scratch *scratch)
             n2 = scratch->grid[i2];
             if(n2 >= 0 && abs(n1-n2) != 1)
             {
-                solver_printf("Disconnect %d,%d (%d) and %d,%d (%d)\n", i1%w, i1/w, n1+1, i2%w, i2/w, n2+1);
                 scratch->path[i1] &= ~(1 << dir);
                 scratch->path[i2] &= ~(1 << (scratch->movement->dircount - (dir+1)));
                 ret++;
             }
         }
-    }
-    
-    if(ret)
-    {
-        solver_debug_path(scratch);
     }
     return ret;
 }
@@ -1333,16 +1246,10 @@ static int solver_remove_blocks(struct solver_scratch *scratch)
         {
             if(!(scratch->path[i1] & (1<<dir))) continue;
             i2 = scratch->movement->dirs[dir].dy * w + scratch->movement->dirs[dir].dx + i1;
-            solver_printf("Disconnect block %d,%d from %d,%d\n", i1%w, i1/w, i2%w, i2/w);
             scratch->path[i2] &= ~(1 << (scratch->movement->dircount - (dir+1)));
             ret++;
         }
         scratch->path[i1] = 0;
-    }
-    
-    if(ret)
-    {
-        solver_debug_path(scratch);
     }
     return ret;
 }
@@ -1403,8 +1310,6 @@ static int solver_overlap(struct solver_scratch *scratch)
                 (n == scratch->end-1 || GET_BIT(scratch->overlap, i1+s)))
                 continue;
 
-            solver_printf("Rule out %d at %d,%d for not being near marks of adjacent numbers\n", 
-                    n+1, i1%w, i1/w);
             CLR_BIT(scratch->marks, i1*s+n);
             ret++;
         }

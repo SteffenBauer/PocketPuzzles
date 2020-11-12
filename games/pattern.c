@@ -61,8 +61,6 @@ struct game_state {
     bool completed, cheated;
 };
 
-#define FLASH_TIME 0.13F
-
 static game_params *default_params(void)
 {
     game_params *ret = snew(game_params);
@@ -173,7 +171,9 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w <= 0 || params->h <= 0)
-    return "Width and height must both be greater than zero";
+        return "Width and height must both be greater than zero";
+    if (params->w > 16 || params->h > 16)
+        return "Width and height must both be not greather than 16";
     return NULL;
 }
 
@@ -1782,15 +1782,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 if (j == cx && i == cy) cc = true;
                 if (j == ds->cur_x && i == ds->cur_y) cc = true;
             }
-
-            /*
-             * Briefly invert everything twice during a completion
-             * flash.
-             */
-            if (flashtime > 0 &&
-                (flashtime <= FLASH_TIME/3 || flashtime >= FLASH_TIME*2/3) &&
-                val != GRID_UNKNOWN)
-                val = (GRID_FULL ^ GRID_EMPTY) ^ val;
 
             if (ds->visible[i * ds->w + j] != val || cc) {
                 grid_square(dr, ds, i, j, val,

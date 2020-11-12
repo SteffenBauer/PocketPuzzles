@@ -250,8 +250,8 @@ static game_params *custom_params(const config_item *cfg)
 
 static const char *validate_params(const game_params *params, bool full)
 {
-    if (params->w < 3 || params->w > 26)
-        return "Grid size must be between 3 and 26";
+    if (params->w < 3 || params->w > 12)
+        return "Grid size must be between 3 and 12";
     if (params->diff >= DIFFCOUNT)
         return "Unknown difficulty rating";
     if (!params->id && params->diff == DIFF_TRIVIAL) {
@@ -1326,8 +1326,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 #define COORD(x) ((x)*TILESIZE + BORDER + LEGEND)
 #define FROMCOORD(x) (((x)+(TILESIZE-BORDER-LEGEND)) / TILESIZE - 1)
 
-#define FLASH_TIME 0.4F
-
 #define DF_DIVIDER_TOP 0x1000
 #define DF_DIVIDER_BOT 0x2000
 #define DF_DIVIDER_LEFT 0x4000
@@ -2134,11 +2132,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 if (highlight)
                     tile |= (ui->hpencil ? DF_HIGHLIGHT_PENCIL : DF_HIGHLIGHT);
             }
-
-            if (flashtime > 0 &&
-                (flashtime <= FLASH_TIME/3 ||
-                 flashtime >= FLASH_TIME*2/3))
-                tile |= DF_HIGHLIGHT;  /* completion flash */
 
             if (y <= 0 || state->dividers[ds->sequence[y-1]] == sy)
                 tile |= DF_DIVIDER_TOP;

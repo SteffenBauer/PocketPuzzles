@@ -206,13 +206,15 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->ncolours < 2 || params->npegs < 2)
-    return "Trivial solutions are uninteresting";
-    /* NB as well as the no. of colours we define, max(ncolours) must
-     * also fit in an unsigned char; see new_game_desc. */
+        return "Trivial solutions are uninteresting";
+    if (params->npegs > 8)
+        return "Must have at most 8 pegs";
     if (params->ncolours >= 10)
-    return "Too many colours";
+        return "Too many colours";
     if (params->nguesses < 1)
-    return "Must have at least one guess";
+        return "Must have at least one guess";
+    if (params->nguesses > 16)
+        return "Must have at most 16 guesses";
     if (!params->allow_multiple && params->ncolours < params->npegs)
         return "Disallowing multiple colours requires at least as many colours as pegs";
     return NULL;

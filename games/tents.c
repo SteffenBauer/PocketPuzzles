@@ -408,7 +408,9 @@ static const char *validate_params(const game_params *params, bool full)
      * or another.
      */
     if (params->w < 4 || params->h < 4)
-    return "Width and height must both be at least four";
+        return "Width and height must both be at least four";
+    if (params->w > 16 || params->h > 16)
+        return "Width and height must both be at most 16";
     return NULL;
 }
 
@@ -1420,8 +1422,6 @@ struct game_drawstate {
 #define COORD(x)  ( (x) * TILESIZE + TLBORDER )
 #define FROMCOORD(x)  ( ((x) - TLBORDER + TILESIZE) / TILESIZE - 1 )
 
-#define FLASH_TIME 0.30F
-
 static int drag_xform(const game_ui *ui, int x, int y, int v)
 {
     int xmin, ymin, xmax, ymax;
@@ -2235,7 +2235,7 @@ static void draw_err_adj(drawing *dr, game_drawstate *ds, int x, int y)
 }
 
 static void draw_tile(drawing *dr, game_drawstate *ds,
-                      int x, int y, int v, bool cur, bool printing)
+                      int x, int y, int v, bool cur)
 {
     int err;
     int tx = COORD(x), ty = COORD(y);
@@ -2246,11 +2246,9 @@ static void draw_tile(drawing *dr, game_drawstate *ds,
 
     clip(dr, tx, ty, TILESIZE, TILESIZE);
 
-    if (!printing) {
-        draw_rect(dr, tx, ty, TILESIZE, TILESIZE, COL_GRID);
-        draw_rect(dr, tx+1, ty+1, TILESIZE-1, TILESIZE-1,
+    draw_rect(dr, tx, ty, TILESIZE, TILESIZE, COL_GRID);
+    draw_rect(dr, tx+1, ty+1, TILESIZE-1, TILESIZE-1,
           (v == BLANK ? COL_BACKGROUND : COL_GRASS));
-    }
 
     if (v == TREE) {
         int i;
@@ -2258,12 +2256,11 @@ static void draw_tile(drawing *dr, game_drawstate *ds,
         if (err & (1<<ERR_OVERCOMMITTED))
             draw_rect(dr, tx+1, ty+1, TILESIZE-1, TILESIZE-1, COL_ERRGRASS);
     
-        (printing ? draw_rect_outline : draw_rect)
-            (dr, cx-TILESIZE/15, ty+TILESIZE*3/10,
+        draw_rect(dr, cx-TILESIZE/15, ty+TILESIZE*3/10,
             2*(TILESIZE/15)+1, (TILESIZE*9/10 - TILESIZE*3/10),
             (err & (1<<ERR_OVERCOMMITTED) ? COL_ERRTRUNK : COL_TREETRUNK));
 
-        for (i = 0; i < (printing ? 2 : 1); i++) {
+        for (i = 0; i < 1; i++) {
             int col = (i == 1 ? COL_BACKGROUND :
                (err & (1<<ERR_OVERCOMMITTED) ? COL_ERRLEAF : 
                                                COL_TREELEAF));
@@ -2287,7 +2284,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds,
         coords[4] = cx;
         coords[5] = cy - TILESIZE/3;
         col = (err & (1<<ERR_OVERCOMMITTED) ? COL_ERRTRUNK : COL_TENT);
-        draw_polygon(dr, coords, 3, (printing ? -1 : col), col);
+        draw_polygon(dr, coords, 3, col, col);
     }
 
     if (err & (1 << ERR_ADJ_TOPLEFT))
@@ -2324,11 +2321,10 @@ static void draw_tile(drawing *dr, game_drawstate *ds,
 static void int_redraw(drawing *dr, game_drawstate *ds,
                        const game_state *oldstate, const game_state *state,
                        int dir, const game_ui *ui,
-               float animtime, float flashtime, bool printing)
+               float animtime)
 {
     int w = state->p.w, h = state->p.h;
     int x, y;
-    bool flashing;
     int cx = -1, cy = -1;
     bool cmoved = false;
     char *tmpgrid;
@@ -2339,18 +2335,12 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
       if (cx != ds->cx || cy != ds->cy) cmoved = true;
     }
 
-    if (printing || !ds->started) {
-        if (!printing) {
-            int ww, wh;
-            game_compute_size(&state->p, TILESIZE, &ww, &wh);
-            draw_rect(dr, 0, 0, ww, wh, COL_BACKGROUND);
-            draw_update(dr, 0, 0, ww, wh);
-            ds->started = true;
-        }
-
-        if (printing)
-            print_line_width(dr, TILESIZE/64);
-
+    if (!ds->started) {
+        int ww, wh;
+        game_compute_size(&state->p, TILESIZE, &ww, &wh);
+        draw_rect(dr, 0, 0, ww, wh, COL_BACKGROUND);
+        draw_update(dr, 0, 0, ww, wh);
+        ds->started = true;
         /*
          * Draw the grid.
          */
@@ -2359,11 +2349,6 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
         for (x = 0; x <= w; x++)
             draw_line(dr, COORD(x), COORD(0), COORD(x), COORD(h), COL_GRID);
     }
-
-    if (flashtime > 0)
-    flashing = (int)(flashtime * 3 / FLASH_TIME) != 1;
-    else
-    flashing = false;
 
     /*
      * Find errors. For this we use _part_ of the information from a
@@ -2400,9 +2385,6 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
             if (ui && ui->drag_button >= 0)
                 v = drag_xform(ui, x, y, v);
 
-            if (flashing && (v == TREE || v == TENT))
-                v = NONTENT;
-
             if (cmoved) {
               if ((x == cx && y == cy) ||
                   (x == ds->cx && y == ds->cy)) credraw = true;
@@ -2410,10 +2392,9 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
 
         v |= errors[y*w+x];
 
-            if (printing || ds->drawn[y*w+x] != v || credraw) {
-                draw_tile(dr, ds, x, y, v, (x == cx && y == cy), printing);
-                if (!printing)
-            ds->drawn[y*w+x] = v;
+            if (ds->drawn[y*w+x] != v || credraw) {
+                draw_tile(dr, ds, x, y, v, (x == cx && y == cy));
+                ds->drawn[y*w+x] = v;
             }
         }
     }
@@ -2423,7 +2404,7 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
      * changed) the numbers.
      */
     for (x = 0; x < w; x++) {
-    if (printing || ds->numbersdrawn[x] != errors[w*h+x]) {
+    if (ds->numbersdrawn[x] != errors[w*h+x]) {
         char buf[80];
         draw_rect(dr, COORD(x), COORD(h)+1, TILESIZE, BRBORDER-1,
               (errors[w*h+x] ? COL_ERROR : COL_BACKGROUND));
@@ -2431,12 +2412,11 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
         draw_text(dr, COORD(x) + TILESIZE/2, COORD(h+1),
               FONT_VARIABLE, TILESIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, COL_GRID, buf);
         draw_update(dr, COORD(x), COORD(h)+1, TILESIZE, BRBORDER-1);
-        if (!printing)
-                ds->numbersdrawn[x] = errors[w*h+x];
+        ds->numbersdrawn[x] = errors[w*h+x];
     }
     }
     for (y = 0; y < h; y++) {
-    if (printing || ds->numbersdrawn[w+y] != errors[w*h+w+y]) {
+    if (ds->numbersdrawn[w+y] != errors[w*h+w+y]) {
         char buf[80];
         draw_rect(dr, COORD(w)+1, COORD(y), BRBORDER-1, TILESIZE,
               (errors[w*h+w+y] ? COL_ERROR : COL_BACKGROUND));
@@ -2444,14 +2424,13 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
         draw_text(dr, COORD(w+1), COORD(y) + TILESIZE/2,
               FONT_VARIABLE, TILESIZE/2, ALIGN_HRIGHT|ALIGN_VCENTRE, COL_GRID, buf);
         draw_update(dr, COORD(w)+1, COORD(y), BRBORDER-1, TILESIZE);
-        if (!printing)
-                ds->numbersdrawn[w+y] = errors[w*h+w+y];
+        ds->numbersdrawn[w+y] = errors[w*h+w+y];
     }
     }
 
     if (cmoved) {
-    ds->cx = cx;
-    ds->cy = cy;
+        ds->cx = cx;
+        ds->cy = cy;
     }
 
     sfree(errors);
@@ -2462,7 +2441,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime)
 {
-    int_redraw(dr, ds, oldstate, state, dir, ui, animtime, flashtime, false);
+    int_redraw(dr, ds, oldstate, state, dir, ui, animtime);
 }
 
 static float game_anim_length(const game_state *oldstate,

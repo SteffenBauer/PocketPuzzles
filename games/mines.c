@@ -39,8 +39,6 @@ enum {
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILE_SIZE) / TILE_SIZE - 1 )
 
-#define FLASH_FRAME 0.13F
-
 struct game_params {
     int w, h, n;
     bool unique;
@@ -198,7 +196,7 @@ static config_item *game_configure(const game_params *params)
     config_item *ret;
     char buf[80];
 
-    ret = snewn(5, config_item);
+    ret = snewn(4, config_item);
 
     ret[0].name = "Width";
     ret[0].type = C_STRING;
@@ -215,12 +213,8 @@ static config_item *game_configure(const game_params *params)
     sprintf(buf, "%d", params->n);
     ret[2].u.string.sval = dupstr(buf);
 
-    ret[3].name = "Ensure solubility";
-    ret[3].type = C_BOOLEAN;
-    ret[3].u.boolean.bval = params->unique;
-
-    ret[4].name = NULL;
-    ret[4].type = C_END;
+    ret[3].name = NULL;
+    ret[3].type = C_END;
 
     return ret;
 }
@@ -234,7 +228,7 @@ static game_params *custom_params(const config_item *cfg)
     ret->n = atoi(cfg[2].u.string.sval);
     if (strchr(cfg[2].u.string.sval, '%'))
     ret->n = ret->n * (ret->w * ret->h) / 100;
-    ret->unique = cfg[3].u.boolean.bval;
+    ret->unique = true;
 
     return ret;
 }
@@ -256,11 +250,13 @@ static const char *validate_params(const game_params *params, bool full)
      * position of.
      */
     if (full && params->unique && (params->w <= 2 || params->h <= 2))
-    return "Width and height must both be greater than two";
+        return "Width and height must both be greater than two";
+    if (full && params->unique && (params->w > 16 || params->h > 16))
+        return "Width and height must both be at most 16";
     if (params->n < 0)
-    return "Mine count may not be negative";
+        return "Mine count may not be negative";
     if (params->n > params->w * params->h - 9)
-    return "Too many mines for grid size";
+        return "Too many mines for grid size";
 
     /*
      * FIXME: Need more constraints here. Not sure what the
@@ -2314,7 +2310,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 struct game_ui {
     int hx, hy, hradius;           /* for mouse-down highlights */
     int validradius;
-    bool flash_is_death;
     int deaths;
     bool completed;
     int cur_x, cur_y;
@@ -2328,7 +2323,6 @@ static game_ui *new_ui(const game_state *state)
     ui->hradius = ui->validradius = 0;
     ui->deaths = 0;
     ui->completed = false;
-    ui->flash_is_death = false;           /* *shrug* */
     ui->cur_x = ui->cur_y = 0;
     ui->cur_visible = false;
     return ui;
@@ -2879,13 +2873,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int cx = -1, cy = -1;
     bool cmoved;
 
-    if (flashtime) {
-    int frame = (int)(flashtime / FLASH_FRAME);
-    if (frame % 2)
-        bg = (ui->flash_is_death ? COL_BACKGROUND : COL_LOWLIGHT);
-    else
-        bg = (ui->flash_is_death ? COL_BANG : COL_HIGHLIGHT);
-    } else
     bg = COL_BACKGROUND;
 
     if (!ds->started) {

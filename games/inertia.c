@@ -88,7 +88,7 @@ static game_params *default_params(void)
     game_params *ret = snew(game_params);
 
     ret->w = 8;
-    ret->h = 10;
+    ret->h = 8;
     return ret;
 }
 
@@ -105,9 +105,10 @@ static game_params *dup_params(const game_params *params)
 }
 
 static const struct game_params inertia_presets[] = {
-    { 8, 10 },
-    { 10, 12 },
-    { 12, 15 },
+    { 6, 6 },
+    { 8, 8 },
+    { 10, 10 },
+    { 12, 12 },
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -192,6 +193,9 @@ static const char *validate_params(const game_params *params, bool full)
      */
     if (params->w < 2 || params->h < 2)
     return "Width and height must both be at least two";
+
+    if (params->w > 16 || params->h > 16)
+    return "Width and height must both be at most 16";
 
     /*
      * The grid construction algorithm creates 1/5 as many gems as

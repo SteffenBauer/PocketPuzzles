@@ -20,8 +20,8 @@
 #include "puzzles.h"
 
 #define DEFAULT_SIZE 8
-#define MAX_TILES 10000
-#define MAX_TILES_ERROR "Maximum size is 10000 tiles"
+#define MAX_TILES 250
+#define MAX_TILES_ERROR "Maximum size is 250 tiles"
 #define DEFAULT_TILE_SIZE 32
 
 /* Getting the coordinates and returning NULL when out of scope

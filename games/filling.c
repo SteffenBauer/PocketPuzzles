@@ -100,7 +100,7 @@ struct game_state {
 };
 
 static const struct game_params filling_defaults[4] = {
-    {5, 6}, {7, 8}, {9, 11}, {11, 13}
+    {5, 5}, {8, 8}, {10, 10}, {12, 12}
 };
 
 static game_params *default_params(void)
@@ -188,6 +188,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 1) return "Width must be at least one";
     if (params->h < 1) return "Height must be at least one";
+    if (params->w > 12) return "Width must be at most 12";
+    if (params->h > 12) return "Height must be at most 12";
 
     return NULL;
 }
@@ -1541,8 +1543,6 @@ err:
  * Drawing routines.
  */
 
-#define FLASH_TIME 0.4F
-
 #define COL_CLUE COL_GRID
 enum {
     COL_BACKGROUND,
@@ -1577,10 +1577,10 @@ static float *game_colours(frontend *fe, int *ncolours)
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
         ret[COL_GRID       * 3 + i] = 0.0F;
-        ret[COL_HIGHLIGHT  * 3 + i] = 0.85F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
         ret[COL_CORRECT    * 3 + i] = 0.9F;
         ret[COL_CURSOR     * 3 + i] = 0.5F;
-        ret[COL_ERROR      * 3 + i] = 0.75F;
+        ret[COL_ERROR      * 3 + i] = 0.5F;
         ret[COL_USER       * 3 + i] = 0.25F;
     }
 
@@ -1760,7 +1760,7 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
 
 static void draw_grid(
     drawing *dr, game_drawstate *ds, const game_state *state,
-    const game_ui *ui, bool flashy, bool borders, bool shading)
+    const game_ui *ui, bool borders, bool shading)
 {
     const int w = state->shared->params.w;
     const int h = state->shared->params.h;
@@ -1836,7 +1836,7 @@ static void draw_grid(
             int i = y*w+x, v = state->board[i];
             int flags = 0;
 
-            if (flashy || !shading) {
+            if (!shading) {
                 /* clear all background flags */
             } else if (ui && ui->sel && ui->sel[i]) {
                 flags |= HIGH_BG;
@@ -1924,10 +1924,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     const int w = state->shared->params.w;
     const int h = state->shared->params.h;
 
-    const bool flashy =
-        flashtime > 0 &&
-        (flashtime <= FLASH_TIME/3 || flashtime >= FLASH_TIME*2/3);
-
     if (!ds->started) {
         /*
          * The initial contents of the window are not guaranteed and
@@ -1951,7 +1947,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         ds->started = true;
     }
 
-    draw_grid(dr, ds, state, ui, flashy, true, true);
+    draw_grid(dr, ds, state, ui, true, true);
 }
 
 static float game_anim_length(const game_state *oldstate,

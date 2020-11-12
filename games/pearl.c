@@ -141,8 +141,6 @@ static const struct game_params pearl_presets[] = {
     {8, 8,      DIFF_TRICKY},
     {10, 10,    DIFF_EASY},
     {10, 10,    DIFF_TRICKY},
-    {12, 8,     DIFF_EASY},
-    {12, 8,     DIFF_TRICKY},
 };
 
 static game_params *default_params(void)
@@ -229,7 +227,7 @@ static config_item *game_configure(const game_params *params)
     config_item *ret;
     char buf[64];
 
-    ret = snewn(5, config_item);
+    ret = snewn(4, config_item);
 
     ret[0].name = "Width";
     ret[0].type = C_STRING;
@@ -246,12 +244,8 @@ static config_item *game_configure(const game_params *params)
     ret[2].u.choices.choicenames = DIFFCONFIG;
     ret[2].u.choices.selected = params->difficulty;
 
-    ret[3].name = "Allow unsoluble";
-    ret[3].type = C_BOOLEAN;
-    ret[3].u.boolean.bval = params->nosolve;
-
-    ret[4].name = NULL;
-    ret[4].type = C_END;
+    ret[3].name = NULL;
+    ret[3].type = C_END;
 
     return ret;
 }
@@ -263,7 +257,7 @@ static game_params *custom_params(const config_item *cfg)
     ret->w = atoi(cfg[0].u.string.sval);
     ret->h = atoi(cfg[1].u.string.sval);
     ret->difficulty = cfg[2].u.choices.selected;
-    ret->nosolve = cfg[3].u.boolean.bval;
+    ret->nosolve = false;
 
     return ret;
 }
@@ -272,6 +266,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 5) return "Width must be at least five";
     if (params->h < 5) return "Height must be at least five";
+    if (params->w > 12) return "Width must be at most 12";
+    if (params->h > 12) return "Height must be at most 12";
     if (params->difficulty < 0 || params->difficulty >= DIFFCOUNT)
         return "Unknown difficulty level";
 
@@ -1826,7 +1822,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 #define DS_MSHIFT 12    /* shift for no-line mark */
 
 #define DS_ERROR_CLUE (1 << 20)
-#define DS_FLASH (1 << 21)
 #define DS_CURSOR (1 << 22)
 
 enum { GUI_MASYU, GUI_LOOPY };
@@ -2223,8 +2218,6 @@ badmove:
  * Drawing routines.
  */
 
-#define FLASH_TIME 0.5F
-
 static void game_compute_size(const game_params *params, int tilesize,
                               int *x, int *y)
 {
@@ -2406,7 +2399,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         float animtime, float flashtime)
 {
     int w = state->shared->w, h = state->shared->h, sz = state->shared->sz;
-    int x, y, flashing = 0;
+    int x, y;
     bool force = false;
 
     if (!ds->started) {
@@ -2435,11 +2428,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         force = true;
     }
 
-    if (flashtime > 0 &&
-        (flashtime <= FLASH_TIME/3 ||
-         flashtime >= FLASH_TIME*2/3))
-        flashing = DS_FLASH;
-
     memset(ds->draglines, 0, sz);
     if (ui->ndragcoords > 0) {
         int i;
@@ -2464,8 +2452,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
             if (state->errors[y*w+x] & ERROR_CLUE)
                 f |= DS_ERROR_CLUE;
-
-            f |= flashing;
 
         if (ui->cursor_active && x == ui->curx && y == ui->cury)
         f |= DS_CURSOR;

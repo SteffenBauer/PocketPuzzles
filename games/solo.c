@@ -100,7 +100,7 @@
  * general good practice.
  */
 typedef unsigned char digit;
-#define ORDER_MAX 255
+#define ORDER_MAX 9
 
 #define PREFERRED_TILE_SIZE 48
 #define TILE_SIZE (ds->tilesize)
@@ -429,7 +429,7 @@ static config_item *game_configure(const game_params *params)
     sprintf(buf, "%d", params->r);
     ret[1].u.string.sval = dupstr(buf);
 
-    ret[2].name = "\"X\" (incl. diagonals)";
+    ret[2].name = "\"X\" mode";
     ret[2].type = C_BOOLEAN;
     ret[2].u.boolean.bval = params->xtype;
 
@@ -437,7 +437,7 @@ static config_item *game_configure(const game_params *params)
     ret[3].type = C_BOOLEAN;
     ret[3].u.boolean.bval = (params->r == 1);
 
-    ret[4].name = "Killer (digit sums)";
+    ret[4].name = "Killer mode";
     ret[4].type = C_BOOLEAN;
     ret[4].u.boolean.bval = params->killer;
 
@@ -481,11 +481,11 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->c < 2)
-    return "Both dimensions must be at least 2";
+        return "Both dimensions must be at least 2";
     if (params->c > ORDER_MAX || params->r > ORDER_MAX)
-    return "Dimensions greater than "STR(ORDER_MAX)" are not supported";
-    if ((params->c * params->r) > 31)
-        return "Unable to support more than 31 distinct symbols in a puzzle";
+        return "Dimensions greater than "STR(ORDER_MAX)" are not supported";
+    if ((params->c * params->r) > 9)
+        return "Unable to support more than 9 distinct symbols in a puzzle";
     if (params->killer && params->c * params->r > 9)
         return "Killer puzzle dimensions must be smaller than 10";
     if (params->xtype && params->c * params->r < 4)

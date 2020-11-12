@@ -101,14 +101,14 @@ struct game_state {
 
 static const struct game_params salad_presets[] = {
     {5, 3, GAMEMODE_LETTERS, DIFF_HARD},
-    {5, 3, GAMEMODE_NUMBERS, DIFF_HARD},
     {5, 4, GAMEMODE_LETTERS, DIFF_HARD},
-    {6, 3, GAMEMODE_NUMBERS, DIFF_HARD},
     {6, 4, GAMEMODE_LETTERS, DIFF_HARD},
-    {6, 4, GAMEMODE_NUMBERS, DIFF_HARD},
     {7, 4, GAMEMODE_LETTERS, DIFF_HARD},
-    {7, 4, GAMEMODE_NUMBERS, DIFF_HARD},
     {8, 5, GAMEMODE_LETTERS, DIFF_HARD},
+    {5, 3, GAMEMODE_NUMBERS, DIFF_HARD},
+    {6, 3, GAMEMODE_NUMBERS, DIFF_HARD},
+    {6, 4, GAMEMODE_NUMBERS, DIFF_HARD},
+    {7, 4, GAMEMODE_NUMBERS, DIFF_HARD},
     {8, 5, GAMEMODE_NUMBERS, DIFF_HARD},
 };
 
@@ -254,6 +254,8 @@ static const char *validate_params(const game_params *params, bool full)
         return "Symbols must be lower than the size.";
     if(params->order < 3)
         return "Size must be at least 3.";
+    if(params->order > 12)
+        return "Size must be at most 12.";
     if(params->nums > 9)
         return "Symbols must be no more than 9.";
     if (params->diff >= DIFFCOUNT)

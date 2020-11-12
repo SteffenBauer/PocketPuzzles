@@ -178,12 +178,12 @@ static void get_surrounds(const game_state *state, int ox, int oy,
 #define DEFAULT_PRESET 2
 
 static const struct game_params lightup_presets[] = {
-    { 6, 6, 20, SYMM_NONE, 0 },
-    { 6, 6, 20, SYMM_NONE, 1 },
-    { 8, 8, 20, SYMM_NONE, 1 },
-    { 8, 8, 20, SYMM_NONE, 2 },
-    { 10, 10, 20, SYMM_NONE, 1 },
-    { 10, 10, 20, SYMM_NONE, 2 },
+    { 6, 6, 20, SYMM_REF2, 0 },
+    { 6, 6, 20, SYMM_REF2, 1 },
+    { 8, 8, 20, SYMM_REF2, 1 },
+    { 8, 8, 20, SYMM_REF2, 2 },
+    { 10, 10, 20, SYMM_REF2, 1 },
+    { 10, 10, 20, SYMM_REF2, 2 },
 };
 
 static game_params *default_params(void)
@@ -297,9 +297,9 @@ static config_item *game_configure(const game_params *params)
     ret[1].u.string.sval = dupstr(buf);
 
     ret[2].name = "\% of black squares";
-    ret[2].type = C_STRING;
-    sprintf(buf, "%d", params->blackpc);
-    ret[2].u.string.sval = dupstr(buf);
+    ret[2].type = C_CHOICES;
+    ret[2].u.choices.choicenames = ":10%:20%:30%:40%:50%:60%:70%:80%";
+    ret[2].u.choices.selected = (params->blackpc-10) / 10;
 
     ret[3].name = "Symmetry";
     ret[3].type = C_CHOICES;
@@ -323,12 +323,11 @@ static game_params *custom_params(const config_item *cfg)
 {
     game_params *ret = snew(game_params);
 
-    ret->w =       atoi(cfg[0].u.string.sval);
-    ret->h =       atoi(cfg[1].u.string.sval);
-    ret->blackpc = atoi(cfg[2].u.string.sval);
-    ret->symm =    cfg[3].u.choices.selected;
+    ret->w          = atoi(cfg[0].u.string.sval);
+    ret->h          = atoi(cfg[1].u.string.sval);
+    ret->blackpc    = cfg[2].u.choices.selected * 10 + 10;
+    ret->symm       = cfg[3].u.choices.selected;
     ret->difficulty = cfg[4].u.choices.selected;
-
     return ret;
 }
 
@@ -336,9 +335,11 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 2 || params->h < 2)
         return "Width and height must be at least 2";
+    if (params->w > 16 || params->h > 16)
+        return "Width and height must be at most 16";
     if (full) {
-        if (params->blackpc < 5 || params->blackpc > 100)
-            return "Percentage of black squares must be between 5% and 100%";
+        if (params->blackpc < 10 || params->blackpc > 80)
+            return "Percentage of black squares must be between 10% and 80%";
         if (params->w != params->h) {
             if (params->symm == SYMM_ROT4)
                 return "4-fold symmetry is only available with square grids";

@@ -146,10 +146,10 @@ static space *tile_opposite(const game_state *state, const space *sp);
 #define DEFAULT_PRESET 1
 
 static const game_params galaxies_presets[] = {
-    {  7,  9, DIFF_NORMAL },
-    {  7,  9, DIFF_UNREASONABLE },
-    {  8, 10, DIFF_UNREASONABLE },
-    { 10, 12, DIFF_UNREASONABLE },
+    {  7,  7, DIFF_NORMAL },
+    {  7,  7, DIFF_UNREASONABLE },
+    { 10, 10, DIFF_UNREASONABLE },
+    { 12, 12, DIFF_UNREASONABLE },
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -262,6 +262,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 3 || params->h < 3)
         return "Width and height must both be at least 3";
+    if (params->w > 15 || params->h > 15)
+        return "Width and height must both be at most 15";
     /*
      * This shouldn't be able to happen at all, since decode_params
      * and custom_params will never generate anything that isn't
@@ -2252,8 +2254,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 {
 }
 
-#define FLASH_TIME 0.15F
-
 #define PREFERRED_TILE_SIZE 32
 #define TILE_SIZE (ds->tilesize)
 #define DOT_SIZE        (TILE_SIZE / 4)
@@ -2856,13 +2856,6 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    /*
-     * We call game_mkhighlight to ensure the background colour
-     * isn't completely white. We don't actually use the high- and
-     * lowlight colours it generates.
-     */
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_WHITEBG, COL_BLACKBG);
-
     for (i = 0; i < 3; i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
 
@@ -2890,11 +2883,9 @@ static float *game_colours(frontend *fe, int *ncolours)
          */
         ret[COL_EDGE * 3 + i] = 0.0F;
         ret[COL_ARROW * 3 + i] = 0.0F;
-    }
 
-    ret[COL_CURSOR * 3 + 0] = 0.75F;
-    ret[COL_CURSOR * 3 + 1] = 0.75F;
-    ret[COL_CURSOR * 3 + 2] = 0.75F;
+        ret[COL_CURSOR * 3 + i] = 0.75F;
+    }
 
     *ncolours = NCOLOURS;
     return ret;
@@ -3078,13 +3069,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int w = ds->w, h = ds->h;
     int x, y;
-    bool flashing = false;
     int oppx, oppy;
-
-    if (flashtime > 0) {
-        int frame = (int)(flashtime / FLASH_TIME);
-        flashing = (frame % 2 == 0);
-    }
 
     if (ds->dragging) {
         assert(ds->bl);
@@ -3164,7 +3149,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             } else {
                 opp = NULL;
             }
-            if (ds->colour_scratch[y*w+x] && !flashing) {
+            if (ds->colour_scratch[y*w+x]) {
                 flags |= (ds->colour_scratch[y*w+x] == 2 ?
                           DRAW_BLACK : DRAW_WHITE);
             }

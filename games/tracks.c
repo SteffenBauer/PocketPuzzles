@@ -192,6 +192,8 @@ static const char *validate_params(const game_params *params, bool full)
      */
     if (params->w < 4 || params->h < 4)
         return "Width and height must both be at least four";
+    if (params->w > 16 || params->h > 16)
+        return "Width and height must both be at most 16";
     return NULL;
 }
 
@@ -1921,7 +1923,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 #define DS_ERROR (1 << 8)
 #define DS_CLUE (1 << 9)
 #define DS_NOTRACK (1 << 10)
-#define DS_FLASH (1 << 11)
 #define DS_CURSOR (1 << 12) /* cursor in square (centre, or on edge) */
 #define DS_TRACK (1 << 13)
 #define DS_CLEARING (1 << 14)
@@ -2300,8 +2301,6 @@ static game_state *execute_move(const game_state *state, const char *move)
  * Drawing routines.
  */
 
-#define FLASH_TIME 0.5F
-
 static void game_compute_size(const game_params *params, int tilesize,
                               int *x, int *y)
 {
@@ -2329,7 +2328,7 @@ enum {
     COL_GRID, COL_CLUE, COL_CURSOR,
     COL_TRACK, COL_TRACK_CLUE, COL_SLEEPER,
     COL_DRAGON, COL_DRAGOFF,
-    COL_ERROR, COL_FLASH, COL_ERROR_BACKGROUND,
+    COL_ERROR, COL_ERROR_BACKGROUND,
     NCOLOURS
 };
 
@@ -2351,7 +2350,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_ERROR            * 3 + i] = 0.75F;
         ret[COL_DRAGON           * 3 + i] = 0.25F;
         ret[COL_DRAGOFF          * 3 + i] = 0.75F;
-        ret[COL_FLASH            * 3 + i] = 1.0F;
     }
 
     *ncolours = NCOLOURS;
@@ -2662,7 +2660,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
                         const game_state *state, int dir, const game_ui *ui,
                         float animtime, float flashtime)
 {
-    int i, x, y, flashing = 0, w = ds->w, h = ds->h;
+    int i, x, y, w = ds->w, h = ds->h;
     bool force = false;
     game_state *drag_state = NULL;
 
@@ -2697,11 +2695,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
         }
     }
 
-    if (flashtime > 0 &&
-            (flashtime <= FLASH_TIME/3 ||
-             flashtime >= FLASH_TIME*2/3))
-        flashing = DS_FLASH;
-
     if (ui->dragging)
         drag_state = copy_and_apply_drag(state, ui);
 
@@ -2709,7 +2702,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
         for (y = 0; y < h; y++) {
             unsigned int f, f_d;
 
-            f = s2d_flags(state, x, y, ui) | flashing;
+            f = s2d_flags(state, x, y, ui);
             f_d = drag_state ? s2d_flags(drag_state, x, y, ui) : f;
 
             if (f != ds->flags[y*w+x] || f_d != ds->flags_drag[y*w+x] || force) {

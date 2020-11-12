@@ -283,6 +283,8 @@ static const char *validate_params(const game_params *params, bool full)
         return "Width and height must both be even";
     if (params->w2 < 6 || params->h2 < 6)
         return "Width and height must be at least 6";
+    if (params->w2 > 16 || params->h2 > 16)
+        return "Width and height must be at most 16";
     if (params->unique) {
         static const long A177790[] = {
             /*
@@ -1723,8 +1725,6 @@ static void unruly_draw_tile(drawing *dr, int x, int y, int tilesize, int tile)
 
 #define TILE_SIZE (ds->tilesize)
 #define DEFAULT_TILE_SIZE 32
-#define FLASH_FRAME 0.12F
-#define FLASH_TIME (FLASH_FRAME * 3)
 
 static void game_redraw(drawing *dr, game_drawstate *ds,
                         const game_state *oldstate, const game_state *state,
@@ -1733,7 +1733,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int w2 = state->w2, h2 = state->h2;
     int s = w2 * h2;
-    int flash;
     int x, y, i;
 
     if (!ds->started) {
@@ -1748,10 +1747,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         draw_update(dr, 0, 0, TILE_SIZE * (w2+1), TILE_SIZE * (h2+1));
         ds->started = true;
     }
-
-    flash = 0;
-    if (flashtime > 0)
-        flash = (int)(flashtime / FLASH_FRAME) == 1 ? FF_FLASH2 : FF_FLASH1;
 
     for (i = 0; i < s; i++)
         ds->gridfs[i] = 0;
@@ -1777,8 +1772,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 if (ds->rowfs[h2 + y] || ds->rowfs[2*h2 + w2 + x])
                     tile |= FE_COUNT;
             }
-
-            tile |= flash;
 
             if (state->common->immutable[i])
                 tile |= FF_IMMUTABLE;

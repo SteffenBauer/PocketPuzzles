@@ -694,12 +694,12 @@ static config_item *game_configure(const game_params *params)
                                                 * MAX_BRIDGES */
     ret[4].u.choices.selected = params->maxb - 1;
 
-    ret[5].name = "%age of island squares";
+    ret[5].name = "\% of island squares";
     ret[5].type = C_CHOICES;
     ret[5].u.choices.choicenames = ":5%:10%:15%:20%:25%:30%";
     ret[5].u.choices.selected = (params->islands / 5)-1;
 
-    ret[6].name = "Expansion factor (%age)";
+    ret[6].name = "Expansion factor";
     ret[6].type = C_CHOICES;
     ret[6].u.choices.choicenames = ":0%:10%:20%:30%:40%:50%:60%:70%:80%:90%:100%";
     ret[6].u.choices.selected = params->expansion / 10;
@@ -729,6 +729,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 3 || params->h < 3)
         return "Width and height must be at least 3";
+    if (params->w >= 16 || params->h >= 16)
+        return "Width and height must be smaller than 16";
     if (params->maxb < 1 || params->maxb > MAX_BRIDGES)
         return "Too many bridges.";
     if (full) {

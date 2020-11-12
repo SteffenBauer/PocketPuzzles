@@ -12,7 +12,6 @@
 #include "puzzles.h"
 
 #define PREFERRED_TILE_SIZE 32
-#define FLASH_FRAME 0.2F
 
 /* Terminology, for ease of reading various macros scattered about the place.
  *
@@ -29,7 +28,7 @@
 
 enum {
     COL_BACKGROUND, COL_COVER, COL_LOCK,
-    COL_TEXT, COL_FLASHTEXT,
+    COL_TEXT,
     COL_HIGHLIGHT, COL_LOWLIGHT, COL_GRID,
     COL_BALL, COL_WRONG, COL_BUTTON,
     COL_CURSOR,
@@ -143,7 +142,7 @@ static config_item *game_configure(const game_params *params)
     config_item *ret;
     char buf[80];
 
-    ret = snewn(4, config_item);
+    ret = snewn(5, config_item);
 
     ret[0].name = "Width";
     ret[0].type = C_STRING;
@@ -155,16 +154,18 @@ static config_item *game_configure(const game_params *params)
     sprintf(buf, "%d", params->h);
     ret[1].u.string.sval = dupstr(buf);
 
-    ret[2].name = "No. of balls";
+    ret[2].name = "Min no. of balls";
     ret[2].type = C_STRING;
-    if (params->minballs == params->maxballs)
-        sprintf(buf, "%d", params->minballs);
-    else
-        sprintf(buf, "%d-%d", params->minballs, params->maxballs);
+    sprintf(buf, "%d", params->minballs);
     ret[2].u.string.sval = dupstr(buf);
 
-    ret[3].name = NULL;
-    ret[3].type = C_END;
+    ret[3].name = "Max no. of balls";
+    ret[3].type = C_STRING;
+    sprintf(buf, "%d", params->maxballs);
+    ret[3].u.string.sval = dupstr(buf);
+    
+    ret[4].name = NULL;
+    ret[4].type = C_END;
 
     return ret;
 }
@@ -175,11 +176,9 @@ static game_params *custom_params(const config_item *cfg)
 
     ret->w = atoi(cfg[0].u.string.sval);
     ret->h = atoi(cfg[1].u.string.sval);
-
-    /* Allow 'a-b' for a range, otherwise assume a single number. */
-    if (sscanf(cfg[2].u.string.sval, "%d-%d",
-               &ret->minballs, &ret->maxballs) < 2)
-        ret->minballs = ret->maxballs = atoi(cfg[2].u.string.sval);
+    ret->minballs = atoi(cfg[2].u.string.sval);
+    ret->maxballs = atoi(cfg[3].u.string.sval);
+    if (ret->maxballs < ret->minballs) ret->maxballs = ret->minballs;
 
     return ret;
 }
@@ -188,12 +187,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 2 || params->h < 2)
         return "Width and height must both be at least two";
-    /* next one is just for ease of coding stuff into 'char'
-     * types, and could be worked around if required. */
-    if (params->w > 255 || params->h > 255)
-        return "Widths and heights greater than 255 are not supported";
-    if (params->minballs > params->maxballs)
-        return "Minimum number of balls may not be greater than maximum";
+    if (params->w > 16 || params->h > 16)
+        return "Widths and heights greater than 16 are not supported";
     if (params->minballs >= params->w * params->h)
         return "Too many balls to fit in grid";
     return NULL;
@@ -872,7 +867,7 @@ done:
 struct game_drawstate {
     int tilesize, crad, rrad, w, h; /* w and h to make macros work... */
     unsigned int *grid;          /* as the game_state grid */
-    bool started, reveal, isflash;
+    bool started, reveal;
     int flash_laserno;
 };
 
@@ -1115,21 +1110,18 @@ static float *game_colours(frontend *fe, int *ncolours)
     float *ret = snewn(3 * NCOLOURS, float);
     int i;
 
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
-
     for (i = 0; i < 3; i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
         ret[COL_HIGHLIGHT  * 3 + i] = 1.0F;
         ret[COL_LOWLIGHT   * 3 + i] = 1.0F;
-        ret[COL_GRID       * 3 + i] = 0.5F;
-        ret[COL_LOCK       * 3 + i] = 0.7F;
-        ret[COL_COVER      * 3 + i] = 0.9F;
+        ret[COL_GRID       * 3 + i] = 0.25F;
+        ret[COL_LOCK       * 3 + i] = 0.75F;
+        ret[COL_COVER      * 3 + i] = 0.5F;
         ret[COL_TEXT       * 3 + i] = 0.0F;
         ret[COL_BALL       * 3 + i] = 0.0F;
         ret[COL_WRONG      * 3 + i] = 0.5F;
         ret[COL_BUTTON     * 3 + i] = 0.75F;
         ret[COL_CURSOR     * 3 + i] = 0.5F;
-        ret[COL_FLASHTEXT  * 3 + i] = 0.5F;
     }
 
     *ncolours = NCOLOURS;
@@ -1147,7 +1139,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->started = false;
     ds->reveal = false;
     ds->flash_laserno = LASER_EMPTY;
-    ds->isflash = false;
 
     return ds;
 }
@@ -1170,7 +1161,7 @@ static void draw_square_cursor(drawing *dr, game_drawstate *ds, int dx, int dy)
 
 static void draw_arena_tile(drawing *dr, const game_state *gs,
                             game_drawstate *ds, const game_ui *ui,
-                            int ax, int ay, bool force, bool isflash)
+                            int ax, int ay, bool force)
 {
     int gx = ax+1, gy = ay+1;
     int gs_tile = GRID(gs, gx, gy), ds_tile = GRID(ds, gx, gy);
@@ -1193,9 +1184,9 @@ static void draw_arena_tile(drawing *dr, const game_state *gs,
              * have a red cross added later.
              * Missing balls are red. */
             if (gs_tile & BALL_GUESS) {
-                bcol = isflash ? bg : COL_BALL;
+                bcol = COL_BALL;
             } else if (gs_tile & BALL_CORRECT) {
-                bcol = isflash ? bg : COL_WRONG;
+                bcol = COL_WRONG;
             } else {
                 bcol = bg;
             }
@@ -1256,7 +1247,7 @@ static void draw_laser_tile(drawing *dr, const game_state *gs,
 {
     int gx, gy, dx, dy, unused;
     int wrong, omitted, laserval;
-    bool tmp, reflect, hit, flash = false;
+    bool tmp, reflect, hit;
     unsigned int gs_tile, ds_tile, exitno;
 
     tmp = range2grid(gs, lno, &gx, &gy, &unused);
@@ -1280,7 +1271,6 @@ static void draw_laser_tile(drawing *dr, const game_state *gs,
         if (exitno == ds->flash_laserno)
             gs_tile |= LASER_FLASHED;
     }
-    if (gs_tile & LASER_FLASHED) flash = true;
 
     gs_tile |= wrong | omitted;
 
@@ -1293,7 +1283,7 @@ static void draw_laser_tile(drawing *dr, const game_state *gs,
 
         if (gs_tile &~ (LASER_WRONG | LASER_OMITTED | FLAG_CURSOR)) {
             char str[32];
-            int tcol = flash ? COL_FLASHTEXT : omitted ? COL_WRONG : COL_TEXT;
+            int tcol = omitted ? COL_WRONG : COL_TEXT;
 
             if (reflect || hit)
                 sprintf(str, "%s", reflect ? "R" : "H");
@@ -1329,13 +1319,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         float animtime, float flashtime)
 {
     int i, x, y, ts = TILE_SIZE;
-    bool isflash = false, force = false;
-
-    if (flashtime > 0) {
-        int frame = (int)(flashtime / FLASH_FRAME);
-        isflash = (frame % 2) == 0;
-        debug(("game_redraw: flashtime = %f", flashtime));
-    }
+    bool force = false;
 
     if (!ds->started) {
         int x0 = TODRAW(0)-1, y0 = TODRAW(0)-1;
@@ -1366,12 +1350,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         ds->started = true;
     }
 
-    if (isflash != ds->isflash) force = true;
-
     /* draw the arena */
     for (x = 0; x < state->w; x++) {
         for (y = 0; y < state->h; y++) {
-            draw_arena_tile(dr, state, ds, ui, x, y, force, isflash);
+            draw_arena_tile(dr, state, ds, ui, x, y, force);
         }
     }
 
@@ -1402,7 +1384,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     }
     draw_update(dr, TODRAW(0), TODRAW(0), TILE_SIZE, TILE_SIZE);
     ds->reveal = state->reveal;
-    ds->isflash = isflash;
 
     {
         char buf[256];
@@ -1442,7 +1423,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 static float game_anim_length(const game_state *oldstate,
                               const game_state *newstate, int dir, game_ui *ui)
 {
-    return (ui->flash_laser == 2) ? CUR_ANIM : 0.0F;
+    return 0.0F;
 }
 
 static float game_flash_length(const game_state *oldstate,

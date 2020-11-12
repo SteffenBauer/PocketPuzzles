@@ -21,9 +21,6 @@
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILE_SIZE) / TILE_SIZE - 1 )
 
-#define ANIM_PER_BLKSIZE_UNIT 0.13F
-#define FLASH_FRAME 0.13F
-
 enum {
     COL_BACKGROUND,
     COL_TEXT,
@@ -206,11 +203,17 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->n < 2)
-    return "Rotating block size must be at least two";
+        return "Rotating block size must be at least two";
+    if (params->n > 5)
+        return "Rotating block size must be at most five";
     if (params->w < params->n)
-    return "Width must be at least the rotating block size";
+        return "Width must be at least the rotating block size";
     if (params->h < params->n)
-    return "Height must be at least the rotating block size";
+        return "Height must be at least the rotating block size";
+    if (params->w > 12)
+        return "Width must be at most 12";
+    if (params->h > 12)
+        return "Height must be at most 12";
     return NULL;
 }
 
@@ -1035,11 +1038,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     if (cx != ds->cur_x || cy != ds->cur_y)
         cmoved = true;
 
-    if (flashtime > 0) {
-        int frame = (int)(flashtime / FLASH_FRAME);
-        bgcolour = (frame % 2 ? COL_LOWLIGHT : COL_HIGHLIGHT);
-    } else
-        bgcolour = COL_BACKGROUND;
+    bgcolour = COL_BACKGROUND;
 
     if (!ds->started) {
         int coords[10];

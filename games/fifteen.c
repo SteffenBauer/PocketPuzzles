@@ -18,9 +18,6 @@
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILE_SIZE) / TILE_SIZE - 1 )
 
-#define ANIM_TIME 0.13F
-#define FLASH_FRAME 0.13F
-
 #define X(state, i) ( (i) % (state)->w )
 #define Y(state, i) ( (i) / (state)->w )
 #define C(state, x, y) ( (y) * (state)->w + (x) )
@@ -152,6 +149,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 2 || params->h < 2)
     return "Width and height must both be at least two";
+    if (params->w > 9 || params->h > 9)
+    return "Width and height must both be at no more than nine";
 
     return NULL;
 }
@@ -792,10 +791,10 @@ static float *game_colours(frontend *fe, int *ncolours)
 
     for (i = 0; i < 3; i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0;
-        ret[COL_HIGHLIGHT  * 3 + i] = 0.8;
-        ret[COL_LOWLIGHT   * 3 + i] = 0.4;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.75;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.25;
         ret[COL_TEXT       * 3 + i] = 0.0;
-        ret[COL_HINT       * 3 + i] = 0.6;
+        ret[COL_HINT       * 3 + i] = 0.5;
     }
     *ncolours = NCOLOURS;
     return ret;

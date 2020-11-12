@@ -30,9 +30,6 @@ enum {
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILE_SIZE) / TILE_SIZE - 1 )
 
-#define ANIM_TIME 0.25F
-#define FLASH_FRAME 0.07F
-
 /*
  * Possible ways to decide which lights are toggled by each click.
  * Essentially, each of these describes a means of inventing a
@@ -183,6 +180,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w <= 0 || params->h <= 0)
         return "Width and height must both be greater than zero";
+    if (params->w > 9 || params->h > 9)
+        return "Width and height must both be smaller than ten";
     return NULL;
 }
 
@@ -1025,12 +1024,12 @@ static float *game_colours(frontend *fe, int *ncolours)
 
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
-        ret[COL_WRONG      * 3 + i] = 0.3F;
+        ret[COL_WRONG      * 3 + i] = 0.5F;
         ret[COL_RIGHT      * 3 + i] = 1.0F;
         ret[COL_GRID       * 3 + i] = 0.0F;
         ret[COL_DIAG       * 3 + i] = 0.0F;
-        ret[COL_HINT       * 3 + i] = 0.5F;
-        ret[COL_CURSOR     * 3 + i] = 0.8F;
+        ret[COL_HINT       * 3 + i] = 0.75F;
+        ret[COL_CURSOR     * 3 + i] = 0.5F;
     }
 
     *ncolours = NCOLOURS;
@@ -1060,7 +1059,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 }
 
 static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
-                      int x, int y, int tile, bool anim, float animtime)
+                      int x, int y, int tile)
 {
     int w = ds->w, h = ds->h, wh = w * h;
     int bx = x * TILE_SIZE + BORDER, by = y * TILE_SIZE + BORDER;
@@ -1159,8 +1158,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         ds->started = true;
     }
 
-    animtime /= ANIM_TIME;           /* scale it so it goes from 0 to 1 */
-
     for (i = 0; i < wh; i++) {
         int x = i % w, y = i / w;
         int v = state->grid[i];
@@ -1171,13 +1168,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         if (ui->cdraw && ui->cx == x && ui->cy == y)
             v |= 4;
 
-        if (oldstate && ((state->grid[i] ^ oldstate->grid[i]) &~ 2))
-            vv = 255;               /* means `animated' */
-        else
-            vv = v;
+        vv = v;
 
         if (ds->tiles[i] == 255 || vv == 255 || ds->tiles[i] != vv) {
-            draw_tile(dr, ds, state, x, y, v, vv == 255, animtime);
+            draw_tile(dr, ds, state, x, y, v);
             ds->tiles[i] = vv;
         }
     }

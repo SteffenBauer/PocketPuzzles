@@ -167,16 +167,10 @@ static const struct game_params net_presets[] = {
     {7, 7, false, true, 0.0},
     {9, 9, false, true, 0.0},
     {11, 11, false, true, 0.0},
-#ifndef SMALL_SCREEN
-    {13, 11, false, true, 0.0},
-#endif
     {5, 5, true, true, 0.0},
     {7, 7, true, true, 0.0},
     {9, 9, true, true, 0.0},
     {11, 11, true, true, 0.0},
-#ifndef SMALL_SCREEN
-    {13, 11, true, true, 0.0},
-#endif
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -280,9 +274,9 @@ static config_item *game_configure(const game_params *params)
     ret[2].u.boolean.bval = params->wrapping;
 
     ret[3].name = "Barrier probability";
-    ret[3].type = C_STRING;
-    sprintf(buf, "%g", params->barrier_probability);
-    ret[3].u.string.sval = dupstr(buf);
+    ret[3].type = C_CHOICES;
+    ret[3].u.choices.choicenames = ":0%:10%:20%:30%:40%:50%:60%:70%:80%";
+    ret[3].u.choices.selected = params->barrier_probability / 10;
 
     ret[4].name = "Ensure unique solution";
     ret[4].type = C_BOOLEAN;
@@ -301,22 +295,24 @@ static game_params *custom_params(const config_item *cfg)
     ret->width = atoi(cfg[0].u.string.sval);
     ret->height = atoi(cfg[1].u.string.sval);
     ret->wrapping = cfg[2].u.boolean.bval;
-    ret->barrier_probability = (float)atof(cfg[3].u.string.sval);
+    ret->barrier_probability = (float)cfg[3].u.choices.selected/10.0;
     ret->unique = cfg[4].u.boolean.bval;
-
+    printf("Barrier prob %f\n", ret->barrier_probability);
     return ret;
 }
 
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->width <= 0 || params->height <= 0)
-    return "Width and height must both be greater than zero";
+        return "Width and height must both be greater than zero";
+    if (params->width > 16 || params->height > 16)
+        return "Width and height must both be not greather than 16";
     if (params->width <= 1 && params->height <= 1)
-    return "At least one of width and height must be greater than one";
+        return "At least one of width and height must be greater than one";
     if (params->barrier_probability < 0)
-    return "Barrier probability may not be negative";
+        return "Barrier probability may not be negative";
     if (params->barrier_probability > 1)
-    return "Barrier probability may not be greater than 1";
+        return "Barrier probability may not be greater than 1";
 
     /*
      * Specifying either grid dimension as 2 in a wrapping puzzle
