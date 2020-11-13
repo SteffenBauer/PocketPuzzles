@@ -162,7 +162,7 @@ static game_params *custom_params(const config_item *cfg)
 
 static const char *validate_params(const game_params *params, bool full)
 {
-    if (params->w * params->h >= 10000)
+    if (params->w * params->h > 150)
         return "Puzzle is too large";
 
     if (params->w * params->h < 2)

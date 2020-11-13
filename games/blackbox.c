@@ -1311,8 +1311,6 @@ static void draw_laser_tile(drawing *dr, const game_state *gs,
     GRID(ds, gx, gy) = gs_tile;
 }
 
-#define CUR_ANIM 0.2F
-
 static void game_redraw(drawing *dr, game_drawstate *ds,
                         const game_state *oldstate, const game_state *state,
                         int dir, const game_ui *ui,
