@@ -266,8 +266,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 5) return "Width must be at least five";
     if (params->h < 5) return "Height must be at least five";
-    if (params->w > 12) return "Width must be at most 12";
-    if (params->h > 12) return "Height must be at most 12";
+    if (params->w > 10) return "Width must be at most 10";
+    if (params->h > 10) return "Height must be at most 10";
     if (params->difficulty < 0 || params->difficulty >= DIFFCOUNT)
         return "Unknown difficulty level";
 

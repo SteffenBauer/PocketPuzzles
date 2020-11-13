@@ -1908,6 +1908,10 @@ char *midend_rewrite_statusbar(midend *me, const char *text)
     }
 }
 
+char *midend_get_statustext(midend *me) {
+    return me->laststatus;
+}
+
 #define SERIALISE_MAGIC "Simon Tatham's Portable Puzzle Collection"
 #define SERIALISE_VERSION "1"
 

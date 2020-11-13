@@ -508,7 +508,7 @@ static void gameDrawStatusBar() {
     char buf[256];
     if (!fe->gamelayout.with_statusbar) return;
     gameSetupStatusBar();
-    sprintf(buf, "%s                               ", fe->statustext);
+    sprintf(buf, "%s                               ", midend_get_statustext(me));
     SetFont(fe->gamefont, BLACK);
     DrawString(10, fe->gamelayout.statusbar.starty+12, buf);
 }
