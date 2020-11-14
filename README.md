@@ -2,15 +2,23 @@
 
 Port of [Simon Tatham's Portable Puzzle Collection](http://www.chiark.greenend.org.uk/~sgtatham/puzzles/) to the [PocketBook eReader family](https://de.wikipedia.org/wiki/PocketBook)
 
-To get a mostly complete collection for all puzzles ever written for the SGT puzzles, I'm planning to also include unofficial puzzles and puzzle variations from [puzzles-unreleased](https://github.com/x-sheep/puzzles-unreleased) and [sgtpuzzles-extended](https://github.com/SteffenBauer/sgtpuzzles-extended), the unofficial *Group*, *Sokoban*, and *Slide* puzzles from the original collection, and the *Mosaic* puzzle from [here](https://github.com/kohend/simon-puzzles)
+<img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_a.png" width="220"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_sologame.png" width="220"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gameconfig.png" width="220">
+
+[More screenshots](https://github.com/SteffenBauer/PocketPuzzles/blob/master/screenshots)
 
 Inspired by and building on the work of [Port to Android by Chris Boyle](https://github.com/chrisboyle/sgtpuzzles) and [Puzzles for pocketbook by mnk](https://github.com/svn2github/pocketbook-free/tree/master/puzzles)
+
+To get a mostly complete collection for all puzzles ever written for the SGT puzzles, I'm planning to also include unofficial puzzles and puzzle variations from [puzzles-unreleased](https://github.com/x-sheep/puzzles-unreleased) and [sgtpuzzles-extended](https://github.com/SteffenBauer/sgtpuzzles-extended), the unofficial *Group*, *Sokoban*, and *Slide* puzzles from the original collection, and the *Mosaic* puzzle from [here](https://github.com/kohend/simon-puzzles)
+
+### Development history
 
 **11.8.2020 Major milestone reached!** Some games are now playable on a very basic level. 
 
 **16.8.2020 Next milestone** Game control buttons now working. All games playable (but those using blitter / animations still need rewriting)
 
 **6.10.2020 Alpha version ready!** Persistence of game params and current game now working. Most games UI are reworked suitable for eInk screen.
+
+**14.11.2020 Beta version ready!** Games can now be individually configured. All elements needed for beta are now implemented.
 
 There is still work to do. See ToDo list below. eInk screens are limited in response time and color availability, so most of the games need individual tweaking to make them fun to play.
 
@@ -24,10 +32,7 @@ Clone the [pocketbook SDK](https://github.com/blchinezu/pocketbook-sdk/) and set
 
 Modify the path to your local copy of the SDK in the `Makefile` at the line `PBSDK ?= ...`
 
-Run:  
-```
-make
-```
+Run: `make`
 
 When everything compiles successfully, you find `build/SGTPuzzles.app`. Copy this to the folder `/applications` on your device. Reboot if necessary after transfer.
 
@@ -37,9 +42,9 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 
 I received reports that the app works with these devices:
 
-* PB632 / Touch HD 3
-* PB631 / Touch HD
-* PB740 / InkPad 3
+* PB632 - Touch HD 3
+* PB631 - Touch HD / Touch HD 2
+* PB740 - InkPad 3
 
 I'm interested in reports from more devices; especially how it looks like on color screen.
 
@@ -70,7 +75,7 @@ I'm interested in reports from more devices; especially how it looks like on col
 
 #### Milestones for beta version
 
-- [ ] Implement custom game parameters entry screen
+- [X] Implement custom game parameters entry screen
 - [X] Implement help screen
 - [X] Better color palette for greyscale screen (done for all active games)
 - [X] Better error visualization suitable for greyscale screen (done for all active games)
@@ -81,6 +86,7 @@ I'm interested in reports from more devices; especially how it looks like on col
 
 - [ ] Ability to mark games as favorite
 - [ ] General settings (show/hide statusbar, orientation, chooser style, color/grey mode)
+- [ ] Information screen explaining game controls
 - [ ] Color mode
 - [ ] Screen orientation handling
 - [ ] Entry buttons indicating status (Bridges, Dominosa, Solo)
@@ -102,7 +108,3 @@ Build and installation is completely **on your own risk**! You must be aware tha
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-### Screenshots
----
-<img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_a.png" width="240"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_b.png" width="240"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_netgame.png" width="240"><img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_boatsgame.png" width="240"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_minesgame.png" width="240"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_wallsgame.png" width="240"><img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_guessgame.png" width="240"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_untanglegame.png" width="240"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_pegsrules.png" width="240"><img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamemenu.png" width="240"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_gamepresets.png" width="240"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_solved.png" width="240">
----
