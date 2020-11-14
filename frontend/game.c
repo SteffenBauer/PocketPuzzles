@@ -814,7 +814,6 @@ void gameScreenFree() {
         sfree(typeMenu);
         if (me) midend_free(me);
         gameInitialized = false;
-        Message(ICON_INFORMATION, "", "Exit app", 1000);
     }
 }
 
