@@ -253,15 +253,15 @@ static solver_state *solve_game_rec(const solver_state *sstate);
     A("Honeycomb",HONEYCOMB,2,3,12)                                \
     A("Snub-Square",SNUBSQUARE,3,3,8)                             \
     A("Cairo",CAIRO,3,4,8)                                        \
-    A("Great-Hexagonal",GREATHEXAGONAL,3,3,5)                     \
+    A("Great-Hexagonal",GREATHEXAGONAL,3,3,6)                     \
     A("Octagonal",OCTAGONAL,3,3,8)                                \
     A("Kites",KITE,3,3,5)                                         \
-    A("Floret",FLORET,1,2,4)                                      \
-    A("Dodecagonal",DODECAGONAL,2,2,4)                            \
-    A("Great-Dodecagonal",GREATDODECAGONAL,2,2,4)                 \
+    A("Floret",FLORET,1,2,5)                                      \
+    A("Dodecagonal",DODECAGONAL,2,2,5)                            \
+    A("Great-Dodecagonal",GREATDODECAGONAL,2,2,5)                 \
     A("Penrose (kite/dart)",PENROSE_P2,4,5,12)                     \
     A("Penrose (rhombs)",PENROSE_P3,3,3,12)                        \
-    A("Great-Great-Dodecagonal",GREATGREATDODECAGONAL,2,2,3)      \
+    A("Great-Great-Dodecagonal",GREATGREATDODECAGONAL,2,2,4)      \
     A("Kagome",KAGOME,3,3,6)                                      \
     /* end of list */
 
