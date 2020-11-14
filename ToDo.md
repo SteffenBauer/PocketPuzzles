@@ -57,7 +57,7 @@
 - [ ] Solo: Number highlighting indication in numerical buttons
 - [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
 - [ ] Guess: Require npegs / nguesses / colors to be solvable
-- [ ] Loopy: Check min/max grid sizes
+- [X] Loopy: Check min/max grid sizes
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 
 #### One-click symbol fill
