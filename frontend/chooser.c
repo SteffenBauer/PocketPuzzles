@@ -8,7 +8,11 @@
 #include "frontend/gamelist.h"
 
 void chooserResetDialogHandler(int button) {
-    if (button == 1) configDel();
+    if (button == 1) {
+        configDel();
+        chooserSetupButtons();
+        chooserRefreshCanvas();
+    }
 }
 
 void chooserMenuHandler(int index) {
