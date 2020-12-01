@@ -63,7 +63,6 @@ struct blitter {
 
 static frontend *fe;
 static midend *me;
-static drawing *dr;
 struct preset_menu *presets;
 
 extern ibitmap icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,

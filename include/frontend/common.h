@@ -2,6 +2,8 @@
 #define POCKETPUZZLES_COMMON_HEADER
 #include "puzzles.h"
 
+extern ibitmap ic_star;
+
 typedef struct panel {
     int starty;
     int height;
@@ -34,6 +36,7 @@ struct layout {
 typedef enum {
     BTN_MENU,
     BTN_CHOOSER,
+    BTN_FAVORITE,
     BTN_CTRL,
     BTN_CHAR,
     BTN_ITEM,

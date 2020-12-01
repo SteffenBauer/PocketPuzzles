@@ -59,6 +59,7 @@
 - [ ] Guess: Require npegs / nguesses / colors to be solvable
 - [X] Loopy: Check min/max grid sizes
 - [ ] Loopy: Fix polygon error fill in Penrose grids
+- [ ] Bridges: Change Path button to indicator
 
 #### One-click symbol fill
 

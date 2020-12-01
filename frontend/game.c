@@ -251,8 +251,10 @@ void activate_timer(frontend *fe) {
 }
 
 void deactivate_timer(frontend *fe) {
-  fe->isTimer=false;
-  ClearTimer(tproc);
+  if (fe->isTimer) {
+      fe->isTimer=false;
+      ClearTimer(tproc);
+  }
 }
 
 void fatal(const char *fmt, ...) {
@@ -643,7 +645,6 @@ static void gamePrepareFrontend() {
     fe->xoffset = (ScreenWidth() - fe->width)/2;
     fe->yoffset = fe->gamelayout.maincanvas.starty + (fe->gamelayout.maincanvas.height - fe->height) / 2 ;
     
-    gameInitialized = true;
 }
 
 static LAYOUTTYPE gameGetLayout() {
@@ -781,7 +782,7 @@ bool gameResumeGame() {
 void gameSetGame(const struct game *thegame) {
     fe->currentgame = thegame;
     fe->statustext = "";
-    if (me) midend_free(me);
+    if (me != NULL) midend_free(me);
     me = midend_new(fe, thegame, &ink_drawing, fe);
     stateLoadParams(me, thegame);
 }
@@ -802,6 +803,10 @@ void gameScreenInit() {
     fe->cliprect = GetClipRect();
     fe->gamefont = OpenFont("LiberationSans-Bold", GFONTSIZE, 0);
     fe->gameButton = NULL;
+    fe->isTimer = false;
+    typeMenu = NULL;
+    me = NULL;
+    gameInitialized = true;
 }
 
 void gameScreenFree() {
@@ -812,8 +817,9 @@ void gameScreenFree() {
         sfree(fe->gameButton);
         sfree(fe);
         sfree(typeMenu);
-        if (me) midend_free(me);
+        if (me != NULL) midend_free(me);
         gameInitialized = false;
+        /* Message(ICON_INFORMATION, "", "Exit app", 1000); */
     }
 }
 
