@@ -20,6 +20,8 @@ To get a mostly complete collection for all puzzles ever written for the SGT puz
 
 **14.11.2020 Beta version ready!** Games can now be individually configured. All elements needed for beta are now implemented.
 
+**01.12.2020 v0.6.0** One can now mark games as favorite on the chooser screen.
+
 There is still work to do. See ToDo list below. eInk screens are limited in response time and color availability, so most of the games need individual tweaking to make them fun to play.
 
 ### Binary app
