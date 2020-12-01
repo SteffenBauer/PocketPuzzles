@@ -31,8 +31,9 @@ struct chooserAttributes {
 } ca;
 
 extern ibitmap icon_home, icon_home_tap, icon_redraw, icon_redraw_tap,
-               bt_west, bt_east, 
-               icon_menu, icon_menu_tap, 
+               bt_west, bt_east, ic_star,
+               icon_menu, icon_menu_tap,
+               menu_new, menu_star,
                menu_settings, menu_restart, menu_help, menu_reset;
 
 static imenuex chooserMenu[] = {
@@ -50,6 +51,7 @@ static void chooserDrawMenu();
 static void chooserDrawChooserButtons(int page);
 static void chooserDrawControlButtons(int page);
 
+void chooserRefreshCanvas();
 void chooserScreenInit();
 void chooserScreenShow();
 void chooserScreenFree();
@@ -64,6 +66,10 @@ void chooserNext();
 extern void gameSetGame(const struct game *thegame);
 extern void gameStartNewGame();
 extern bool gameResumeGame();
+
+extern void stateSetFavorite(const char *name);
+extern void stateUnsetFavorite(const char *name);
+extern bool stateIsFavorite(const char *name);
 extern void configAddItem(char *key, char *value);
 extern void configDel();
 

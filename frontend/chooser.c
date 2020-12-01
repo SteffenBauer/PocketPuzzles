@@ -48,7 +48,24 @@ void chooserTap(int x, int y) {
     }
 }
 
-void chooserLongTap(int x, int y) { }
+void chooserLongTap(int x, int y) {
+    int i;
+    for (i=0;i<ca.numChooserButtons;i++) {
+        if (release_button(x, y, &ca.chooserButton[i]) &&
+           (ca.chooserButton[i].action == ACTION_LAUNCH)) {
+            if (ca.chooserButton[i].type == BTN_CHOOSER) {
+                stateSetFavorite(ca.chooserButton[i].actionParm.thegame->name);
+            }
+            else {
+                stateUnsetFavorite(ca.chooserButton[i].actionParm.thegame->name);
+            }
+            init_tap_x = init_tap_y = -1;
+            chooserSetupButtons();
+            chooserRefreshCanvas();
+            break;
+        }
+    }
+}
 
 void chooserDrag(int x, int y) { }
 
@@ -91,14 +108,14 @@ void chooserRelease(int x, int y) {
 void chooserPrev() {
     if (ca.current_chooserpage > 0) {
         ca.current_chooserpage -= 1;
-        chooserScreenShow();
+        chooserRefreshCanvas();
     }
 }
 
 void chooserNext() {
     if (ca.current_chooserpage <= ca.chooser_lastpage) {
         ca.current_chooserpage += 1;
-        chooserScreenShow();
+        chooserRefreshCanvas();
     }
 }
 
@@ -156,10 +173,7 @@ static void chooserDrawMenu() {
 }
 
 static void chooserSetupButtons() {
-    int i,c,r,p,pi;
-
-    ca.numChooserButtons = ca.num_games + 5;
-    ca.chooserButton = smalloc(ca.numChooserButtons*sizeof(BUTTON));
+    int i,c,r,p,pi,n;
 
     for(i=0;i<ca.num_games;i++) {
         p = i / (CHOOSER_COLS*CHOOSER_ROWS);
@@ -171,8 +185,24 @@ static void chooserSetupButtons() {
         ca.chooserButton[i].page = p;
         ca.chooserButton[i].action = ACTION_LAUNCH;
         ca.chooserButton[i].size = ca.chooserlayout.chooser_size;
-        ca.chooserButton[i].bitmap = mygames[i].bitmap;
-        ca.chooserButton[i].actionParm.thegame = mygames[i].thegame;
+    }
+
+    n = 0;
+    for (i=0;i<ca.num_games;i++) {
+        if (stateIsFavorite(mygames[i].thegame->name)) {
+            ca.chooserButton[n].bitmap = mygames[i].bitmap;
+            ca.chooserButton[n].actionParm.thegame = mygames[i].thegame;
+            ca.chooserButton[n].type = BTN_FAVORITE;
+            n++;
+        }
+    }
+    for (i=0;i<ca.num_games;i++) {
+        if (!stateIsFavorite(mygames[i].thegame->name)) {
+            ca.chooserButton[n].bitmap = mygames[i].bitmap;
+            ca.chooserButton[n].actionParm.thegame = mygames[i].thegame;
+            ca.chooserButton[n].type = BTN_CHOOSER;
+            n++;
+        }
     }
 
     ca.chooserButton[ca.btnHomeIDX = i++] = (BUTTON){ true,  BTN_MENU, 
@@ -201,6 +231,12 @@ static void chooserSetupButtons() {
         ACTION_NEXT, ' ', &bt_east, NULL, NULL};
 }
 
+void chooserRefreshCanvas() {
+    chooserDrawChooserButtons(ca.current_chooserpage);
+    chooserDrawControlButtons(ca.current_chooserpage);
+    SoftUpdate();
+}
+
 void chooserScreenShow() {
     ClearScreen();
     DrawPanel(NULL, "", "", 0);
@@ -224,6 +260,9 @@ void chooserScreenInit() {
     ca.chooserlayout = getLayout(LAYOUT_BUTTONBAR);
     ca.control_padding = (ScreenWidth()-(CONTROL_NUM*ca.chooserlayout.control_size))/(CONTROL_NUM+1);
     ca.chooser_padding = (ScreenWidth()-(CHOOSER_COLS*ca.chooserlayout.chooser_size))/(CHOOSER_COLS+1);
+
+    ca.numChooserButtons = ca.num_games + 5;
+    ca.chooserButton = smalloc(ca.numChooserButtons*sizeof(BUTTON));
 
     chooserSetupButtons();
     chooserInitialized = true;

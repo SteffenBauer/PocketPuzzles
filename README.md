@@ -42,11 +42,13 @@ Tested only on the **PocketBook Touch HD 3**, because that is the device I own. 
 
 I received reports that the app works with these devices:
 
-* PB632 - Touch HD 3
-* PB631 - Touch HD / Touch HD 2
-* PB740 - InkPad 3
+* PB632  - Touch HD 3
+* PB631  - Touch HD / Touch HD 2
+* PB740  - InkPad 3
+* PB633  - Pocketbook Color
+* PB1040 - InkPad X
 
-I'm interested in reports from more devices; especially how it looks like on color screen.
+I'm interested in reports from more devices; especially how it looks like on color screen and on devices with screen resolution different than the Touch HD 3.
 
 ### ToDo
 
@@ -84,12 +86,14 @@ I'm interested in reports from more devices; especially how it looks like on col
 
 #### For future versions
 
-- [ ] Ability to mark games as favorite
+- [X] Ability to mark games as favorite
+- [ ] Entry buttons indicating status (Bridges, Dominosa, games with one-click fill)
+- [ ] Context menu for chooser buttons (Launch, Resume, Clear prefs, Set/Unset as favorite)
+- [ ] Check draw update efficiency in all games
 - [ ] General settings (show/hide statusbar, orientation, chooser style, color/grey mode)
 - [ ] Information screen explaining game controls
 - [ ] Color mode
 - [ ] Screen orientation handling
-- [ ] Entry buttons indicating status (Bridges, Dominosa, Solo)
 - [ ] Generate separate documentation eBook
 
 ToDos for individual games see [ToDo.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/ToDo.md)

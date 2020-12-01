@@ -19,6 +19,10 @@ bool release_button(int x, int y, BUTTON *button) {
 void button_to_normal(BUTTON *button, bool update) {
     if (button->bitmap != NULL) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
+        if (button->type == BTN_FAVORITE) {
+            int offset = button->size/2;
+            StretchBitmap(button->posx+offset, button->posy+offset, offset, offset, &ic_star, 0);
+        }
     }
     else if (button->action == ACTION_CTRL) {
         draw_buttonchar(button);
@@ -31,6 +35,10 @@ void button_to_tapped(BUTTON *button) {
     }
     else if (button->bitmap != NULL) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
+        if (button->type == BTN_FAVORITE) {
+            int offset = button->size/2;
+            StretchBitmap(button->posx+offset, button->posy+offset, offset, offset, &ic_star, 0);
+        }
         InvertArea(button->posx, button->posy, button->size, button->size);
     }
     else if (button->action == ACTION_CTRL) {

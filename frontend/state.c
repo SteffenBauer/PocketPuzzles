@@ -11,6 +11,7 @@
 #include "puzzles.h"
 
 const char *configFileName = STATEPATH "/sgtpuzzles.cfg";
+/* const char *configFileName = STATEPATH "/sgtpuzzlesdev.cfg"; */
 
 int configLen() {
     int count = 0;
@@ -114,9 +115,10 @@ void configLoad() {
       if (linelen > 0) {
         char value[linelen];
         sscanf(buf, "%s %s", &key, &value);
-        if ((strncmp("params_",  key, 7) == 0) ||
-            (strncmp("savegame", key, 8) == 0) ||
-            (strncmp("config_",  key, 7) == 0))
+        if ((strncmp("params_",   key, 7) == 0) ||
+            (strncmp("savegame",  key, 8) == 0) ||
+            (strncmp("favorite_", key, 9) == 0) ||
+            (strncmp("config_",   key, 7) == 0))
             configAddItem(key, value);
       }
     }
@@ -160,7 +162,6 @@ void stateSerialise(midend *me) {
     buf = bin2hex(game_save.buf, game_save.len);
     configAddItem("savegame", buf);
     sfree(buf);
-    stateInitialized = true;
 }
 
 const char *stateDeserialise(midend *me) {
@@ -212,8 +213,29 @@ void stateSaveParams(midend *me, const game *ourgame) {
     ourgame->free_params(params);
 }
 
+void stateSetFavorite(const char *name) {
+    char key[128];
+    sprintf(key, "favorite_%s", name);
+    configAddItem(key, "favorite");
+}
+
+void stateUnsetFavorite(const char *name) {
+    char key[128];
+    sprintf(key, "favorite_%s", name);
+    configDelItem(key);
+}
+
+bool stateIsFavorite(const char *name) {
+    char key[128];
+    char *entry;
+    sprintf(key, "favorite_%s", name);
+    entry = configGetItem(key);
+    return (entry != NULL && (strcmp(entry, "favorite") == 0));
+}
+
 void stateInit() {
     configLoad();
+    stateInitialized = true;
 }
 
 void stateFree() {

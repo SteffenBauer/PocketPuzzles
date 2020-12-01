@@ -39,6 +39,10 @@ const char *stateGamesaveName(char **name);
 void stateLoadParams(midend *me, const game *ourgame);
 void stateSaveParams(midend *me, const game *ourgame);
 
+void stateSetFavorite(const char *name);
+void stateUnsetFavorite(const char *name);
+bool stateIsFavorite(const char *name);
+
 void stateInit();
 void stateFree();
 
