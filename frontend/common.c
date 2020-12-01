@@ -19,10 +19,7 @@ bool release_button(int x, int y, BUTTON *button) {
 void button_to_normal(BUTTON *button, bool update) {
     if (button->bitmap != NULL) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
-        if (button->type == BTN_FAVORITE) {
-            int offset = button->size/2;
-            StretchBitmap(button->posx+offset, button->posy+offset, offset, offset, &ic_star, 0);
-        }
+        add_favoritestar(button);
     }
     else if (button->action == ACTION_CTRL) {
         draw_buttonchar(button);
@@ -35,10 +32,7 @@ void button_to_tapped(BUTTON *button) {
     }
     else if (button->bitmap != NULL) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
-        if (button->type == BTN_FAVORITE) {
-            int offset = button->size/2;
-            StretchBitmap(button->posx+offset, button->posy+offset, offset, offset, &ic_star, 0);
-        }
+        add_favoritestar(button);
         InvertArea(button->posx, button->posy, button->size, button->size);
     }
     else if (button->action == ACTION_CTRL) {
@@ -55,6 +49,13 @@ static void draw_buttonchar(BUTTON *button) {
     FillArea(button->posx, button->posy, button->size, button->size, 0x00FFFFFF);
     DrawTextRect(button->posx, button->posy, button->size, button->size, buf, ALIGN_CENTER | VALIGN_MIDDLE);
     CloseFont(font);
+}
+static void add_favoritestar(BUTTON *button) {
+    if (button->type == BTN_FAVORITE) {
+        int offset = 2*button->size/3;
+        int size = button->size/3;
+        StretchBitmap(button->posx+offset, button->posy+offset, size, size, &ic_star, 0);
+    }
 }
 
 void button_to_cleared(BUTTON *button, bool update) {
