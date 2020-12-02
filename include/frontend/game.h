@@ -144,6 +144,7 @@ void gameRelease(int x, int y);
 void gamePrev();
 void gameNext();
 
+void gameSerialise();
 extern void stateSerialise(midend *me);
 extern void configAddItem(char *key, char *value);
 

@@ -81,7 +81,6 @@ void chooserRelease(int x, int y) {
             if (release_button(x, y, &ca.chooserButton[i])) {
                 switch(ca.chooserButton[i].action) {
                     case ACTION_HOME:
-                        configAddItem("config_resume", "chooser");
                         exitApp();
                         break;
                     case ACTION_DRAW:
@@ -270,6 +269,10 @@ void chooserScreenInit() {
 
     chooserSetupButtons();
     chooserInitialized = true;
+}
+
+void chooserSerialise() {
+    configAddItem("config_resume", "chooser");
 }
 
 void chooserScreenFree() {

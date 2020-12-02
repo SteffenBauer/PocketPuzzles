@@ -24,6 +24,7 @@ extern void chooserDrag(int x, int y);
 extern void chooserRelease(int x, int y);
 extern void chooserPrev();
 extern void chooserNext();
+extern void chooserSerialise();
 
 extern bool gameResumeGame();
 extern void gameScreenInit();
@@ -36,6 +37,7 @@ extern void gameDrag(int x, int y);
 extern void gameRelease(int x, int y);
 extern void gamePrev();
 extern void gameNext();
+extern void gameSerialise();
 
 extern void stateInit();
 extern void stateFree();
@@ -45,7 +47,8 @@ typedef enum {
     SCREEN_CHOOSER,
     SCREEN_GAME,
     SCREEN_HELP,
-    SCREEN_PARAMS
+    SCREEN_PARAMS,
+    SCREEN_EXIT
 } SCREENTYPE;
 
 struct screen {

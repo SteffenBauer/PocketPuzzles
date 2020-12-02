@@ -57,6 +57,18 @@ static void setupApp() {
 }
 
 void exitApp() {
+    switch (SCREEN.currentScreen) {
+        case SCREEN_GAME:
+        case SCREEN_PARAMS:
+            gameSerialise();
+            break;
+        case SCREEN_CHOOSER:
+            chooserSerialise();
+            break;
+        default:
+            break;
+    }
+    SCREEN.currentScreen = SCREEN_EXIT;
     stateFree();
     paramScreenFree();
     chooserScreenFree();
