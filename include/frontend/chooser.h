@@ -62,6 +62,7 @@ void chooserDrag(int x, int y);
 void chooserRelease(int x, int y);
 void chooserPrev();
 void chooserNext();
+void chooserSerialise();
 
 extern void gameSetGame(const struct game *thegame);
 extern void gameStartNewGame();

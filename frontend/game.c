@@ -288,10 +288,6 @@ void gameMenuHandler(int index) {
             Dialog(0, "Rules", fe->currentgame->rules, "OK", NULL, NULL);
             break;
         case 199:  /* Exit app */
-            deactivate_timer(fe);
-            stateSerialise(me);
-            stateSaveParams(me, fe->currentgame);
-            configAddItem("config_resume", "game");
             exitApp();
             break;
         default:
@@ -454,9 +450,7 @@ void gameRelease(int x, int y) {
             if (release_button(x, y, &fe->gameButton[i])) {
                 switch(fe->gameButton[i].action) {
                     case ACTION_BACK:
-                        deactivate_timer(fe);
-                        stateSerialise(me);
-                        stateSaveParams(me, fe->currentgame);
+                        gameSerialise();
                         switchToChooserScreen();
                         return;
                     case ACTION_DRAW:
@@ -807,6 +801,13 @@ void gameScreenInit() {
     typeMenu = NULL;
     me = NULL;
     gameInitialized = true;
+}
+
+void gameSerialise() {
+    deactivate_timer(fe);
+    stateSerialise(me);
+    stateSaveParams(me, fe->currentgame);
+    configAddItem("config_resume", "game");
 }
 
 void gameScreenFree() {
