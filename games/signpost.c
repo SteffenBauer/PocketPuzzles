@@ -11,7 +11,7 @@
 
 #include "puzzles.h"
 
-#define PREFERRED_TILE_SIZE 48
+#define PREFERRED_TILE_SIZE 64
 #define TILE_SIZE (ds->tilesize)
 /* #define BLITTER_SIZE TILE_SIZE */
 #define BORDER    (TILE_SIZE / 2)
@@ -21,18 +21,14 @@
 
 #define INGRID(s,x,y) ((x) >= 0 && (x) < (s)->w && (y) >= 0 && (y) < (s)->h)
 
-#define NBACKGROUNDS 16
-
 enum {
-    COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT,
-    COL_GRID, COL_CURSOR, COL_ERROR, COL_DRAG_ORIGIN,
-    COL_ARROW, COL_ARROW_BG_DIM,
-    COL_NUMBER, COL_NUMBER_SET, COL_NUMBER_SET_MID,
-    COL_B0,                             /* background colours */
-    COL_M0 =   COL_B0 + 1*NBACKGROUNDS, /* mid arrow colours */
-    COL_D0 =   COL_B0 + 2*NBACKGROUNDS, /* dim arrow colours */
-    COL_X0 =   COL_B0 + 3*NBACKGROUNDS, /* dim arrow colours */
-    NCOLOURS = COL_B0 + 4*NBACKGROUNDS
+    COL_BLACK,
+    COL_VDARKGREY,
+    COL_DARKGREY,
+    COL_LIGHTGREY,
+    COL_VLIGHTGREY,
+    COL_WHITE,
+    NCOLOURS
 };
 
 struct game_params {
@@ -231,7 +227,7 @@ static game_params *default_params(void)
 {
     game_params *ret = snew(game_params);
     ret->w = 4;
-    ret->h = 5;
+    ret->h = 4;
     ret->force_corner_start = true;
 
     return ret;
@@ -239,12 +235,12 @@ static game_params *default_params(void)
 
 static const struct game_params signpost_presets[] = {
   { 4, 4, 1 },
-  { 4, 5, 1 },
-  { 4, 5, 0 },
-  { 5, 6, 1 },
-  { 5, 6, 0 },
-  { 6, 7, 0 },
-  { 7, 8, 0 }
+  { 4, 4, 0 },
+  { 5, 5, 1 },
+  { 5, 5, 0 },
+  { 6, 6, 0 },
+  { 7, 7, 0 },
+  { 8, 8, 0 }
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -918,23 +914,6 @@ done:
                head->why));
 }
 
-#if 0
-static void debug_numbers(game_state *state)
-{
-    int i, w=state->w;
-
-    for (i = 0; i < state->n; i++) {
-        debug(("(%d,%d) --> (%d,%d) --> (%d,%d)",
-               state->prev[i]==-1 ? -1 : state->prev[i]%w,
-               state->prev[i]==-1 ? -1 : state->prev[i]/w,
-               i%w, i/w,
-               state->next[i]==-1 ? -1 : state->next[i]%w,
-               state->next[i]==-1 ? -1 : state->next[i]/w));
-    }
-    w = w+1;
-}
-#endif
-
 static void connect_numbers(game_state *state)
 {
     int i, di, dni;
@@ -1070,7 +1049,6 @@ static void update_numbers(game_state *state)
             assert(j != heads[n].i); /* loop?! */
         }
     }
-    /*debug_numbers(state);*/
     sfree(heads);
 }
 
@@ -1299,9 +1277,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
 
 struct game_ui {
-    int cx, cy;
-    bool cshow;
-
     bool dragging, drag_is_from;
     int sx, sy;         /* grid coords of start cell */
     int dx, dy;         /* pixel coords of drag posn */
@@ -1313,9 +1288,6 @@ static game_ui *new_ui(const game_state *state)
 
     /* NB: if this is ever changed to as to require more than a structure
      * copy to clone, there's code that needs fixing in game_redraw too. */
-
-    ui->cx = ui->cy = 0;
-    ui->cshow = false;
 
     ui->dragging = false;
     ui->sx = ui->sy = ui->dx = ui->dy = 0;
@@ -1341,7 +1313,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
     if (!oldstate->completed && newstate->completed) {
-        ui->cshow = false;
         ui->dragging = false;
     }
 }
@@ -1352,11 +1323,6 @@ struct game_drawstate {
     int w, h, n;
     int *nums, *dirp;
     unsigned int *f;
-    double angle_offset;
-
-/*    bool dragging;
-    int dx, dy;
-    blitter *dragb; */
 };
 
 static char *interpret_move(const game_state *state, game_ui *ui,
@@ -1367,11 +1333,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     char buf[80];
 
     if (IS_MOUSE_DOWN(button)) {
-        if (ui->cshow) {
-            ui->cshow = false;
-            ui->dragging = false;
-        }
-        assert(!ui->dragging);
         if (!INGRID(state, x, y)) return NULL;
 
         ui->dragging = true;
@@ -1380,7 +1341,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->sy = y;
         ui->dx = mx;
         ui->dy = my;
-        ui->cshow = false;
         return UI_UPDATE;
     } else if (IS_MOUSE_DRAG(button) && ui->dragging) {
         ui->dx = mx;
@@ -1408,15 +1368,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 return UI_UPDATE;
             sprintf(buf, "L%d,%d-%d,%d", x, y, ui->sx, ui->sy);
         }
-        return dupstr(buf);
-    } /* else if (button == 'H' || button == 'h')
-        return dupstr("H"); */
-    else if ((button == 'x' || button == 'X') && ui->cshow) {
-        int si = ui->cy*w + ui->cx;
-        if (state->prev[si] == -1 && state->next[si] == -1)
-            return UI_UPDATE;
-        sprintf(buf, "%c%d,%d",
-                (int)((button == 'x') ? 'C' : 'X'), ui->cx, ui->cy);
         return dupstr(buf);
     }
 
@@ -1535,76 +1486,20 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 {
     ds->tilesize = tilesize;
     assert(TILE_SIZE > 0);
-
-/*    assert(!ds->dragb);
-    ds->dragb = blitter_new(dr, BLITTER_SIZE, BLITTER_SIZE); */
 }
-
-/* Colours chosen from the webby palette to work as a background to black text,
- * W then some plausible approximation to pastelly ROYGBIV; we then interpolate
- * between consecutive pairs to give another 8 (and then the drawing routine
- * will reuse backgrounds). */
-static const unsigned long bgcols[8] = {
-    0xeeeeee,
-    0x999999,
-    0xbbbbbb,
-    0x777777,
-    0xcccccc,
-    0x666666,
-    0xaaaaaa,
-    0x888888,
-};
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
     float *ret = snewn(3 * NCOLOURS, float);
-    int c, i;
-
-    game_mkhighlight(fe, ret, COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT);
+    int i;
 
     for (i = 0; i < 3; i++) {
-        ret[COL_BACKGROUND * 3 + i] = 1.0F;
-        ret[COL_NUMBER * 3 + i] = 0.0F;
-        ret[COL_ARROW * 3 + i] = 0.0F;
-        ret[COL_CURSOR * 3 + i] = ret[COL_BACKGROUND * 3 + i] / 2.0F;
-        ret[COL_GRID * 3 + i] = 0.25F;
-    }
-    ret[COL_NUMBER_SET * 3 + 0] = 0.25F;
-    ret[COL_NUMBER_SET * 3 + 1] = 0.25F;
-    ret[COL_NUMBER_SET * 3 + 2] = 0.25F;
-
-    ret[COL_ERROR * 3 + 0] = 0.8F;
-    ret[COL_ERROR * 3 + 1] = 0.8F;
-    ret[COL_ERROR * 3 + 2] = 0.8F;
-
-    ret[COL_DRAG_ORIGIN * 3 + 0] = 0.75F;
-    ret[COL_DRAG_ORIGIN * 3 + 1] = 0.75F;
-    ret[COL_DRAG_ORIGIN * 3 + 2] = 0.75F;
-
-    for (c = 0; c < 8; c++) {
-         ret[(COL_B0 + c) * 3 + 0] = (float)((bgcols[c] & 0xff0000) >> 16) / 256.0F;
-         ret[(COL_B0 + c) * 3 + 1] = (float)((bgcols[c] & 0xff00) >> 8) / 256.0F;
-         ret[(COL_B0 + c) * 3 + 2] = (float)((bgcols[c] & 0xff)) / 256.0F;
-    }
-    for (c = 0; c < 8; c++) {
-        for (i = 0; i < 3; i++) {
-           ret[(COL_B0 + 8 + c) * 3 + i] =
-               (ret[(COL_B0 + c) * 3 + i] + ret[(COL_B0 + c + 1) * 3 + i]) / 2.0F;
-        }
-    }
-
-#define average(r,a,b,w) do { \
-    for (i = 0; i < 3; i++) \
-    ret[(r)*3+i] = ret[(a)*3+i] + w * (ret[(b)*3+i] - ret[(a)*3+i]); \
-} while (0)
-    average(COL_ARROW_BG_DIM, COL_BACKGROUND, COL_ARROW, 0.1F);
-    average(COL_NUMBER_SET_MID, COL_B0, COL_NUMBER_SET, 0.3F);
-    for (c = 0; c < NBACKGROUNDS; c++) {
-    /* I assume here that COL_ARROW and COL_NUMBER are the same.
-     * Otherwise I'd need two sets of COL_M*. */
-    average(COL_M0 + c, COL_B0 + c, COL_NUMBER, 0.3F);
-    average(COL_D0 + c, COL_B0 + c, COL_NUMBER, 0.1F);
-    average(COL_X0 + c, COL_BACKGROUND, COL_B0 + c, 0.5F);
+        ret[COL_BLACK      * 3 + i] = 0.0F;
+        ret[COL_VDARKGREY  * 3 + i] = 0.2F;
+        ret[COL_DARKGREY   * 3 + i] = 0.4F;
+        ret[COL_LIGHTGREY  * 3 + i] = 0.6F;
+        ret[COL_VLIGHTGREY * 3 + i] = 0.8F;
+        ret[COL_WHITE      * 3 + i] = 1.0F;
     }
 
     *ncolours = NCOLOURS;
@@ -1632,7 +1527,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
         ds->f[i] = 0;
     }
 
-    ds->angle_offset = 0.0F;
     return ds;
 }
 
@@ -1681,15 +1575,15 @@ static void draw_arrow(drawing *dr, int cx, int cy, int sz, double ang,
 }
 
 static void draw_arrow_dir(drawing *dr, int cx, int cy, int sz, int dir,
-                           int cfill, int cout, double angle_offset)
+                           int cfill, int cout)
 {
-    double ang = 2.0 * PI * (double)dir / 8.0 + angle_offset;
+    double ang = 2.0 * PI * (double)dir / 8.0 ;
     draw_arrow(dr, cx, cy, sz, ang, cfill, cout);
 }
 
 /* cx, cy are centre coordinates.. */
 static void draw_star(drawing *dr, int cx, int cy, int rad, int npoints,
-                      int cfill, int cout, double angle_offset)
+                      int cfill, int cout)
 {
     int *coords, n;
     double a, r;
@@ -1699,7 +1593,7 @@ static void draw_star(drawing *dr, int cx, int cy, int rad, int npoints,
     coords = snewn(npoints * 2, int);
 
     for (n = 0; n < npoints; n++) {
-        a = 2.0 * PI * ((double)n / ((double)npoints)) + angle_offset;
+        a = 2.0 * PI * ((double)n / ((double)npoints));
         r = (double)rad/2.0;
         coords[2*n+0] = cx + (int)( r * sin(a));
         coords[2*n+1] = cy + (int)(-r * cos(a));
@@ -1707,17 +1601,17 @@ static void draw_star(drawing *dr, int cx, int cy, int rad, int npoints,
     draw_polygon(dr, coords, npoints, cfill, cout);
 
     for (n = 0; n < npoints; n++) {
-        a = 2.0 * PI * ((double)n / ((double)npoints)) + angle_offset;
+        a = 2.0 * PI * ((double)n / ((double)npoints));
         r = (double)rad;
         coords[0] = cx + (int)( r * sin(a));
         coords[1] = cy + (int)(-r * cos(a));
 
-        a = 2.0 * PI * ((double)(n-1) / ((double)npoints)) + angle_offset;
+        a = 2.0 * PI * ((double)(n-1) / ((double)npoints));
         r = (double)rad/2.0;
         coords[2] = cx + (int)( r * sin(a));
         coords[3] = cy + (int)(-r * cos(a));
 
-        a = 2.0 * PI * ((double)(n+1) / ((double)npoints)) + angle_offset;
+        a = 2.0 * PI * ((double)(n+1) / ((double)npoints));
         r = (double)rad/2.0;
         coords[4] = cx + (int)( r * sin(a));
         coords[5] = cy + (int)(-r * cos(a));
@@ -1727,122 +1621,116 @@ static void draw_star(drawing *dr, int cx, int cy, int rad, int npoints,
     sfree(coords);
 }
 
-static int num2col(game_drawstate *ds, int num)
-{
-    int set = num / (ds->n+1);
-
-    if (num <= 0 || set == 0) return COL_B0;
-    return COL_B0 + 1 + ((set-1) % 15);
-}
-
 #define ARROW_HALFSZ (7 * TILE_SIZE / 32)
 
-#define F_CUR           0x001   /* Cursor on this tile. */
-#define F_DRAG_SRC      0x002   /* Tile is source of a drag. */
-#define F_ERROR         0x004   /* Tile marked in error. */
-#define F_IMMUTABLE     0x008   /* Tile (number) is immutable. */
-#define F_ARROW_POINT   0x010   /* Tile points to other tile */
-#define F_ARROW_INPOINT 0x020   /* Other tile points in here. */
-#define F_DIM           0x040   /* Tile is dim */
+#define F_DRAG_SRC      0x001   /* Tile is source of a drag. */
+#define F_ERROR         0x002   /* Tile marked in error. */
+#define F_IMMUTABLE     0x004   /* Tile (number) is immutable. */
+#define F_ARROW_POINT   0x008   /* Tile points to other tile */
+#define F_ARROW_INPOINT 0x010   /* Other tile points in here. */
+#define F_HIGHLIGHT     0x020   /* Tile is highlighted */
 
 static void tile_redraw(drawing *dr, game_drawstate *ds, int tx, int ty,
-                        int dir, int dirp, int num, unsigned int f,
-                        double angle_offset, int print_ink)
+                        int dir, int dirp, int num, unsigned int f)
 {
     int cb = TILE_SIZE / 16, textsz;
     char buf[20];
     int arrowcol, sarrowcol, setcol, textcol;
     int acx, acy, asz;
-    bool empty = false;
-
-    if (num == 0 && !(f & F_ARROW_POINT) && !(f & F_ARROW_INPOINT)) {
-        empty = true;
-        /*
-         * We don't display text in empty cells: typically these are
-         * signified by num=0. However, in some cases a cell could
-         * have had the number 0 assigned to it if the user made an
-         * error (e.g. tried to connect a chain of length 5 to the
-         * immutable number 4) so we _do_ display the 0 if the cell
-         * has a link in or a link out.
-         */
-    }
+    int set = num / (ds->n+1);
+    bool midset = ((set != 0) && 
+                   ((f & F_ARROW_POINT)   || num==ds->n) &&
+                   ((f & F_ARROW_INPOINT) || num==1));
+    bool empty = (num == 0 && !(f & F_ARROW_POINT) && !(f & F_ARROW_INPOINT));
 
     /* Calculate colours. */
 
-    if (print_ink >= 0) {
-    /*
-     * We're printing, so just do everything in black.
-     */
-    arrowcol = textcol = print_ink;
-    setcol = sarrowcol = -1;       /* placate optimiser */
-    } else {
-
-    setcol = empty ? COL_BACKGROUND : num2col(ds, num);
-
-#define dim(fg,bg) ( \
-      (bg)==COL_BACKGROUND ? COL_ARROW_BG_DIM : \
-      (bg) + COL_D0 - COL_B0 \
-    )
-
-#define mid(fg,bg) ( \
-      (fg)==COL_NUMBER_SET ? COL_NUMBER_SET_MID : \
-      (bg) + COL_M0 - COL_B0 \
-    )
-
-#define dimbg(bg) ( \
-      (bg)==COL_BACKGROUND ? COL_BACKGROUND : \
-      (bg) + COL_X0 - COL_B0 \
-    )
-
-    if (f & F_DRAG_SRC) arrowcol = COL_DRAG_ORIGIN;
-    else if (f & F_DIM) arrowcol = dim(COL_ARROW, setcol);
-    else if (f & F_ARROW_POINT) arrowcol = mid(COL_ARROW, setcol);
-    else arrowcol = COL_ARROW;
-
-    if ((f & F_ERROR) && !(f & F_IMMUTABLE)) textcol = COL_ERROR;
-    else {
-        if (f & F_IMMUTABLE) textcol = COL_NUMBER;
-        else textcol = COL_NUMBER;
-
-        if (f & F_DIM) textcol = dim(textcol, setcol);
-        else if (((f & F_ARROW_POINT) || num==ds->n) &&
-             ((f & F_ARROW_INPOINT) || num==1))
-        textcol = mid(textcol, setcol);
+    if (num == ds->n && (f & F_IMMUTABLE)) {
+        setcol = COL_VLIGHTGREY;
+        arrowcol = COL_BLACK;
+        sarrowcol = COL_BLACK;
+        textcol = COL_BLACK;
     }
-
-    if (f & F_DIM) sarrowcol = dim(COL_ARROW, setcol);
-    else sarrowcol = COL_ARROW;
+    else if (f & F_DRAG_SRC) {
+        setcol = (f & F_IMMUTABLE)   ? COL_VLIGHTGREY :
+                 (set != 0 )         ? COL_LIGHTGREY : 
+                 (f & F_ARROW_POINT) ? COL_VLIGHTGREY : 
+                                       COL_WHITE;
+        arrowcol = COL_DARKGREY;
+        sarrowcol = COL_DARKGREY;
+        textcol = midset                ? COL_VLIGHTGREY : 
+                  (f & F_ARROW_INPOINT) ? COL_DARKGREY : 
+                                          COL_BLACK;
+    }
+    else if (f & F_HIGHLIGHT) {
+        setcol = (f & F_IMMUTABLE)   ? COL_VLIGHTGREY :
+                 (set != 0 )         ? COL_LIGHTGREY : 
+                 (f & F_ARROW_POINT) ? COL_VLIGHTGREY : 
+                                       COL_WHITE;
+        arrowcol = (set != 0) ? COL_VLIGHTGREY : COL_LIGHTGREY;
+        sarrowcol = (set != 0) ? COL_VLIGHTGREY : COL_LIGHTGREY;
+        textcol = ((set != 0) && !midset) ? COL_BLACK :
+                   midset                 ? COL_VLIGHTGREY : 
+                  (f & F_ARROW_INPOINT)   ? COL_DARKGREY : 
+                                            COL_BLACK;
+    }
+    else if (f & F_IMMUTABLE) {
+        setcol = COL_VLIGHTGREY;
+        arrowcol = COL_BLACK;
+        sarrowcol = COL_BLACK;
+        textcol = COL_BLACK;
+    }
+    else if (f & F_ERROR) {
+        setcol = COL_BLACK;
+        arrowcol = COL_VLIGHTGREY;
+        sarrowcol = COL_VLIGHTGREY;
+        textcol = COL_VLIGHTGREY;
+    }
+    else if (set != 0) {
+        setcol = COL_LIGHTGREY;
+        arrowcol = COL_BLACK;
+        sarrowcol = COL_BLACK;
+        textcol = midset ? COL_VLIGHTGREY : COL_BLACK;
+    }
+    else if (f & F_ARROW_INPOINT) {
+        setcol = COL_VLIGHTGREY;
+        arrowcol = COL_DARKGREY;
+        sarrowcol = COL_DARKGREY;
+        textcol = COL_DARKGREY;
+    }
+    else if (f & F_ARROW_POINT) {
+        setcol = COL_VLIGHTGREY;
+        arrowcol = COL_BLACK;
+        sarrowcol = COL_BLACK;
+        textcol = COL_BLACK;
+    }
+    else {
+        setcol = COL_WHITE;
+        arrowcol = COL_BLACK;
+        sarrowcol = COL_BLACK;
+        textcol = COL_BLACK;
     }
 
     /* Clear tile background */
-
-    if (print_ink < 0) {
-        draw_rect(dr, tx, ty, TILE_SIZE, TILE_SIZE,
-          (f & F_DIM) ? dimbg(setcol) : setcol);
-    }
+    draw_rect(dr, tx, ty, TILE_SIZE, TILE_SIZE, setcol);
 
     /* Draw large (outwards-pointing) arrow. */
-
     asz = ARROW_HALFSZ;         /* 'radius' of arrow/star. */
     acx = tx+TILE_SIZE/2+asz;   /* centre x */
     acy = ty+TILE_SIZE/2+asz;   /* centre y */
 
     if (num == ds->n && (f & F_IMMUTABLE))
-        draw_star(dr, acx, acy, asz, 5, arrowcol, arrowcol, angle_offset);
+        draw_star(dr, acx, acy, asz, 5, arrowcol, arrowcol);
     else
-        draw_arrow_dir(dr, acx, acy, asz, dir, arrowcol, arrowcol, angle_offset);
-    if (print_ink < 0 && (f & F_CUR))
-        draw_rect_corners(dr, acx, acy, asz+1, COL_CURSOR);
+        draw_arrow_dir(dr, acx, acy, asz, dir, arrowcol, arrowcol);
 
     /* Draw dot iff this tile requires a predecessor and doesn't have one. */
 
-    if (print_ink < 0) {
     acx = tx+TILE_SIZE/2-asz;
     acy = ty+TILE_SIZE/2+asz;
 
     if (!(f & F_ARROW_INPOINT) && num != 1) {
         draw_circle(dr, acx, acy, asz / 4, sarrowcol, sarrowcol);
-    }
     }
 
     /* Draw text (number or set). */
@@ -1876,10 +1764,8 @@ static void tile_redraw(drawing *dr, game_drawstate *ds, int tx, int ty,
                   ALIGN_VCENTRE | ALIGN_HLEFT, textcol, p);
     }
 
-    if (print_ink < 0) {
-    draw_rect_outline(dr, tx, ty, TILE_SIZE, TILE_SIZE, COL_GRID);
+    draw_rect_outline(dr, tx, ty, TILE_SIZE, TILE_SIZE, COL_VDARKGREY);
     draw_update(dr, tx, ty, TILE_SIZE, TILE_SIZE);
-    }
 }
 static void game_redraw(drawing *dr, game_drawstate *ds,
                         const game_state *oldstate, const game_state *state,
@@ -1889,14 +1775,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y, xd, yd, i, w = ds->w, dirp;
     bool force = false;
     unsigned int f;
-    double angle_offset = 0.0;
     game_state *postdrop = NULL;
     xd = FROMCOORD(ui->dx); yd = FROMCOORD(ui->dy);
-
-    if (angle_offset != ds->angle_offset) {
-        ds->angle_offset = angle_offset;
-        force = true;
-    }
 
     /* If an in-progress drag would make a valid move if finished, we
      * reflect that move in the board display. We let interpret_move do
@@ -1917,8 +1797,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     if (!ds->started) {
         int aw = TILE_SIZE * state->w;
         int ah = TILE_SIZE * state->h;
-        draw_rect(dr, 0, 0, aw + 2 * BORDER, ah + 2 * BORDER, COL_BACKGROUND);
-        draw_rect_outline(dr, BORDER - 1, BORDER - 1, aw + 2, ah + 2, COL_GRID);
+        draw_rect(dr, 0, 0, aw + 2 * BORDER, ah + 2 * BORDER, COL_WHITE);
+        draw_rect_outline(dr, BORDER - 1, BORDER - 1, aw + 2, ah + 2, COL_VDARKGREY);
         draw_update(dr, 0, 0, aw + 2 * BORDER, ah + 2 * BORDER);
     }
     for (x = 0; x < state->w; x++) {
@@ -1927,19 +1807,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             f = 0;
             dirp = -1;
 
-            if (ui->cshow && x == ui->cx && y == ui->cy)
-                f |= F_CUR;
-
             if (ui->dragging) {
                 if (x == ui->sx && y == ui->sy)
                     f |= F_DRAG_SRC;
                 else if (ui->drag_is_from && !(x == xd && y == yd)) {
-                    if (!ispointing(state, x, y, ui->sx, ui->sy)) 
-                        f |= F_DIM;
-                } else {
-                    if (!ispointing(state, ui->sx, ui->sy, x, y)) 
-                        f |= F_DIM;
-                }
+                    if (ispointing(state, x, y, ui->sx, ui->sy)) 
+                        f |= F_HIGHLIGHT;
+                } 
             }
 
             if (state->impossible ||
@@ -1962,40 +1836,16 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             if (state->nums[i] != ds->nums[i] ||
                 f != ds->f[i] || dirp != ds->dirp[i] ||
                 force || !ds->started) {
-                int sign;
-                {
-                    /*
-                     * Trivial and foolish configurable option done on
-                     * purest whim. With this option enabled, the
-                     * victory flash is done by rotating each square
-                     * in the opposite direction from its immediate
-                     * neighbours, so that they behave like a field of
-                     * interlocking gears. With it disabled, they all
-                     * rotate in the same direction. Choose for
-                     * yourself which is more brain-twisting :-)
-                     */
-                    static int gear_mode = -1;
-                    if (gear_mode < 0) {
-                        char *env = getenv("SIGNPOST_GEARS");
-                        gear_mode = (env && (env[0] == 'y' || env[0] == 'Y'));
-                    }
-                    if (gear_mode)
-                        sign = 1 - 2 * ((x ^ y) & 1);
-                    else
-                        sign = 1;
-                }
                 tile_redraw(dr, ds,
                             BORDER + x * TILE_SIZE,
                             BORDER + y * TILE_SIZE,
-                            state->dirs[i], dirp, state->nums[i], f,
-                            sign * angle_offset, -1);
+                            state->dirs[i], dirp, state->nums[i], f);
                 ds->nums[i] = state->nums[i];
                 ds->f[i] = f;
                 ds->dirp[i] = dirp;
             }
         }
     }
-
     if (postdrop) free_game(postdrop);
     if (!ds->started) ds->started = true;
 }

@@ -12,7 +12,8 @@
 - [X] Pattern: Better utilization of screen space
 - [X] Pearl: Colors
 - [X] Range: Background error & outline error for black squares
-- [X] Salad: Colors, no O in letters
+- [X] Salad: Colors
+- [X] Salad: No 'O' in letters mode
 - [X] Singles: Show mark on adjacent black squares error, error background on white squares
 - [X] Solo: Lighter activation pencil mark, better presets
 - [X] Spokes: Better error display
@@ -53,10 +54,9 @@
 - [ ] Netslide: Remove animation. Thicker lines.
 - [ ] Pearl: Better error display for error line
 - [ ] Samegame: Add color fill pattern
-- [ ] Signpost: Rework cell arrow highlighting to avoid whole screen redraw
+- [X] Signpost: Rework cell arrow highlighting to avoid whole screen redraw
 - [ ] Solo: Number highlighting indication in numerical buttons
 - [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
-- [ ] Guess: Require npegs / nguesses / colors to be solvable
 - [X] Loopy: Check min/max grid sizes
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 - [ ] Bridges: Change Path button to indicator

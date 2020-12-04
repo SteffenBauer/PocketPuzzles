@@ -1010,7 +1010,7 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
 {
     int i;
     int n = params->nums;
-    int addkeys = 4;
+    int addkeys = params->mode == GAMEMODE_LETTERS ? 3 : 4;
     char base = params->mode == GAMEMODE_LETTERS ? 'A' : '1';
 
     key_label *keys = snewn(n + addkeys, key_label);
@@ -1023,12 +1023,20 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
     }
     keys[n].button = 'X';
     keys[n].label = "None";
-    keys[n+1].button = 'O';
-    keys[n+1].label = "Any";
-    keys[n+2].button = '\b';
-    keys[n+2].label = NULL;
-    keys[n+3].button = '+';
-    keys[n+3].label = "Add";
+    if (params->mode == GAMEMODE_LETTERS) {
+        keys[n+1].button = '\b';
+        keys[n+1].label = NULL;
+        keys[n+2].button = '+';
+        keys[n+2].label = "Add";
+    }
+    else {
+        keys[n+1].button = 'O';
+        keys[n+1].label = "Any";
+        keys[n+2].button = '\b';
+        keys[n+2].label = NULL;
+        keys[n+3].button = '+';
+        keys[n+3].label = "Add";
+    }
     return keys;
 }
 
