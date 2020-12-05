@@ -213,8 +213,6 @@ static bool check_nums(game_state *orig, game_state *copy, bool only_immutable)
         assert(copy->nums[i] >= 0);
         assert(copy->nums[i] <= copy->n);
         if (copy->nums[i] != orig->nums[i]) {
-            debug(("check_nums: (%d,%d) copy=%d, orig=%d.",
-                   i%orig->w, i/orig->w, copy->nums[i], orig->nums[i]));
             ret = false;
         }
     }
@@ -541,8 +539,6 @@ static bool new_game_fill(game_state *state, random_state *rs,
     aidx = snewn(state->n, int);
     adir = snewn(state->n, int);
 
-    debug(("new_game_fill: headi=%d, taili=%d.", headi, taili));
-
     memset(state->nums, 0, state->n*sizeof(int));
 
     state->nums[headi] = 1;
@@ -630,17 +626,6 @@ done:
 
 static int solve_state(game_state *state);
 
-static void debug_desc(const char *what, game_state *state)
-{
-#if DEBUGGING
-    {
-        char *desc = generate_desc(state, 0);
-        debug(("%s game state: %dx%d:%s", what, state->w, state->h, desc));
-        sfree(desc);
-    }
-#endif
-}
-
 /* Expects a fully-numbered game_state on input, and makes sure
  * FLAG_IMMUTABLE is only set on those numbers we need to solve
  * (as for a real new-game); returns true if it managed
@@ -651,13 +636,9 @@ static bool new_game_strip(game_state *state, random_state *rs)
     bool ret = true;
     game_state *copy = dup_game(state);
 
-    debug(("new_game_strip."));
-
     strip_nums(copy);
-    debug_desc("Stripped", copy);
 
     if (solve_state(copy) > 0) {
-        debug(("new_game_strip: soluble immediately after strip."));
         free_game(copy);
         return true;
     }
@@ -678,8 +659,6 @@ static bool new_game_strip(game_state *state, random_state *rs)
         if (copy->nums[j] > 0 && copy->nums[j] <= state->n)
             continue; /* already solved to a real number here. */
         assert(state->nums[j] <= state->n);
-        debug(("new_game_strip: testing add IMMUTABLE number %d at square (%d,%d).",
-               state->nums[j], j%state->w, j/state->w));
         copy->nums[j] = state->nums[j];
         copy->flags[j] |= FLAG_IMMUTABLE;
         state->flags[j] |= FLAG_IMMUTABLE;
@@ -691,7 +670,6 @@ static bool new_game_strip(game_state *state, random_state *rs)
     goto done;
 
 solved:
-    debug(("new_game_strip: now solved."));
     /* Since we added basically at random, try now to remove numbers
      * and see if we can still solve it; if we can (still), really
      * remove the number. Make sure we don't remove the anchor numbers
@@ -700,17 +678,13 @@ solved:
         j = scratch[i];
         if ((state->flags[j] & FLAG_IMMUTABLE) &&
             (state->nums[j] != 1 && state->nums[j] != state->n)) {
-            debug(("new_game_strip: testing remove IMMUTABLE number %d at square (%d,%d).",
-                  state->nums[j], j%state->w, j/state->w));
             state->flags[j] &= ~FLAG_IMMUTABLE;
             dup_game_to(copy, state);
             strip_nums(copy);
             if (solve_state(copy) > 0) {
                 assert(check_nums(state, copy, false));
-                debug(("new_game_strip: OK, removing number"));
             } else {
                 assert(state->nums[j] <= state->n);
-                debug(("new_game_strip: cannot solve, putting IMMUTABLE back."));
                 copy->nums[j] = state->nums[j];
                 state->flags[j] |= FLAG_IMMUTABLE;
             }
@@ -718,7 +692,6 @@ solved:
     }
 
 done:
-    debug(("new_game_strip: %ssuccessful.", ret ? "" : "not "));
     sfree(scratch);
     free_game(copy);
     return ret;
@@ -836,7 +809,6 @@ static void head_number(game_state *state, int i, struct head_meta *head)
                 head->preference = 1;
                 head->why = "contains cell with immutable number";
             } else if (head->start != ss) {
-                debug(("head_number: chain with non-sequential numbers!"));
                 state->impossible = true;
             }
         }
@@ -904,14 +876,7 @@ static void head_number(game_state *state, int i, struct head_meta *head)
 
 done:
     assert(head->why != NULL);
-    if (head->preference)
-        debug(("Chain at (%d,%d) numbered for preference at %d (colour %d): %s.",
-               head->i%state->w, head->i/state->w,
-               head->start, COLOUR(head->start), head->why));
-    else
-        debug(("Chain at (%d,%d) using next available colour: %s.",
-               head->i%state->w, head->i/state->w,
-               head->why));
+    return;
 }
 
 static void connect_numbers(game_state *state)
@@ -925,7 +890,6 @@ static void connect_numbers(game_state *state)
             di = dsf_canonify(state->dsf, i);
             dni = dsf_canonify(state->dsf, state->next[i]);
             if (di == dni) {
-                debug(("connect_numbers: chain forms a loop."));
                 state->impossible = true;
             }
             dsf_merge(state->dsf, di, dni);
@@ -1027,15 +991,7 @@ static void update_numbers(game_state *state)
         }
     }
 
-    debug(("Region colouring after duplicate removal:"));
-
     for (n = 0; n < nheads; n++) {
-        debug(("  Chain at (%d,%d) sz %d numbered at %d (colour %d): %s%s",
-               heads[n].i % state->w, heads[n].i / state->w, heads[n].sz,
-               heads[n].start, COLOUR(heads[n].start), heads[n].why,
-               heads[n].preference == 0 ? " (next available)" :
-               heads[n].preference < 0 ? " (duplicate, next available)" : ""));
-
         nnum = heads[n].start;
         j = heads[n].i;
         while (j != -1) {
@@ -1168,7 +1124,6 @@ static int solve_single(game_state *state, game_state *copy, int *from)
             if (state->nums[i] > 0 && state->nums[j] > 0 &&
                 state->nums[i] <= state->n && state->nums[j] <= state->n &&
                 state->nums[j] == state->nums[i]+1) {
-                debug(("Solver: forcing link through existing consecutive numbers."));
                 poss = j;
                 from[j] = i;
                 break;
@@ -1183,15 +1138,11 @@ static int solve_single(game_state *state, game_state *copy, int *from)
             from[j] = (from[j] == -1) ? i : -2;
         }
         if (poss == -2) {
-            /*debug(("Solver: (%d,%d) has multiple possible next squares.", sx, sy));*/
             ;
         } else if (poss == -1) {
-            debug(("Solver: nowhere possible for (%d,%d) to link to.", sx, sy));
             copy->impossible = true;
             return -1;
         } else {
-            debug(("Solver: linking (%d,%d) to only possible next (%d,%d).",
-                   sx, sy, poss%w, poss/w));
             makelink(copy, i, poss);
             nlinks++;
         }
@@ -1203,15 +1154,11 @@ static int solve_single(game_state *state, game_state *copy, int *from)
 
         x = i%w; y = i/w;
         if (from[i] == -1) {
-            debug(("Solver: nowhere possible to link to (%d,%d)", x, y));
             copy->impossible = true;
             return -1;
         } else if (from[i] == -2) {
-            /*debug(("Solver: (%d,%d) has multiple possible prev squares.", x, y));*/
             ;
         } else {
-            debug(("Solver: linking only possible prev (%d,%d) to (%d,%d).",
-                   from[i]%w, from[i]/w, x, y));
             makelink(copy, from[i], i);
             nlinks++;
         }
@@ -1240,8 +1187,6 @@ static int solve_state(game_state *state)
 
     update_numbers(state);
     ret = state->impossible ? -1 : check_completion(state, false);
-    debug(("Solver finished: %s",
-           ret < 0 ? "impossible" : ret > 0 ? "solved" : "not solved"));
     return ret;
 }
 
@@ -1376,16 +1321,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
 static void unlink_cell(game_state *state, int si)
 {
-    debug(("Unlinking (%d,%d).", si%state->w, si/state->w));
     if (state->prev[si] != -1) {
-        debug((" ... removing prev link from (%d,%d).",
-               state->prev[si]%state->w, state->prev[si]/state->w));
         state->next[state->prev[si]] = -1;
         state->prev[si] = -1;
     }
     if (state->next[si] != -1) {
-        debug((" ... removing next link to (%d,%d).",
-               state->next[si]%state->w, state->next[si]/state->w));
         state->prev[state->next[si]] = -1;
         state->next[si] = -1;
     }
@@ -1397,8 +1337,6 @@ static game_state *execute_move(const game_state *state, const char *move)
     int sx, sy, ex, ey, si, ei, w = state->w;
     char c;
 
-    debug(("move: %s", move));
-
     if (move[0] == 'S') {
         game_params p;
         game_state *tmp;
@@ -1408,7 +1346,6 @@ static game_state *execute_move(const game_state *state, const char *move)
         p.w = state->w; p.h = state->h;
         valid = validate_desc(&p, move+1);
         if (valid) {
-            debug(("execute_move: move not valid: %s", valid));
             return NULL;
         }
         ret = dup_game(state);
@@ -1638,77 +1575,36 @@ static void tile_redraw(drawing *dr, game_drawstate *ds, int tx, int ty,
     int arrowcol, sarrowcol, setcol, textcol;
     int acx, acy, asz;
     int set = num / (ds->n+1);
-    bool midset = ((set != 0) && 
-                   ((f & F_ARROW_POINT)   || num==ds->n) &&
-                   ((f & F_ARROW_INPOINT) || num==1));
+    bool isset = (set != 0);
     bool empty = (num == 0 && !(f & F_ARROW_POINT) && !(f & F_ARROW_INPOINT));
+    bool isseq = ((f & F_ARROW_POINT) || (f & F_ARROW_INPOINT));
+    bool midseq = ((f & F_ARROW_POINT) && (f & F_ARROW_INPOINT));
 
     /* Calculate colours. */
 
-    if (num == ds->n && (f & F_IMMUTABLE)) {
-        setcol = COL_VLIGHTGREY;
-        arrowcol = COL_BLACK;
-        sarrowcol = COL_BLACK;
-        textcol = COL_BLACK;
-    }
-    else if (f & F_DRAG_SRC) {
-        setcol = (f & F_IMMUTABLE)   ? COL_VLIGHTGREY :
-                 (set != 0 )         ? COL_LIGHTGREY : 
-                 (f & F_ARROW_POINT) ? COL_VLIGHTGREY : 
-                                       COL_WHITE;
-        arrowcol = COL_DARKGREY;
-        sarrowcol = COL_DARKGREY;
-        textcol = midset                ? COL_VLIGHTGREY : 
-                  (f & F_ARROW_INPOINT) ? COL_DARKGREY : 
-                                          COL_BLACK;
-    }
-    else if (f & F_HIGHLIGHT) {
-        setcol = (f & F_IMMUTABLE)   ? COL_VLIGHTGREY :
-                 (set != 0 )         ? COL_LIGHTGREY : 
-                 (f & F_ARROW_POINT) ? COL_VLIGHTGREY : 
-                                       COL_WHITE;
-        arrowcol = (set != 0) ? COL_VLIGHTGREY : COL_LIGHTGREY;
-        sarrowcol = (set != 0) ? COL_VLIGHTGREY : COL_LIGHTGREY;
-        textcol = ((set != 0) && !midset) ? COL_BLACK :
-                   midset                 ? COL_VLIGHTGREY : 
-                  (f & F_ARROW_INPOINT)   ? COL_DARKGREY : 
-                                            COL_BLACK;
-    }
-    else if (f & F_IMMUTABLE) {
-        setcol = COL_VLIGHTGREY;
-        arrowcol = COL_BLACK;
-        sarrowcol = COL_BLACK;
-        textcol = COL_BLACK;
-    }
-    else if (f & F_ERROR) {
-        setcol = COL_BLACK;
-        arrowcol = COL_VLIGHTGREY;
-        sarrowcol = COL_VLIGHTGREY;
-        textcol = COL_VLIGHTGREY;
-    }
-    else if (set != 0) {
-        setcol = COL_LIGHTGREY;
-        arrowcol = COL_BLACK;
-        sarrowcol = COL_BLACK;
-        textcol = midset ? COL_VLIGHTGREY : COL_BLACK;
-    }
-    else if (f & F_ARROW_INPOINT) {
-        setcol = COL_VLIGHTGREY;
-        arrowcol = COL_DARKGREY;
-        sarrowcol = COL_DARKGREY;
-        textcol = COL_DARKGREY;
-    }
-    else if (f & F_ARROW_POINT) {
-        setcol = COL_VLIGHTGREY;
-        arrowcol = COL_BLACK;
-        sarrowcol = COL_BLACK;
-        textcol = COL_BLACK;
-    }
-    else {
-        setcol = COL_WHITE;
-        arrowcol = COL_BLACK;
-        sarrowcol = COL_BLACK;
-        textcol = COL_BLACK;
+    setcol = (f & F_ERROR) ? COL_BLACK :
+             isset         ? COL_LIGHTGREY :
+             isseq         ? COL_VLIGHTGREY :
+                             COL_WHITE;
+
+    arrowcol = (f & F_ERROR)    ? COL_VLIGHTGREY :
+               (isset && midseq) ? COL_VLIGHTGREY :
+               midseq           ? COL_DARKGREY :
+                                  COL_BLACK;
+
+    textcol = (f & F_ERROR)     ? COL_VLIGHTGREY :
+              (isset && midseq) ? COL_VLIGHTGREY :
+              midseq            ? COL_DARKGREY :
+                                  COL_BLACK;
+
+    sarrowcol = (f & F_ERROR)   ? COL_VLIGHTGREY :
+                                  COL_BLACK;
+
+    if ((f & F_DRAG_SRC) || (f & F_HIGHLIGHT)) {
+        arrowcol = (f & F_ERROR) ? COL_DARKGREY :
+                    isset        ? COL_DARKGREY :
+                    isseq        ? COL_LIGHTGREY :
+                                   COL_LIGHTGREY;
     }
 
     /* Clear tile background */
@@ -1724,13 +1620,22 @@ static void tile_redraw(drawing *dr, game_drawstate *ds, int tx, int ty,
     else
         draw_arrow_dir(dr, acx, acy, asz, dir, arrowcol, arrowcol);
 
-    /* Draw dot iff this tile requires a predecessor and doesn't have one. */
+    /* Draw dot if this tile requires a predecessor and doesn't have one. */
 
     acx = tx+TILE_SIZE/2-asz;
     acy = ty+TILE_SIZE/2+asz;
 
     if (!(f & F_ARROW_INPOINT) && num != 1) {
         draw_circle(dr, acx, acy, asz / 4, sarrowcol, sarrowcol);
+    }
+
+    /* Draw small triangle indicator if this tile is immutable */
+    if (f & F_IMMUTABLE) {
+        int coords[6];
+        coords[0] = tx+TILE_SIZE;     coords[1] = ty+7*TILE_SIZE/8;
+        coords[2] = tx+TILE_SIZE;     coords[3] = ty+TILE_SIZE;
+        coords[4] = tx+7*TILE_SIZE/8; coords[5] = ty+TILE_SIZE;
+        draw_polygon(dr, coords, 3, textcol, textcol);
     }
 
     /* Draw text (number or set). */
