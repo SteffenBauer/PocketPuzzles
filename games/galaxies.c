@@ -365,12 +365,15 @@ static bool ok_to_add_assoc_with_opposite(
 static void add_assoc_with_opposite(game_state *state, space *tile, space *dot) {
     space *opposite = space_opposite_dot(state, tile, dot);
 
-    assert(ok_to_add_assoc_with_opposite_internal(state, tile, opposite));
+    if(opposite)
+    {
+        assert(ok_to_add_assoc_with_opposite_internal(state, tile, opposite));
 
-    remove_assoc_with_opposite(state, tile);
-    add_assoc(state, tile, dot);
-    remove_assoc_with_opposite(state, opposite);
-    add_assoc(state, opposite, dot);
+        remove_assoc_with_opposite(state, tile);
+        add_assoc(state, tile, dot);
+        remove_assoc_with_opposite(state, opposite);
+        add_assoc(state, opposite, dot);
+    }
 }
 
 #define IS_VERTICAL_EDGE(x) ((x % 2) == 0)
@@ -3317,6 +3320,7 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
+    NULL,
     game_status,
     false, false, NULL, NULL,
     false,                     /* wants_statusbar */
