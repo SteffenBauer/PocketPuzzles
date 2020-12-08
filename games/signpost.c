@@ -1288,9 +1288,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->dy = my;
         return UI_UPDATE;
     } else if (IS_MOUSE_DRAG(button) && ui->dragging) {
-        ui->dx = mx;
+        /* ui->dx = mx;
         ui->dy = my;
-        return UI_UPDATE;
+        return UI_UPDATE; */
     } else if (IS_MOUSE_RELEASE(button) && ui->dragging) {
         ui->dragging = false;
         if (ui->sx == x && ui->sy == y) return UI_UPDATE; /* single click */
