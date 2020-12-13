@@ -980,26 +980,67 @@ static void draw_textured_tile(drawing *dr, int x, int y, int w, int h, int col)
         draw_rect(dr, x, y, w, h, COL_WHITE);
     }
     else if (col == 4) { /* Checkerboard */
-        draw_rect(dr, x, y, w, h, COL_LIGHTGRAY);
-        draw_rect(dr, x+w/2, y, w/2, h/2, COL_DARKGRAY);
-        draw_rect(dr, x, y+h/2, w/2, h/2, COL_DARKGRAY);
+        float fw = (float)w/4.0;
+        float fh = (float)h/4.0;
+        draw_rect(dr, x,      y, w, h, COL_LIGHTGRAY);
+        draw_rect(dr, x+1*fw, y,      fw, fh, COL_DARKGRAY);
+        draw_rect(dr, x+3*fw, y,      fw, fh, COL_DARKGRAY);
+        draw_rect(dr, x+1*fw, y+2*fh, fw, fh, COL_DARKGRAY);
+        draw_rect(dr, x+3*fw, y+2*fh, fw, fh, COL_DARKGRAY);
+
+        draw_rect(dr, x,      y+1*fh, fw, fh, COL_DARKGRAY);
+        draw_rect(dr, x,      y+3*fh, fw, fh, COL_DARKGRAY);
+        draw_rect(dr, x+2*fw, y+1*fh, fw, fh, COL_DARKGRAY);
+        draw_rect(dr, x+2*fw, y+3*fh, fw, fh, COL_DARKGRAY);
     }
     else if (col == 5) { /* Diagonal stripes */
-        int coords[8];
+        float fw = (float)w/6.0;
+        float fh = (float)h/6.0;
+        int c[8];
+        int i;
         draw_rect(dr, x, y, w, h, COL_WHITE);
-        coords[0] = x;      coords[1] = y+h/2;
-        coords[2] = x+w/2;  coords[3] = y;
-        coords[4] = x+w;    coords[5] = y;
-        coords[6] = x;      coords[7] = y+h;
-        draw_polygon(dr, coords, 4, COL_DARKGRAY, COL_DARKGRAY);
-        coords[0] = x+w/2;  coords[1] = y+h;
-        coords[2] = x+w;    coords[3] = y+h/2;
-        coords[4] = x+w;    coords[5] = y+h;
-        draw_polygon(dr, coords, 3, COL_DARKGRAY, COL_DARKGRAY);
+        for (i=1;i<=5;i+=2) {
+            c[0] = x;          c[1] = y+i*fh; c[2] = x+i*fw; c[3] = y;
+            c[4] = x+(i+1)*fw; c[5] = y;      c[6] = x;      c[7] = y+(i+1)*fh;
+            draw_polygon(dr, c, 4, COL_DARKGRAY, COL_DARKGRAY);
+        }
+        for (i=1;i<=5;i+=2) {
+            c[0] = x+i*fw; c[1] = y+6*fh;     c[2] = x+6*fw;     c[3] = y+i*fh;
+            c[4] = x+6*fw; c[5] = y+(i+1)*fh; c[6] = x+(i+1)*fw; c[7] = y+6*fh;
+            draw_polygon(dr, c, 4, COL_DARKGRAY, COL_DARKGRAY);
+        }
     }
     else if (col == 6) { /* Dots */
-        draw_rect(dr, x, y, w, h, COL_DARKGRAY);
-        draw_circle(dr, x+w/2, y+h/2, w/3, COL_WHITE, COL_WHITE);
+        float fw = (float)w/12.0;
+        float fh = (float)h/12.0;
+        draw_rect(dr, x, y, w, h, COL_LIGHTGRAY);
+        draw_circle(dr, x+ 2*fw, y+0*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+ 5*fw, y+0*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+ 8*fw, y+0*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+11*fw, y+0*fh, fw, COL_WHITE, COL_WHITE);
+
+        draw_circle(dr, x+0*fw,  y+3*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+3*fw,  y+3*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+6*fw,  y+3*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+9*fw,  y+3*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+12*fw, y+3*fh, fw, COL_WHITE, COL_WHITE);
+
+        draw_circle(dr, x+ 2*fw, y+6*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+ 5*fw, y+6*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+ 8*fw, y+6*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+11*fw, y+6*fh, fw, COL_WHITE, COL_WHITE);
+
+        draw_circle(dr, x+0*fw, y+9*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+3*fw, y+9*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+6*fw, y+9*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+9*fw, y+9*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+12*fw, y+9*fh, fw, COL_WHITE, COL_WHITE);
+
+        draw_circle(dr, x+ 2*fw, y+12*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+ 5*fw, y+12*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+ 8*fw, y+12*fh, fw, COL_WHITE, COL_WHITE);
+        draw_circle(dr, x+11*fw, y+12*fh, fw, COL_WHITE, COL_WHITE);
+
     }
     else if (col == 7) { /* Chevron */
         int coords[8];
@@ -1027,34 +1068,34 @@ static void draw_textured_tile(drawing *dr, int x, int y, int w, int h, int col)
         coords[4] = x+w/2;  coords[5] = y+h/2;
         draw_polygon(dr, coords, 3, COL_LIGHTGRAY, COL_LIGHTGRAY);
     }
-    else if (col == 9) {
+/*    else if (col == 9) {
         int coords[6];
         draw_rect(dr, x, y, w, h, COL_WHITE);
         coords[0] = x+w/2;  coords[1] = y;
         coords[2] = x;      coords[3] = y+h;
         coords[4] = x+w;    coords[5] = y+h;
         draw_polygon(dr, coords, 3, COL_DARKGRAY, COL_DARKGRAY);
-    }
-/*    else if (col == 8) {
+    } */
+    else if (col == 9) {
         int coords[8];
-        draw_rect(dr, x, y, w, h, COL_2);
+        draw_rect(dr, x, y, w, h, COL_LIGHTGRAY);
         coords[0] = x+w/4; coords[1] = y;
         coords[2] = x+3*w/4; coords[3] = y;
         coords[4] = x+w/2; coords[5] = y+h/4;
-        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
         coords[0] = x;      coords[1] = y+h/4;
         coords[2] = x;      coords[3] = y+3*h/4;
         coords[4] = x+w/4;  coords[5] = y+h/2;
-        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
         coords[0] = x+w;        coords[1] = y+h/4;
         coords[2] = x+w;        coords[3] = y+3*h/4;
         coords[4] = x+3*w/4;    coords[5] = y+h/2;
-        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
         coords[0] = x+w/4;      coords[1] = y+h;
         coords[2] = x+3*w/4;    coords[3] = y+h;
         coords[4] = x+w/2;      coords[5] = y+3*h/4;
-        draw_polygon(dr, coords, 3, COL_4, COL_4);
-    }
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
+    } /*
     else if (col == 9) {
         int coords[8];
         draw_rect(dr, x, y, w, h, COL_3);
