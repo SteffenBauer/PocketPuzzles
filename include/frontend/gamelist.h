@@ -50,7 +50,7 @@ static GAMEINFO mygames[] = {
     { &game_loopy,    &loopy},
     { &game_magnets,  &magnets},
 
-//    { &game_map,      &map},
+    { &game_map,      &map},
     { &game_mathrax,  &mathrax},
     { &game_mines,    &mines},
     { &game_mosaic,   &mosaic},
