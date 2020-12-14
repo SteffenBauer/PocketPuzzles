@@ -82,21 +82,22 @@ static game_params *default_params(void)
 {
     game_params *ret = snew(game_params);
 
-    ret->w = 16;
-    ret->h = 18;
-    ret->n = 30;
+    ret->w = 12;
+    ret->h = 12;
+    ret->n = 32;
     ret->diff = DIFF_NORMAL;
 
     return ret;
 }
 
 static const struct game_params map_presets[] = {
-    {16, 18, 30, DIFF_EASY},
-    {16, 18, 30, DIFF_NORMAL},
-    {16, 18, 30, DIFF_HARD},
-    {16, 18, 30, DIFF_RECURSE},
-    {25, 30, 75, DIFF_NORMAL},
-    {25, 30, 75, DIFF_HARD},
+    { 8,  8, 16, DIFF_EASY},
+    { 8,  8, 16, DIFF_NORMAL},
+    {12, 12, 32, DIFF_EASY},
+    {12, 12, 32, DIFF_NORMAL},
+    {12, 12, 32, DIFF_HARD},
+    {16, 16, 64, DIFF_NORMAL},
+    {16, 16, 64, DIFF_HARD},
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -2660,42 +2661,61 @@ static void draw_square(drawing *dr, game_drawstate *ds,
 }
 
 static void draw_textured_pencil(drawing *dr, int x, int y, int w, int h, int pencils) {
-    int dw = 5*w/12;
-    int dh = 5*h/12;
-    int loff = w/24;
-    int roff = 13*w/24;
+    int dx, dy, dw, dh;
+    int c[8];
+
+    dx = x+8; dy = y+8; dw = w-16; dh = h-16;
 
     if (pencils & 0x0001) {
-        draw_rect(dr, x, y, w/2, h/2, COL_4);
-        draw_rect(dr, x+loff, y+loff, dw, dh, COL_1);
+        c[0] = dx;      c[1] = dy;
+        c[2] = dx+dw/2; c[3] = dy+dh/2;
+        c[4] = dx+dw;   c[5] = dy;
+        draw_polygon(dr, c, 3, COL_GRID, COL_GRID);
     }
     if (pencils & 0x0002) {
-        draw_rect(dr, x+w/2, y, w/2, h/2, COL_4);
-        draw_rect(dr, x+roff, y+loff, dw, dh, COL_3);
+        c[0] = dx;      c[1] = dy+dh;
+        c[2] = dx+dw/2; c[3] = dy+dh/2;
+        c[4] = dx+dw;   c[5] = dy+dh;
+        draw_polygon(dr, c, 3, COL_2, COL_2);
     }
     if (pencils & 0x0004) {
-        int c[8];
-        int dx = x+loff; int dy = y+roff;
-        draw_rect(dr, x, y+h/2, w/2, h/2, COL_4);
-        c[0] = dx; c[1] = dy+dh/2;
-        c[2] = dx+dw/2; c[3] = dy;
-        c[4] = dx+dw; c[5] = dy;
-        c[6] = dx; c[7] = dy+dh;
-        draw_polygon(dr, c, 4, COL_0, COL_0);
-        c[0] = dx+dw/2; c[1] = dy+dh;
-        c[2] = dx+dw; c[3] = dy+dh/2;
-        c[4] = dx+dw; c[5] = dy+dh;
-        draw_polygon(dr, c, 3, COL_0, COL_0);
+        int i;
+        float fw2 = (float)dw/12.0;
+        float fh = (float)dh/6.0; 
+        float fh2 = (float)dh/12.0;
+
+        c[0] = dx;      c[1] = dy;
+        c[2] = dx+dw/2; c[3] = dy+dh/2;
+        c[4] = dx;      c[5] = dy+dh;
+        draw_polygon(dr, c, 3, COL_BACKGROUND, COL_BACKGROUND);
+
+        for (i=1;i<=5;i+=2) {
+            c[0] = dx;           c[1] = dy+i*fh;
+            c[2] = dx+i*fw2;     c[3] = dy+i*fh2;
+            c[4] = dx+(i+1)*fw2; c[5] = dy+(i+1)*fh2;
+            c[6] = dx;           c[7] = dy+(i+1)*fh;
+            draw_polygon(dr, c, 4, COL_0, COL_0);
+        }
     }
     if (pencils & 0x0008) {
-        int dx = x+roff; int dy = y+roff;
-        float fw = (float)dw/2.0;
-        float fh = (float)dh/2.0;
-        draw_rect(dr, x+w/2, y+h/2, w/2, h/2, COL_4);
+        c[0] = dx+dw;   c[1] = dy;
+        c[2] = dx+dw/2; c[3] = dy+dh/2;
+        c[4] = dx+dw;   c[5] = dy+dh;
+        draw_polygon(dr, c, 3, COL_BACKGROUND, COL_BACKGROUND);
 
-        draw_rect(dr, dx+fw, dy,    fw, fh, COL_2);
-        draw_rect(dr, dx,    dy+fh, fw, fh, COL_2);
+        c[0] = dx+dw;     c[1] = dy;
+        c[2] = dx+3*dw/4; c[3] = dy+dh/4;
+        c[4] = dx+dw;     c[5] = dy+dh/4;
+        draw_polygon(dr, c, 3, COL_2, COL_2);
+
+        c[0] = dx+3*dw/4; c[1] = dy+dh/4;
+        c[2] = dx+dw/2;   c[3] = dy+dh/2;
+        c[4] = dx+3*dw/4; c[5] = dy+dh/2;
+        draw_polygon(dr, c, 3, COL_2, COL_2);
+
+        draw_rect(dr, dx+3*dw/4, dy+dw/2, dw/4, dh/4, COL_2);
     }
+    draw_rect_outline(dr, dx-1, dy-1, dw+2, dh+2, COL_GRID);
     draw_update(dr, x, y, w, h);
 }
 
