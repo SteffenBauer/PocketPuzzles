@@ -1955,13 +1955,13 @@ static game_state *new_game(midend *me, const game_params *params,
 
     state->map->edgex = snewn(state->map->ngraph, int);
     state->map->edgey = snewn(state->map->ngraph, int);
-        memcpy(state->map->edgex, bestx, state->map->ngraph * sizeof(int));
-        memcpy(state->map->edgey, besty, state->map->ngraph * sizeof(int));
+    memcpy(state->map->edgex, bestx, state->map->ngraph * sizeof(int));
+    memcpy(state->map->edgey, besty, state->map->ngraph * sizeof(int));
 
     state->map->regionx = snewn(n, int);
     state->map->regiony = snewn(n, int);
-        memcpy(state->map->regionx, bestx + state->map->ngraph, n*sizeof(int));
-        memcpy(state->map->regiony, besty + state->map->ngraph, n*sizeof(int));
+    memcpy(state->map->regionx, bestx + state->map->ngraph, n*sizeof(int));
+    memcpy(state->map->regiony, besty + state->map->ngraph, n*sizeof(int));
 
     for (i = 0; i < state->map->ngraph; i++)
         if (state->map->edgex[i] < 0) {
@@ -2136,7 +2136,6 @@ struct game_drawstate {
     bool started;
     int dragx, dragy;
     bool drag_visible;
-    /* blitter *bl; */
 };
 
 /* Flags in `drawn'. */
@@ -2197,14 +2196,6 @@ static int region_from_coords(const game_state *state,
         state, tx, ty, x - COORD(tx) - TILESIZE/2, y - COORD(ty) - TILESIZE/2);
 }
 
-static int region_from_ui_cursor(const game_state *state, const game_ui *ui)
-{
-    assert(ui->cur_visible);
-    return region_from_logical_coords(state, ui->cur_x, ui->cur_y,
-                                      EPSILON_X(ui->cur_lastmove),
-                                      EPSILON_Y(ui->cur_lastmove));
-}
-
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int x, int y, int button)
@@ -2221,39 +2212,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return UI_UPDATE;
     }
 
-/*
-    if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->cur_x, &ui->cur_y, state->p.w, state->p.h,
-                    false);
-        ui->cur_visible = true;
-        ui->cur_moved = true;
-        ui->cur_lastmove = button;
-        return UI_UPDATE;
-    }
-    if (IS_CURSOR_SELECT(button)) {
-        if (!ui->cur_visible) {
-            ui->cur_visible = true;
-            return UI_UPDATE;
-        }
-        if (ui->drag_colour == -2) {
-            int r = region_from_ui_cursor(state, ui);
-            if (r >= 0) {
-                ui->drag_colour = state->colouring[r];
-                ui->drag_pencil = (ui->drag_colour >= 0) ? 0 : state->pencil[r];
-            } else {
-                ui->drag_colour = -1;
-                ui->drag_pencil = 0;
-            }
-            ui->cur_moved = false;
-            return UI_UPDATE;
-        } else { 
-            alt_button = (button == CURSOR_SELECT2);
-            if (!ui->cur_moved) ui->drag_colour = -1;
-            drop_region = region_from_ui_cursor(state, ui);
-            goto drag_dropped;
-        }
-    }
-*/
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         int r = region_from_coords(state, ds, x, y);
 
@@ -2431,9 +2389,6 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
                           const game_params *params, int tilesize)
 {
     ds->tilesize = tilesize;
-
-    /*assert(!ds->bl); */                  /* set_size is never called twice */
-    /* ds->bl = blitter_new(dr, TILESIZE+3, TILESIZE+3); */
 }
 
 static float *game_colours(frontend *fe, int *ncolours)
@@ -2479,8 +2434,6 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 {
     sfree(ds->drawn);
     sfree(ds->todraw);
-/*    if (ds->bl)
-        blitter_free(dr, ds->bl); */
     sfree(ds);
 }
 
@@ -2516,8 +2469,6 @@ static void draw_error(drawing *dr, game_drawstate *ds, int x, int y)
 }
 
 static void draw_textured_tile(drawing *dr, int x, int y, int w, int h, int col) {
-    draw_rect(dr, x, y, w, h, COL_BACKGROUND);
-
     if (col == 0) {
         draw_rect(dr, x, y, w, h, COL_1);
     }
@@ -2529,6 +2480,7 @@ static void draw_textured_tile(drawing *dr, int x, int y, int w, int h, int col)
         float fh = (float)h/6.0;
         int c[8];
         int i;
+        draw_rect(dr, x, y, w, h, COL_BACKGROUND);
         for (i=1;i<=5;i+=2) {
             c[0] = x;          c[1] = y+i*fh; c[2] = x+i*fw; c[3] = y;
             c[4] = x+(i+1)*fw; c[5] = y;      c[6] = x;      c[7] = y+(i+1)*fh;
@@ -2540,7 +2492,7 @@ static void draw_textured_tile(drawing *dr, int x, int y, int w, int h, int col)
             draw_polygon(dr, c, 4, COL_0, COL_0);
         }
     }
-    else if (col == 3) { /* Checkerboard */
+    else if (col == 3) {
         float fw = (float)w/4.0;
         float fh = (float)h/4.0;
         draw_rect(dr, x,      y, w, h, COL_4);
@@ -2554,22 +2506,25 @@ static void draw_textured_tile(drawing *dr, int x, int y, int w, int h, int col)
         draw_rect(dr, x+2*fw, y+1*fh, fw, fh, COL_2);
         draw_rect(dr, x+2*fw, y+3*fh, fw, fh, COL_2);
     }
+    else {
+        draw_rect(dr, x, y, w, h, COL_BACKGROUND);
+    }
 }
 
 static void draw_textured_triangle(drawing *dr, int *coords, int col, bool orientation) {
-    int x = coords[0]+1;
-    int y = coords[3]+1;
-    int w = coords[4] - coords[0] - 2;
-    int h = coords[5] - coords[3] - 2;
+    int x = coords[0];
+    int y = coords[3];
+    int w = coords[4] - coords[0];
+    int h = coords[5] - coords[3];
 
     if (col == 0) {
-        draw_polygon(dr, coords, 3, COL_1, COL_GRID);
+        draw_polygon(dr, coords, 3, COL_1, COL_1);
     }
     else if (col == 1) {
-        draw_polygon(dr, coords, 3, COL_3, COL_GRID);
+        draw_polygon(dr, coords, 3, COL_3, COL_3);
     }
     else if (col == 2 && orientation) {
-        draw_polygon(dr, coords, 3, COL_BACKGROUND, COL_GRID);
+        draw_polygon(dr, coords, 3, COL_BACKGROUND, COL_BACKGROUND);
         float fw = (float)w/6.0;
         float fh = (float)h/6.0;
         int c[8];
@@ -2581,7 +2536,7 @@ static void draw_textured_triangle(drawing *dr, int *coords, int col, bool orien
         }
     }
     else if (col == 2 && !orientation) {
-        draw_polygon(dr, coords, 3, COL_BACKGROUND, COL_GRID);
+        draw_polygon(dr, coords, 3, COL_BACKGROUND, COL_BACKGROUND);
         float fw = (float)w/6.0; float fw2 = (float)w/12.0;
         float fh = (float)h/6.0; float fh2 = (float)h/12.0;
         int c[8];
@@ -2602,7 +2557,7 @@ static void draw_textured_triangle(drawing *dr, int *coords, int col, bool orien
         float fh = (float)h/4.0;
         int c[6];
         int i;
-        draw_polygon(dr, coords, 3, COL_4, COL_GRID);
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
         for (i=1;i<=4;i++) {
             c[0] = x+(4-i)*fw; c[1] = y+i*fh;
             c[2] = x+(5-i)*fw; c[3] = y+(i-1)*fh;
@@ -2615,7 +2570,7 @@ static void draw_textured_triangle(drawing *dr, int *coords, int col, bool orien
     else if (col == 3 && !orientation) {
         float fw = (float)w/4.0;
         float fh = (float)h/4.0;
-        draw_polygon(dr, coords, 3, COL_4, COL_GRID);
+        draw_polygon(dr, coords, 3, COL_4, COL_4);
 
         draw_rect(dr, x,      y+1*fh, fw, fh, COL_2);
         draw_rect(dr, x+1*fw, y+2*fh, fw, fh, COL_2);
@@ -2623,7 +2578,7 @@ static void draw_textured_triangle(drawing *dr, int *coords, int col, bool orien
         draw_rect(dr, x+2*fw, y+3*fh, fw, fh, COL_2);
     }
     else {
-        draw_polygon(dr, coords, 3, COL_BACKGROUND, COL_GRID);
+        draw_polygon(dr, coords, 3, COL_BACKGROUND, COL_BACKGROUND);
     }
 }
 
@@ -2632,19 +2587,15 @@ static void draw_square(drawing *dr, game_drawstate *ds,
             int x, int y, unsigned long v)
 {
     int w = params->w, h = params->h, wh = w*h;
-    int tv, bv, xo, yo, i, j, oldj;
-    unsigned long errs, pencil, show_numbers;
+    int tv, bv, xo, yo;
+    unsigned long errs;
 
     errs = v & ERR_MASK;
     v &= ~ERR_MASK;
-    pencil = v & PENCIL_MASK;
     v &= ~PENCIL_MASK;
-    show_numbers = v & SHOW_NUMBERS;
     v &= ~SHOW_NUMBERS;
     tv = v / FIVE;
     bv = v % FIVE;
-
-    clip(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
 
     /*
      * Draw the region colour.
@@ -2655,72 +2606,45 @@ static void draw_square(drawing *dr, game_drawstate *ds,
      * Draw the second region colour, if this is a diagonally
      * divided square.
      */
-    
+
     if (map->map[TE * wh + y*w+x] != map->map[BE * wh + y*w+x]) {
         int coords[6];
         bool orientation;
         orientation = (map->map[LE * wh + y*w+x] == map->map[TE * wh + y*w+x]);
-        coords[0] = COORD(x)-1;
-        coords[1] = COORD(y+1)+1;
-        coords[2] = orientation ? COORD(x+1)+1 : COORD(x)-1;
-        coords[3] = COORD(y)-1;
-        coords[4] = COORD(x+1)+1;
-        coords[5] = COORD(y+1)+1;
+        coords[0] = COORD(x);
+        coords[1] = COORD(y+1);
+        coords[2] = orientation ? COORD(x+1) : COORD(x);
+        coords[3] = COORD(y);
+        coords[4] = COORD(x+1);
+        coords[5] = COORD(y+1);
         draw_textured_triangle(dr, coords, bv, orientation);
-    }
-
-    /*
-     * Draw `pencil marks'. Currently we arrange these in a square
-     * formation, which means we may be in trouble if the value of
-     * FOUR changes later...
-     */
-
-    for (yo = 0; yo < 4; yo++)
-    for (xo = 0; xo < 4; xo++) {
-        int te = map->map[TE * wh + y*w+x];
-        int e, ee, c;
-        int ox, oy;
-
-        e = (yo < xo && yo < 3-xo ? TE :
-             yo > xo && yo > 3-xo ? BE :
-             xo < 2               ? LE : RE);
-        ee = map->map[e * wh + y*w+x];
-
-        if (xo != (yo * 2 + 1) % 5) continue;
-        c = yo;
-
-        if (!(pencil & ((ee == te ? PENCIL_T_BASE : PENCIL_B_BASE) << c)))
-            continue;
-
-        if ((map->map[TE * wh + y*w+x] != map->map[RE * wh + y*w+x]) ||
-            (map->map[TE * wh + y*w+x] != map->map[LE * wh + y*w+x]))
-            continue;
-
-        if ((c!=0) && (ee == te) && (map->map[TE * wh + y*w+x] != map->map[RE * wh + y*w+x]))
-            continue;
-        if ((c!=1) && (ee == te) && (map->map[TE * wh + y*w+x] != map->map[LE * wh + y*w+x]))
-            continue;
-        if ((c!=2) && (ee != te) && (map->map[TE * wh + y*w+x] != map->map[LE * wh + y*w+x]))
-            continue;
-        if ((c!=3) && (ee != te) && (map->map[TE * wh + y*w+x] != map->map[RE * wh + y*w+x]))
-            continue;
-
-        ox = ((c==0) || (c==2)) ? TILESIZE/6 : TILESIZE/2;
-        oy = ((c==0) || (c==1)) ? TILESIZE/6 : TILESIZE/2;
-        draw_textured_tile(dr, COORD(x)+ox, COORD(y)+oy, TILESIZE/3, TILESIZE/3, c);
     }
 
     /*
      * Draw the grid lines, if required.
      */
     if (x <= 0 || map->map[RE*wh+y*w+(x-1)] != map->map[LE*wh+y*w+x])
-        draw_rect(dr, COORD(x), COORD(y), 1, TILESIZE, COL_GRID);
+        draw_rect(dr, COORD(x)-1, COORD(y)-1, 3, TILESIZE+2, COL_GRID);
+
+    if (x >= (w-1) || map->map[LE*wh+y*w+(x+1)] != map->map[RE*wh+y*w+x])
+        draw_rect(dr, COORD(x+1)-1, COORD(y)-1, 3, TILESIZE+2, COL_GRID);
+
     if (y <= 0 || map->map[BE*wh+(y-1)*w+x] != map->map[TE*wh+y*w+x])
-        draw_rect(dr, COORD(x), COORD(y), TILESIZE, 1, COL_GRID);
+        draw_rect(dr, COORD(x)-1, COORD(y)-1, TILESIZE+2, 3, COL_GRID);
+
+    if (y >= (h-1) || map->map[TE*wh+(y+1)*w+x] != map->map[BE*wh+y*w+x])
+        draw_rect(dr, COORD(x)-1, COORD(y+1)-1, TILESIZE+2, 3, COL_GRID);
+
+    if (map->map[TE * wh + y*w+x] != map->map[BE * wh + y*w+x]) {
+        if (map->map[LE * wh + y*w+x] == map->map[TE * wh + y*w+x])
+            draw_thick_line(dr, 3.0, COORD(x), COORD(y+1), COORD(x+1), COORD(y), COL_GRID);
+        else
+            draw_thick_line(dr, 3.0, COORD(x), COORD(y), COORD(x+1)+1, COORD(y+1)+1, COL_GRID);
+    }
     if (x <= 0 || y <= 0 ||
         map->map[RE*wh+(y-1)*w+(x-1)] != map->map[TE*wh+y*w+x] ||
         map->map[BE*wh+(y-1)*w+(x-1)] != map->map[LE*wh+y*w+x])
-        draw_rect(dr, COORD(x), COORD(y), 1, 1, COL_GRID);
+        draw_rect(dr, COORD(x)-1, COORD(y)-1, 3, 3, COL_GRID);
 
     /*
      * Draw error markers.
@@ -2732,34 +2656,47 @@ static void draw_square(drawing *dr, game_drawstate *ds,
                (COORD(x)*2+TILESIZE*xo)/2,
                (COORD(y)*2+TILESIZE*yo)/2);
 
-    /*
-     * Draw region numbers, if desired.
-     */
-    if (show_numbers) {
-        oldj = -1;
-        for (i = 0; i < 2; i++) {
-            j = map->map[(i?BE:TE)*wh+y*w+x];
-            if (oldj == j)
-                continue;
-            oldj = j;
-
-            xo = map->regionx[j] - 2*x;
-            yo = map->regiony[j] - 2*y;
-            if (xo >= 0 && xo <= 2 && yo >= 0 && yo <= 2) {
-                char buf[80];
-                sprintf(buf, "%d", j);
-                draw_text(dr, (COORD(x)*2+TILESIZE*xo)/2,
-                          (COORD(y)*2+TILESIZE*yo)/2,
-                          FONT_VARIABLE, 3*TILESIZE/5,
-                          ALIGN_HCENTRE|ALIGN_VCENTRE,
-                          COL_GRID, buf);
-            }
-        }
-    }
-
-    unclip(dr);
-
     draw_update(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
+}
+
+static void draw_textured_pencil(drawing *dr, int x, int y, int w, int h, int pencils) {
+    int dw = 5*w/12;
+    int dh = 5*h/12;
+    int loff = w/24;
+    int roff = 13*w/24;
+
+    if (pencils & 0x0001) {
+        draw_rect(dr, x, y, w/2, h/2, COL_4);
+        draw_rect(dr, x+loff, y+loff, dw, dh, COL_1);
+    }
+    if (pencils & 0x0002) {
+        draw_rect(dr, x+w/2, y, w/2, h/2, COL_4);
+        draw_rect(dr, x+roff, y+loff, dw, dh, COL_3);
+    }
+    if (pencils & 0x0004) {
+        int c[8];
+        int dx = x+loff; int dy = y+roff;
+        draw_rect(dr, x, y+h/2, w/2, h/2, COL_4);
+        c[0] = dx; c[1] = dy+dh/2;
+        c[2] = dx+dw/2; c[3] = dy;
+        c[4] = dx+dw; c[5] = dy;
+        c[6] = dx; c[7] = dy+dh;
+        draw_polygon(dr, c, 4, COL_0, COL_0);
+        c[0] = dx+dw/2; c[1] = dy+dh;
+        c[2] = dx+dw; c[3] = dy+dh/2;
+        c[4] = dx+dw; c[5] = dy+dh;
+        draw_polygon(dr, c, 3, COL_0, COL_0);
+    }
+    if (pencils & 0x0008) {
+        int dx = x+roff; int dy = y+roff;
+        float fw = (float)dw/2.0;
+        float fh = (float)dh/2.0;
+        draw_rect(dr, x+w/2, y+h/2, w/2, h/2, COL_4);
+
+        draw_rect(dr, dx+fw, dy,    fw, fh, COL_2);
+        draw_rect(dr, dx,    dy+fh, fw, fh, COL_2);
+    }
+    draw_update(dr, x, y, w, h);
 }
 
 static void game_redraw(drawing *dr, game_drawstate *ds,
@@ -2770,12 +2707,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int w = state->p.w, h = state->p.h, wh = w*h, n = state->p.n;
     int x, y, i;
     ds->drag_visible = false;
-/*    if (ds->drag_visible) {
-        blitter_load(dr, ds->bl, ds->dragx, ds->dragy);
-        draw_update(dr, ds->dragx, ds->dragy, TILESIZE + 3, TILESIZE + 3);
-        ds->drag_visible = false;
-    }
-*/
+
     /*
      * The initial contents of the window are not guaranteed and
      * can vary with front ends. To be on the safe side, all games
@@ -2809,6 +2741,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             /*
              * Add pencil marks.
              */
+        
         for (i = 0; i < FOUR; i++) {
         if (state->colouring[state->map->map[TE * wh + y*w+x]] < 0 &&
             (state->pencil[state->map->map[TE * wh + y*w+x]] & (1<<i)))
@@ -2817,10 +2750,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             (state->pencil[state->map->map[BE * wh + y*w+x]] & (1<<i)))
             v |= PENCIL_B_BASE << i;
         }
-
+        
         if (ui->show_numbers)
             v |= SHOW_NUMBERS;
-
+        
         ds->todraw[y*w+x] = v;
     }
 
@@ -2870,46 +2803,15 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         }
     }
 
-    /*
-     * Draw the dragged colour blob if any.
-     */
-    return;
-    if ((ui->drag_colour > -2) || ui->cur_visible) {
-        int bg, cursor_x, cursor_y;
-        bool iscur = false;
-        if (ui->drag_colour >= 0)
-            bg = COL_0 + ui->drag_colour;
-        else if (ui->drag_colour == -1) {
-            bg = COL_BACKGROUND;
-        } else {
-            int r = region_from_ui_cursor(state, ui);
-            int c = (r < 0) ? -1 : state->colouring[r];
-            bg = (c < 0) ? COL_BACKGROUND : COL_0 + c;
-            iscur = true;
+    for (i=0;i<state->map->n;i++) {
+        if (state->pencil[i] > 0) {
+            draw_textured_pencil(dr, 
+                COORD(state->map->regionx[i])/2, COORD(state->map->regiony[i])/2, 
+                TILESIZE, TILESIZE, state->pencil[i]);
         }
-
-        if (ui->cur_visible) {
-            cursor_x = COORD(ui->cur_x) + TILESIZE/2 +
-                EPSILON_X(ui->cur_lastmove);
-            cursor_y = COORD(ui->cur_y) + TILESIZE/2 +
-                EPSILON_Y(ui->cur_lastmove);
-        } else {
-            cursor_x = ui->dragx;
-            cursor_y = ui->dragy;
-        }
-        ds->dragx = cursor_x - TILESIZE/2 - 2;
-        ds->dragy = cursor_y - TILESIZE/2 - 2;
-        /* blitter_save(dr, ds->bl, ds->dragx, ds->dragy); */
-        draw_circle(dr, cursor_x, cursor_y,
-                    iscur ? TILESIZE/4 : TILESIZE/2, bg, COL_GRID);
-        for (i = 0; i < FOUR; i++)
-            if (ui->drag_pencil & (1 << i))
-                draw_circle(dr, cursor_x + ((i*4+2)%10-3) * TILESIZE/10,
-                    cursor_y + (i*2-3) * TILESIZE/10,
-                    TILESIZE/8, COL_0 + i, COL_0 + i);
-        draw_update(dr, ds->dragx, ds->dragy, TILESIZE + 3, TILESIZE + 3);
-        ds->drag_visible = true;
     }
+
+    return;
 }
 
 static float game_anim_length(const game_state *oldstate,
