@@ -1045,38 +1045,40 @@ static void draw_textured_tile(drawing *dr, int x, int y, int w, int h, int col)
     else if (col == 7) { /* Chevron */
         int coords[8];
         draw_rect(dr, x, y, w, h, COL_BLACK);
-        coords[0] = x;      coords[1] = y+h/2;
+        coords[0] = x;      coords[1] = y+h/6;
         coords[2] = x+w/2;  coords[3] = y;
-        coords[4] = x+w/2;  coords[5] = y+h/2;
-        coords[6] = x;      coords[7] = y+h;
+        coords[4] = x+w/2;  coords[5] = y+h/6;
+        coords[6] = x;      coords[7] = y+h/3;
         draw_polygon(dr, coords, 4, COL_LIGHTGRAY, COL_LIGHTGRAY);
         coords[0] = x+w/2;  coords[1] = y;
+        coords[2] = x+w;    coords[3] = y+h/6;
+        coords[4] = x+w;    coords[5] = y+h/3;
+        coords[6] = x+w/2;  coords[7] = y+h/6;
+        draw_polygon(dr, coords, 4, COL_LIGHTGRAY, COL_LIGHTGRAY);
+
+        coords[0] = x;      coords[1] = y+h/2;
+        coords[2] = x+w/2;  coords[3] = y+h/3;
+        coords[4] = x+w/2;  coords[5] = y+h/2;
+        coords[6] = x;      coords[7] = y+2*h/3;
+        draw_polygon(dr, coords, 4, COL_LIGHTGRAY, COL_LIGHTGRAY);
+        coords[0] = x+w/2;  coords[1] = y+h/3;
         coords[2] = x+w;    coords[3] = y+h/2;
-        coords[4] = x+w;    coords[5] = y+h;
+        coords[4] = x+w;    coords[5] = y+2*h/3;
         coords[6] = x+w/2;  coords[7] = y+h/2;
         draw_polygon(dr, coords, 4, COL_LIGHTGRAY, COL_LIGHTGRAY);
-    }
-    else if (col == 8) { /* Diamond */
-        int coords[6];
-        draw_rect(dr, x, y, w, h, COL_DARKGRAY);
-        coords[0] = x;      coords[1] = y;
-        coords[2] = x+w;    coords[3] = y;
-        coords[4] = x+w/2;  coords[5] = y+h/2;
-        draw_polygon(dr, coords, 3, COL_LIGHTGRAY, COL_LIGHTGRAY);
-        coords[0] = x;      coords[1] = y+h;
-        coords[2] = x+w;    coords[3] = y+h;
-        coords[4] = x+w/2;  coords[5] = y+h/2;
-        draw_polygon(dr, coords, 3, COL_LIGHTGRAY, COL_LIGHTGRAY);
-    }
-/*    else if (col == 9) {
-        int coords[6];
-        draw_rect(dr, x, y, w, h, COL_WHITE);
-        coords[0] = x+w/2;  coords[1] = y;
-        coords[2] = x;      coords[3] = y+h;
+
+        coords[0] = x;      coords[1] = y+5*h/6;
+        coords[2] = x+w/2;  coords[3] = y+2*h/3;
+        coords[4] = x+w/2;  coords[5] = y+5*h/6;
+        coords[6] = x;      coords[7] = y+h;
+        draw_polygon(dr, coords, 4, COL_LIGHTGRAY, COL_LIGHTGRAY);
+        coords[0] = x+w/2;  coords[1] = y+2*h/3;
+        coords[2] = x+w;    coords[3] = y+5*h/6;
         coords[4] = x+w;    coords[5] = y+h;
-        draw_polygon(dr, coords, 3, COL_DARKGRAY, COL_DARKGRAY);
-    } */
-    else if (col == 9) {
+        coords[6] = x+w/2;  coords[7] = y+5*h/6;
+        draw_polygon(dr, coords, 4, COL_LIGHTGRAY, COL_LIGHTGRAY);
+    }
+    else if (col == 8) {
         int coords[8];
         draw_rect(dr, x, y, w, h, COL_LIGHTGRAY);
         coords[0] = x+w/4; coords[1] = y;
@@ -1095,7 +1097,102 @@ static void draw_textured_tile(drawing *dr, int x, int y, int w, int h, int col)
         coords[2] = x+3*w/4;    coords[3] = y+h;
         coords[4] = x+w/2;      coords[5] = y+3*h/4;
         draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
-    } /*
+/*
+        draw_rect(dr, x, y, w, h, COL_LIGHTGRAY);
+        float fw = (float)w/8.0;
+        float fh = (float)h/8.0;
+        int c[8];
+        int i;
+        draw_rect(dr, x, y, w, h, COL_WHITE);
+        for (i=1;i<=3;i+=2) {
+            c[0] = x;          c[1] = y+i*fh; c[2] = x+i*fw; c[3] = y;
+            c[4] = x+(i+1)*fw; c[5] = y;      c[6] = x;      c[7] = y+(i+1)*fh;
+            draw_polygon(dr, c, 4, COL_DARKGRAY, COL_DARKGRAY);
+        }
+        for (i=1;i<=3;i+=2) {
+            c[0] = x+i*fw; c[1] = y+4*fh;     c[2] = x+4*fw;     c[3] = y+i*fh;
+            c[4] = x+4*fw; c[5] = y+(i+1)*fh; c[6] = x+(i+1)*fw; c[7] = y+4*fh;
+            draw_polygon(dr, c, 4, COL_DARKGRAY, COL_DARKGRAY);
+        }
+        for (i=1;i<=3;i+=2) {
+            c[0] = x+i*fw; c[1] = y;          c[2] = x;          c[3] = y+i*fh;
+            c[4] = x;      c[5] = y+(i+1)*fh; c[6] = x+(i+1)*fw; c[7] = y;
+            draw_polygon(dr, c, 4, COL_DARKGRAY, COL_DARKGRAY);
+        }
+*/
+/*        for (i=1;i<=3;i+=2) {
+            c[0] = x+4*fw; c[1] = y+i*fh;     c[2] = x+i*fw;     c[3] = y+4*fh;
+            c[4] = x+(i+1)*fw; c[5] = y+4*fh; c[6] = x+4*fw; c[7] = y+(i+1)*fh;
+            draw_polygon(dr, c, 4, COL_DARKGRAY, COL_DARKGRAY);
+        }
+*/
+        /*
+        coords[0] = x+w/3; coords[1] = y;
+        coords[2] = x+2*w/3; coords[3] = y;
+        coords[4] = x+w/2; coords[5] = y+h/6;
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
+        coords[0] = x;      coords[1] = y+h/3;
+        coords[2] = x;      coords[3] = y+2*h/3;
+        coords[4] = x+w/6;  coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
+        coords[0] = x+w;        coords[1] = y+h/3;
+        coords[2] = x+w;        coords[3] = y+2*h/3;
+        coords[4] = x+5*w/6;    coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
+        coords[0] = x+w/3;      coords[1] = y+h;
+        coords[2] = x+2*w/3;    coords[3] = y+h;
+        coords[4] = x+w/2;      coords[5] = y+5*h/6;
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
+        
+        coords[0] = x+  w/2; coords[1] = y+  h/3;
+        coords[2] = x+2*w/3; coords[3] = y+  h/2;
+        coords[4] = x+  w/2; coords[5] = y+2*h/3;
+        coords[6] = x+  w/3; coords[7] = y+  h/2;
+        draw_polygon(dr, coords, 4, COL_BLACK, COL_BLACK);
+        
+        coords[0] = x;     coords[1] = y;
+        coords[2] = x+w/6; coords[3] = y;
+        coords[4] = x;     coords[5] = y+h/6;
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
+
+        coords[0] = x+5*w/6; coords[1] = y;
+        coords[2] = x+  w;   coords[3] = y;
+        coords[4] = x+  w;   coords[5] = y+h/6;
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
+
+        coords[0] = x;     coords[1] = y+h;
+        coords[2] = x+w/6; coords[3] = y+h;
+        coords[4] = x;     coords[5] = y+5*h/6;
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
+
+        coords[0] = x+5*w/6; coords[1] = y+h;
+        coords[2] = x+  w;   coords[3] = y+h;
+        coords[4] = x+  w;   coords[5] = y+5*h/6;
+        draw_polygon(dr, coords, 3, COL_BLACK, COL_BLACK);
+        */
+    }
+    else if (col == 9) { /* Diamond */
+        int coords[6];
+        draw_rect(dr, x, y, w, h, COL_DARKGRAY);
+        coords[0] = x;      coords[1] = y;
+        coords[2] = x+w;    coords[3] = y;
+        coords[4] = x+w/2;  coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_LIGHTGRAY, COL_LIGHTGRAY);
+        coords[0] = x;      coords[1] = y+h;
+        coords[2] = x+w;    coords[3] = y+h;
+        coords[4] = x+w/2;  coords[5] = y+h/2;
+        draw_polygon(dr, coords, 3, COL_LIGHTGRAY, COL_LIGHTGRAY);
+    }
+
+/*    else if (col == 9) {
+        int coords[6];
+        draw_rect(dr, x, y, w, h, COL_WHITE);
+        coords[0] = x+w/2;  coords[1] = y;
+        coords[2] = x;      coords[3] = y+h;
+        coords[4] = x+w;    coords[5] = y+h;
+        draw_polygon(dr, coords, 3, COL_DARKGRAY, COL_DARKGRAY);
+    } */
+ /*
     else if (col == 9) {
         int coords[8];
         draw_rect(dr, x, y, w, h, COL_3);
