@@ -22,6 +22,8 @@ To get a mostly complete collection for all puzzles ever written for the SGT puz
 
 **01.12.2020 v0.6.0** One can now mark games as favorite on the chooser screen by long-pressing the game icon.
 
+**15.12.2020 v0.6.3** Added 'Map' and 'Samegame'; switched both games from color to grayscale textures.
+
 There is still work to do. See ToDo list below. eInk screens are limited in response time and color availability, so most of the games need individual tweaking to make them fun to play.
 
 ### Binary app
