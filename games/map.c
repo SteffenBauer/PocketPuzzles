@@ -1645,6 +1645,17 @@ static const char *validate_desc(const game_params *params, const char *desc)
     return NULL;
 }
 
+static key_label *game_request_keys(const game_params *params, int *nkeys)
+{
+    key_label *keys = snewn(1, key_label);
+    *nkeys = 1;
+
+    keys[0].button = '+';
+    keys[0].label = "Add";
+
+    return keys;
+}
+
 static game_state *new_game(midend *me, const game_params *params,
                             const char *desc)
 {
@@ -2092,8 +2103,7 @@ struct game_ui {
     int drag_colour;
     int drag_pencil;
     int dragx, dragy;
-    bool show_numbers;
-
+    int highlight_region;
     int cur_x, cur_y, cur_lastmove;
     bool cur_visible, cur_moved;
 };
@@ -2104,7 +2114,7 @@ static game_ui *new_ui(const game_state *state)
     ui->dragx = ui->dragy = -1;
     ui->drag_colour = -2;
     ui->drag_pencil = 0;
-    ui->show_numbers = false;
+    ui->highlight_region = -1;
     ui->cur_x = ui->cur_y = 0;
     ui->cur_visible = false;
     ui->cur_moved = false;
@@ -2147,7 +2157,8 @@ struct game_drawstate {
 #define PENCIL_B_BASE 0x00008000L
 #define PENCIL_B_MASK 0x00078000L
 #define PENCIL_MASK   0x007F8000L
-#define SHOW_NUMBERS  0x00004000L
+#define HIGHLIGHT     0x00000200L
+#define HIGHLIGHT_ADJ 0x00000100L
 
 #define TILESIZE (ds->tilesize)
 #define BORDER (TILESIZE)
@@ -2205,13 +2216,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     bool alt_button;
     int drop_region;
 
-    /*
-     * Enable or disable numeric labels on regions.
-     */
-    if (button == 'l' || button == 'L') {
-        ui->show_numbers = !ui->show_numbers;
-        return UI_UPDATE;
-    }
+    if (button == '+' )
+        return dupstr("M");
 
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         int r = region_from_coords(state, ds, x, y);
@@ -2221,9 +2227,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->drag_pencil = state->pencil[r];
             if (ui->drag_colour >= 0)
                 ui->drag_pencil = 0;
+            ui->highlight_region = (button == RIGHT_BUTTON) ? r : -1;
         } else {
             ui->drag_colour = -1;
             ui->drag_pencil = 0;
+            ui->highlight_region = -1;
         }
         ui->dragx = x;
         ui->dragy = y;
@@ -2236,7 +2244,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->drag_colour > -2) {
         ui->dragx = x;
         ui->dragy = y;
-        return UI_UPDATE;
+        return NULL;
     }
 
     if ((button == LEFT_RELEASE || button == RIGHT_RELEASE) &&
@@ -2251,11 +2259,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 drag_dropped:
     {
     int r = drop_region;
-        int c = ui->drag_colour;
+    int c = ui->drag_colour;
     int p = ui->drag_pencil;
     int oldp;
 
-        ui->drag_colour = -2;
+    ui->drag_colour = -2;
+    ui->highlight_region = -1;
 
     if (r < 0)
         return UI_UPDATE; 
@@ -2263,14 +2272,15 @@ drag_dropped:
     if (state->map->immutable[r])
         return UI_UPDATE;
 
-    if (state->colouring[r] == c && state->pencil[r] == p)
+    if ((state->colouring[r] == c && state->pencil[r] == p) && !(c == -1 && p >= 0))
         return UI_UPDATE;
 
     if (alt_button) {
         if (state->colouring[r] >= 0) {
             return UI_UPDATE;
         } else if (c >= 0) {
-            p = state->pencil[r] ^ (1 << c);
+            /* p = state->pencil[r] ^ (1 << c); */
+            p = (1 << c);
             c = -1;
         }
     }
@@ -2282,11 +2292,21 @@ drag_dropped:
         if (c >= 0)
         oldp = 0;
     }
-    if (p != oldp) {
+    else if (alt_button && (p>= 1)) {
+        int i;
+        for (i=0;i<FOUR;i++) {
+            if (p & (1 << i))
+                bufp += sprintf(bufp, ";p%c:%d", (int)('0' + i), r);
+        }
+    }
+    else if (p != oldp) { 
         int i;
         for (i = 0; i < FOUR; i++)
         if ((oldp ^ p) & (1 << i))
             bufp += sprintf(bufp, ";p%c:%d", (int)('0' + i), r);
+    }
+    else {
+        return UI_UPDATE;
     }
 
     return dupstr(buf+1);
@@ -2300,23 +2320,31 @@ static game_state *execute_move(const game_state *state, const char *move)
     game_state *ret = dup_game(state);
     int c, k, adv, i;
 
+    if (move && move[0] == 'M') {
+        for (i = 0; i < ret->map->n; i++) {
+            if (ret->colouring[i] == -1)
+                ret->pencil[i] = 15;
+        }
+        return ret;
+    }
+
     while (*move) {
         bool pencil = false;
 
-    c = *move;
+        c = *move;
         if (c == 'p') {
             pencil = true;
             c = *++move;
         }
-    if ((c == 'C' || (c >= '0' && c < '0'+FOUR)) &&
-        sscanf(move+1, ":%d%n", &k, &adv) == 1 &&
-        k >= 0 && k < state->p.n) {
-        move += 1 + adv;
+        if ((c == 'C' || (c >= '0' && c < '0'+FOUR)) &&
+            sscanf(move+1, ":%d%n", &k, &adv) == 1 &&
+            k >= 0 && k < state->p.n) {
+            move += 1 + adv;
             if (pencil) {
-        if (ret->colouring[k] >= 0) {
-            free_game(ret);
-            return NULL;
-        }
+                if (ret->colouring[k] >= 0) {
+                    free_game(ret);
+                    return NULL;
+                }
                 if (c == 'C')
                     ret->pencil[k] = 0;
                 else
@@ -2325,44 +2353,44 @@ static game_state *execute_move(const game_state *state, const char *move)
                 ret->colouring[k] = (c == 'C' ? -1 : c - '0');
                 ret->pencil[k] = 0;
             }
-    } else if (*move == 'S') {
-        move++;
-        ret->cheated = true;
-    } else {
-        free_game(ret);
-        return NULL;
-    }
+        } else if (*move == 'S') {
+            move++;
+            ret->cheated = true;
+        } else {
+            free_game(ret);
+            return NULL;
+        }
 
-    if (*move && *move != ';') {
-        free_game(ret);
-        return NULL;
-    }
-    if (*move)
-        move++;
+        if (*move && *move != ';') {
+            free_game(ret);
+            return NULL;
+        }
+        if (*move)
+            move++;
     }
 
     /*
      * Check for completion.
      */
     if (!ret->completed) {
-    bool ok = true;
+        bool ok = true;
 
-    for (i = 0; i < n; i++)
-        if (ret->colouring[i] < 0) {
-        ok = false;
-        break;
-        }
+        for (i = 0; i < n; i++)
+            if (ret->colouring[i] < 0) {
+                ok = false;
+                break;
+            }
 
-    if (ok) {
-        for (i = 0; i < ret->map->ngraph; i++) {
-        int j = ret->map->graph[i] / n;
-        int k = ret->map->graph[i] % n;
-        if (ret->colouring[j] == ret->colouring[k]) {
-            ok = false;
-            break;
+        if (ok) {
+            for (i = 0; i < ret->map->ngraph; i++) {
+                int j = ret->map->graph[i] / n;
+                int k = ret->map->graph[i] % n;
+                if (ret->colouring[j] == ret->colouring[k]) {
+                    ok = false;
+                    break;
+                }
+            }
         }
-        }
-    }
 
     if (ok)
         ret->completed = true;
@@ -2469,63 +2497,63 @@ static void draw_error(drawing *dr, game_drawstate *ds, int x, int y)
     draw_rect(dr, x-xext, y+yext-xext*2+1, xext*2+1, xext*2, COL_ERRTEXT);
 }
 
-static void draw_textured_tile(drawing *dr, int x, int y, int w, int h, int col) {
+static void draw_textured_tile(drawing *dr, int x, int y, int w, int h, int col, bool highlight) {
     if (col == 0) {
-        draw_rect(dr, x, y, w, h, COL_1);
+        draw_rect(dr, x, y, w, h, highlight ? COL_4 : COL_1);
     }
     else if (col == 1) {
-        draw_rect(dr, x, y, w, h, COL_3);
+        draw_rect(dr, x, y, w, h, highlight ? COL_4 : COL_3);
     }
     else if (col == 2) {
         float fw = (float)w/6.0;
         float fh = (float)h/6.0;
         int c[8];
         int i;
-        draw_rect(dr, x, y, w, h, COL_BACKGROUND);
+        draw_rect(dr, x, y, w, h, highlight ? COL_2 : COL_BACKGROUND);
         for (i=1;i<=5;i+=2) {
             c[0] = x;          c[1] = y+i*fh; c[2] = x+i*fw; c[3] = y;
             c[4] = x+(i+1)*fw; c[5] = y;      c[6] = x;      c[7] = y+(i+1)*fh;
-            draw_polygon(dr, c, 4, COL_0, COL_0);
+            draw_polygon(dr, c, 4, highlight ? COL_4 : COL_0, highlight ? COL_4 : COL_0);
         }
         for (i=1;i<=5;i+=2) {
             c[0] = x+i*fw; c[1] = y+6*fh;     c[2] = x+6*fw;     c[3] = y+i*fh;
             c[4] = x+6*fw; c[5] = y+(i+1)*fh; c[6] = x+(i+1)*fw; c[7] = y+6*fh;
-            draw_polygon(dr, c, 4, COL_0, COL_0);
+            draw_polygon(dr, c, 4, highlight ? COL_4 : COL_0, highlight ? COL_4 : COL_0);
         }
     }
     else if (col == 3) {
         float fw = (float)w/4.0;
         float fh = (float)h/4.0;
-        draw_rect(dr, x,      y, w, h, COL_4);
-        draw_rect(dr, x+1*fw, y,      fw, fh, COL_2);
-        draw_rect(dr, x+3*fw, y,      fw, fh, COL_2);
-        draw_rect(dr, x+1*fw, y+2*fh, fw, fh, COL_2);
-        draw_rect(dr, x+3*fw, y+2*fh, fw, fh, COL_2);
+        draw_rect(dr, x,      y, w, h, highlight ? COL_1 : COL_4);
+        draw_rect(dr, x+1*fw, y,      fw, fh, highlight ? COL_4 : COL_2);
+        draw_rect(dr, x+3*fw, y,      fw, fh, highlight ? COL_4 : COL_2);
+        draw_rect(dr, x+1*fw, y+2*fh, fw, fh, highlight ? COL_4 : COL_2);
+        draw_rect(dr, x+3*fw, y+2*fh, fw, fh, highlight ? COL_4 : COL_2);
 
-        draw_rect(dr, x,      y+1*fh, fw, fh, COL_2);
-        draw_rect(dr, x,      y+3*fh, fw, fh, COL_2);
-        draw_rect(dr, x+2*fw, y+1*fh, fw, fh, COL_2);
-        draw_rect(dr, x+2*fw, y+3*fh, fw, fh, COL_2);
+        draw_rect(dr, x,      y+1*fh, fw, fh, highlight ? COL_4 : COL_2);
+        draw_rect(dr, x,      y+3*fh, fw, fh, highlight ? COL_4 : COL_2);
+        draw_rect(dr, x+2*fw, y+1*fh, fw, fh, highlight ? COL_4 : COL_2);
+        draw_rect(dr, x+2*fw, y+3*fh, fw, fh, highlight ? COL_4 : COL_2);
     }
     else {
-        draw_rect(dr, x, y, w, h, COL_BACKGROUND);
+        draw_rect(dr, x, y, w, h, highlight ? COL_4 : COL_BACKGROUND);
     }
 }
 
-static void draw_textured_triangle(drawing *dr, int *coords, int col, bool orientation) {
+static void draw_textured_triangle(drawing *dr, int *coords, int col, bool orientation, bool highlight) {
     int x = coords[0];
     int y = coords[3];
     int w = coords[4] - coords[0];
     int h = coords[5] - coords[3];
 
     if (col == 0) {
-        draw_polygon(dr, coords, 3, COL_1, COL_1);
+        draw_polygon(dr, coords, 3, highlight ? COL_4 : COL_1, highlight ? COL_4 : COL_1);
     }
     else if (col == 1) {
-        draw_polygon(dr, coords, 3, COL_3, COL_3);
+        draw_polygon(dr, coords, 3, highlight ? COL_4 : COL_3, highlight ? COL_4 : COL_3);
     }
     else if (col == 2 && orientation) {
-        draw_polygon(dr, coords, 3, COL_BACKGROUND, COL_BACKGROUND);
+        draw_polygon(dr, coords, 3, highlight ? COL_2 : COL_BACKGROUND, highlight ? COL_2 : COL_BACKGROUND);
         float fw = (float)w/6.0;
         float fh = (float)h/6.0;
         int c[8];
@@ -2533,11 +2561,11 @@ static void draw_textured_triangle(drawing *dr, int *coords, int col, bool orien
         for (i=1;i<=5;i+=2) {
             c[0] = x+i*fw; c[1] = y+6*fh; c[2] = x+6*fw; c[3] = y+i*fh;
             c[4] = x+6*fw; c[5] = y+(i+1)*fh; c[6] = x+(i+1)*fw; c[7] = y+6*fh;
-            draw_polygon(dr, c, 4, COL_0, COL_0);
+            draw_polygon(dr, c, 4, highlight ? COL_4 : COL_0, highlight ? COL_4 : COL_0);
         }
     }
     else if (col == 2 && !orientation) {
-        draw_polygon(dr, coords, 3, COL_BACKGROUND, COL_BACKGROUND);
+        draw_polygon(dr, coords, 3, highlight ? COL_2 : COL_BACKGROUND, highlight ? COL_2 : COL_BACKGROUND);
         float fw = (float)w/6.0; float fw2 = (float)w/12.0;
         float fh = (float)h/6.0; float fh2 = (float)h/12.0;
         int c[8];
@@ -2545,12 +2573,12 @@ static void draw_textured_triangle(drawing *dr, int *coords, int col, bool orien
         for (i=1;i<=5;i+=2) {
             c[0] = x;           c[1] = y+i*fh;      c[2] = x+i*fw2; c[3] = y+i*fh2;
             c[4] = x+(i+1)*fw2; c[5] = y+(i+1)*fh2; c[6] = x;       c[7] = y+(i+1)*fh;
-            draw_polygon(dr, c, 4, COL_0, COL_0);
+            draw_polygon(dr, c, 4, highlight ? COL_4 : COL_0, highlight ? COL_4 : COL_0);
         }
         for (i=1;i<=5;i+=2) {
             c[0] = x+i*fw;      c[1] = y+6*fh;      c[2] = x+(6+i)*fw2; c[3] = y+(6+i)*fh2;
             c[4] = x+(7+i)*fw2; c[5] = y+(7+i)*fh2; c[6] = x+(i+1)*fw;  c[7] = y+6*fh;
-            draw_polygon(dr, c, 4, COL_0, COL_0);
+            draw_polygon(dr, c, 4, highlight ? COL_4 : COL_0, highlight ? COL_4 : COL_0);
         }
     }
     else if (col == 3 && orientation) {
@@ -2558,28 +2586,29 @@ static void draw_textured_triangle(drawing *dr, int *coords, int col, bool orien
         float fh = (float)h/4.0;
         int c[6];
         int i;
-        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        draw_polygon(dr, coords, 3, highlight ? COL_1 : COL_4, highlight ? COL_1 : COL_4);
         for (i=1;i<=4;i++) {
             c[0] = x+(4-i)*fw; c[1] = y+i*fh;
             c[2] = x+(5-i)*fw; c[3] = y+(i-1)*fh;
             c[4] = x+(5-i)*fw; c[5] = y+i*fh;
-            draw_polygon(dr, c, 3, COL_2, COL_2);
+            draw_polygon(dr, c, 3, highlight ? COL_4 : COL_2, highlight ? COL_4 : COL_2);
         }
-        draw_rect(dr, x+2*fw, y+3*fh, fw, fh, COL_2);
-        draw_rect(dr, x+3*fw, y+2*fh, fw, fh, COL_2);
+        draw_rect(dr, x+2*fw, y+3*fh, fw, fh, highlight ? COL_4 : COL_2);
+        draw_rect(dr, x+3*fw, y+2*fh, fw, fh, highlight ? COL_4 : COL_2);
     }
     else if (col == 3 && !orientation) {
         float fw = (float)w/4.0;
         float fh = (float)h/4.0;
-        draw_polygon(dr, coords, 3, COL_4, COL_4);
+        draw_polygon(dr, coords, 3, highlight ? COL_1 : COL_4, highlight ? COL_1 : COL_4);
 
-        draw_rect(dr, x,      y+1*fh, fw, fh, COL_2);
-        draw_rect(dr, x+1*fw, y+2*fh, fw, fh, COL_2);
-        draw_rect(dr, x,      y+3*fh, fw, fh, COL_2);
-        draw_rect(dr, x+2*fw, y+3*fh, fw, fh, COL_2);
+        draw_rect(dr, x,      y+1*fh, fw, fh, highlight ? COL_4 : COL_2);
+        draw_rect(dr, x+1*fw, y+2*fh, fw, fh, highlight ? COL_4 : COL_2);
+        draw_rect(dr, x,      y+3*fh, fw, fh, highlight ? COL_4 : COL_2);
+        draw_rect(dr, x+2*fw, y+3*fh, fw, fh, highlight ? COL_4 : COL_2);
     }
     else {
-        draw_polygon(dr, coords, 3, COL_BACKGROUND, COL_BACKGROUND);
+        draw_polygon(dr, coords, 3, highlight ? COL_4 : COL_BACKGROUND,
+                                    highlight ? COL_4 : COL_BACKGROUND);
     }
 }
 
@@ -2590,18 +2619,22 @@ static void draw_square(drawing *dr, game_drawstate *ds,
     int w = params->w, h = params->h, wh = w*h;
     int tv, bv, xo, yo;
     unsigned long errs;
-
+    bool highlighted, highlighted_adj;
+    
     errs = v & ERR_MASK;
     v &= ~ERR_MASK;
     v &= ~PENCIL_MASK;
-    v &= ~SHOW_NUMBERS;
+    highlighted = (v & HIGHLIGHT) > 0;
+    v &= ~HIGHLIGHT;
+    highlighted_adj = (v & HIGHLIGHT_ADJ) > 0;
+    v &= ~HIGHLIGHT_ADJ;
     tv = v / FIVE;
     bv = v % FIVE;
 
     /*
      * Draw the region colour.
      */
-    draw_textured_tile(dr, COORD(x), COORD(y), TILESIZE, TILESIZE, tv);
+    draw_textured_tile(dr, COORD(x), COORD(y), TILESIZE, TILESIZE, tv, highlighted);
 
     /*
      * Draw the second region colour, if this is a diagonally
@@ -2618,7 +2651,7 @@ static void draw_square(drawing *dr, game_drawstate *ds,
         coords[3] = COORD(y);
         coords[4] = COORD(x+1);
         coords[5] = COORD(y+1);
-        draw_textured_triangle(dr, coords, bv, orientation);
+        draw_textured_triangle(dr, coords, bv, orientation, highlighted_adj);
     }
 
     /*
@@ -2770,10 +2803,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             (state->pencil[state->map->map[BE * wh + y*w+x]] & (1<<i)))
             v |= PENCIL_B_BASE << i;
         }
-        
-        if (ui->show_numbers)
-            v |= SHOW_NUMBERS;
-        
+
+        if (state->map->map[y*w+x] == ui->highlight_region) 
+            v |= HIGHLIGHT;
+        if ((state->map->map[TE * wh + y*w+x] != state->map->map[BE * wh + y*w+x]) &&
+             (state->map->map[BE * wh + y*w+x] == ui->highlight_region))
+            v |= HIGHLIGHT_ADJ;
+
         ds->todraw[y*w+x] = v;
     }
 
@@ -2883,7 +2919,7 @@ const struct game thegame = {
     free_ui,
     encode_ui,
     decode_ui,
-    NULL, /* game_request_keys */
+    game_request_keys,
     game_changed_state,
     interpret_move,
     execute_move,
