@@ -49,11 +49,11 @@
 - [ ] Dominosa: Number highlighting in numerical buttons
 - [ ] Galaxies: Rework right-drag / arrow handling
 - [X] Loopy: Reverse whole cell on hint number error
-- [ ] Map: Remove drag animation
-- [ ] Map: Color fill pattern?
+- [X] Map: Remove drag animation
+- [X] Map: Color fill pattern
 - [ ] Netslide: Remove animation. Thicker lines.
 - [ ] Pearl: Better error display for error line
-- [ ] Samegame: Add color fill pattern
+- [X] Samegame: Add color fill pattern
 - [X] Signpost: Rework cell arrow highlighting to avoid whole screen redraw
 - [ ] Solo: Number highlighting indication in numerical buttons
 - [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
