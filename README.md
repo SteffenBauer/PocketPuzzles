@@ -51,6 +51,7 @@ I received reports that the app works with these devices:
 * PB740  - InkPad 3
 * PB633  - Pocketbook Color
 * PB1040 - InkPad X
+* PB626  - Touch Lux 3 (with minor issues so far, see [#12](/../../issues/12))
 
 I'm interested in reports from more devices; especially how it looks like on color screen and on devices with screen resolution different than the Touch HD 3.
 
@@ -86,7 +87,7 @@ I'm interested in reports from more devices; especially how it looks like on col
 - [X] Better color palette for greyscale screen (done for all active games)
 - [X] Better error visualization suitable for greyscale screen (done for all active games)
 - [X] Modify games with dragging for better handling of eInk screen limitations (done for all active games)
-- [X] B/W texture drawing for games depending on color output (done for Flood & Guess, Map & SameGame currently deactivated)
+- [X] B/W texture drawing for games depending on color output (done for all active games)
 
 #### For future versions
 
