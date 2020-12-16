@@ -1222,7 +1222,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
 
 struct game_ui {
-    bool dragging, drag_is_from;
+    bool dragging, drag_is_from, do_highlight;
     int sx, sy;         /* grid coords of start cell */
     int dx, dy;         /* pixel coords of drag posn */
 };
@@ -1235,6 +1235,8 @@ static game_ui *new_ui(const game_state *state)
      * copy to clone, there's code that needs fixing in game_redraw too. */
 
     ui->dragging = false;
+    ui->drag_is_from = false;
+    ui->do_highlight = false;
     ui->sx = ui->sy = ui->dx = ui->dy = 0;
 
     return ui;
@@ -1279,20 +1281,17 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     if (IS_MOUSE_DOWN(button)) {
         if (!INGRID(state, x, y)) return NULL;
-
         ui->dragging = true;
         ui->drag_is_from = true;
+        ui->do_highlight = (button == RIGHT_BUTTON);
         ui->sx = x;
         ui->sy = y;
         ui->dx = mx;
         ui->dy = my;
         return UI_UPDATE;
-    } else if (IS_MOUSE_DRAG(button) && ui->dragging) {
-        /* ui->dx = mx;
-        ui->dy = my;
-        return UI_UPDATE; */
     } else if (IS_MOUSE_RELEASE(button) && ui->dragging) {
         ui->dragging = false;
+        ui->do_highlight = false;
         if (ui->sx == x && ui->sy == y) return UI_UPDATE; /* single click */
 
         if (!INGRID(state, x, y)) {
@@ -1712,13 +1711,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             f = 0;
             dirp = -1;
 
-            if (ui->dragging) {
+            if (ui->dragging && ui->do_highlight) {
                 if (x == ui->sx && y == ui->sy)
                     f |= F_DRAG_SRC;
-                else if (ui->drag_is_from && !(x == xd && y == yd)) {
-                    if (ispointing(state, x, y, ui->sx, ui->sy)) 
-                        f |= F_HIGHLIGHT;
-                } 
+                else if (ui->drag_is_from && 
+                         !(x == xd && y == yd) && 
+                         ispointing(state, x, y, ui->sx, ui->sy))
+                        f |= F_HIGHLIGHT; 
             }
 
             if (state->impossible ||
@@ -1822,6 +1821,6 @@ const struct game thegame = {
     false, false, NULL, NULL,
     false,                 /* wants_statusbar */
     false, game_timing_state,
-    0,       /* flags */
+    REQUIRE_RBUTTON,       /* flags */
 };
 

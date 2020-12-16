@@ -60,6 +60,7 @@
 - [X] Loopy: Check min/max grid sizes
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 - [ ] Bridges: Change Path button to indicator
+- [ ] Signpost: Add button to switch 'highlight arrows pointing to selected cell'
 
 #### One-click symbol fill
 
