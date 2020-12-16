@@ -1615,9 +1615,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_ERROR       * 3 + i] = 0.5F;
         ret[COL_CURSOR      * 3 + i] = 0.0F;
     }
-    /* game_mkhighlight_specific(fe, ret, COL_0, COL_0_HIGHLIGHT, COL_0_LOWLIGHT);
-    game_mkhighlight_specific(fe, ret, COL_1, COL_1_HIGHLIGHT, COL_1_LOWLIGHT);
-    */
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1657,7 +1654,7 @@ static void unruly_draw_tile(drawing *dr, int x, int y, int tilesize, int tile)
         if ((val == COL_0 || val == COL_1) && (tile & FF_IMMUTABLE)) {
             int coords[12];
             int offset = tilesize/6;
-            int width = tilesize/10;
+            int width = tilesize/16;
             coords[0]  = x + offset;                     coords[1]  = y + offset;
             coords[2]  = x + tilesize - offset;          coords[3]  = y + offset;
             coords[4]  = x + tilesize - offset  - width; coords[5]  = y + offset + width;

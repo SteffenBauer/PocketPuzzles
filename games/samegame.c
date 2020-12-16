@@ -76,7 +76,7 @@
 #define TILE_SIZE (TILE_INNER + TILE_GAP)
 #define PREFERRED_TILE_SIZE 32
 #define BORDER (TILE_SIZE / 2)
-#define HIGHLIGHT_WIDTH 12
+#define HIGHLIGHT_WIDTH (TILE_SIZE / 10)
 
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILE_SIZE) / TILE_SIZE - 1 )
