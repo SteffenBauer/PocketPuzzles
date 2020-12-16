@@ -567,7 +567,11 @@ static void gameSetupControlButtons() {
     int btn_num1, btn_num2;
     int pad1, pad2;
 
-    if (fe->with_twoctrllines) {
+    if (strcmp(fe->currentgame->name, "Rome")==0) {
+        btn_num1 = 4;
+        btn_num2 = fe->numGameButtons - btn_num1 - 4;
+    }
+    else if (fe->with_twoctrllines) {
         btn_num1 = 0;
         for (i=0;i<fe->numGameButtons-4;i++) {
             if (fe->gameButton[i].type == BTN_CHAR) btn_num1++;
@@ -656,6 +660,8 @@ static LAYOUTTYPE gameGetLayout() {
     fe->numGameButtons = 4 + nkeys + addkeys;
     fe->with_twoctrllines = (nkeys+addkeys) > 9;
     fe->with_statusbar = midend_wants_statusbar(me);
+
+    if (strcmp(fe->currentgame->name, "Rome")==0) fe->with_twoctrllines = true;
 
     fe->gameButton = smalloc((fe->numGameButtons) * sizeof(BUTTON));
 

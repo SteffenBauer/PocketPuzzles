@@ -61,6 +61,8 @@
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 - [ ] Bridges: Change Path button to indicator
 - [ ] Signpost: Add button to switch 'highlight arrows pointing to selected cell'
+- [ ] Tracks: "No track" on right click instead of release
+- [ ] Pearl: "No line" on right click instead of release
 
 #### One-click symbol fill
 

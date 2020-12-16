@@ -2361,8 +2361,8 @@ static void draw_square(drawing *dr, game_drawstate *ds, const game_ui *ui,
             /* either a no-line mark ... */
             int mx = cx + xoff, my = cy + yoff, msz = t16;
 
-            draw_line(dr, mx-msz, my-msz, mx+msz, my+msz, COL_BLACK);
-            draw_line(dr, mx-msz, my+msz, mx+msz, my-msz, COL_BLACK);
+            draw_thick_line(dr, 5.0, mx-msz+1, my-msz+1, mx+msz+2, my+msz+2, COL_BLACK);
+            draw_thick_line(dr, 5.0, mx-msz+1, my+msz+1, mx+msz+2, my-msz+2, COL_BLACK);
         } else {
             if (get_gui_style() == GUI_LOOPY) {
                 /* draw grid lines connecting centre of cells */
