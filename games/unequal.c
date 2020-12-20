@@ -132,10 +132,6 @@ static const struct game_params unequal_presets[] = {
     {  6, DIFF_EXTREME, 0 },
     {  6, DIFF_EXTREME, 1 },
     {  6, DIFF_EXTREME, 2 },
-    {  6, DIFF_EXTREME, 0 },
-    {  7, DIFF_EXTREME, 0 },
-    {  7, DIFF_EXTREME, 1 },
-    {  7, DIFF_EXTREME, 2 }
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)

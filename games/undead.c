@@ -1788,20 +1788,14 @@ static void num2grid(int num, int width, int height, int *x, int *y) {
 
 static key_label *game_request_keys(const game_params *params, int *nkeys)
 {
-    key_label *keys = snewn(4, key_label);
-    *nkeys = 4;
+    key_label *keys = snewn(5, key_label);
+    *nkeys = 5;
 
-    keys[0].button = 'G';
-    keys[0].label = "Ghost";
-
-    keys[1].button = 'V';
-    keys[1].label = "Vampire";
-
-    keys[2].button = 'Z';
-    keys[2].label = "Zombie";
-
-    keys[3].button = '\b';
-    keys[3].label = NULL;
+    keys[0].button = 'G';  keys[0].label = "Ghost";
+    keys[1].button = 'V';  keys[1].label = "Vampire";
+    keys[2].button = 'Z';  keys[2].label = "Zombie";
+    keys[3].button = '\b'; keys[3].label = NULL;
+    keys[4].button = '+';  keys[4].label = NULL;
 
     return keys;
 }
@@ -2118,7 +2112,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     gx = ((x-BORDER-1) / TILESIZE );
     gy = ((y-BORDER-2) / TILESIZE ) - 1;
 
-    if (button == 'm' || button == 'M') {
+    if (button == '+') {
         return dupstr("M");
     }
 
