@@ -56,7 +56,8 @@ typedef enum {
     ACTION_UNDO,
     ACTION_REDO,
     ACTION_SWAP,
-    ACTION_CTRL
+    ACTION_CTRL,
+    ACTION_NULL
 } BUTTONACTION;
 
 typedef struct button {

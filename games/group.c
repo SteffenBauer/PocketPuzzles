@@ -132,7 +132,6 @@ const static struct game_params group_presets[] = {
     {  8, DIFF_NORMAL, false },
     {  8, DIFF_HARD, true },
     {  8, DIFF_HARD, false },
-    { 12, DIFF_NORMAL, true },
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -250,8 +249,8 @@ static game_params *custom_params(const config_item *cfg)
 
 static const char *validate_params(const game_params *params, bool full)
 {
-    if (params->w < 3 || params->w > 12)
-        return "Grid size must be between 3 and 12";
+    if (params->w < 3 || params->w > 8)
+        return "Grid size must be between 3 and 8";
     if (params->diff >= DIFFCOUNT)
         return "Unknown difficulty rating";
     if (!params->id && params->diff == DIFF_TRIVIAL) {

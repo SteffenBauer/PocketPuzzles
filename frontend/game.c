@@ -568,8 +568,7 @@ static void gameSetupControlButtons() {
     int pad1, pad2;
 
     if (strcmp(fe->currentgame->name, "Rome")==0) {
-        btn_num1 = 4;
-        btn_num2 = fe->numGameButtons - btn_num1 - 4;
+        btn_num1 = 4; btn_num2 = fe->numGameButtons - btn_num1 - 4;
     }
     else if (fe->with_twoctrllines) {
         btn_num1 = 0;
@@ -645,6 +644,33 @@ static void gamePrepareFrontend() {
     
 }
 
+static BUTTON gameGetButton(const char *gameName, char key) {
+    if      (key == '\b') return btn_backspace;
+    else if (key == '+' && strcmp(gameName, "Map") == 0)     return btn_fill_map;
+    else if (key == '+' && strcmp(gameName, "Rome") == 0)    return btn_fill_rome;
+    else if (key == '+' && strcmp(gameName, "Undead") == 0)  return btn_fill_marks;
+    else if (key == '+' && strcmp(gameName, "ABCD") == 0)    return btn_fill_marks;
+    else if (key == '+' && strcmp(gameName, "Group") == 0)   return btn_fill_marks;
+    else if (key == '+' && strcmp(gameName, "Salad") == 0)   return btn_fill_marks;
+    else if (key == '+' && strcmp(gameName, "Keen") == 0)    return btn_fill_nums;
+    else if (key == '+' && strcmp(gameName, "Mathrax") == 0) return btn_fill_nums;
+    else if (key == '+' && strcmp(gameName, "Towers") == 0)  return btn_fill_nums;
+    else if (key == '+' && strcmp(gameName, "Unequal") == 0) return btn_fill_nums;
+
+    else if (key == '+')  return btn_add;
+    else if (key == '-')  return btn_remove;
+
+    else if (key == 'O' && strcmp(gameName, "Salad")==0)   return btn_salad_o;
+    else if (key == 'X' && strcmp(gameName, "Salad")==0)   return btn_salad_x;
+    else if (key == 'J' && strcmp(gameName, "Net")==0)     return btn_net_shuffle;
+    else if (key == 'G' && strcmp(gameName, "Bridges")==0) return btn_bridges_g;
+    else if (key == 'U' && strcmp(gameName, "Rome")==0)    return btn_rome_n;
+    else if (key == 'L' && strcmp(gameName, "Rome")==0)    return btn_rome_w;
+    else if (key == 'R' && strcmp(gameName, "Rome")==0)    return btn_rome_e;
+    else if (key == 'D' && strcmp(gameName, "Rome")==0)    return btn_rome_s;
+    return btn_null;
+}
+
 static LAYOUTTYPE gameGetLayout() {
     bool wants_statusbar;
     int i, addkeys, nkeys = 0;
@@ -661,24 +687,22 @@ static LAYOUTTYPE gameGetLayout() {
     fe->with_twoctrllines = (nkeys+addkeys) > 9;
     fe->with_statusbar = midend_wants_statusbar(me);
 
-    if (strcmp(fe->currentgame->name, "Rome")==0) fe->with_twoctrllines = true;
+    if (strcmp(fe->currentgame->name, "ABCD")==0)     fe->with_twoctrllines = true;
+    if (strcmp(fe->currentgame->name, "Dominosa")==0) fe->with_twoctrllines = true;
+    if (strcmp(fe->currentgame->name, "Group")==0)    fe->with_twoctrllines = true;
+    if (strcmp(fe->currentgame->name, "Keen")==0)     fe->with_twoctrllines = true;
+    if (strcmp(fe->currentgame->name, "Mathrax")==0)  fe->with_twoctrllines = true;
+    if (strcmp(fe->currentgame->name, "Rome")==0)     fe->with_twoctrllines = true;
+    if (strcmp(fe->currentgame->name, "Salad")==0)    fe->with_twoctrllines = true;
+    if (strcmp(fe->currentgame->name, "Solo")==0)     fe->with_twoctrllines = true;
+    if (strcmp(fe->currentgame->name, "Towers")==0)   fe->with_twoctrllines = true;
+    if (strcmp(fe->currentgame->name, "Unequal")==0)  fe->with_twoctrllines = true;
 
     fe->gameButton = smalloc((fe->numGameButtons) * sizeof(BUTTON));
 
     for (i=0;i<nkeys;i++) {
-        fe->gameButton[i].type = BTN_CTRL;
-        if      (keys[i].button == '\b') fe->gameButton[i] = btn_backspace;
-        else if (keys[i].button == '+')  fe->gameButton[i] = btn_add;
-        else if (keys[i].button == '-')  fe->gameButton[i] = btn_remove;
-        else if (keys[i].button == 'O' && strcmp(fe->currentgame->name, "Salad")==0)   fe->gameButton[i] = btn_salad_o;
-        else if (keys[i].button == 'X' && strcmp(fe->currentgame->name, "Salad")==0)   fe->gameButton[i] = btn_salad_x;
-        else if (keys[i].button == 'J' && strcmp(fe->currentgame->name, "Net")==0)     fe->gameButton[i] = btn_net_shuffle;
-        else if (keys[i].button == 'G' && strcmp(fe->currentgame->name, "Bridges")==0) fe->gameButton[i] = btn_bridges_g;
-        else if (keys[i].button == 'U' && strcmp(fe->currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_n;
-        else if (keys[i].button == 'L' && strcmp(fe->currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_w;
-        else if (keys[i].button == 'R' && strcmp(fe->currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_e;
-        else if (keys[i].button == 'D' && strcmp(fe->currentgame->name, "Rome")==0)    fe->gameButton[i] = btn_rome_s;
-        else {
+        fe->gameButton[i] = gameGetButton(fe->currentgame->name, keys[i].button);
+        if (fe->gameButton[i].type == BTN_NULL) {
             fe->gameButton[i].type   = BTN_CHAR;
             fe->gameButton[i].action = ACTION_CTRL;
             fe->gameButton[i].actionParm.c = keys[i].button;

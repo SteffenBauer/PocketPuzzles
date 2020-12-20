@@ -68,9 +68,9 @@ struct preset_menu *presets;
 extern ibitmap icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,
                icon_game, icon_game_tap, icon_type, icon_type_tap,
                menu_exit, menu_help, menu_new, menu_restart, menu_solve,
-               bt_add, bt_backspace, bt_bridges_g, bt_fill, bt_fill_undead, bt_guess_i,
-               bt_redo, bt_redo_d, bt_remove, bt_map_c, bt_map_j, bt_net_shuffle, 
-               bt_salad_o, bt_salad_x, bt_net_shuffle, bt_bridges_g,
+               bt_add, bt_backspace, bt_bridges_g, bt_fill_nums, bt_fill_marks, bt_fill_map, bt_fill_rome,
+               bt_guess_i, bt_redo, bt_redo_d, bt_remove, bt_map_c, bt_map_j,
+               bt_net_shuffle, bt_salad_o, bt_salad_x, bt_net_shuffle, bt_bridges_g,
                bt_west, bt_east, bt_north, bt_south,
                bt_swap, bt_undo, bt_undo_d;
 
@@ -95,6 +95,13 @@ static BUTTON btn_rome_w      = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'L',
 static BUTTON btn_rome_e      = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'R', &bt_east, NULL, NULL};
 static BUTTON btn_rome_n      = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'U', &bt_north, NULL, NULL};
 static BUTTON btn_rome_s      = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'D', &bt_south, NULL, NULL};
+
+static BUTTON btn_fill_nums   = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, '+', &bt_fill_nums, NULL, NULL};
+static BUTTON btn_fill_marks  = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, '+', &bt_fill_marks, NULL, NULL};
+static BUTTON btn_fill_map    = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, '+', &bt_fill_map, NULL, NULL};
+static BUTTON btn_fill_rome   = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, '+', &bt_fill_rome, NULL, NULL};
+
+static BUTTON btn_null = { false, BTN_NULL, 0, 0, 0, 0, ACTION_NULL, ' ', NULL, NULL, NULL};
 
 static imenuex gameMenu[] = {
     { ITEM_HEADER,   0, "Game",               NULL, NULL,          NULL, NULL },
@@ -121,6 +128,7 @@ static void gameDrawStatusBar();
 static void checkGameEnd();
 static bool coord_in_gamecanvas(int x, int y);
 static void gamePrepareFrontend();
+static BUTTON gameGetButton(const char *gameName, char key);
 static LAYOUTTYPE gameGetLayout();
 static void gameDrawFurniture();
 static void gameCheckButtonState();

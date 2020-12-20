@@ -60,7 +60,7 @@ typedef struct soln {
 } soln;
 
 struct game_state {
-    int w, h, colours;
+    int w, h, colours, leniency;
     int moves, movelimit;
     bool complete;
     char *grid;
@@ -623,6 +623,7 @@ static game_state *new_game(midend *me, const game_params *params,
     state->w = w;
     state->h = h;
     state->colours = params->colours;
+    state->leniency = params->leniency;
     state->moves = 0;
     state->grid = snewn(wh, char);
 
@@ -656,6 +657,7 @@ static game_state *dup_game(const game_state *state)
     ret->w = state->w;
     ret->h = state->h;
     ret->colours = state->colours;
+    ret->leniency = state->leniency;
     ret->moves = state->moves;
     ret->movelimit = state->movelimit;
     ret->complete = state->complete;
@@ -1578,14 +1580,15 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     {
     char status[255];
 
-        sprintf(status, "%s%d / %d moves",
+        sprintf(status, "%s%d / %d moves (min %d)",
                 (state->complete && state->moves <= state->movelimit ?
                  (state->cheated ? "Auto-solved. " : "COMPLETED! ") :
                  state->moves >= state->movelimit ? "FAILED! " :
                  state->cheated ? "Auto-solver used. " :
                  ""),
                 state->moves,
-                state->movelimit);
+                state->movelimit,
+                state->movelimit - state->leniency);
 
     status_bar(dr, status);
     }
