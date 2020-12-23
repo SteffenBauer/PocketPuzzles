@@ -1517,6 +1517,12 @@ struct game_ui {
      * allowed on immutable squares.
      */
     bool hcursor;
+    /*
+     * This contains the number which gets highlighted when the user
+     * presses a number when the UI is not in highlight mode.
+     * 0 means that no number is currently highlighted.
+     */
+    int hhint;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1527,6 +1533,7 @@ static game_ui *new_ui(const game_state *state)
     ui->hpencil = false;
     ui->hshow = false;
     ui->hcursor = false;
+    ui->hhint = 0;
 
     return ui;
 }
@@ -1559,6 +1566,10 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
         newstate->grid[ui->hy * w + ui->hx] != 0) {
         ui->hshow = false;
     }
+}
+
+static bool is_key_highlighted(const game_ui *ui, char c) {
+    return ((c-'0') == ui->hhint);
 }
 
 #define PREFERRED_TILESIZE 48
@@ -1706,8 +1717,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     if (tx >= 0 && tx < w && ty >= 0 && ty < w) {
         if (button == LEFT_BUTTON) {
-        if (tx == ui->hx && ty == ui->hy &&
-        ui->hshow && !ui->hpencil) {
+            if ((ui->hhint > 0) && (state->pencil[ty*w+tx] & (1 << ui->hhint))) {
+                sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
+                return dupstr(buf);
+            }
+            else if (tx == ui->hx && ty == ui->hy &&
+                     ui->hshow && !ui->hpencil) {
                 ui->hshow = false;
             } else {
                 ui->hx = tx;
@@ -1716,13 +1731,15 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hpencil = false;
             }
             ui->hcursor = false;
+            ui->hhint = 0;
             return UI_UPDATE;
         }
         if (button == RIGHT_BUTTON) {
-            /*
-             * Pencil-mode highlighting for non filled squares.
-             */
-            if (state->grid[ty*w+tx] == 0) {
+            if ((ui->hhint > 0) && !state->grid[ty*w+tx]) {
+                sprintf(buf, "P%d,%d,%d", tx, ty, ui->hhint);
+                return dupstr(buf);
+            }
+            else if (state->grid[ty*w+tx] == 0) {
                 if (tx == ui->hx && ty == ui->hy &&
                     ui->hshow && ui->hpencil) {
                     ui->hshow = false;
@@ -1736,27 +1753,16 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hshow = false;
             }
             ui->hcursor = false;
+            ui->hhint = 0;
             return UI_UPDATE;
         }
-    }
-    if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->hx, &ui->hy, w, w, false);
-        ui->hshow = true;
-        ui->hcursor = true;
-        return UI_UPDATE;
-    }
-    if (ui->hshow &&
-        (button == CURSOR_SELECT)) {
-        ui->hpencil ^= 1;
-        ui->hcursor = true;
-        return UI_UPDATE;
     }
 
     if (ui->hshow &&
         ((button >= '0' && button <= '9' && button - '0' <= w) ||
-         button == CURSOR_SELECT2 || button == '\b')) {
+         button == '\b')) {
         int n = button - '0';
-        if (button == CURSOR_SELECT2 || button == '\b')
+        if (button == '\b')
             n = 0;
 
         /*
@@ -1772,6 +1778,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (!ui->hpencil) ui->hshow = false;
 
         return dupstr(buf);
+    }
+
+    if (!ui->hshow && (button >= '0' && button <= '9' && button - '0' <= w)) {
+        int n = button - '0';
+        if (ui->hhint == n) ui->hhint = 0;
+        else ui->hhint = n;
+        return UI_UPDATE;
     }
 
     if (button == '+' )
@@ -2148,19 +2161,24 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         long tile = 0L;
 
         if (state->grid[y*w+x])
-        tile = state->grid[y*w+x];
+            tile = state->grid[y*w+x];
         else
-        tile = (long)state->pencil[y*w+x] << DF_PENCIL_SHIFT;
+            tile = (long)state->pencil[y*w+x] << DF_PENCIL_SHIFT;
+
+        if (!ui->hshow && ui->hhint > 0 &&
+            ((state->grid[y*w+x] == ui->hhint) || 
+            (state->pencil[y*w+x] & (1 << ui->hhint))))
+            tile |= DF_HIGHLIGHT;
 
         if (ui->hshow && ui->hx == x && ui->hy == y)
-        tile |= (ui->hpencil ? DF_HIGHLIGHT_PENCIL : DF_HIGHLIGHT);
+            tile |= (ui->hpencil ? DF_HIGHLIGHT_PENCIL : DF_HIGHLIGHT);
 
         tile |= ds->errors[y*w+x];
 
         if (ds->tiles[y*w+x] != tile) {
-        ds->tiles[y*w+x] = tile;
-        draw_tile(dr, ds, state->clues, x, y, tile,
-              state->par.multiplication_only);
+            ds->tiles[y*w+x] = tile;
+            draw_tile(dr, ds, state->clues, x, y, tile,
+                  state->par.multiplication_only);
         }
     }
     }
@@ -2233,7 +2251,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,
-    NULL,
+    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
     false,                   /* wants_statusbar */

@@ -2171,7 +2171,7 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 static const char rules[] = "Fill a latin square such that the given clues are satisfied. The clues are different according to the different puzzle modes:\n\n"
 "- Unequal: The clue signs are greater-than symbols indicating one square's value is greater than its neighbour's.\n\n"
 "- Adjacent: The clue signs are bars indicating one square's value is numerically adjacent (i.e. one higher or one lower) than its neighbour. All clues are always visible: absence of a bar means that a square's value is NOT numerically adjacent to that neighbour.\n\n"
-"- Kropki: The clues are either black circles (indicating that one number is the double of the other), white circles (the numbers are numerically adjacent) or empty (none of both conditions apply). In the case of the numbers '1' and '2' both conditions apply; the computer is then choosing the clue color by random.";
+"- Kropki: The clues are either black circles (indicating that one number is the double of the other), white circles (the numbers are numerically adjacent) or empty (none of both conditions apply). In the case of the numbers '1' and '2' both conditions apply; the clue color is then chosen by random.";
 
 const struct game thegame = {
     "Unequal", "games.unequal", "unequal", rules,

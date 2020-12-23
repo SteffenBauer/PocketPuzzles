@@ -1896,7 +1896,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
                     rome_draw_arrow(dr, (x+1.25)*tilesize, (y+1)*tilesize, tilesize*0.12, FM_RIGHT, COL_ARROW_PENCIL);
             }
             if(c & FM_GOAL)
-                draw_circle(dr, (x+1)*tilesize, (y+1)*tilesize, tilesize / 3, COL_GOAL, COL_GOAL);
+                draw_circle(dr, (x+1)*tilesize-2, (y+1)*tilesize-2, tilesize / 3, COL_GOAL, COL_GOAL);
             if(c & FM_ARROWMASK)
                 rome_draw_arrow(dr, (x+1)*tilesize, (y+1)*tilesize, tilesize/3, c, on_hint ? COL_ARROW_GUESS : -1);
             

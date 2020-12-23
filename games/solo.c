@@ -4002,8 +4002,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             /*
              * Pencil-mode highlighting for non filled squares.
              */
-            if (ui->hhint != 0 && 
-               state->pencil[(ty*cr+tx) * cr + (ui->hhint-1)]) {
+            if (ui->hhint != 0 && (state->grid[ty*cr+tx] == 0)) {
                 sprintf(buf, "P%d,%d,%d", tx, ty, ui->hhint);
                 return dupstr(buf);
            }
@@ -4025,28 +4024,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return UI_UPDATE;
         }
     }
-    if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->hx, &ui->hy, cr, cr, false);
-        ui->hshow = true;
-        ui->hcursor = true;
-        ui->hhint = 0;
-        return UI_UPDATE;
-    }
     if (button == '+') { sprintf(buf,"+"); return dupstr(buf); }
     if (button == '-') { sprintf(buf,"-"); return dupstr(buf); }
-    if (ui->hshow &&
-        (button == CURSOR_SELECT)) {
-        ui->hpencil = !ui->hpencil;
-        ui->hcursor = true;
-        ui->hhint = 0;
-        return UI_UPDATE;
-    }
 
     if (ui->hshow &&
     ((button >= '0' && button <= '9' && button - '0' <= cr) ||
      (button >= 'a' && button <= 'z' && button - 'a' + 10 <= cr) ||
      (button >= 'A' && button <= 'Z' && button - 'A' + 10 <= cr) ||
-     button == CURSOR_SELECT2 || button == '\b')) {
+      button == '\b')) {
         int n = button - '0';
         if (button >= 'A' && button <= 'Z') n = button - 'A' + 10;
         if (button >= 'a' && button <= 'z') n = button - 'a' + 10;
