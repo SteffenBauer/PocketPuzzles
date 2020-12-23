@@ -1847,8 +1847,12 @@ static void game_print(drawing *dr, const game_state *state, int tilesize)
 #define thegame netslide
 #endif
 
+static const char rules[] = "The game prepares a network by connecting up the centres of squares in a grid, and then shuffles the network by rotating every tile randomly.\n\n"
+"Your job is to move all tiles back into place. The successful solution will be an entirely connected network, with no closed loops. As a visual aid, all tiles which are connected to the one in the middle are highlighted.\n\n"
+"Your move is to shift an entire row left or right, or shift an entire column up or down; every time you do that, the tile you shift off the grid re-appears at the other end of the same row, in the space you just vacated.";
+
 const struct game thegame = {
-    "Netslide", "games.netslide", "netslide",
+    "Netslide", "games.netslide", "netslide", rules,
     default_params,
     game_fetch_preset, NULL,
     decode_params,
@@ -1879,6 +1883,7 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
+    NULL,
     NULL,
     game_status,
     false, false, game_print_size, game_print,

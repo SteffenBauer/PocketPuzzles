@@ -2111,7 +2111,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->clicky = y;
         ui->drag_sx = ui->drag_ex = gx;
         ui->drag_sy = ui->drag_ey = gy;
-        update_ui_drag(state, ui, gx, gy);
+        /* update_ui_drag(state, ui, gx, gy); */
 
         return UI_UPDATE;
     }

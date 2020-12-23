@@ -46,7 +46,7 @@
 - [X] Signpost: Remove blitter drag. Adjust colors. Modify left/right click behavior. Fix polygon error.
 - [X] Sixteen: Remove animation
 - [X] Twiddle: Remove animation
-- [ ] Dominosa: Number highlighting in numerical buttons
+- [X] Dominosa: Number highlighting in numerical buttons
 - [ ] Galaxies: Rework right-drag / arrow handling
 - [X] Loopy: Reverse whole cell on hint number error
 - [X] Map: Remove drag animation
@@ -55,20 +55,19 @@
 - [ ] Pearl: Better error display for error line
 - [X] Samegame: Add color fill pattern
 - [X] Signpost: Rework cell arrow highlighting to avoid whole screen redraw
-- [ ] Solo: Number highlighting indication in numerical buttons
+- [X] Solo: Number highlighting indication in numerical buttons
 - [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
 - [X] Loopy: Check min/max grid sizes
 - [ ] Loopy: Fix polygon error fill in Penrose grids
-- [ ] Bridges: Change Path button to indicator
+- [X] Bridges: Change Path button to indicator
 - [ ] Signpost: Add button to switch 'highlight arrows pointing to selected cell'
-- [ ] Tracks: "No track" on right click instead of release
 - [ ] Pearl: "No line" on right click instead of release
 
 #### One-click symbol fill
 
 - [X] Solo
-- [ ] Towers
-- [ ] Keen
+- [X] Towers
+- [X] Keen
 - [ ] Mathrax
 - [ ] ABCD
 - [ ] Rome
@@ -91,4 +90,13 @@
 - [ ] Salad
 - [ ] Tents
 - [ ] Tracks
+
+#### Game specific UI settings
+
+- [ ] Map: Pencil fill, all or possible only
+- [ ] Mines: Short-click, flag or reveal
+- [ ] Range: Short-click, block or empty
+- [ ] Singles: Short-click, black or circle
+- [ ] Signpost: Right-click: Show incoming arrows or not
+- [ ] Towers: Highlight on one-click
 
