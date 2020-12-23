@@ -351,6 +351,7 @@ static void gameBuildTypeMenu() {
 
 static void gameCheckButtonState() {
     BUTTON *undo, *redo, *swap;
+    int i;
     undo = &fe->gameButton[fe->btnUndoIDX];
     redo = &fe->gameButton[fe->btnRedoIDX];
     if (midend_can_undo(me) && ! undo->active) activate_button(undo);
@@ -361,6 +362,13 @@ static void gameCheckButtonState() {
         swap = &fe->gameButton[fe->btnSwapIDX];
         fe->swapped ? button_to_tapped(swap) : button_to_normal(swap, false);
     }
+    for (i=0;i<fe->numGameButtons;i++) {
+        if (fe->gameButton[i].action == ACTION_CTRL)
+            if (midend_is_key_highlighted(me, fe->gameButton[i].actionParm.c))
+                button_to_tapped(&fe->gameButton[i]);
+            else
+                button_to_normal(&fe->gameButton[i], false);
+    }
 }
 
 /* ----------------------------
@@ -369,12 +377,20 @@ static void gameCheckButtonState() {
 
 void gameTap(int x, int y) {
     int i;
+    bool is_active;
     init_tap_x = x;
     init_tap_y = y;
 
+
     for (i=0;i<fe->numGameButtons;i++) {
-        if ((fe->gameButton[i].action != ACTION_SWAP) && coord_in_button(x, y, &fe->gameButton[i]))
-            button_to_tapped(&fe->gameButton[i]);
+        if ((fe->gameButton[i].action != ACTION_SWAP) &&
+            coord_in_button(x, y, &fe->gameButton[i])) {
+            is_active = false;
+            if (fe->gameButton[i].type == BTN_CHAR)
+                is_active = midend_is_key_highlighted(me, fe->gameButton[i].actionParm.c);
+            if (is_active) button_to_normal(&fe->gameButton[i], true);
+            else           button_to_tapped(&fe->gameButton[i]);
+        }
     }
 
     if (coord_in_gamecanvas(x, y) && (fe->current_pointer == 0)) {
@@ -445,8 +461,8 @@ void gameRelease(int x, int y) {
     }
     for (i=0;i<fe->numGameButtons;i++) {
         if (release_button(init_tap_x, init_tap_y, &fe->gameButton[i])) {
-            if (fe->gameButton[i].action != ACTION_SWAP)
-                button_to_normal(&fe->gameButton[i], true);
+            if ((fe->gameButton[i].action != ACTION_SWAP) && (fe->gameButton[i].action != ACTION_CTRL))
+                button_to_normal(&fe->gameButton[i], false);
             if (release_button(x, y, &fe->gameButton[i])) {
                 switch(fe->gameButton[i].action) {
                     case ACTION_BACK:
