@@ -2072,6 +2072,11 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 {
 }
 
+static bool is_key_highlighted(const game_ui *ui, char c) {
+    if (c == 'G') return ui->show_hints;
+    return false;
+}
+
 struct game_drawstate {
     int tilesize;
     int w, h;
@@ -3136,6 +3141,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,
+    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
     false,                   /* wants_statusbar */

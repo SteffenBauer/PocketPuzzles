@@ -314,6 +314,7 @@ void midend_restart_game(midend *me);
 void midend_stop_anim(midend *me);
 bool midend_process_key(midend *me, int x, int y, int button);
 key_label *midend_request_keys(midend *me, int *nkeys);
+bool midend_is_key_highlighted(midend *me, char c);
 void midend_force_redraw(midend *me);
 void midend_redraw(midend *me);
 float *midend_colours(midend *me, int *ncolours);
@@ -689,6 +690,7 @@ struct game {
                                 const game_state *state,
                                 const game_params *params,
                                 int *x, int *y, int *w, int *h);
+    bool (*is_key_highlighted)(const game_ui *ui, char c);
     int (*status)(const game_state *state);
     bool can_print, can_print_in_colour;
     void (*print_size)(const game_params *params, float *x, float *y);

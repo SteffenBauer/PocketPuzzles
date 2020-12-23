@@ -2084,7 +2084,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int x, int y, int button)
 {
-    int w = state->p.w, h = state->p.h, direction;
+    int w = state->p.w, direction;
     int gx = FROMCOORD(x), gy = FROMCOORD(y);
     char tmpbuf[80];
 
@@ -2111,6 +2111,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->clicky = y;
         ui->drag_sx = ui->drag_ex = gx;
         ui->drag_sy = ui->drag_ey = gy;
+        update_ui_drag(state, ui, gx, gy);
 
         return UI_UPDATE;
     }
@@ -2178,56 +2179,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             }
         }
     }
-
-    /* --- cursor/keyboard operations --- */
-
-    if (IS_CURSOR_MOVE(button)) {
-        int dx = (button == CURSOR_LEFT) ? -1 : ((button == CURSOR_RIGHT) ? +1 : 0);
-        int dy = (button == CURSOR_DOWN) ? +1 : ((button == CURSOR_UP)    ? -1 : 0);
-
-        if (!ui->cursor_active) {
-            ui->cursor_active = true;
-            return UI_UPDATE;
-        }
-
-        ui->curx = ui->curx + dx;
-        ui->cury = ui->cury + dy;
-        if ((ui->curx % 2 == 0) && (ui->cury % 2 == 0)) {
-            /* disallow cursor on square corners: centres and edges only */
-            ui->curx += dx; ui->cury += dy;
-        }
-        ui->curx = min(max(ui->curx, 1), 2*w-1);
-        ui->cury = min(max(ui->cury, 1), 2*h-1);
-        return UI_UPDATE;
-    }
-
-    if (IS_CURSOR_SELECT(button)) {
-        if (!ui->cursor_active) {
-            ui->cursor_active = true;
-            return UI_UPDATE;
-        }
-        /* click on square corner does nothing (shouldn't get here) */
-        if ((ui->curx % 2) == 0 && (ui->cury % 2 == 0))
-            return UI_UPDATE;
-
-        gx = ui->curx / 2;
-        gy = ui->cury / 2;
-        direction = ((ui->curx % 2) == 0) ? L : ((ui->cury % 2) == 0) ? U : 0;
-
-        if (direction &&
-            ui_can_flip_edge(state, gx, gy, direction, button == CURSOR_SELECT2))
-            return edge_flip_str(state, gx, gy, direction, button == CURSOR_SELECT2, tmpbuf);
-        else if (!direction &&
-                 ui_can_flip_square(state, gx, gy, button == CURSOR_SELECT2))
-            return square_flip_str(state, gx, gy, button == CURSOR_SELECT2, tmpbuf);
-        return UI_UPDATE;
-    }
-
-#if 0
-    /* helps to debug the solver */
-    if (button == 'H' || button == 'h')
-        return dupstr("H");
-#endif
 
     return NULL;
 }
@@ -2778,6 +2729,7 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
+    NULL,
     NULL,
     game_status,
     false, false, NULL, NULL,

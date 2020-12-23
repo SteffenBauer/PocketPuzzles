@@ -92,7 +92,7 @@ I'm interested in reports from more devices; especially how it looks like on col
 #### For future versions
 
 - [X] Ability to mark games as favorite
-- [ ] Entry buttons indicating status (Bridges, Dominosa, games with one-click fill)
+- [X] Entry buttons indicating status (Bridges, Dominosa, games with one-click fill)
 - [ ] Context menu for chooser buttons (Launch, Resume, Clear prefs, Set/Unset as favorite)
 - [ ] Check draw update efficiency in all games
 - [ ] General settings (show/hide statusbar, orientation, chooser style, color/grey mode)

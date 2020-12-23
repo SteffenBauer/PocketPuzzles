@@ -2467,6 +2467,12 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
         ui->cur_visible = false;
 }
 
+static bool is_key_highlighted(const game_ui *ui, char c) {
+    if ((ui->highlight_1 >= 0) && ((c-'0') == ui->highlight_1)) return true;
+    if ((ui->highlight_2 >= 0) && ((c-'0') == ui->highlight_2)) return true;
+    return false;
+}
+
 #define PREFERRED_TILESIZE 32
 #define TILESIZE (ds->tilesize)
 #define BORDER (TILESIZE * 3 / 4)
@@ -3089,6 +3095,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,
+    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
     false,                     /* wants_statusbar */

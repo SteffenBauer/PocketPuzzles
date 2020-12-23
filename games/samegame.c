@@ -1716,6 +1716,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,
+    NULL,
     game_status,
     false, false, NULL, NULL,
     true,                   /* wants_statusbar */

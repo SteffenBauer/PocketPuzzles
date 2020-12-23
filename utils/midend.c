@@ -1135,6 +1135,14 @@ key_label *midend_request_keys(midend *me, int *n)
     return keys;
 }
 
+bool midend_is_key_highlighted(midend *me, char c)
+{
+    if (me->ourgame->is_key_highlighted) {
+        return me->ourgame->is_key_highlighted(me->ui, c);
+    }
+    return false;
+}
+
 void midend_redraw(midend *me)
 {
     assert(me->drawing);
