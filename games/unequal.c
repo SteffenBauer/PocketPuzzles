@@ -1501,6 +1501,8 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 struct game_ui {
     int hx, hy;                         /* as for solo.c, highlight pos */
     bool hshow, hpencil, hcursor;       /* show state, type, and ?cursor. */
+    int hhint;
+    bool hdrag;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1511,7 +1513,8 @@ static game_ui *new_ui(const game_state *state)
     ui->hpencil = false;
     ui->hshow = false;
     ui->hcursor = false;
-
+    ui->hhint = 0;
+    ui->hdrag = false;
     return ui;
 }
 
@@ -1541,6 +1544,10 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
     }
 }
 
+static bool is_key_highlighted(const game_ui *ui, char c) {
+    return ((c-'0') == ui->hhint);
+}
+
 struct game_drawstate {
     int tilesize, order;
     bool started;
@@ -1559,56 +1566,48 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 {
     int x = FROMCOORD(ox), y = FROMCOORD(oy), n;
     char buf[80];
-    bool shift_or_control = button & (MOD_SHFT | MOD_CTRL);
 
     button &= ~MOD_MASK;
 
-    if (x >= 0 && x < ds->order && y >= 0 && y < ds->order && IS_MOUSE_DOWN(button)) {
-    if (oy - COORD(y) > TILE_SIZE && ox - COORD(x) > TILE_SIZE)
-        return NULL;
+    if (x >= 0 && x < ds->order && y >= 0 && y < ds->order) {
 
-    if (oy - COORD(y) > TILE_SIZE) {
-        if ((GRID(state, flags, x, y) & F_ADJ_DOWN) ||
-                (GRID(state, flags, x, y) & F_DBL_DOWN))
-        sprintf(buf, "F%d,%d,%d", x, y, F_SPENT_DOWN);
-        else if (y + 1 < ds->order && 
-            ((GRID(state, flags, x, y + 1) & F_ADJ_UP) ||
-                 (GRID(state, flags, x, y + 1) & F_DBL_UP)))
-        sprintf(buf, "F%d,%d,%d", x, y + 1, F_SPENT_UP);
-        else return NULL;
-        return dupstr(buf);
-    }
-
-    if (ox - COORD(x) > TILE_SIZE) {
-        if ((GRID(state, flags, x, y) & F_ADJ_RIGHT) ||
-                (GRID(state, flags, x, y) & F_DBL_RIGHT))
-        sprintf(buf, "F%d,%d,%d", x, y, F_SPENT_RIGHT);
-        else if (x + 1 < ds->order && 
-            ((GRID(state, flags, x + 1, y) & F_ADJ_LEFT) ||
-                 (GRID(state, flags, x + 1, y) & F_DBL_LEFT)))
-        sprintf(buf, "F%d,%d,%d", x + 1, y, F_SPENT_LEFT);
-        else return NULL;
-        return dupstr(buf);
-    }
+        if ((oy - COORD(y) > TILE_SIZE) || (ox - COORD(x) > TILE_SIZE))
+            return NULL;
 
         if (button == LEFT_BUTTON) {
             /* normal highlighting for non-immutable squares */
-            if (GRID(state, flags, x, y) & F_IMMUTABLE)
+            if (GRID(state, flags, x, y) & F_IMMUTABLE) {
                 ui->hshow = false;
+                ui->hhint = 0;
+            }
+            else if (ui->hhint > 0) {
+                ui->hdrag = false;
+                return NULL;
+            }
             else if (x == ui->hx && y == ui->hy &&
-                     ui->hshow && !ui->hpencil)
+                     ui->hshow && !ui->hpencil) {
                 ui->hshow = false;
+                ui->hhint = 0;
+            }
             else {
                 ui->hx = x; ui->hy = y; ui->hpencil = false;
                 ui->hshow = true;
+                ui->hhint = 0;
             }
             ui->hcursor = false;
+            ui->hdrag = false;
             return UI_UPDATE;
         }
         if (button == RIGHT_BUTTON) {
             /* pencil highlighting for non-filled squares */
-            if (GRID(state, nums, x, y) != 0)
+            if (GRID(state, nums, x, y) != 0) {
                 ui->hshow = false;
+                ui->hhint = 0;
+            }
+            else if ((ui->hhint > 0) && (GRID(state, nums, x, y) == 0)) {
+                sprintf(buf, "P%d,%d,%d", x, y, ui->hhint);
+                return dupstr(buf);
+            }
             else if (x == ui->hx && y == ui->hy &&
                      ui->hshow && ui->hpencil)
                 ui->hshow = false;
@@ -1617,68 +1616,31 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hshow = true;
             }
             ui->hcursor = false;
+            ui->hhint = 0;
+            ui->hdrag = false;
             return UI_UPDATE;
         }
-    }
-
-    if (IS_CURSOR_MOVE(button)) {
-    if (shift_or_control) {
-        int nx = ui->hx, ny = ui->hy, i;
-            unsigned long fh, fn;
-            bool self;
-        move_cursor(button, &nx, &ny, ds->order, ds->order, false);
-        ui->hshow = true;
-            ui->hcursor = true;
-
-        for (i = 0; i < 4 && (nx != ui->hx + adjthan[i].dx ||
-                  ny != ui->hy + adjthan[i].dy); ++i);
-
-        if (i == 4)
-        return UI_UPDATE; /* invalid direction, i.e. out of
-                                   * the board */
-
-            fh = GRID(state, flags, ui->hx, ui->hy);
-            fn = GRID(state, flags, nx, ny);
-
-        if (!((fh & adjthan[i].f) || (fn & adjthan[i].fo)) &&
-            !((fh & ADJ_TO_DOUBLE(adjthan[i].f)) ||
-              (fn & ADJ_TO_DOUBLE(adjthan[i].fo))))
-        return UI_UPDATE; /* no clue to toggle */
-
-        if (state->mode != MODE_UNEQUAL)
-        self = (adjthan[i].dx >= 0 && adjthan[i].dy >= 0);
-        else
-        self = (fh & adjthan[i].f);
-
-        if (self)
-        sprintf(buf, "F%d,%d,%ld", ui->hx, ui->hy,
-            ADJ_TO_SPENT(adjthan[i].f));
-        else
-        sprintf(buf, "F%d,%d,%ld", nx, ny,
-            ADJ_TO_SPENT(adjthan[i].fo));
-
-        return dupstr(buf);
-    } else {
-        move_cursor(button, &ui->hx, &ui->hy, ds->order, ds->order, false);
-        ui->hshow = true;
-            ui->hcursor = true;
-        return UI_UPDATE;
-    }
-    }
-    if (ui->hshow && IS_CURSOR_SELECT(button)) {
-        ui->hpencil = !ui->hpencil;
-        ui->hcursor = true;
-        return UI_UPDATE;
+        if (button == LEFT_DRAG) {
+            ui->hdrag = true;
+        }
+        if (button == LEFT_RELEASE) {
+            if (!ui->hdrag && (ui->hhint > 0) && (GRID(state, nums, x, y) == 0)) {
+                sprintf(buf, "R%d,%d,%d", x, y, ui->hhint);
+                ui->hdrag = false;
+                return dupstr(buf);
+            }
+            ui->hdrag = false;
+        }
+    } else if (button == LEFT_BUTTON) {
+        ui->hshow = false;
+        ui->hpencil = false;
+        ui->hcursor = false;
+        ui->hhint = 0;
+        ui->hdrag = false;
     }
 
     n = c2n(button, state->order);
     if (ui->hshow && n >= 0 && n <= ds->order) {
-        debug(("button %d, cbutton %d", button, (int)((char)button)));
-
-        debug(("n %d, h (%d,%d) p %d flags 0x%x nums %d",
-               n, ui->hx, ui->hy, ui->hpencil,
-               GRID(state, flags, ui->hx, ui->hy),
-               GRID(state, nums, ui->hx, ui->hy)));
 
         if (GRID(state, flags, ui->hx, ui->hy) & F_IMMUTABLE)
             return NULL;        /* can't edit immutable square (!) */
@@ -1692,6 +1654,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (!ui->hpencil) ui->hshow = false;
 
         return dupstr(buf);
+    }
+    if (!ui->hshow && n >= 0 && n <= ds->order) {
+        if (ui->hhint == n) ui->hhint = 0;
+        else ui->hhint = n;
+        return UI_UPDATE;
     }
 
     if (button == 'H' || button == 'h')
@@ -1760,9 +1727,9 @@ static game_state *execute_move(const game_state *state, const char *move)
         return ret;
     } else if (move[0] == 'F' && sscanf(move+1, "%d,%d,%d", &x, &y, &n) == 3 &&
            x >= 0 && x < state->order && y >= 0 && y < state->order) {
-    ret = dup_game(state);
-    GRID(ret, flags, x, y) ^= n;
-    return ret;
+        ret = dup_game(state);
+        GRID(ret, flags, x, y) ^= n;
+        return ret;
     }
 
 badmove:
@@ -2206,7 +2173,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,
-    NULL,
+    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
     false,                   /* wants_statusbar */

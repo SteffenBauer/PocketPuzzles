@@ -3905,6 +3905,7 @@ struct game_ui {
      * 0 means that no number is currently highlighted.
      */
     int hhint;
+    bool hdrag;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -3916,6 +3917,7 @@ static game_ui *new_ui(const game_state *state)
     ui->hshow = false;
     ui->hcursor = false;
     ui->hhint = 0;
+    ui->hdrag = false;
     return ui;
 }
 
@@ -3981,10 +3983,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (button == LEFT_BUTTON) {
             if (state->immutable[ty*cr+tx]) {
                 ui->hshow = false;
-            } else if (ui->hhint != 0 && 
-                       state->pencil[(ty*cr+tx) * cr + (ui->hhint-1)]) {
-                sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
-                return dupstr(buf);
+                ui->hhint = 0;
+            } else if (ui->hhint > 0) {
+                ui->hdrag = false;
             } else if (tx == ui->hx && ty == ui->hy &&
                        ui->hshow && !ui->hpencil) {
                 ui->hshow = false;
@@ -3995,7 +3996,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hpencil = false;
             }
             ui->hcursor = false;
-            ui->hhint = 0;
             return UI_UPDATE;
         }
         if (button == RIGHT_BUTTON) {
@@ -4021,9 +4021,27 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             }
             ui->hcursor = false;
             ui->hhint = 0;
+            ui->hdrag = false;
             return UI_UPDATE;
         }
+        if (button == LEFT_DRAG) {
+            ui->hdrag = true;
+        }
+        if (button == LEFT_RELEASE) {
+            if (!ui->hdrag && ui->hhint != 0 && (state->grid[ty*cr+tx] == 0)) {
+                sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
+                return dupstr(buf);
+            }
+            ui->hdrag = false;
+        } 
+    } else if (button == LEFT_BUTTON) {
+        ui->hshow = false;
+        ui->hpencil = false;
+        ui->hhint = 0;
+        ui->hdrag = false;
+        return UI_UPDATE;
     }
+
     if (button == '+') { sprintf(buf,"+"); return dupstr(buf); }
     if (button == '-') { sprintf(buf,"-"); return dupstr(buf); }
 

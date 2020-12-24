@@ -68,12 +68,12 @@
 - [X] Solo
 - [X] Towers
 - [X] Keen
-- [ ] Mathrax
-- [ ] ABCD
+- [X] Mathrax
+- [X] ABCD
 - [ ] Rome
 - [ ] Salad
 - [ ] Undead
-- [ ] Unequal
+- [X] Unequal
 
 #### Rework Border error highlighting
 

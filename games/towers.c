@@ -1086,6 +1086,7 @@ struct game_ui {
      * 0 means that no number is currently highlighted.
      */
     int hhint;
+    bool hdrag;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1097,7 +1098,7 @@ static game_ui *new_ui(const game_state *state)
     ui->hshow = false;
     ui->hcursor = false;
     ui->hhint = 0;
-
+    ui->hdrag = false;
     return ui;
 }
 
@@ -1325,13 +1326,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     if (tx >= 0 && tx < w && ty >= 0 && ty < w) {
         if (button == LEFT_BUTTON) {
-            if ((ui->hhint > 0) && !state->clues->immutable[ty*w+tx] &&
-                (state->pencil[ty*w+tx] & (1 << ui->hhint))) {
-                sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
-                return dupstr(buf);
+            if (ui->hhint > 0) {
+                ui->hdrag = false;
             }
-            else if (tx == ui->hx && ty == ui->hy &&
-                 ui->hshow && !ui->hpencil) {
+            else if (tx == ui->hx && ty == ui->hy && ui->hshow && !ui->hpencil) {
                 ui->hshow = false;
             } else {
                 ui->hx = tx;
@@ -1340,7 +1338,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hpencil = false;
             }
             ui->hcursor = false;
-            ui->hhint = 0;
             return UI_UPDATE;
         }
         if (button == RIGHT_BUTTON) {
@@ -1364,13 +1361,28 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             }
             ui->hcursor = false;
             ui->hhint = 0;
+            ui->hdrag = false;
             return UI_UPDATE;
+        }
+        if (button == LEFT_DRAG) {
+            ui->hdrag = true;
+        }
+        if (button == LEFT_RELEASE) {
+            if (!ui->hdrag && (ui->hhint > 0) && !state->clues->immutable[ty*w+tx] &&
+                (state->grid[ty*w+tx] == 0)) {
+                sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
+                return dupstr(buf);
+            }
+            ui->hdrag = false;
         }
     } else if (button == LEFT_BUTTON) {
         if (is_clue(state, tx, ty)) {
             sprintf(buf, "%c%d,%d", 'D', tx, ty);
             return dupstr(buf);
         }
+        ui->hhint = 0;
+        ui->hdrag = false;
+        return UI_UPDATE;
     }
 
     if (ui->hshow && ((button >= '0' && button <= '9' && button - '0' <= w) ||
@@ -1433,9 +1445,9 @@ static game_state *execute_move(const game_state *from, const char *move)
 
         return ret;
     } else if ((move[0] == 'P' || move[0] == 'R') &&
-    sscanf(move+1, "%d,%d,%d", &x, &y, &n) == 3 &&
-    x >= 0 && x < w && y >= 0 && y < w && n >= 0 && n <= w) {
-    if (from->clues->immutable[y*w+x])
+        sscanf(move+1, "%d,%d,%d", &x, &y, &n) == 3 &&
+        x >= 0 && x < w && y >= 0 && y < w && n >= 0 && n <= w) {
+        if (from->clues->immutable[y*w+x])
             goto badmove;
 
         if (move[0] == 'P' && n > 0) {
@@ -1779,10 +1791,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         else
             tile |= (long)state->pencil[y*w+x] << DF_PENCIL_SHIFT;
 
-        if (!ui->hshow && ui->hhint > 0 &&
+        /* if (!ui->hshow && ui->hhint > 0 &&
             ((state->grid[y*w+x] == ui->hhint) || 
             (state->pencil[y*w+x] & (1 << ui->hhint))))
-            tile |= DF_HIGHLIGHT;
+            tile |= DF_HIGHLIGHT; */
 
         if (ui->hshow && ui->hx == x && ui->hy == y)
             tile |= (ui->hpencil ? DF_HIGHLIGHT_PENCIL : DF_HIGHLIGHT);
