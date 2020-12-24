@@ -1086,6 +1086,8 @@ struct game_ui
 {
     int hx, hy;
     bool cshow, ckey, cpencil;
+    int hhint;
+    bool hdrag;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1094,7 +1096,8 @@ static game_ui *new_ui(const game_state *state)
     
     ret->hx = ret->hy = 0;
     ret->cshow = ret->ckey = ret->cpencil = false;
-    
+    ret->hhint = 0;
+    ret->hdrag = false;
     return ret;
 }
 
@@ -1115,6 +1118,10 @@ static void decode_ui(game_ui *ui, const char *encoding)
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
+}
+
+static bool is_key_highlighted(const game_ui *ui, char c) {
+    return ((c-'0') == ui->hhint);
 }
 
 struct mathrax_symbols {
@@ -1150,45 +1157,52 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     button &= ~MOD_MASK;
     
     /* Mouse click */
-    if (gx >= 0 && gx < o && gy >= 0 && gy < o)
-    {
+    if (gx >= 0 && gx < o && gy >= 0 && gy < o) {
         /* Select square for letter placement */
-        if (button == LEFT_BUTTON)
-        {
+        if (button == LEFT_BUTTON) {
+            /* One-click fill */
+            if (ui->hhint > 0) {
+                ui->hdrag = false;
+            }
             /* Select */
-            if(!ui->cshow || ui->cpencil || hx != gx || hy != gy)
-            {
+            else if(!ui->cshow || ui->cpencil || hx != gx || hy != gy) {
                 ui->hx = gx;
                 ui->hy = gy;
                 ui->cpencil = false;
                 ui->cshow = true;
+                ui->hhint = 0;
             }
             /* Deselect */
-            else
-            {
+            else {
                 ui->cshow = false;
+                ui->hhint = 0;
             }
             
-            if(state->flags[gy*o+gx] & F_IMMUTABLE)
+            if(state->flags[gy*o+gx] & F_IMMUTABLE) {
                 ui->cshow = false;
+                ui->hhint = 0;
+            }
             
             ui->ckey = false;
             return UI_UPDATE;
         }
         /* Select square for marking */
-        else if (button == RIGHT_BUTTON)
-        {
+        else if (button == RIGHT_BUTTON) {
+            /* One-click fill */
+            if ((ui->hhint > 0) && !(state->flags[gy*o+gx] & F_IMMUTABLE) &&
+                (state->grid[gy*o+gx] == 0)) {
+                sprintf(buf, "P%d,%d,%d", gx, gy, ui->hhint);
+                return dupstr(buf);
+            }
             /* Select */
-            if(!ui->cshow || !ui->cpencil || hx != gx || hy != gy)
-            {
+            else if(!ui->cshow || !ui->cpencil || hx != gx || hy != gy) {
                 ui->hx = gx;
                 ui->hy = gy;
                 ui->cpencil = true;
                 ui->cshow = true;
             }
             /* Deselect */
-            else
-            {
+            else {
                 ui->cshow = false;
             }
             
@@ -1197,31 +1211,32 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->cshow = false;
             
             ui->ckey = false;
+            ui->hhint = 0;
+            ui->hdrag = false;
             return UI_UPDATE;
         }
+        else if (button == LEFT_DRAG) {
+            ui->hdrag = true;
+        }
+        else if (button == LEFT_RELEASE) {
+            if (!ui->hdrag && (ui->hhint > 0) && 
+                !(state->flags[gy*o+gx] & F_IMMUTABLE) &&
+                 (state->grid[gy*o+gx] == 0)) {
+                sprintf(buf, "R%d,%d,%d", gx, gy, ui->hhint);
+                return dupstr(buf);
+            }
+            ui->hdrag = false;
+        }
+    } else if (button == LEFT_BUTTON) {
+        ui->cshow = false;
+        ui->cpencil = false;
+        ui->hhint = 0;
+        ui->hdrag = false;
     }
-    
-    /* Keyboard move */
-    if (IS_CURSOR_MOVE(button))
-    {
-        move_cursor(button, &ui->hx, &ui->hy, o, o, 0);
-        ui->cshow = ui->ckey = true;
-        return UI_UPDATE;
-    }
-    
-    /* Keyboard change pencil cursor */
-    if (ui->cshow && button == CURSOR_SELECT)
-    {
-        ui->cpencil = !ui->cpencil;
-        ui->ckey = true;
-        return UI_UPDATE;
-    }
-    
+
     /* Enter or remove numbers */
-    if(ui->cshow && (
-            (button >= '1' && button <= '9') || 
-            button == CURSOR_SELECT2 || button == '\b' || button == '0'))
-    {
+    if(ui->cshow && ((button >= '1' && button <= '9') ||
+                      button == '\b' || button == '0')) {
         char c;
         if (button >= '1' && button <= '9')
             c = button - '0';
@@ -1235,8 +1250,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (ui->cpencil && state->grid[hy*o+hx] != 0)
             return NULL;
         /* Avoid moves which don't change anything */
-        if (!ui->cpencil && state->grid[hy*o+hx] == c)
-        {
+        if (!ui->cpencil && state->grid[hy*o+hx] == c) {
             if(ui->ckey) return NULL;
             ui->cshow = false;
             return UI_UPDATE;
@@ -1244,8 +1258,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         /* Don't edit immutable numbers */
         if (state->flags[hy*o+hx] & F_IMMUTABLE)
             return NULL;
-        
-        
+
         sprintf(buf, "%c%d,%d,%c",
                 (char)(ui->cpencil ? 'P' : 'R'),
                 hx, hy,
@@ -1258,13 +1271,18 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         
         return dupstr(buf);
     }
+
+    if(!ui->cshow && (button >= '1') && (button <= '9')) {
+        int n = button - '0';
+        if (ui->hhint == n) ui->hhint = 0;
+        else ui->hhint = n;
+        return UI_UPDATE;
+    }
     
     /* Set maximum pencil marks on all empty cells */
-    if(button == '+')
-    {
+    if(button == '+') {
         int i;
-        for(i = 0; i < o*o; i++)
-        {
+        for(i = 0; i < o*o; i++) {
             /* Only move if anything changes */
             if(state->grid[i] == 0 && state->marks[i] != (1<<o)-1)
                 return dupstr("M");
@@ -1667,7 +1685,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,
-    NULL,
+    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
     false,                   /* wants_statusbar */

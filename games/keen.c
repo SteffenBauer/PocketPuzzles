@@ -1523,6 +1523,7 @@ struct game_ui {
      * 0 means that no number is currently highlighted.
      */
     int hhint;
+    bool hdrag;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1534,7 +1535,7 @@ static game_ui *new_ui(const game_state *state)
     ui->hshow = false;
     ui->hcursor = false;
     ui->hhint = 0;
-
+    ui->hdrag = false;
     return ui;
 }
 
@@ -1717,25 +1718,25 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     if (tx >= 0 && tx < w && ty >= 0 && ty < w) {
         if (button == LEFT_BUTTON) {
-            if ((ui->hhint > 0) && (state->pencil[ty*w+tx] & (1 << ui->hhint))) {
-                sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
-                return dupstr(buf);
+            if (ui->hhint > 0) {
+                ui->hdrag = false;
             }
             else if (tx == ui->hx && ty == ui->hy &&
                      ui->hshow && !ui->hpencil) {
                 ui->hshow = false;
+                ui->hhint = 0;
             } else {
                 ui->hx = tx;
                 ui->hy = ty;
                 ui->hshow = true;
                 ui->hpencil = false;
+                ui->hhint = 0;
             }
             ui->hcursor = false;
-            ui->hhint = 0;
             return UI_UPDATE;
         }
         if (button == RIGHT_BUTTON) {
-            if ((ui->hhint > 0) && !state->grid[ty*w+tx]) {
+            if ((ui->hhint > 0) && (state->grid[ty*w+tx] == 0)) {
                 sprintf(buf, "P%d,%d,%d", tx, ty, ui->hhint);
                 return dupstr(buf);
             }
@@ -1754,8 +1755,24 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             }
             ui->hcursor = false;
             ui->hhint = 0;
+            ui->hdrag = false;
             return UI_UPDATE;
         }
+        if (button == LEFT_DRAG) {
+            ui->hdrag = true;
+        }
+        if (button == LEFT_RELEASE) {
+            if (!ui->hdrag && (ui->hhint > 0) && (state->grid[ty*w+tx] == 0)) {
+                sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
+                return dupstr(buf);
+            }
+            ui->hdrag = false;
+        }
+    } else if (button == LEFT_BUTTON) {
+        ui->hshow = false;
+        ui->hcursor = false;
+        ui->hhint = 0;
+        ui->hdrag = false;
     }
 
     if (ui->hshow &&
@@ -2165,10 +2182,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         else
             tile = (long)state->pencil[y*w+x] << DF_PENCIL_SHIFT;
 
-        if (!ui->hshow && ui->hhint > 0 &&
+        /* if (!ui->hshow && ui->hhint > 0 &&
             ((state->grid[y*w+x] == ui->hhint) || 
             (state->pencil[y*w+x] & (1 << ui->hhint))))
-            tile |= DF_HIGHLIGHT;
+            tile |= DF_HIGHLIGHT; */
 
         if (ui->hshow && ui->hx == x && ui->hy == y)
             tile |= (ui->hpencil ? DF_HIGHLIGHT_PENCIL : DF_HIGHLIGHT);
