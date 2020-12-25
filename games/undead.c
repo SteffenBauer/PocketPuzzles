@@ -2014,6 +2014,8 @@ static char *solve_game(const game_state *state_start, const game_state *currsta
 struct game_ui {
     int hx, hy;                         /* as for solo.c, highlight pos */
     bool hshow, hpencil, hcursor;       /* show state, type, and ?cursor. */
+    char hhint;
+    bool hdrag;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -2023,6 +2025,8 @@ static game_ui *new_ui(const game_state *state)
     ui->hpencil = false;
     ui->hshow = false;
     ui->hcursor = false;
+    ui->hhint = ' ';
+    ui->hdrag = false;
     return ui;
 }
 
@@ -2054,6 +2058,10 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
     }
 }
 
+static bool is_key_highlighted(const game_ui *ui, char c) {
+    return (c == ui->hhint);
+}
+
 struct game_drawstate {
     int tilesize;
     bool started, solved;
@@ -2074,6 +2082,9 @@ struct game_drawstate {
 static bool is_clue(const game_state *state, int x, int y)
 {
     int h = state->common->params.h, w = state->common->params.w;
+
+    if (state->common->grid[x+y*(state->common->params.w+2)] == -1)
+        return false;
 
     if (((x == 0 || x == w + 1) && y > 0 && y <= h) ||
         ((y == 0 || y == h + 1) && x > 0 && x <= w))
@@ -2119,23 +2130,22 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (ui->hshow && !ui->hpencil) {
         xi = state->common->xinfo[ui->hx + ui->hy*(state->common->params.w+2)];
         if (xi >= 0 && !state->common->fixed[xi]) {
-            if (button == 'g' || button == 'G' || button == '1') {
+            if (button == 'G') {
                 if (!ui->hcursor) ui->hshow = false;
                 sprintf(buf,"G%d",xi);
                 return dupstr(buf);
             }
-            if (button == 'v' || button == 'V' || button == '2') {
+            if (button == 'V') {
                 if (!ui->hcursor) ui->hshow = false;
                 sprintf(buf,"V%d",xi);
                 return dupstr(buf);
             }
-            if (button == 'z' || button == 'Z' || button == '3') {
+            if (button == 'Z') {
                 if (!ui->hcursor) ui->hshow = false;
                 sprintf(buf,"Z%d",xi);
                 return dupstr(buf);
             }
-            if (button == 'e' || button == 'E' || button == CURSOR_SELECT2 ||
-                button == '0' || button == '\b' ) {
+            if (button == '\b') {
                 if (!ui->hcursor) ui->hshow = false;
                 sprintf(buf,"E%d",xi);
                 return dupstr(buf);
@@ -2143,44 +2153,22 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
     }
 
-    if (IS_CURSOR_MOVE(button)) {
-        if (ui->hx == 0 && ui->hy == 0) {
-            ui->hx = 1;
-            ui->hy = 1;
-        }
-        else switch (button) {
-              case CURSOR_UP:     ui->hy -= (ui->hy > 1)     ? 1 : 0; break;
-              case CURSOR_DOWN:   ui->hy += (ui->hy < ds->h) ? 1 : 0; break;
-              case CURSOR_RIGHT:  ui->hx += (ui->hx < ds->w) ? 1 : 0; break;
-              case CURSOR_LEFT:   ui->hx -= (ui->hx > 1)     ? 1 : 0; break;
-            }
-        ui->hshow = true;
-        ui->hcursor = true;
-        return UI_UPDATE;
-    }
-    if (ui->hshow && button == CURSOR_SELECT) {
-        ui->hpencil = !ui->hpencil;
-        ui->hcursor = true;
-        return UI_UPDATE;
-    }
-
     if (ui->hshow && ui->hpencil) {
         xi = state->common->xinfo[ui->hx + ui->hy*(state->common->params.w+2)];
         if (xi >= 0 && !state->common->fixed[xi]) {
-            if (button == 'g' || button == 'G' || button == '1') {
+            if (button == 'G') {
                 sprintf(buf,"g%d",xi);
                 return dupstr(buf);
             }
-            if (button == 'v' || button == 'V' || button == '2') {
+            if (button == 'V') {
                 sprintf(buf,"v%d",xi);
                 return dupstr(buf);
             }
-            if (button == 'z' || button == 'Z' || button == '3') {
+            if (button == 'Z') {
                 sprintf(buf,"z%d",xi);
                 return dupstr(buf);
             }
-            if (button == 'e' || button == 'E' || button == CURSOR_SELECT2 ||
-                button == '0' || button == '\b') {
+            if (button == '\b') {
                 sprintf(buf,"E%d",xi);
                 if (!ui->hcursor) {
                     ui->hpencil = false;
@@ -2191,24 +2179,49 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
     }
 
+    if (!ui->hshow && (button == 'G' || button == 'V' || button == 'Z')) {
+        if (ui->hhint == button) ui->hhint = ' ';
+        else ui->hhint = button;
+        return UI_UPDATE;
+    }
+
     if (gx > 0 && gx < ds->w+1 && gy > 0 && gy < ds->h+1) {
         xi = state->common->xinfo[gx+gy*(state->common->params.w+2)];
         if (xi >= 0 && !state->common->fixed[xi]) {
             g = state->guess[xi];
             if (!ui->hshow) {
                 if (button == LEFT_BUTTON) {
-                    ui->hshow = true;
-                    ui->hpencil = false;
-                    ui->hcursor = false;
-                    ui->hx = gx; ui->hy = gy;
+                    if (ui->hhint != ' ') {
+                        ui->hdrag = false;
+                    }
+                    else {
+                        ui->hshow = true;
+                        ui->hpencil = false;
+                        ui->hcursor = false;
+                        ui->hx = gx; ui->hy = gy;
+                    }
                     return UI_UPDATE;
                 }
                 else if (button == RIGHT_BUTTON && g == 7) {
+                    if (ui->hhint != ' ') {
+                        sprintf(buf,"%c%d",ui->hhint+32, xi);
+                        return dupstr(buf);
+                    }
                     ui->hshow = true;
                     ui->hpencil = true;
                     ui->hcursor = false;
                     ui->hx = gx; ui->hy = gy;
                     return UI_UPDATE;
+                }
+                else if (button == LEFT_DRAG) {
+                    ui->hdrag = true;
+                }
+                else if (button == LEFT_RELEASE) {
+                    if (!ui->hdrag && (ui->hhint != ' ')) {
+                        sprintf(buf, "%c%d", ui->hhint, xi);
+                        return dupstr(buf);
+                    }
+                    ui->hdrag = false;
                 }
             }
             else if (ui->hshow) {
@@ -2269,6 +2282,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             sprintf(buf, "D%d,%d", gx, gy);
             return dupstr(buf);
         }
+        ui->hhint = ' ';
+        ui->hdrag = false;
+        return UI_UPDATE;
     }
 
     return NULL;
@@ -3068,7 +3084,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,
-    NULL,
+    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
     false,                 /* wants_statusbar */

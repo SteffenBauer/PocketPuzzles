@@ -680,9 +680,9 @@ static BUTTON gameGetButton(const char *gameName, char key) {
     else if (key == 'X' && strcmp(gameName, "Salad")==0)   return btn_salad_x;
     else if (key == 'J' && strcmp(gameName, "Net")==0)     return btn_net_shuffle;
     else if (key == 'G' && strcmp(gameName, "Bridges")==0) return btn_bridges_g;
-    else if (key == 'U' && strcmp(gameName, "Rome")==0)    return btn_rome_n;
-    else if (key == 'L' && strcmp(gameName, "Rome")==0)    return btn_rome_w;
-    else if (key == 'R' && strcmp(gameName, "Rome")==0)    return btn_rome_e;
+    else if (key == 'T' && strcmp(gameName, "Rome")==0)    return btn_rome_n;
+    else if (key == 'W' && strcmp(gameName, "Rome")==0)    return btn_rome_w;
+    else if (key == 'E' && strcmp(gameName, "Rome")==0)    return btn_rome_e;
     else if (key == 'D' && strcmp(gameName, "Rome")==0)    return btn_rome_s;
     return btn_null;
 }
