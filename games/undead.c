@@ -2179,7 +2179,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
     }
 
-    if (!ui->hshow && (button == 'G' || button == 'V' || button == 'Z')) {
+    if (!ui->hshow && (button == 'G' || button == 'V' || button == 'Z' || button == '\b')) {
         if (ui->hhint == button) ui->hhint = ' ';
         else ui->hhint = button;
         return UI_UPDATE;
@@ -2204,7 +2204,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 }
                 else if (button == RIGHT_BUTTON && g == 7) {
                     if (ui->hhint != ' ') {
-                        sprintf(buf,"%c%d",ui->hhint+32, xi);
+                        sprintf(buf,"%c%d",(ui->hhint == '\b') ? 'E' : ui->hhint+32, xi);
                         return dupstr(buf);
                     }
                     ui->hshow = true;
@@ -2218,7 +2218,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 }
                 else if (button == LEFT_RELEASE) {
                     if (!ui->hdrag && (ui->hhint != ' ')) {
-                        sprintf(buf, "%c%d", ui->hhint, xi);
+                        sprintf(buf, "%c%d", (ui->hhint == '\b') ? 'E' : ui->hhint, xi);
                         return dupstr(buf);
                     }
                     ui->hdrag = false;

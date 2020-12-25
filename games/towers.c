@@ -1131,8 +1131,10 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
         ui->hshow = false;
     }
 }
+#define BACKSPACE 127
 
 static bool is_key_highlighted(const game_ui *ui, char c) {
+    if (c == '\b' && ui->hhint == BACKSPACE) return true;
     return ((c-'0') == ui->hhint);
 }
 
@@ -1343,7 +1345,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (button == RIGHT_BUTTON) {
             if ((ui->hhint > 0) && !state->clues->immutable[ty*w+tx] &&
                 !state->grid[ty*w+tx]) {
-                sprintf(buf, "P%d,%d,%d", tx, ty, ui->hhint);
+                sprintf(buf, "P%d,%d,%d", tx, ty, (ui->hhint == BACKSPACE) ? 0 : ui->hhint);
                 return dupstr(buf);
             }
             else if (state->grid[ty*w+tx] == 0) {
@@ -1368,9 +1370,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hdrag = true;
         }
         if (button == LEFT_RELEASE) {
-            if (!ui->hdrag && (ui->hhint > 0) && !state->clues->immutable[ty*w+tx] &&
-                (state->grid[ty*w+tx] == 0)) {
-                sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
+            if (!ui->hdrag && (ui->hhint > 0) && !state->clues->immutable[ty*w+tx]) {
+                sprintf(buf, "R%d,%d,%d", tx, ty, (ui->hhint == BACKSPACE) ? 0 : ui->hhint);
                 return dupstr(buf);
             }
             ui->hdrag = false;
@@ -1412,8 +1413,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return dupstr(buf);
     }
 
-    if (!ui->hshow && (button >= '0' && button <= '9' && button - '0' <= w)) {
-        int n = button - '0';
+    if (!ui->hshow && ((button >= '0' && button <= '9' && button - '0' <= w) || (button == '\b') )) {
+        int n = (button - '0');
+        if (button == '\b') n = BACKSPACE;
+
         if (ui->hhint == n) ui->hhint = 0;
         else ui->hhint = n;
         return UI_UPDATE;
@@ -1459,7 +1462,7 @@ static game_state *execute_move(const game_state *from, const char *move)
             if (!ret->completed && !check_errors(ret, NULL))
                 ret->completed = true;
         }
-    return ret;
+        return ret;
     } else if (move[0] == 'M') {
     /*
      * Fill in absolutely all pencil marks everywhere. (I

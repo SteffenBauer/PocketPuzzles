@@ -1486,7 +1486,8 @@ static game_ui *new_ui(const game_state *state)
     game_ui *ret = snew(game_ui);
     ret->hx = -1; ret->hy = -1;
     ret->hshow = ret->hpencil = false;
-    
+    ret->hhint = ' ';
+    ret->hdrag = false;
     /* 
      * Enable or disable the coloring of squares which point in a loop (red),
      * and squares that point towards a goal (blue).
@@ -1567,7 +1568,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
                 ui->hdrag = false;
             }
             else if (ui->hhint != ' ' && (state->grid[y*w+x] == 0)) {
-                sprintf(buf, "P%d,%d,%c", x, y, ui->hhint);
+                sprintf(buf, "P%d,%d,%c", x, y, (ui->hhint == '\b') ? '-' : ui->hhint);
                 return dupstr(buf);
             }
             else {
@@ -1588,9 +1589,8 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     else if (button == LEFT_RELEASE) {
         if (!ui->hdrag && (ui->hhint != ' ') && 
             (x >= 0) && (x < w) && (y >= 0) && (y < h) &&
-             !(state->grid[y*w+x] & FM_FIXED) &&
-                (state->grid[y*w+x] == 0)) {
-                sprintf(buf, "R%d,%d,%c", x, y, ui->hhint);
+             !(state->grid[y*w+x] & FM_FIXED)) {
+                sprintf(buf, "R%d,%d,%c", x, y, (ui->hhint == '\b') ? '-' : ui->hhint);
                 return dupstr(buf);
         }
         ui->hdrag = false;
@@ -1604,7 +1604,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
         }
         return dupstr(buf);
     }
-    else if (!ui->hshow && (button == 'T' || button == 'D' || button == 'W' || button == 'E')) {
+    else if (!ui->hshow && (button == 'T' || button == 'D' || button == 'W' || button == 'E' || button == '\b')) {
         if (ui->hhint == button) ui->hhint = ' ';
         else ui->hhint = button;
     }
