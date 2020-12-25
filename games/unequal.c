@@ -610,16 +610,6 @@ static int solver_links(struct latin_solver *solver, void *vctx)
              * too small to satisfy the inequality. */
             if (gns[j]) {
                 if (j < (lmin+link->len)) {
-#ifdef STANDALONE_SOLVER
-                    if (solver_show_working) {
-                        printf("%*slink elimination, (%d,%d) > (%d,%d):\n",
-                               solver_recurse_depth*4, "",
-                               link->gx+1, link->gy+1, link->lx+1, link->ly+1);
-                        printf("%*s  ruling out %d at (%d,%d)\n",
-                               solver_recurse_depth*4, "",
-                               j+1, link->gx+1, link->gy+1);
-                    }
-#endif
                     cube(link->gx, link->gy, j+1) = false;
                     nchanged++;
                 }
@@ -628,16 +618,6 @@ static int solver_links(struct latin_solver *solver, void *vctx)
              * too large to satisfy inequality. */
             if (lns[j]) {
                 if (j > (gmax-link->len)) {
-#ifdef STANDALONE_SOLVER
-                    if (solver_show_working) {
-                        printf("%*slink elimination, (%d,%d) > (%d,%d):\n",
-                               solver_recurse_depth*4, "",
-                               link->gx+1, link->gy+1, link->lx+1, link->ly+1);
-                        printf("%*s  ruling out %d at (%d,%d)\n",
-                               solver_recurse_depth*4, "",
-                               j+1, link->lx+1, link->ly+1);
-                    }
-#endif
                     cube(link->lx, link->ly, j+1) = false;
                     nchanged++;
                 }
@@ -689,23 +669,6 @@ static int solver_adjacent(struct latin_solver *solver, void *vctx)
                     }
                     if (!cube(nx, ny, n+1))
                         continue; /* already discounted this possibility. */
-
-#ifdef STANDALONE_SOLVER
-                    if (solver_show_working) {
-                        if (ctx->state->mode == MODE_KROPKI)
-                            printf("%*skropki elimination, (%d,%d):%d %s (%d,%d):\n",
-                                   solver_recurse_depth*4, "",
-                                   x+1, y+1, grid(x, y), 
-                                        isadjacent ? "O" : 
-                                        isdouble ? "*": "!O*", nx+1, ny+1);
-                        else 
-                            printf("%*sadjacent elimination, (%d,%d):%d %s (%d,%d):\n",
-                               solver_recurse_depth*4, "",
-                               x+1, y+1, grid(x, y), isadjacent ? "|" : "!|", nx+1, ny+1);
-                        printf("%*s  ruling out %d at (%d,%d)\n",
-                               solver_recurse_depth*4, "", n+1, nx+1, ny+1);
-                    }
-#endif
                     cube(nx, ny, n+1) = false;
                     nchanged++;
                 }
@@ -773,23 +736,6 @@ static int solver_adjacent_set(struct latin_solver *solver, void *vctx)
                 for (n = 0; n < o; n++) {
                     if (scratch[n] == 1) continue;
                     if (!cube(nx, ny, n+1)) continue;
-
-#ifdef STANDALONE_SOLVER
-                    if (solver_show_working) {
-                        if (ctx->state->mode == MODE_KROPKI)
-                            printf("%*skropki elimination, (%d,%d):%d %s (%d,%d):\n",
-                                   solver_recurse_depth*4, "",
-                                   x+1, y+1, grid(x, y), 
-                                        isadjacent ? "O" : 
-                                        isdouble ? "*": "!O*", nx+1, ny+1);
-                        else
-                            printf("%*sadjacent possible elimination, (%d,%d) %s (%d,%d):\n",
-                               solver_recurse_depth*4, "",
-                               x+1, y+1, isadjacent ? "|" : "!|", nx+1, ny+1);
-                        printf("%*s  ruling out %d at (%d,%d)\n",
-                               solver_recurse_depth*4, "", n+1, nx+1, ny+1);
-                    }
-#endif
                     cube(nx, ny, n+1) = false;
                     nchanged++;
                 }
@@ -803,7 +749,7 @@ static int solver_adjacent_set(struct latin_solver *solver, void *vctx)
 static int solver_easy(struct latin_solver *solver, void *vctx)
 {
     struct solver_ctx *ctx = (struct solver_ctx *)vctx;
-    if (ctx->state->mode == MODE_ADJACENT)
+    if (ctx->state->mode >= MODE_ADJACENT)
     return solver_adjacent(solver, vctx);
     else
     return solver_links(solver, vctx);
@@ -812,7 +758,7 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
 static int solver_set(struct latin_solver *solver, void *vctx)
 {
     struct solver_ctx *ctx = (struct solver_ctx *)vctx;
-    if (ctx->state->mode == MODE_ADJACENT)
+    if (ctx->state->mode >= MODE_ADJACENT)
     return solver_adjacent_set(solver, vctx);
     else
     return 0;
@@ -845,43 +791,22 @@ static bool unequal_valid(struct latin_solver *solver, void *vctx)
                     is_adj = (labs(v - nv) == 1);
 
                     if (is_adj && !should_be_adj) {
-#ifdef STANDALONE_SOLVER
-                        if (solver_show_working)
-                            printf("%*s(%d,%d):%d and (%d,%d):%d have "
-                                   "adjacent values, but should not\n",
-                                   solver_recurse_depth*4, "",
-                                   x+1, y+1, v, nx+1, ny+1, nv);
-#endif
                         return false;
                     }
 
                     if (!is_adj && should_be_adj) {
-#ifdef STANDALONE_SOLVER
-                        if (solver_show_working)
-                            printf("%*s(%d,%d):%d and (%d,%d):%d do not have "
-                                   "adjacent values, but should\n",
-                                   solver_recurse_depth*4, "",
-                                   x+1, y+1, v, nx+1, ny+1, nv);
-#endif
                         return false;
                     }
                 }
             }
         }
-    } else {
+    } else if (ctx->state->mode == MODE_UNEQUAL){
         int i;
         for (i = 0; i < ctx->nlinks; i++) {
             struct solver_link *link = &ctx->links[i];
             int gv = grid(link->gx, link->gy);
             int lv = grid(link->lx, link->ly);
             if (gv <= lv) {
-#ifdef STANDALONE_SOLVER
-                if (solver_show_working)
-                    printf("%*s(%d,%d):%d should be greater than (%d,%d):%d, "
-                           "but is not\n", solver_recurse_depth*4, "",
-                           link->gx+1, link->gy+1, gv,
-                           link->lx+1, link->ly+1, lv);
-#endif
                 return false;
             }
         }
@@ -962,12 +887,6 @@ static bool gg_place_clue(game_state *state, int ccode, digit *latin, bool check
 
     if (which == 4) {           /* add number */
         if (state->nums[loc] != 0) {
-#ifdef STANDALONE_SOLVER
-            if (state->nums[loc] != latin[loc]) {
-                printf("inconsistency for (%d,%d): state %d latin %d\n",
-                       x+1, y+1, state->nums[loc], latin[loc]);
-            }
-#endif
             assert(state->nums[loc] == latin[loc]);
             return false;
         }
@@ -1004,20 +923,12 @@ static bool gg_place_clue(game_state *state, int ccode, digit *latin, bool check
 static bool gg_remove_clue(game_state *state, int ccode, bool checkonly)
 {
     int loc = ccode / 5, which = ccode % 5;
-#ifdef STANDALONE_SOLVER
-    int x = loc % state->order, y = loc / state->order;
-#endif
 
     assert(loc < state->order*state->order);
 
     if (which == 4) {           /* remove number. */
         if (state->nums[loc] == 0) return false;
         if (!checkonly) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working)
-                printf("gg_remove_clue: removing %d at (%d,%d)",
-                       state->nums[loc], x+1, y+1);
-#endif
             state->nums[loc] = 0;
         }
     } else {                    /* remove flag */
@@ -1026,11 +937,6 @@ static bool gg_remove_clue(game_state *state, int ccode, bool checkonly)
 
         if (!(state->flags[loc] & adjthan[which].f)) return false;
         if (!checkonly) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working)
-               printf("gg_remove_clue: removing %c at (%d,%d)",
-                       adjthan[which].c, x+1, y+1);
-#endif
             state->flags[loc] &= ~adjthan[which].f;
         }
     }
@@ -1042,13 +948,6 @@ static int gg_best_clue(game_state *state, int *scratch, digit *latin)
     int ls = state->order * state->order * 5;
     int maxposs = 0, minclues = 5, best = -1, i, j;
     int nposs, nclues, loc;
-
-#ifdef STANDALONE_SOLVER
-    if (solver_show_working) {
-        game_debug(state);
-        latin_solver_debug(state->hints, state->order);
-    }
-#endif
 
     for (i = ls; i-- > 0 ;) {
         if (!gg_place_clue(state, scratch[i], latin, true)) continue;
@@ -1063,13 +962,6 @@ static int gg_best_clue(game_state *state, int *scratch, digit *latin)
         if ((nposs > maxposs) ||
             (nposs == maxposs && nclues < minclues)) {
             best = i; maxposs = nposs; minclues = nclues;
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-                int x = loc % state->order, y = loc / state->order;
-                printf("gg_best_clue: b%d (%d,%d) new best [%d poss, %d clues].\n",
-                       best, x+1, y+1, nposs, nclues);
-            }
-#endif
         }
     }
     /* if we didn't solve, we must have 1 clue to place! */
@@ -1077,12 +969,7 @@ static int gg_best_clue(game_state *state, int *scratch, digit *latin)
     return best;
 }
 
-#ifdef STANDALONE_SOLVER
-int maxtries;
-#define MAXTRIES maxtries
-#else
-#define MAXTRIES 100
-#endif
+#define MAXTRIES 1000
 static int gg_solved;
 
 static int game_assemble(game_state *new, int *scratch, digit *latin,
@@ -1099,13 +986,6 @@ static int game_assemble(game_state *new, int *scratch, digit *latin,
          * have this problem. */
         difficulty = DIFF_RECURSIVE-1;
     }
-
-#ifdef STANDALONE_SOLVER
-    if (solver_show_working) {
-        game_debug(new);
-        latin_solver_debug(new->hints, new->order);
-    }
-#endif
 
     while(1) {
         gg_solved++;
@@ -1234,11 +1114,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
     for (i = 0; i < lscratch; i++) scratch[i] = (i%o2)*5 + 4 - (i/o2);
 
 generate:
-#ifdef STANDALONE_SOLVER
-    if (solver_show_working)
-        printf("new_game_desc: generating %s puzzle, ntries so far %d\n",
-               unequal_diffnames[params->diff], ntries);
-#endif
     if (sq) sfree(sq);
     sq = latin_generate(params->order, rs);
     latin_debug(sq, params->order);
@@ -1268,28 +1143,13 @@ generate:
         nsol = solver_state(copy, params->diff-1);
         free_game(copy);
         if (nsol > 0) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working)
-                printf("game_assemble: puzzle as generated is too easy.\n");
-#endif
             if (ntries < MAXTRIES) {
                 ntries++;
                 goto generate;
             }
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working)
-                printf("Unable to generate %s %dx%d after %d attempts.\n",
-                       unequal_diffnames[params->diff],
-                       params->order, params->order, MAXTRIES);
-#endif
             params->diff--;
         }
     }
-#ifdef STANDALONE_SOLVER
-    if (solver_show_working)
-        printf("new_game_desc: generated %s puzzle; %d attempts (%d solver).\n",
-               unequal_diffnames[params->diff], ntries, gg_solved);
-#endif
 
     ret = NULL; retlen = 0;
     for (y = 0; y < params->order; y++) {
@@ -1316,7 +1176,6 @@ generate:
     free_game(state);
     sfree(sq);
     sfree(scratch);
-
     return ret;
 }
 

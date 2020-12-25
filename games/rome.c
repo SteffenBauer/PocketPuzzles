@@ -529,16 +529,16 @@ static int rome_read_desc(const game_params *params, const char *desc, game_stat
             case 'S':
                 /* Empty */
                 break;
-            case 'U':
+            case 'T':
                 state->grid[i] = FM_UP|FM_FIXED;
                 break;
             case 'D':
                 state->grid[i] = FM_DOWN|FM_FIXED;
                 break;
-            case 'L':
+            case 'W':
                 state->grid[i] = FM_LEFT|FM_FIXED;
                 break;
-            case 'R':
+            case 'E':
                 state->grid[i] = FM_RIGHT|FM_FIXED;
                 break;
             case 'X':
@@ -1044,13 +1044,13 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     for(i = 0; i < s; i++)
     {
         if(solved->grid[i] & FM_UP)
-            *p++ = 'U';
+            *p++ = 'T';
         else if(solved->grid[i] & FM_DOWN)
             *p++ = 'D';
         else if(solved->grid[i] & FM_LEFT)
-            *p++ = 'L';
+            *p++ = 'W';
         else if(solved->grid[i] & FM_RIGHT)
-            *p++ = 'R';
+            *p++ = 'E';
         else
             *p++ = '-';
     }
@@ -1343,10 +1343,10 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
 {
     key_label *keys = snewn(6, key_label);
     *nkeys = 6;
-    keys[0].button = 'U';  keys[0].label = "North";
+    keys[0].button = 'T';  keys[0].label = "North";
     keys[1].button = 'D';  keys[1].label = "South";
-    keys[2].button = 'L';  keys[2].label = "Left";
-    keys[3].button = 'R';  keys[3].label = "Right";
+    keys[2].button = 'W';  keys[2].label = "West";
+    keys[3].button = 'E';  keys[3].label = "East";
     keys[4].button = '\b'; keys[4].label = NULL;
     keys[5].button = '+';  keys[5].label = NULL;
 
@@ -1444,13 +1444,13 @@ static char *new_game_desc(const game_params *params, random_state *rs,
             erun = 0;
         }
         if(c & FM_UP)
-            *p++ = 'U';
+            *p++ = 'T';
         if(c & FM_DOWN)
             *p++ = 'D';
         if(c & FM_LEFT)
-            *p++ = 'L';
+            *p++ = 'W';
         if(c & FM_RIGHT)
-            *p++ = 'R';
+            *p++ = 'E';
         if(c & FM_GOAL)
             *p++ = 'X';
         if(c == EMPTY)
@@ -1475,6 +1475,8 @@ struct game_ui
 {
     int hx, hy;
     bool hshow, hpencil;
+    char hhint;
+    bool hdrag;
 
     bool sloops, sgoals;
 };
@@ -1524,6 +1526,10 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 {
 }
 
+static bool is_key_highlighted(const game_ui *ui, char c) {
+    return (c == ui->hhint);
+}
+
 struct game_drawstate {
     bool redraw;
     int tilesize;
@@ -1557,13 +1563,39 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             return UI_UPDATE;
         }
         else if ((x >= 0) && (x < w) && (y >= 0) && (y < h) && !(state->grid[y*w+x] & FM_FIXED)) {
-            ui->hx = x; ui->hy = y;
-            ui->hshow = true;
-            ui->hpencil = (button == RIGHT_BUTTON) && !(state->grid[y*w+x] & FM_ARROWMASK);
+            if (ui->hhint != ' ' && button == LEFT_BUTTON) {
+                ui->hdrag = false;
+            }
+            else if (ui->hhint != ' ' && (state->grid[y*w+x] == 0)) {
+                sprintf(buf, "P%d,%d,%c", x, y, ui->hhint);
+                return dupstr(buf);
+            }
+            else {
+                ui->hx = x; ui->hy = y;
+                ui->hshow = true;
+                ui->hpencil = (button == RIGHT_BUTTON) && !(state->grid[y*w+x] & FM_ARROWMASK);
+            }
             return UI_UPDATE;
         }
+        else if (x < 0 || x >= w || y < 0 || y >= h) {
+            ui->hhint = ' ';
+            ui->hdrag = false;
+        }
     }
-    else if (ui->hshow && (button == 'U' || button == 'D' || button == 'L' || button == 'R' || button == '\b')) {
+    else if (button == LEFT_DRAG) {
+        ui->hdrag = true;
+    }
+    else if (button == LEFT_RELEASE) {
+        if (!ui->hdrag && (ui->hhint != ' ') && 
+            (x >= 0) && (x < w) && (y >= 0) && (y < h) &&
+             !(state->grid[y*w+x] & FM_FIXED) &&
+                (state->grid[y*w+x] == 0)) {
+                sprintf(buf, "R%d,%d,%c", x, y, ui->hhint);
+                return dupstr(buf);
+        }
+        ui->hdrag = false;
+    }
+    else if (ui->hshow && (button == 'T' || button == 'D' || button == 'W' || button == 'E' || button == '\b')) {
         m = ui->hpencil ? 'P' : 'R';
         sprintf(buf, "%c%d,%d,%c", m, ui->hx, ui->hy, button == '\b' ? '-' : button);
         if (!ui->hpencil) {
@@ -1571,6 +1603,10 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             ui->hx = ui->hy = -1;
         }
         return dupstr(buf);
+    }
+    else if (!ui->hshow && (button == 'T' || button == 'D' || button == 'W' || button == 'E')) {
+        if (ui->hhint == button) ui->hhint = ' ';
+        else ui->hhint = button;
     }
     else if (button == '+') {
         sprintf(buf, "M");
@@ -1591,7 +1627,7 @@ static game_state *execute_move(const game_state *oldstate, const char *move)
     if ((move[0] == 'P' || move[0] == 'R') &&
             sscanf(move+1, "%d,%d,%c", &x, &y, &c) == 3 &&
             x >= 0 && x < w && y >= 0 && y < h &&
-            (c == 'U' || c == 'D' || c == 'L' || c == 'R' || c == '-')) {
+            (c == 'T' || c == 'D' || c == 'W' || c == 'E' || c == '-')) {
         if(oldstate->grid[y*w+x] & FM_FIXED)
             return NULL;
         
@@ -1599,16 +1635,16 @@ static game_state *execute_move(const game_state *oldstate, const char *move)
         
         if(move[0] == 'R') {
             switch(c) {
-                case 'U':
+                case 'T':
                     state->grid[y*w+x] = FM_UP;
                     break;
                 case 'D':
                     state->grid[y*w+x] = FM_DOWN;
                     break;
-                case 'L':
+                case 'W':
                     state->grid[y*w+x] = FM_LEFT;
                     break;
-                case 'R':
+                case 'E':
                     state->grid[y*w+x] = FM_RIGHT;
                     break;
                 default:
@@ -1619,16 +1655,16 @@ static game_state *execute_move(const game_state *oldstate, const char *move)
         }
         if(move[0] == 'P') {
             switch(c) {
-                case 'U':
+                case 'T':
                     state->marks[y*w+x] ^= FM_UP;
                     break;
                 case 'D':
                     state->marks[y*w+x] ^= FM_DOWN;
                     break;
-                case 'L':
+                case 'W':
                     state->marks[y*w+x] ^= FM_LEFT;
                     break;
-                case 'R':
+                case 'E':
                     state->marks[y*w+x] ^= FM_RIGHT;
                     break;
                 default:
@@ -1649,16 +1685,16 @@ static game_state *execute_move(const game_state *oldstate, const char *move)
         while(*p && i < w*h) {
             if(!(state->grid[i] & FM_FIXED)) {
                 switch(*p) {
-                    case 'U':
+                    case 'T':
                         state->grid[i] = FM_UP;
                         break;
                     case 'D':
                         state->grid[i] = FM_DOWN;
                         break;
-                    case 'L':
+                    case 'W':
                         state->grid[i] = FM_LEFT;
                         break;
-                    case 'R':
+                    case 'E':
                         state->grid[i] = FM_RIGHT;
                         break;
                     default:
@@ -1975,7 +2011,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,
-    NULL,
+    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
     false,                   /* wants_statusbar */

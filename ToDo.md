@@ -60,7 +60,6 @@
 - [X] Loopy: Check min/max grid sizes
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 - [X] Bridges: Change Path button to indicator
-- [ ] Signpost: Add button to switch 'highlight arrows pointing to selected cell'
 - [ ] Pearl: "No line" on right click instead of release
 
 #### One-click symbol fill
@@ -70,10 +69,11 @@
 - [X] Keen
 - [X] Mathrax
 - [X] ABCD
-- [ ] Rome
+- [X] Rome
 - [ ] Salad
-- [ ] Undead
+- [X] Undead
 - [X] Unequal
+- [ ] Group
 
 #### Rework Border error highlighting
 
@@ -98,5 +98,5 @@
 - [ ] Range: Short-click, block or empty
 - [ ] Singles: Short-click, black or circle
 - [ ] Signpost: Right-click: Show incoming arrows or not
-- [ ] Towers: Highlight on one-click
+- [ ] Games with one-click: on/off
 
