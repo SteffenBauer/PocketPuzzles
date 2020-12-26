@@ -1372,7 +1372,7 @@ static game_ui *new_ui(const game_state *state)
     ui->hpencil = false;
     ui->hshow = false;
     ui->hcursor = false;
-    ui->hhint = 0;
+    ui->hhint = -1;
     ui->hdrag = false;
     return ui;
 }
@@ -1404,6 +1404,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 }
 
 static bool is_key_highlighted(const game_ui *ui, char c) {
+    if (c == '\b' && ui->hhint == 0) return true;
     return ((c-'0') == ui->hhint);
 }
 
@@ -1437,21 +1438,21 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             /* normal highlighting for non-immutable squares */
             if (GRID(state, flags, x, y) & F_IMMUTABLE) {
                 ui->hshow = false;
-                ui->hhint = 0;
+                ui->hhint = -1;
             }
-            else if (ui->hhint > 0) {
+            else if (ui->hhint >= 0) {
                 ui->hdrag = false;
                 return NULL;
             }
             else if (x == ui->hx && y == ui->hy &&
                      ui->hshow && !ui->hpencil) {
                 ui->hshow = false;
-                ui->hhint = 0;
+                ui->hhint = -1;
             }
             else {
                 ui->hx = x; ui->hy = y; ui->hpencil = false;
                 ui->hshow = true;
-                ui->hhint = 0;
+                ui->hhint = -1;
             }
             ui->hcursor = false;
             ui->hdrag = false;
@@ -1461,9 +1462,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             /* pencil highlighting for non-filled squares */
             if (GRID(state, nums, x, y) != 0) {
                 ui->hshow = false;
-                ui->hhint = 0;
+                ui->hhint = -1;
             }
-            else if ((ui->hhint > 0) && (GRID(state, nums, x, y) == 0)) {
+            else if ((ui->hhint >= 0) && (GRID(state, nums, x, y) == 0)) {
                 sprintf(buf, "P%d,%d,%d", x, y, ui->hhint);
                 return dupstr(buf);
             }
@@ -1475,7 +1476,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hshow = true;
             }
             ui->hcursor = false;
-            ui->hhint = 0;
+            ui->hhint = -1;
             ui->hdrag = false;
             return UI_UPDATE;
         }
@@ -1483,7 +1484,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hdrag = true;
         }
         if (button == LEFT_RELEASE) {
-            if (!ui->hdrag && (ui->hhint > 0) && (GRID(state, nums, x, y) == 0)) {
+            if (!ui->hdrag && (ui->hhint >= 0)) {
                 sprintf(buf, "R%d,%d,%d", x, y, ui->hhint);
                 ui->hdrag = false;
                 return dupstr(buf);
@@ -1494,8 +1495,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->hshow = false;
         ui->hpencil = false;
         ui->hcursor = false;
-        ui->hhint = 0;
+        ui->hhint = -1;
         ui->hdrag = false;
+        return UI_UPDATE;
     }
 
     n = c2n(button, state->order);
@@ -1515,7 +1517,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return dupstr(buf);
     }
     if (!ui->hshow && n >= 0 && n <= ds->order) {
-        if (ui->hhint == n) ui->hhint = 0;
+        if (ui->hhint == n) ui->hhint = -1;
         else ui->hhint = n;
         return UI_UPDATE;
     }
@@ -1540,12 +1542,12 @@ static game_state *execute_move(const game_state *state, const char *move)
         x >= 0 && x < state->order && y >= 0 && y < state->order &&
         n >= 0 && n <= state->order) {
         ret = dup_game(state);
+        if (n == 0 && GRID(ret, nums, x, y) == 0)
+            for (i = 0; i < state->order; i++) HINT(ret, x, y, i) = 0;
         if (move[0] == 'P' && n > 0)
             HINT(ret, x, y, n-1) = !HINT(ret, x, y, n-1);
         else {
             GRID(ret, nums, x, y) = n;
-            for (i = 0; i < state->order; i++)
-                HINT(ret, x, y, i) = 0;
 
             /* real change to grid; check for completion */
             if (!ret->completed && check_complete(ret->nums, ret, true) > 0)

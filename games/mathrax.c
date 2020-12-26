@@ -1096,7 +1096,7 @@ static game_ui *new_ui(const game_state *state)
     
     ret->hx = ret->hy = 0;
     ret->cshow = ret->ckey = ret->cpencil = false;
-    ret->hhint = 0;
+    ret->hhint = -1;
     ret->hdrag = false;
     return ret;
 }
@@ -1121,6 +1121,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 }
 
 static bool is_key_highlighted(const game_ui *ui, char c) {
+    if (c == '\b' && ui->hhint == 0) return true;
     return ((c-'0') == ui->hhint);
 }
 
@@ -1139,7 +1140,7 @@ struct game_drawstate {
     marks_t *marks;
 };
 
-#define FROMCOORD(x) ( ((x)-(tilesize/2)) / tilesize )
+#define FROMCOORD(x) ( (x < (tilesize/2)) ? -1 : ((x)-(tilesize/2)) / tilesize )
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int ox, int oy, int button)
@@ -1161,7 +1162,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         /* Select square for letter placement */
         if (button == LEFT_BUTTON) {
             /* One-click fill */
-            if (ui->hhint > 0) {
+            if (ui->hhint >= 0) {
                 ui->hdrag = false;
             }
             /* Select */
@@ -1170,17 +1171,17 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hy = gy;
                 ui->cpencil = false;
                 ui->cshow = true;
-                ui->hhint = 0;
+                ui->hhint = -1;
             }
             /* Deselect */
             else {
                 ui->cshow = false;
-                ui->hhint = 0;
+                ui->hhint = -1;
             }
             
             if(state->flags[gy*o+gx] & F_IMMUTABLE) {
                 ui->cshow = false;
-                ui->hhint = 0;
+                ui->hhint = -1;
             }
             
             ui->ckey = false;
@@ -1189,9 +1190,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         /* Select square for marking */
         else if (button == RIGHT_BUTTON) {
             /* One-click fill */
-            if ((ui->hhint > 0) && !(state->flags[gy*o+gx] & F_IMMUTABLE) &&
+            if ((ui->hhint >= 0) && !(state->flags[gy*o+gx] & F_IMMUTABLE) &&
                 (state->grid[gy*o+gx] == 0)) {
-                sprintf(buf, "P%d,%d,%d", gx, gy, ui->hhint);
+                sprintf(buf, "P%d,%d,%c", gx, gy, (char)((ui->hhint > 0) ? '0' + ui->hhint : '-'));
                 return dupstr(buf);
             }
             /* Select */
@@ -1211,7 +1212,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->cshow = false;
             
             ui->ckey = false;
-            ui->hhint = 0;
+            ui->hhint = -1;
             ui->hdrag = false;
             return UI_UPDATE;
         }
@@ -1219,10 +1220,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hdrag = true;
         }
         else if (button == LEFT_RELEASE) {
-            if (!ui->hdrag && (ui->hhint > 0) && 
-                !(state->flags[gy*o+gx] & F_IMMUTABLE) &&
-                 (state->grid[gy*o+gx] == 0)) {
-                sprintf(buf, "R%d,%d,%d", gx, gy, ui->hhint);
+            if (!ui->hdrag && (ui->hhint >= 0) && 
+                !(state->flags[gy*o+gx] & F_IMMUTABLE)) {
+                sprintf(buf, "R%d,%d,%c", gx, gy, (char)((ui->hhint > 0) ? '0' + ui->hhint : '-'));
                 return dupstr(buf);
             }
             ui->hdrag = false;
@@ -1230,19 +1230,17 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     } else if (button == LEFT_BUTTON) {
         ui->cshow = false;
         ui->cpencil = false;
-        ui->hhint = 0;
+        ui->hhint = -1;
         ui->hdrag = false;
+        return UI_UPDATE;
     }
 
     /* Enter or remove numbers */
-    if(ui->cshow && ((button >= '1' && button <= '9') ||
-                      button == '\b' || button == '0')) {
+    if(ui->cshow && ((button >= '1' && button <= '9') || button == '\b')) {
         char c;
-        if (button >= '1' && button <= '9')
-            c = button - '0';
-        else
-            c = 0;
-            
+        if (button >= '1' && button <= '9') c = button - '0';
+        else                                c = 0;
+
         /* Don't enter numbers out of range */
         if (c > o)
             return NULL;
@@ -1250,11 +1248,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (ui->cpencil && state->grid[hy*o+hx] != 0)
             return NULL;
         /* Avoid moves which don't change anything */
-        if (!ui->cpencil && state->grid[hy*o+hx] == c) {
+/*        if (!ui->cpencil && state->grid[hy*o+hx] == c) {
             if(ui->ckey) return NULL;
             ui->cshow = false;
             return UI_UPDATE;
-        }
+        } */
         /* Don't edit immutable numbers */
         if (state->flags[hy*o+hx] & F_IMMUTABLE)
             return NULL;
@@ -1264,7 +1262,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 hx, hy,
                 (char)(c != 0 ? '0' + c : '-')
         );
-        
+
         /* When not in keyboard mode, hide cursor */
         if (!ui->ckey && !ui->cpencil)
             ui->cshow = false;
@@ -1272,9 +1270,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return dupstr(buf);
     }
 
-    if(!ui->cshow && (button >= '1') && (button <= '9')) {
-        int n = button - '0';
-        if (ui->hhint == n) ui->hhint = 0;
+    if(!ui->cshow && (((button >= '1') && (button <= '9')) || (button == '\b')) ) {
+        int n;
+        if (button >= '1' && button <= '9') n = button - '0';
+        else                                n = 0;
+        if (ui->hhint == n) ui->hhint = -1;
         else ui->hhint = n;
         return UI_UPDATE;
     }
@@ -1303,27 +1303,21 @@ static game_state *execute_move(const game_state *oldstate, const char *move)
     if ((move[0] == 'P' || move[0] == 'R') &&
             sscanf(move+1, "%d,%d,%c", &x, &y, &c) == 3 &&
             x >= 0 && x < o && y >= 0 && y < o &&
-            ((c >= '1' && c <= '9' ) || c == '-')
-            )
-    {
+            ((c >= '1' && c <= '9' ) || c == '-')) {
+
         if(oldstate->flags[y*o+x] & F_IMMUTABLE)
             return NULL;
-        
+
         state = dup_game(oldstate);
-        
-        if(move[0] == 'R')
-        {
-            if(c == '-')
-                state->grid[y*o+x] = 0;
-            else
-                state->grid[y*o+x] = c - '0';
+
+        if(move[0] == 'R') {
+            if(c == '-' && state->grid[y*o+x] == 0) state->marks[y*o+x] = 0;
+            else if(c == '-')                       state->grid[y*o+x] = 0;
+            else                                    state->grid[y*o+x] = c - '0';
         }
-        if(move[0] == 'P')
-        {
-            if(c == '-')
-                state->marks[y*o+x] = 0;
-            else
-                state->marks[y*o+x] ^= 1<<(c - '1');
+        if(move[0] == 'P') {
+            if(c == '-') state->marks[y*o+x] = 0;
+            else         state->marks[y*o+x] ^= 1<<(c - '1');
         }
         
         if(mathrax_validate_game(state, NULL, false) == STATUS_COMPLETE)

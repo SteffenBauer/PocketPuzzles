@@ -3916,7 +3916,7 @@ static game_ui *new_ui(const game_state *state)
     ui->hpencil = false;
     ui->hshow = false;
     ui->hcursor = false;
-    ui->hhint = 0;
+    ui->hhint = -1;
     ui->hdrag = false;
     return ui;
 }
@@ -3952,6 +3952,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 }
 
 static bool is_key_highlighted(const game_ui *ui, char c) {
+    if (c == '\b' && ui->hhint == 0) return true;
     return ((c-'0') == ui->hhint);
 }
 
@@ -3983,8 +3984,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (button == LEFT_BUTTON) {
             if (state->immutable[ty*cr+tx]) {
                 ui->hshow = false;
-                ui->hhint = 0;
-            } else if (ui->hhint > 0) {
+                ui->hhint = -1;
+            } else if (ui->hhint >= 0) {
                 ui->hdrag = false;
             } else if (tx == ui->hx && ty == ui->hy &&
                        ui->hshow && !ui->hpencil) {
@@ -4002,7 +4003,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             /*
              * Pencil-mode highlighting for non filled squares.
              */
-            if (ui->hhint != 0 && (state->grid[ty*cr+tx] == 0)) {
+            if (ui->hhint >= 0 && (state->grid[ty*cr+tx] == 0)) {
                 sprintf(buf, "P%d,%d,%d", tx, ty, ui->hhint);
                 return dupstr(buf);
            }
@@ -4020,7 +4021,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hshow = false;
             }
             ui->hcursor = false;
-            ui->hhint = 0;
+            ui->hhint = -1;
             ui->hdrag = false;
             return UI_UPDATE;
         }
@@ -4028,7 +4029,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hdrag = true;
         }
         if (button == LEFT_RELEASE) {
-            if (!ui->hdrag && ui->hhint != 0 && (state->grid[ty*cr+tx] == 0)) {
+            if (!ui->hdrag && ui->hhint >= 0) {
                 sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
                 return dupstr(buf);
             }
@@ -4037,7 +4038,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     } else if (button == LEFT_BUTTON) {
         ui->hshow = false;
         ui->hpencil = false;
-        ui->hhint = 0;
+        ui->hhint = -1;
         ui->hdrag = false;
         return UI_UPDATE;
     }
@@ -4046,15 +4047,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (button == '-') { sprintf(buf,"-"); return dupstr(buf); }
 
     if (ui->hshow &&
-    ((button >= '0' && button <= '9' && button - '0' <= cr) ||
-     (button >= 'a' && button <= 'z' && button - 'a' + 10 <= cr) ||
-     (button >= 'A' && button <= 'Z' && button - 'A' + 10 <= cr) ||
-      button == '\b')) {
+    ((button >= '0' && button <= '9' && button - '0' <= cr) || button == '\b')) {
         int n = button - '0';
-        if (button >= 'A' && button <= 'Z') n = button - 'A' + 10;
-        if (button >= 'a' && button <= 'z') n = button - 'a' + 10;
-        if (button == '\b')                 n = 0;
-        ui->hhint = 0;
+        if (button == '\b') n = 0;
+        ui->hhint = -1;
 
         /*
          * Can't overwrite this square. This can only happen here
@@ -4079,16 +4075,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
     if (!ui->hshow &&
        ((button >= '0' && button <= '9' && button - '0' <= cr) ||
-        (button >= 'a' && button <= 'z' && button - 'a' + 10 <= cr) ||
-        (button >= 'A' && button <= 'Z' && button - 'A' + 10 <= cr))) {
+        (button == '\b'))) {
 
         int n = button - '0';
-        if (button >= 'A' && button <= 'Z')
-            n = button - 'A' + 10;
-        if (button >= 'a' && button <= 'z')
-            n = button - 'a' + 10;
-
-        if (ui->hhint == n) ui->hhint = 0;
+        if (button == '\b') n = 0;
+        if (ui->hhint == n) ui->hhint = -1;
         else ui->hhint = n;
         return UI_UPDATE;
     }
@@ -4158,36 +4149,38 @@ static game_state *execute_move(const game_state *from, const char *move)
         return ret;
     }
     else if (move[0] == 'S') {
-    const char *p;
+        const char *p;
 
-    ret = dup_game(from);
-    ret->completed = ret->cheated = true;
+        ret = dup_game(from);
+        ret->completed = ret->cheated = true;
 
-    p = move+1;
-    for (n = 0; n < cr*cr; n++) {
-        ret->grid[n] = atoi(p);
+        p = move+1;
+        for (n = 0; n < cr*cr; n++) {
+            ret->grid[n] = atoi(p);
 
-        if (!*p || ret->grid[n] < 1 || ret->grid[n] > cr) {
-        free_game(ret);
-        return NULL;
+            if (!*p || ret->grid[n] < 1 || ret->grid[n] > cr) {
+                free_game(ret);
+            return NULL;
+            }
+
+            while (*p && isdigit((unsigned char)*p)) p++;
+            if (*p == ',') p++;
         }
 
-        while (*p && isdigit((unsigned char)*p)) p++;
-        if (*p == ',') p++;
-    }
-
-    return ret;
+        return ret;
     } else if ((move[0] == 'P' || move[0] == 'R') &&
-    sscanf(move+1, "%d,%d,%d", &x, &y, &n) == 3 &&
-    x >= 0 && x < cr && y >= 0 && y < cr && n >= 0 && n <= cr) {
+        sscanf(move+1, "%d,%d,%d", &x, &y, &n) == 3 &&
+        x >= 0 && x < cr && y >= 0 && y < cr && n >= 0 && n <= cr) {
 
-    ret = dup_game(from);
-        if (move[0] == 'P' && n > 0) {
+        ret = dup_game(from);
+        if (n == 0 && ret->grid[y*cr+x] == 0)
+             memset(ret->pencil + (y*cr+x)*cr, 0, cr);
+        else if (move[0] == 'P' && n > 0) {
             int index = (y*cr+x) * cr + (n-1);
             ret->pencil[index] = !ret->pencil[index];
         } else {
             ret->grid[y*cr+x] = n;
-            memset(ret->pencil + (y*cr+x)*cr, 0, cr);
+            /* memset(ret->pencil + (y*cr+x)*cr, 0, cr); */
 
             /*
              * We've made a real change to the grid. Check to see
@@ -4199,7 +4192,7 @@ static game_state *execute_move(const game_state *from, const char *move)
                 ret->completed = true;
             }
         }
-    return ret;
+        return ret;
     } else if (move[0] == 'M') {
     /*
      * Fill in absolutely all pencil marks in unfilled squares,
@@ -4667,7 +4660,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 highlight = ui->hpencil ? 2 : 1;
 
             /* Highlight hint number color */
-            if (!ui->hshow && ui->hhint != 0) {
+            if (!ui->hshow && ui->hhint > 0) {
                 digit p = state->pencil[(y*cr+x) * cr + (ui->hhint -1)];
                 if (p || (d == ui->hhint))
                     highlight = 4;

@@ -1540,7 +1540,7 @@ struct game_drawstate {
     int hx, hy;
 };
 
-#define FROMCOORD(x) ( ((x)-(ds->tilesize/2)) / ds->tilesize )
+#define FROMCOORD(x) ( ((x) < (ds->tilesize/2)) ? -1 : ((x)-(ds->tilesize/2)) / ds->tilesize )
 
 static char *interpret_move(const game_state *state, game_ui *ui, const game_drawstate *ds,
                 int mx, int my, int button)
@@ -1556,11 +1556,8 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
 
     if (IS_MOUSE_DOWN(button)) {
         if (ui->hshow && (x >= 0) && (x < w) && (y >= 0) && (y < h) && (x==ui->hx) && (y==ui->hy)) {
-            if (!ui->hpencil && !(state->grid[y*w+x] & FM_ARROWMASK)) ui->hpencil = true;
-            else {
-                ui->hshow = ui->hpencil = false; 
-                ui->hx = ui->hy = -1;
-            }
+            ui->hshow = ui->hpencil = false; 
+            ui->hx = ui->hy = -1;
             return UI_UPDATE;
         }
         else if ((x >= 0) && (x < w) && (y >= 0) && (y < h) && !(state->grid[y*w+x] & FM_FIXED)) {
@@ -1574,13 +1571,17 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             else {
                 ui->hx = x; ui->hy = y;
                 ui->hshow = true;
-                ui->hpencil = (button == RIGHT_BUTTON) && !(state->grid[y*w+x] & FM_ARROWMASK);
+                ui->hpencil = (button == RIGHT_BUTTON);
             }
             return UI_UPDATE;
         }
         else if (x < 0 || x >= w || y < 0 || y >= h) {
+            ui->hshow = false;
+            ui->hpencil = false;
+            ui->hx = ui->hy = -1;
             ui->hhint = ' ';
             ui->hdrag = false;
+            return UI_UPDATE;
         }
     }
     else if (button == LEFT_DRAG) {
@@ -1648,8 +1649,11 @@ static game_state *execute_move(const game_state *oldstate, const char *move)
                     state->grid[y*w+x] = FM_RIGHT;
                     break;
                 default:
-                    state->grid[y*w+x] = EMPTY;
-                    state->marks[y*w+x] = EMPTY;
+                    if (state->grid[y*w+x] == EMPTY)
+                        state->marks[y*w+x] = EMPTY;
+                    else
+                        state->grid[y*w+x] = EMPTY;
+                    /* state->marks[y*w+x] = EMPTY; */
                     break;
             }
         }

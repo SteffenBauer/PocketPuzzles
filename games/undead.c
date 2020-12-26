@@ -2282,6 +2282,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             sprintf(buf, "D%d,%d", gx, gy);
             return dupstr(buf);
         }
+        ui->hshow = false;
+        ui->hpencil = false;
         ui->hhint = ' ';
         ui->hdrag = false;
         return UI_UPDATE;
@@ -2435,7 +2437,10 @@ static game_state *execute_move(const game_state *state, const char *move)
             if (c == 'G') ret->guess[x] = 1;
             if (c == 'V') ret->guess[x] = 2;
             if (c == 'Z') ret->guess[x] = 4;
-            if (c == 'E') { ret->guess[x] = 7; ret->pencils[x] = 0; }
+            if (c == 'E' && ret->guess[x] == 7)
+                ret->pencils[x] = 0;
+            if (c == 'E' && ret->guess[x] != 7)
+                ret->guess[x] = 7; 
             if (c == 'g') ret->pencils[x] ^= 1;
             if (c == 'v') ret->pencils[x] ^= 2;
             if (c == 'z') ret->pencils[x] ^= 4;

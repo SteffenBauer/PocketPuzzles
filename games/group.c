@@ -1238,6 +1238,10 @@ struct game_ui {
     int dragnum;                       /* element being dragged */
     int dragpos;                       /* its current position */
     int edgepos;
+    
+    int hhint;
+    bool hdrag;
+    bool id;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1249,7 +1253,9 @@ static game_ui *new_ui(const game_state *state)
     ui->hshow = false;
     ui->hcursor = false;
     ui->drag = 0;
-
+    ui->hhint = -1;
+    ui->hdrag = false;
+    ui->id = state->par.id;
     return ui;
 }
 
@@ -1315,6 +1321,11 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
                 ui->ohy = i;
         }
     }
+}
+
+static bool is_key_highlighted(const game_ui *ui, char c) {
+    if (c == '\b' && ui->hhint == 0) return true;
+    return (FROMCHAR(c, ui->id) == ui->hhint);
 }
 
 #define PREFERRED_TILESIZE 48
@@ -1461,18 +1472,6 @@ static bool check_errors(const game_state *state, long *errors)
     return errs;
 }
 
-static int find_in_sequence(digit *seq, int len, digit n)
-{
-    int i;
-
-    for (i = 0; i < len; i++)
-        if (seq[i] == n)
-            return i;
-
-    assert(!"Should never get here");
-    return -1;
-}
-
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int x, int y, int button)
@@ -1518,7 +1517,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             tx = state->sequence[tx];
             ty = state->sequence[ty];
             if (button == LEFT_BUTTON) {
-                if (tx == ui->hx && ty == ui->hy &&
+                if (ui->hhint >= 0) {
+                    ui->hdrag = false;
+                }
+                else if (tx == ui->hx && ty == ui->hy &&
                     ui->hshow && !ui->hpencil) {
                     ui->hshow = false;
                 } else {
@@ -1538,7 +1540,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 /*
                  * Pencil-mode highlighting for non filled squares.
                  */
-                if (state->grid[ty*w+tx] == 0) {
+                if ((ui->hhint >= 0) && !state->common->immutable[ty*w+tx] &&
+                    !state->grid[ty*w+tx]) {
+                    sprintf(buf, "P%d,%d,%d", tx, ty, ui->hhint);
+                    return dupstr(buf);
+                }
+                else if (state->grid[ty*w+tx] == 0) {
                     if (tx == ui->hx && ty == ui->hy &&
                         ui->hshow && ui->hpencil) {
                         ui->hshow = false;
@@ -1570,8 +1577,16 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->dragpos = ty;
             ui->edgepos = FROMCOORD(y + TILESIZE/2);
             return UI_UPDATE;
+        } else if (button == LEFT_BUTTON) {
+            ui->hshow = false;
+            ui->hhint = -1;
+            ui->drag = 0;
+            ui->hdrag = false;
+            return UI_UPDATE;
         }
-    } else if (IS_MOUSE_DRAG(button)) {
+    } 
+    else if (IS_MOUSE_DRAG(button)) {
+        ui->hdrag = true;
         if (!ui->hpencil &&
             tx >= 0 && tx < w && ty >= 0 && ty < w &&
             abs(tx - ui->ohx) == abs(ty - ui->ohy)) {
@@ -1583,33 +1598,22 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->odn = 1;
         }
         return UI_UPDATE;
-    }
-
-    if (IS_CURSOR_MOVE(button)) {
-        int cx = find_in_sequence(state->sequence, w, ui->hx);
-        int cy = find_in_sequence(state->sequence, w, ui->hy);
-        move_cursor(button, &cx, &cy, w, w, false);
-        ui->hx = state->sequence[cx];
-        ui->hy = state->sequence[cy];
-        ui->hshow = true;
-        ui->hcursor = true;
-        return UI_UPDATE;
-    }
-    if (ui->hshow &&
-        (button == CURSOR_SELECT)) {
-        ui->hpencil = !ui->hpencil;
-        ui->hcursor = true;
-        return UI_UPDATE;
+    } 
+    if (button == LEFT_RELEASE && !ui->hdrag && ui->hhint >= 0) {
+        if ((tx >= 0 && tx < w && ty >= 0 && ty < w) && !state->common->immutable[ty*w+tx]) {
+            sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
+            return dupstr(buf);
+        }
+        ui->hdrag = false;
     }
 
     if (ui->hshow &&
-    ((ISCHAR(button) && FROMCHAR(button, state->par.id) <= w) ||
-     button == CURSOR_SELECT2 || button == '\b')) {
+    ((ISCHAR(button) && FROMCHAR(button, state->par.id) <= w) || button == '\b')) {
         int n = FROMCHAR(button, state->par.id);
         int i, buflen;
         char *movebuf;
 
-        if (button == CURSOR_SELECT2 || button == '\b')
+        if (button == '\b')
             n = 0;
 
         for (i = 0; i < ui->odn; i++) {
@@ -1650,8 +1654,15 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         movebuf = sresize(movebuf, buflen+1, char);
 
         if (!ui->hpencil) ui->hshow = false;
+        return movebuf;
+    }
 
-    return movebuf;
+    if (!ui->hshow && ((ISCHAR(button) && FROMCHAR(button, state->par.id) <= w) || button == '\b')) {
+        int n = FROMCHAR(button, state->par.id);
+        if (button == '\b') n = 0;
+        if (ui->hhint == n) ui->hhint = -1;
+        else ui->hhint = n;
+        return UI_UPDATE;
     }
 
     if (button == '+')
@@ -1701,11 +1712,13 @@ static game_state *execute_move(const game_state *from, const char *move)
                 !(!pencil && from->grid[y*w+x] == n))
                 return NULL;
 
-            if (move[0] == 'P' && n > 0) {
+            if (n == 0 && ret->grid[y*w+x] == 0) {
+                ret->pencil[y*w+x] = 0;
+            }
+            else if (move[0] == 'P' && n > 0) {
                 ret->pencil[y*w+x] ^= 1 << n;
             } else {
                 ret->grid[y*w+x] = n;
-                ret->pencil[y*w+x] = 0;
             }
 
             if (!*mp)
@@ -1884,16 +1897,6 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, long tile,
                 is_error ? COL_FILL_ERROR : 
               (x == y) ? COL_DIAGONAL : COL_BACKGROUND);
 
-    /* dividers */
-    if (tile & DF_DIVIDER_TOP)
-        draw_rect(dr, cx, cy, cw, 1, COL_GRID);
-    if (tile & DF_DIVIDER_BOT)
-        draw_rect(dr, cx, cy+ch-1, cw, 1, COL_GRID);
-    if (tile & DF_DIVIDER_LEFT)
-        draw_rect(dr, cx, cy, 1, ch, COL_GRID);
-    if (tile & DF_DIVIDER_RIGHT)
-        draw_rect(dr, cx+cw-1, cy, 1, ch, COL_GRID);
-
     /* pencil-mode highlight */
     if (tile & DF_HIGHLIGHT_PENCIL) {
         int coords[6];
@@ -1905,6 +1908,16 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y, long tile,
         coords[5] = cy+ch/2;
         draw_polygon(dr, coords, 3, COL_HIGHLIGHT, COL_HIGHLIGHT);
     }
+
+    /* dividers */
+    if (tile & DF_DIVIDER_TOP)
+        draw_rect(dr, cx, cy-1, cw, 3, COL_GRID);
+    if (tile & DF_DIVIDER_BOT)
+        draw_rect(dr, cx, cy+ch-2, cw, 3, COL_GRID);
+    if (tile & DF_DIVIDER_LEFT)
+        draw_rect(dr, cx-1, cy, 3, ch, COL_GRID);
+    if (tile & DF_DIVIDER_RIGHT)
+        draw_rect(dr, cx+cw-2, cy, 3, ch, COL_GRID);
 
     /* new number needs drawing? */
     if (tile & DF_DIGIT_MASK) {
@@ -2208,7 +2221,7 @@ const struct game thegame = {
     free_ui,
     encode_ui,
     decode_ui,
-    game_request_keys, /* game_request_keys */
+    game_request_keys,
     game_changed_state,
     interpret_move,
     execute_move,
@@ -2220,7 +2233,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,
-    NULL,
+    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
     false,                   /* wants_statusbar */

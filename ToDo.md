@@ -70,10 +70,10 @@
 - [X] Mathrax
 - [X] ABCD
 - [X] Rome
-- [ ] Salad
+- [X] Salad
 - [X] Undead
 - [X] Unequal
-- [ ] Group
+- [X] Group
 
 #### Rework Border error highlighting
 
