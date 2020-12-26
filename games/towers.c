@@ -1097,7 +1097,7 @@ static game_ui *new_ui(const game_state *state)
     ui->hpencil = false;
     ui->hshow = false;
     ui->hcursor = false;
-    ui->hhint = 0;
+    ui->hhint = -1;
     ui->hdrag = false;
     return ui;
 }
@@ -1131,10 +1131,8 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
         ui->hshow = false;
     }
 }
-#define BACKSPACE 127
-
 static bool is_key_highlighted(const game_ui *ui, char c) {
-    if (c == '\b' && ui->hhint == BACKSPACE) return true;
+    if (c == '\b' && ui->hhint == 0) return true;
     return ((c-'0') == ui->hhint);
 }
 
@@ -1328,7 +1326,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     if (tx >= 0 && tx < w && ty >= 0 && ty < w) {
         if (button == LEFT_BUTTON) {
-            if (ui->hhint > 0) {
+            if (ui->hhint >= 0) {
                 ui->hdrag = false;
             }
             else if (tx == ui->hx && ty == ui->hy && ui->hshow && !ui->hpencil) {
@@ -1343,9 +1341,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return UI_UPDATE;
         }
         if (button == RIGHT_BUTTON) {
-            if ((ui->hhint > 0) && !state->clues->immutable[ty*w+tx] &&
+            if ((ui->hhint >= 0) && !state->clues->immutable[ty*w+tx] &&
                 !state->grid[ty*w+tx]) {
-                sprintf(buf, "P%d,%d,%d", tx, ty, (ui->hhint == BACKSPACE) ? 0 : ui->hhint);
+                sprintf(buf, "P%d,%d,%d", tx, ty, ui->hhint);
                 return dupstr(buf);
             }
             else if (state->grid[ty*w+tx] == 0) {
@@ -1362,7 +1360,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hshow = false;
             }
             ui->hcursor = false;
-            ui->hhint = 0;
+            ui->hhint = -1;
             ui->hdrag = false;
             return UI_UPDATE;
         }
@@ -1370,8 +1368,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hdrag = true;
         }
         if (button == LEFT_RELEASE) {
-            if (!ui->hdrag && (ui->hhint > 0) && !state->clues->immutable[ty*w+tx]) {
-                sprintf(buf, "R%d,%d,%d", tx, ty, (ui->hhint == BACKSPACE) ? 0 : ui->hhint);
+            if (!ui->hdrag && (ui->hhint >= 0) && !state->clues->immutable[ty*w+tx]) {
+                sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
                 return dupstr(buf);
             }
             ui->hdrag = false;
@@ -1381,8 +1379,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             sprintf(buf, "%c%d,%d", 'D', tx, ty);
             return dupstr(buf);
         }
-        ui->hhint = 0;
+        ui->hhint = -1;
         ui->hdrag = false;
+        ui->hshow = false;
         return UI_UPDATE;
     }
 
@@ -1415,9 +1414,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     if (!ui->hshow && ((button >= '0' && button <= '9' && button - '0' <= w) || (button == '\b') )) {
         int n = (button - '0');
-        if (button == '\b') n = BACKSPACE;
+        if (button == '\b') n = 0;
 
-        if (ui->hhint == n) ui->hhint = 0;
+        if (ui->hhint == n) ui->hhint = -1;
         else ui->hhint = n;
         return UI_UPDATE;
     }
@@ -1453,11 +1452,13 @@ static game_state *execute_move(const game_state *from, const char *move)
         if (from->clues->immutable[y*w+x])
             goto badmove;
 
+        if (n == 0 && ret->grid[y*w+x] == 0)
+            ret->pencil[y*w+x] = 0;
         if (move[0] == 'P' && n > 0) {
             ret->pencil[y*w+x] ^= 1L << n;
         } else {
             ret->grid[y*w+x] = n;
-            ret->pencil[y*w+x] = 0;
+            /* ret->pencil[y*w+x] = 0; */
 
             if (!ret->completed && !check_errors(ret, NULL))
                 ret->completed = true;

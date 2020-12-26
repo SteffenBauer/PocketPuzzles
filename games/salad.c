@@ -382,10 +382,6 @@ static int latinholes_solver_sync(struct latin_solver *solver, struct solver_ctx
         }
         if(!match)
         {
-#ifdef STANDALONE_SOLVER
-            if(solver_show_working)
-                printf("Synchronize hole at %d\n", i);
-#endif
             /* This square must be a hole */
             nchanged++;
             sctx->state->holes[i] = LATINH_CROSS;
@@ -401,10 +397,6 @@ static int latinholes_solver_sync(struct latin_solver *solver, struct solver_ctx
         }
         if(!match)
         {
-#ifdef STANDALONE_SOLVER
-            if(solver_show_working)
-                printf("Synchronize number at %d\n", i);
-#endif
             /* This square must be a number */
             nchanged++;
             sctx->state->holes[i] = LATINH_CIRCLE;
@@ -419,12 +411,7 @@ static int latinholes_solver_place_cross(struct latin_solver *solver, struct sol
     int n;
     int nchanged = 0;
     int nums = sctx->nums;
-    
-#ifdef STANDALONE_SOLVER
-    if(solver_show_working)
-        printf("Place cross at %d,%d\n", x, y);
-#endif
-    
+
     for(n = 0; n < nums; n++)
     {
         if(!cube(x, y, n+1))
@@ -443,11 +430,6 @@ static int latinholes_solver_place_circle(struct latin_solver *solver, struct so
     int nchanged = 0;
     int o = solver->o;
     int nums = sctx->nums;
-
-#ifdef STANDALONE_SOLVER
-    if(solver_show_working)
-        printf("Place circle at %d,%d\n", x, y);
-#endif
 
     for(n = nums; n < o; n++)
     {
@@ -559,10 +541,6 @@ static int latinholes_check(game_state *state)
     {
         if(hrows[i] != (o-nums) || hcols[i] != (o-nums))
         {
-#ifdef STANDALONE_SOLVER
-            if(solver_show_working)
-                printf("Hole miscount in %d\n", i);
-#endif
             fail = true;
         }
     }
@@ -571,10 +549,6 @@ static int latinholes_check(game_state *state)
     {
         if(rows[i] != 1 || cols[i] != 1)
         {
-#ifdef STANDALONE_SOLVER
-            if(solver_show_working)
-                printf("Number miscount in %d\n", i);
-#endif
             fail = true;
         }
     }
@@ -630,10 +604,6 @@ static int salad_letters_solver_dir(struct latin_solver *solver, struct solver_c
                 
                 if(cube(i%o, i/o, j))
                 {
-#ifdef STANDALONE_SOLVER
-                    if(solver_show_working)
-                        printf("Border %c (%d) rules out %c at %d,%d\n", clue+'A'-1, cd, j+'A'-1, i%o, i/o);
-#endif
                     cube(i%o, i/o, j) = false;
                     nchanged++;
                 }
@@ -649,10 +619,6 @@ static int salad_letters_solver_dir(struct latin_solver *solver, struct solver_c
         {
             if(cube(i%o, i/o, clue))
             {
-#ifdef STANDALONE_SOLVER
-                if(solver_show_working)
-                    printf("Border %c is too far away from %d,%d\n", clue+'A'-1, i%o, i/o);
-#endif
                 cube(i%o, i/o, clue) = false;
                 nchanged++;
             }
@@ -919,21 +885,12 @@ static int salad_solve(game_state *state, int maxdiff)
     struct latin_solver *solver = snew(struct latin_solver);
     int diff, i;
     
-#ifdef STANDALONE_SOLVER
-    if(solver_show_working)
-        printf("Allocate solver\n");
-#endif
-    
     latin_solver_alloc(solver, state->grid, o);
     
     for(i = 0; i < o2; i++)
     {
         if(state->gridclues[i] && state->gridclues[i] != LATINH_CROSS && state->gridclues[i] != LATINH_CIRCLE)
         {
-#ifdef STANDALONE_SOLVER
-            if(solver_show_working)
-                printf("Place clue %c at %d,%d\n", state->gridclues[i] + '0', i%o, i/o);
-#endif
             latin_solver_place(solver, i%o, i/o, state->gridclues[i]);
         }
         else if(state->gridclues[i] == LATINH_CROSS)
@@ -945,12 +902,6 @@ static int salad_solve(game_state *state, int maxdiff)
             latinholes_solver_place_circle(solver, ctx, i%o, i/o);
         }
     }
-    
-#ifdef STANDALONE_SOLVER
-    if(solver_show_working)
-        printf("Begin solver\n");
-#endif
-    
     if(maxdiff != DIFF_HOLESONLY)
     {
         latin_solver_main(solver, maxdiff,
@@ -964,11 +915,6 @@ static int salad_solve(game_state *state, int maxdiff)
     {
         int holes = 0;
         int nchanged = 1;
-        
-#ifdef STANDALONE_SOLVER
-        if(solver_show_working)
-            printf("Check for holes only\n");
-#endif
 
         while(nchanged)
         {
@@ -982,20 +928,8 @@ static int salad_solve(game_state *state, int maxdiff)
             if(state->holes[i] == LATINH_CROSS)
                 holes++;
         }
-        
-#ifdef STANDALONE_SOLVER
-        if(solver_show_working)
-            printf("Holes found: %d\n", holes);
-#endif
         diff = holes == ((o-nums) * o);
     }
-    
-    
-#ifdef STANDALONE_SOLVER
-    if(solver_show_working)
-        printf("Solution is %s\n", diff ? "valid" : "invalid");
-#endif
-    
     free_ctx(ctx);
     latin_solver_free(solver);
     sfree(solver);
@@ -1354,6 +1288,8 @@ struct game_ui {
     bool hpencil;
     bool hshow;
     bool hcursor;
+    int hhint;
+    bool hdrag;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1362,6 +1298,8 @@ static game_ui *new_ui(const game_state *state)
     
     ret->hx = ret->hy = 0;
     ret->hpencil = ret->hshow = ret->hcursor = false;
+    ret->hhint = -1;
+    ret->hdrag = false;
     return ret;
 }
 
@@ -1383,6 +1321,14 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
 }
+
+static bool is_key_highlighted(const game_ui *ui, char c) {
+    if (c == '\b' && ui->hhint == 0) return true;
+    if (c >= '1' && c <= '9') return ((c-'0') == ui->hhint);
+    if (c >= 'A' && c <= 'X') return ((c-'A'+1) == ui->hhint);
+    return false;
+}
+
 
 #define FD_CURSOR  0x01
 #define FD_PENCIL  0x02
@@ -1425,103 +1371,91 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     
     button &= ~MOD_MASK;
     
-    if(gx >= 0 && gx < o && gy >= 0 && gy < o)
-    {
-        if(button == LEFT_BUTTON || button == RIGHT_BUTTON)
-        {
-            int newpencil = button == RIGHT_BUTTON;
-            
-            if((state->gridclues[(gy*o)+gx] == 0 || state->gridclues[(gy*o)+gx] == LATINH_CIRCLE)
-                && (!ui->hshow || (newpencil ? !ui->hpencil : ui->hpencil)
-                || ui->hx != gx || ui->hy != gy))
-            {
+    if(gx >= 0 && gx < o && gy >= 0 && gy < o) {
+        if(button == LEFT_BUTTON) {
+            if (ui->hhint >= 0) {
+                ui->hdrag = false;
+            }
+            else if (ui->hx == gx && ui->hy == gy && ui->hshow && !ui->hpencil) {
+                ui->hshow = false;
+            }
+            else if (state->gridclues[(gy*o)+gx] == 0 ||
+                     state->gridclues[(gy*o)+gx] == LATINH_CIRCLE) {
                 ui->hx = gx;
                 ui->hy = gy;
-                ui->hpencil = newpencil;
+                ui->hpencil = false;
                 ui->hcursor = false;
                 ui->hshow = true;
             }
-            /* Deselect */
-            else
-            {
-                ui->hshow = false;
-            }
+            ui->hcursor = false;
             return UI_UPDATE;
         }
-        
-        /* Quick add Circle or Hole */
-        if(button == MIDDLE_BUTTON && state->gridclues[(gy*o)+gx] == 0)
-        {
-            if(state->holes[(gy*o)+gx] == 0)
-            {
-                sprintf(buf, "%c%d,%d,%c", 'R',
-                    gx, gy, 'O');
-                ui->hshow = false;
+        else if (button == RIGHT_BUTTON) {
+            if (ui->hhint >= 0 && 
+                (state->gridclues[(gy*o)+gx] == 0 || 
+                 state->gridclues[(gy*o)+gx] == LATINH_CIRCLE)) {
+    
+                sprintf(buf, "P%d,%d,%c", gx, gy, 
+                        (char)((ui->hhint == ('X' - 'A' + 1)) ? 'X' :
+                               (ui->hhint == ('O' - 'A' + 1)) ? 'O' :
+                               (ui->hhint > 0)                ? ui->hhint + '0' :
+                                                                '-'));
                 return dupstr(buf);
             }
-            else if(state->holes[(gy*o)+gx] == LATINH_CIRCLE && state->grid[(gy*o)+gx] == 0)
-            {
-                sprintf(buf, "%c%d,%d,%c", 'R',
-                    gx, gy, 'X');
+            else if (ui->hx == gx && ui->hy == gy && ui->hshow && ui->hpencil) {
                 ui->hshow = false;
-                return dupstr(buf);
             }
-            else if(state->holes[(gy*o)+gx] == LATINH_CROSS)
-            {
-                sprintf(buf, "%c%d,%d,%c", 'R',
-                    gx, gy, '-');
-                ui->hshow = false;
+            else if (state->grid[gy*o+gx] == 0 && (state->gridclues[(gy*o)+gx] == 0 ||
+                     state->gridclues[(gy*o)+gx] == LATINH_CIRCLE)) {
+                ui->hx = gx;
+                ui->hy = gy;
+                ui->hpencil = true;
+                ui->hcursor = false;
+                ui->hshow = true;
+            }
+            ui->hhint = -1;
+            return UI_UPDATE;
+        }
+        else if (button == LEFT_DRAG) {
+            ui->hdrag = true;
+        }
+        else if (button == LEFT_RELEASE) {
+            if (!ui->hdrag && ui->hhint >= 0 && 
+               (state->gridclues[(gy*o)+gx] == 0 ||
+                state->gridclues[(gy*o)+gx] == LATINH_CIRCLE)) {
+                sprintf(buf, "R%d,%d,%c", gx, gy, 
+                        (char)((ui->hhint == ('X' - 'A' + 1)) ? 'X' :
+                               (ui->hhint == ('O' - 'A' + 1)) ? 'O' :
+                               (ui->hhint > 0)                ? ui->hhint + '0' :
+                                                                '-'));
                 return dupstr(buf);
             }
         }
-    }
-    
-    /* Keyboard move */
-    if (IS_CURSOR_MOVE(button))
-    {
-        gx = ui->hx; gy = ui->hy;
-        move_cursor(button, &gx, &gy, o, o, 0);
-        ui->hx = gx; ui->hy = gy;
-        ui->hshow = ui->hcursor = true;
+    } else if (button == LEFT_BUTTON) {
+        ui->hshow = false;
+        ui->hpencil = false;
+        ui->hhint = -1;
         return UI_UPDATE;
     }
-    /* Keyboard change pencil cursor */
-    if (ui->hshow && button == CURSOR_SELECT)
-    {
-        ui->hpencil = !ui->hpencil;
-        ui->hcursor = true;
-        return UI_UPDATE;
-    }
-    
-    if(ui->hshow && (state->gridclues[pos] == 0 || state->gridclues[pos] == LATINH_CIRCLE))
-    {
-        if ((button >= '0' && button <= '9') || 
-            (button >= 'a' && button <= 'i') || 
-            (button >= 'A' && button <= 'I') || 
-            button == '\b')
-        {
+
+    if(ui->hshow && (state->gridclues[pos] == 0 || state->gridclues[pos] == LATINH_CIRCLE)) {
+        if ((button >= '1' && button <= '9') || 
+            (button >= 'A' && button <= 'X') || 
+            button == '\b') {
             digit d = 0;
             
-            if (button >= '1' && button <= '9')
-            {
+            if (button >= '1' && button <= '9') {
                 d = button - '0';
                 if(d > nums)
                     return NULL;
             }
-            if (button >= 'a' && button <= 'i')
-            {
-                d = button - 'a' + 1;
-                if(d > nums)
-                    return NULL;
-            }
-            if (button >= 'A' && button <= 'I')
-            {
+            if (button >= 'A' && button <= 'I') {
                 d = button - 'A' + 1;
                 if(d > nums)
                     return NULL;
             }
             
-            sprintf(buf, "%c%d,%d,%c", (char)(ui->hpencil ? 'P'    : 'R'),
+            sprintf(buf, "%c%d,%d,%c", (char)(ui->hpencil ? 'P':'R'),
                 ui->hx, ui->hy, (char)(d ? d + '0' : '-'));
             
             /* When not in keyboard and pencil mode, hide cursor */
@@ -1531,12 +1465,11 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             return dupstr(buf);
         }
         
-        if(button == 'X' || button == 'x' || button == '-' || button == '_')
-        {
+        if(button == 'X') {
             if(state->gridclues[pos] == LATINH_CIRCLE)
                 return NULL;
             
-            sprintf(buf, "%c%d,%d,%c", (char)(ui->hpencil ? 'P'    : 'R'),
+            sprintf(buf, "%c%d,%d,%c", (char)(ui->hpencil ? 'P':'R'),
                 ui->hx, ui->hy, 'X');
             
             /* When not in keyboard and pencil mode, hide cursor */
@@ -1546,14 +1479,13 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             return dupstr(buf);
         }
         
-        if(button == 'O' || button == 'o' || button == '+' || button == '=')
-        {
+        if(button == 'O') {
             if(state->gridclues[pos] == LATINH_CIRCLE && ui->hpencil)
                 return NULL;
             if(state->grid[pos] != 0 && ui->hpencil)
                 return NULL;
             
-            sprintf(buf, "%c%d,%d,%c", (char)(ui->hpencil ? 'P'    : 'R'),
+            sprintf(buf, "%c%d,%d,%c", (char)(ui->hpencil ? 'P':'R'),
                 ui->hx, ui->hy, 'O');
             
             /* When not in keyboard and pencil mode, hide cursor */
@@ -1563,9 +1495,24 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             return dupstr(buf);
         }
     }
-    
-    if(button == '+')
-    {
+
+    if (!ui->hshow && (
+            (button >= '1' && button <= '9') || 
+            (button >= 'A' && button <= 'I') ||
+            (button == 'O') || (button == 'X') || (button == '\b'))) {
+        int n;
+        if (button >= '1' && button <= '9')
+            n = button - '0';
+        else if (button == '\b')
+            n = 0;
+        else
+            n = button - 'A' + 1;
+        if (ui->hhint == n) ui->hhint = -1;
+        else ui->hhint = n;
+        return UI_UPDATE;
+    }
+
+    if(button == '+') {
         unsigned int allmarks = (1<<(nums+1))-1;
         unsigned int marks = (1<<nums)-1;
         
@@ -2221,7 +2168,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,
-    NULL,
+    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
     false,                   /* wants_statusbar */
