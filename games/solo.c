@@ -4662,7 +4662,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             /* Highlight hint number color */
             if (!ui->hshow && ui->hhint > 0) {
                 digit p = state->pencil[(y*cr+x) * cr + (ui->hhint -1)];
-                if (p || (d == ui->hhint))
+                if (((p != 0) && (d == 0)) || (d == ui->hhint))
                     highlight = 4;
             }
 
