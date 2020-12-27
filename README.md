@@ -12,17 +12,19 @@ To get a mostly complete collection for all puzzles ever written for the SGT puz
 
 ### Development history
 
-**11.8.2020 Major milestone reached!** Some games are now playable on a very basic level. 
+**27.12.2020 v0.7.0** Implemented 'one-click symbol fill' entry method in games that use numbers/letters/symbols in a grid (see ToDo.md for the list of affected games). Usage: When no grid cell is currently highlighted or 'pencil mark highlighted', one can press a control button. That button is then highlighted until pressed again or another button is highlighted. While a button is selected, clicking into a cell directly enters that symbol; long-click enters a pencil mark.
 
-**16.8.2020 Next milestone** Game control buttons now working. All games playable (but those using blitter / animations still need rewriting)
-
-**6.10.2020 Alpha version ready!** Persistence of game params and current game now working. Most games UI are reworked suitable for eInk screen.
-
-**14.11.2020 Beta version ready!** Games can now be individually configured. All elements needed for beta are now implemented.
+**15.12.2020 v0.6.3** Added 'Map' and 'Samegame'; switched both games from color to grayscale textures.
 
 **01.12.2020 v0.6.0** One can now mark games as favorite on the chooser screen by long-pressing the game icon.
 
-**15.12.2020 v0.6.3** Added 'Map' and 'Samegame'; switched both games from color to grayscale textures.
+**14.11.2020 Beta version ready!** Games can now be individually configured. All elements needed for beta are now implemented.
+
+**6.10.2020 Alpha version ready!** Persistence of game params and current game now working. Most games UI are reworked suitable for eInk screen.
+
+**16.8.2020 Next milestone** Game control buttons now working. All games playable (but those using blitter / animations still need rewriting)
+
+**11.8.2020 First major milestone reached!** Some games are now playable on a very basic level. 
 
 There is still work to do. See ToDo list below. eInk screens are limited in response time and color availability, so most of the games need individual tweaking to make them fun to play.
 
