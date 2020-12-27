@@ -1439,8 +1439,8 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     }
 
     if(ui->hshow && (state->gridclues[pos] == 0 || state->gridclues[pos] == LATINH_CIRCLE)) {
-        if ((button >= '1' && button <= '9') || 
-            (button >= 'A' && button <= 'X') || 
+        if ((button >= '1' && button <= '9') ||
+            (button >= 'A' && button <= 'I') ||
             button == '\b') {
             digit d = 0;
             
