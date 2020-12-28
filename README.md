@@ -97,6 +97,7 @@ I'm interested in reports from more devices; especially how it looks like on col
 - [X] Entry buttons indicating status (Bridges, Dominosa, games with one-click fill)
 - [ ] Context menu for chooser buttons (Launch, Resume, Clear prefs, Set/Unset as favorite)
 - [ ] Check draw update efficiency in all games
+- [ ] Check all games for memory leaks
 - [ ] General settings (show/hide statusbar, orientation, chooser style, color/grey mode)
 - [ ] Information screen explaining game controls
 - [ ] Color mode

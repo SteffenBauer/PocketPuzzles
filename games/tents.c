@@ -262,6 +262,7 @@ enum {
     COL_ERRGRASS,
     COL_ERRTRUNK,
     COL_ERRLEAF,
+    COL_DONE,
     NCOLOURS
 };
 
@@ -281,6 +282,7 @@ struct game_state {
     game_params p;
     char *grid;
     struct numbers *numbers;
+    bool *done;
     bool completed, used_solve;
 };
 
@@ -1242,6 +1244,7 @@ static game_state *new_game(midend *me, const game_params *params,
     state->numbers = snew(struct numbers);
     state->numbers->refcount = 1;
     state->numbers->numbers = snewn(w+h, int);
+    state->done = snewn(w+h, bool);
     state->completed = state->used_solve = false;
 
     i = 0;
@@ -1282,6 +1285,7 @@ static game_state *new_game(midend *me, const game_params *params,
     assert(*desc == ',');
     desc++;
     state->numbers->numbers[i] = atoi(desc);
+    state->done[i] = false;
     while (*desc && isdigit((unsigned char)*desc)) desc++;
     }
 
@@ -1297,7 +1301,9 @@ static game_state *dup_game(const game_state *state)
 
     ret->p = state->p;               /* structure copy */
     ret->grid = snewn(w*h, char);
-    memcpy(ret->grid, state->grid, w*h);
+    ret->done = snewn(w+h, bool);
+    memcpy(ret->grid, state->grid, w*h*sizeof(char));
+    memcpy(ret->done, state->done, w+h*sizeof(bool));
     ret->numbers = state->numbers;
     state->numbers->refcount++;
     ret->completed = state->completed;
@@ -1309,9 +1315,10 @@ static game_state *dup_game(const game_state *state)
 static void free_game(game_state *state)
 {
     if (--state->numbers->refcount <= 0) {
-    sfree(state->numbers->numbers);
-    sfree(state->numbers);
+        sfree(state->numbers->numbers);
+        sfree(state->numbers);
     }
+    sfree(state->done);
     sfree(state->grid);
     sfree(state);
 }
@@ -1412,6 +1419,7 @@ struct game_drawstate {
     bool started;
     game_params p;
     int *drawn, *numbersdrawn;
+    bool *done;
     int cx, cy;         /* last-drawn cursor pos, or (-1,-1) if absent. */
 };
 
@@ -1431,7 +1439,6 @@ static int drag_xform(const game_ui *ui, int x, int y, int v)
     ymin = min(ui->dsy, ui->dey);
     ymax = max(ui->dsy, ui->dey);
 
-#ifndef STYLUS_BASED
     /*
      * Left-dragging has no effect, so we treat a left-drag as a
      * single click on dsx,dsy.
@@ -1440,7 +1447,6 @@ static int drag_xform(const game_ui *ui, int x, int y, int v)
         xmin = xmax = ui->dsx;
         ymin = ymax = ui->dsy;
     }
-#endif
 
     if (x < xmin || x > xmax || y < ymin || y > ymax)
         return v;                      /* no change outside drag area */
@@ -1456,30 +1462,12 @@ static int drag_xform(const game_ui *ui, int x, int y, int v)
          * If stylus-based however, it loops instead.
          */
         if (ui->drag_button == LEFT_BUTTON)
-#ifdef STYLUS_BASED
-            v = (v == BLANK ? TENT : (v == TENT ? NONTENT : BLANK));
-        else
-            v = (v == BLANK ? NONTENT : (v == NONTENT ? TENT : BLANK));
-#else
             v = (v == BLANK ? TENT : BLANK);
         else
             v = (v == BLANK ? NONTENT : BLANK);
-#endif
-    } else {
-        /*
-         * Results of a drag. Left-dragging has no effect.
-         * Right-dragging sets all blank squares to non-tents and
-         * has no effect on anything else.
-         */
-        if (ui->drag_button == RIGHT_BUTTON)
-            v = (v == BLANK ? NONTENT : v);
-        else
-#ifdef STYLUS_BASED
-            v = (v == BLANK ? NONTENT : v);
-#else
-            /* do nothing */;
-#endif
-    }
+    } else if (ui->drag_button == RIGHT_BUTTON)
+            v = (v == BLANK ? NONTENT : 
+                 v == NONTENT ? BLANK : v);
 
     return v;
 }
@@ -1490,16 +1478,23 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 {
     int w = state->p.w, h = state->p.h;
     char tmpbuf[80];
-    bool shift = button & MOD_SHFT, control = button & MOD_CTRL;
 
     button &= ~MOD_MASK;
 
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         x = FROMCOORD(x);
         y = FROMCOORD(y);
-        if (x < 0 || y < 0 || x >= w || y >= h)
+        if (x < 0 || y < 0 || x >= w || y >= h) {
+            if (y >= h && x>=0 && x<w) {
+                sprintf(tmpbuf, "D%d", x);
+                return dupstr(tmpbuf);
+            }
+            else if (x >= w && y>=0 && y<h) {
+                sprintf(tmpbuf, "D%d", y+w);
+                return dupstr(tmpbuf);
+            }
             return NULL;
-
+        }
         ui->drag_button = button;
         ui->dsx = ui->dex = x;
         ui->dsy = ui->dey = y;
@@ -1589,57 +1584,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
     }
 
-    if (IS_CURSOR_MOVE(button)) {
-        ui->cdisp = true;
-        if (shift || control) {
-            int len = 0, i, indices[2];
-            indices[0] = ui->cx + w * ui->cy;
-            move_cursor(button, &ui->cx, &ui->cy, w, h, false);
-            indices[1] = ui->cx + w * ui->cy;
-
-            /* NONTENTify all unique traversed eligible squares */
-            for (i = 0; i <= (indices[0] != indices[1]); ++i)
-                if (state->grid[indices[i]] == BLANK ||
-                    (control && state->grid[indices[i]] == TENT)) {
-                    len += sprintf(tmpbuf + len, "%sN%d,%d", len ? ";" : "",
-                                   indices[i] % w, indices[i] / w);
-                    assert(len < lenof(tmpbuf));
-                }
-
-            tmpbuf[len] = '\0';
-            if (len) return dupstr(tmpbuf);
-        } else
-            move_cursor(button, &ui->cx, &ui->cy, w, h, false);
-        return UI_UPDATE;
-    }
-    if (ui->cdisp) {
-        char rep = 0;
-        int v = state->grid[ui->cy*w+ui->cx];
-
-        if (v != TREE) {
-#ifdef SINGLE_CURSOR_SELECT
-            if (button == CURSOR_SELECT)
-                /* SELECT cycles T, N, B */
-                rep = v == BLANK ? 'T' : v == TENT ? 'N' : 'B';
-#else
-            if (button == CURSOR_SELECT)
-                rep = v == BLANK ? 'T' : 'B';
-            else if (button == CURSOR_SELECT2)
-                rep = v == BLANK ? 'N' : 'B';
-            else if (button == 'T' || button == 'N' || button == 'B')
-                rep = (char)button;
-#endif
-        }
-
-        if (rep) {
-            sprintf(tmpbuf, "%c%d,%d", (int)rep, ui->cx, ui->cy);
-            return dupstr(tmpbuf);
-        }
-    } else if (IS_CURSOR_SELECT(button)) {
-        ui->cdisp = true;
-        return UI_UPDATE;
-    }
-
     return NULL;
 }
 
@@ -1647,14 +1591,14 @@ static game_state *execute_move(const game_state *state, const char *move)
 {
     int w = state->p.w, h = state->p.h;
     char c;
-    int x, y, m, n, i, j;
+    int x, y, m, n, i, j, pos;
     game_state *ret = dup_game(state);
 
     while (*move) {
         c = *move;
-    if (c == 'S') {
+        if (c == 'S') {
             int i;
-        ret->used_solve = true;
+            ret->used_solve = true;
             /*
              * Set all non-tree squares to NONTENT. The rest of the
              * solve move will fill the tents in over the top.
@@ -1662,8 +1606,8 @@ static game_state *execute_move(const game_state *state, const char *move)
             for (i = 0; i < w*h; i++)
                 if (ret->grid[i] != TREE)
                     ret->grid[i] = NONTENT;
-        move++;
-    } else if (c == 'B' || c == 'T' || c == 'N') {
+            move++;
+        } else if (c == 'B' || c == 'T' || c == 'N') {
             move++;
             if (sscanf(move, "%d,%d%n", &x, &y, &n) != 2 ||
                 x < 0 || y < 0 || x >= w || y >= h) {
@@ -1676,7 +1620,15 @@ static game_state *execute_move(const game_state *state, const char *move)
             }
             ret->grid[y*w+x] = (c == 'B' ? BLANK : c == 'T' ? TENT : NONTENT);
             move += n;
-        } else {
+        } else if (c == 'D') {
+            move++;
+            if (sscanf(move, "%d%n", &pos, &n) == 1) {
+                ret->done[pos] = !ret->done[pos];
+                move += n;
+            }
+        }
+        
+        else {
             free_game(ret);
             return NULL;
         }
@@ -1855,6 +1807,7 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_ERRGRASS   * 3 + i] = 0.25F;
         ret[COL_ERRTRUNK   * 3 + i] = 0.5F;
         ret[COL_ERRLEAF    * 3 + i] = 0.75F;
+        ret[COL_DONE       * 3 + i] = 0.75F;
     }
 
     *ncolours = NCOLOURS;
@@ -1874,8 +1827,11 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     for (i = 0; i < w*h; i++)
     ds->drawn[i] = MAGIC;
     ds->numbersdrawn = snewn(w+h, int);
-    for (i = 0; i < w+h; i++)
-    ds->numbersdrawn[i] = 2;
+    ds->done = snewn(w+h, bool);
+    for (i = 0; i < w+h; i++) {
+        ds->numbersdrawn[i] = 2;
+        ds->done[i] = false;
+    }
     ds->cx = ds->cy = -1;
 
     return ds;
@@ -1885,6 +1841,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 {
     sfree(ds->drawn);
     sfree(ds->numbersdrawn);
+    sfree(ds->done);
     sfree(ds);
 }
 
@@ -2358,14 +2315,14 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
      * not giving constant feedback during a right-drag.)
      */
     if (ui && ui->drag_button >= 0) {
-    tmpgrid = snewn(w*h, char);
-    memcpy(tmpgrid, state->grid, w*h);
-    tmpgrid[ui->dsy * w + ui->dsx] =
-        drag_xform(ui, ui->dsx, ui->dsy, tmpgrid[ui->dsy * w + ui->dsx]);
-    errors = find_errors(state, tmpgrid);
-    sfree(tmpgrid);
+        tmpgrid = snewn(w*h, char);
+        memcpy(tmpgrid, state->grid, w*h);
+        tmpgrid[ui->dsy * w + ui->dsx] =
+            drag_xform(ui, ui->dsx, ui->dsy, tmpgrid[ui->dsy * w + ui->dsx]);
+        errors = find_errors(state, tmpgrid);
+        sfree(tmpgrid);
     } else {
-    errors = find_errors(state, state->grid);
+        errors = find_errors(state, state->grid);
     }
 
     /*
@@ -2404,27 +2361,31 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
      * changed) the numbers.
      */
     for (x = 0; x < w; x++) {
-    if (ds->numbersdrawn[x] != errors[w*h+x]) {
+    if ((ds->numbersdrawn[x] != errors[w*h+x]) || (ds->done[x] != state->done[x])) {
         char buf[80];
         draw_rect(dr, COORD(x), COORD(h)+1, TILESIZE, BRBORDER-1,
               (errors[w*h+x] ? COL_ERROR : COL_BACKGROUND));
         sprintf(buf, "%d", state->numbers->numbers[x]);
         draw_text(dr, COORD(x) + TILESIZE/2, COORD(h+1),
-              FONT_VARIABLE, TILESIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, COL_GRID, buf);
+              FONT_VARIABLE, TILESIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, 
+              state->done[x] ? COL_DONE : COL_GRID, buf);
         draw_update(dr, COORD(x), COORD(h)+1, TILESIZE, BRBORDER-1);
         ds->numbersdrawn[x] = errors[w*h+x];
+        ds->done[x] = state->done[x];
     }
     }
     for (y = 0; y < h; y++) {
-    if (ds->numbersdrawn[w+y] != errors[w*h+w+y]) {
+    if ((ds->numbersdrawn[w+y] != errors[w*h+w+y]) || (ds->done[w+y] != state->done[w+y])) {
         char buf[80];
         draw_rect(dr, COORD(w)+1, COORD(y), BRBORDER-1, TILESIZE,
               (errors[w*h+w+y] ? COL_ERROR : COL_BACKGROUND));
         sprintf(buf, "%d", state->numbers->numbers[w+y]);
         draw_text(dr, COORD(w+1), COORD(y) + TILESIZE/2,
-              FONT_VARIABLE, TILESIZE/2, ALIGN_HRIGHT|ALIGN_VCENTRE, COL_GRID, buf);
+              FONT_VARIABLE, TILESIZE/2, ALIGN_HRIGHT|ALIGN_VCENTRE, 
+              state->done[w+y] ? COL_DONE : COL_GRID, buf);
         draw_update(dr, COORD(w)+1, COORD(y), BRBORDER-1, TILESIZE);
         ds->numbersdrawn[w+y] = errors[w*h+w+y];
+        ds->done[w+y] = state->done[w+y];
     }
     }
 

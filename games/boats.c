@@ -52,6 +52,7 @@ enum {
     COL_SHIP_FLEET_STRIPE,
     COL_COUNT,
     COL_COUNT_ERROR,
+    COL_COUNT_DONE,
     COL_COLLISION_ERROR,
     COL_COLLISION_TEXT,
     NCOLOURS
@@ -95,6 +96,7 @@ struct game_state {
     int fleet;
     char *gridclues;
     int *borderclues;
+    bool *borderdone;
     int *fleetdata;
     
     /* play data */
@@ -179,12 +181,13 @@ const static struct game_params boats_presets[] = {
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
 {
-    game_params *ret = snew(game_params);
+    game_params *ret;
     char buf[80];
     
     if(i < 0 || i >= lenof(boats_presets))
         return false;
-    
+
+    ret = snew(game_params);
     *ret = boats_presets[i];
     ret->fleetdata = boats_default_fleet(ret->fleet);
     
@@ -217,7 +220,6 @@ static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
     *ret = *params;               /* structure copy */
-    
     ret->fleetdata = snewn(ret->fleet, int);
     memcpy(ret->fleetdata, params->fleetdata, ret->fleet * sizeof(int));
     
@@ -361,6 +363,7 @@ static game_state *blank_game(int w, int h, int f, int *fleetdata)
     ret->gridclues = snewn(w*h, char);
     ret->grid = snewn(w*h, char);
     ret->borderclues = snewn(w+h, int);
+    ret->borderdone = snewn(w+h, bool);
     
     ret->fleetdata = snewn(f, int);
     memcpy(ret->fleetdata, fleetdata, f * sizeof(int));
@@ -391,11 +394,13 @@ static game_state *new_game(midend *me, const game_params *params, const char *d
         if(isdigit((unsigned char) *p))
         {
             num = atoi(p);
+            state->borderdone[i] = false;
             state->borderclues[i++] = num;
             while (*p && isdigit((unsigned char) *p)) ++p;
         }
         else if (*p == '-')
         {
+            state->borderdone[i] = false;
             state->borderclues[i++] = NO_CLUE;
             ++p;
         }
@@ -518,6 +523,7 @@ static game_state *dup_game(const game_state *state)
     memcpy(ret->gridclues, state->gridclues, w*h*sizeof(char));
     memcpy(ret->grid, state->grid, w*h*sizeof(char));
     memcpy(ret->borderclues, state->borderclues, (w+h)*sizeof(int));
+    memcpy(ret->borderdone, state->borderdone, (w+h)*sizeof(bool));
     
     ret->completed = state->completed;
     ret->cheated = state->cheated;
@@ -529,6 +535,7 @@ static void free_game(game_state *state)
 {
     sfree(state->gridclues);
     sfree(state->borderclues);
+    sfree(state->borderdone);
     
     sfree(state->grid);
     sfree(state->fleetdata);
@@ -2861,6 +2868,7 @@ struct game_drawstate {
     int tilesize;
     int fleeth; /* Actual height of fleet data */
     int *border;
+    bool *done;
     int *fleetcount;
     int *gridfs;
     
@@ -2872,7 +2880,7 @@ struct game_drawstate {
     int *grid;
 };
 
-#define FROMCOORD(x) ( ((x)-(ds->tilesize/2)) / ds->tilesize ) 
+#define FROMCOORD(x) ( ((x) < (ds->tilesize/2)) ? -1 : ((x)-(ds->tilesize/2)) / ds->tilesize ) 
 
 static bool boats_validate_move(const game_state *state, int sx, int sy, int ex, int ey, char from, char to)
 {
@@ -2921,6 +2929,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
 {
     char buf[80];
     char from, to;
+    int pos;
     int w = state->w;
     int h = state->h;
     int gx = FROMCOORD(ox);
@@ -2930,13 +2939,11 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
      * Since users will often want to fill an entire line, increase
      * the click target around the edges.
      */
-    if(gx == w) gx = w-1;
-    if(gy == h) gy = h-1;
+    /* if(gx == w) gx = w-1;
+    if(gy == h) gy = h-1; */
     
-    if(button == LEFT_BUTTON || button == MIDDLE_BUTTON || button == RIGHT_BUTTON)
-    {
-        if(gx >= 0 && gy >= 0 && gx < w && gy < h)
-        {
+    if(button == LEFT_BUTTON || button == RIGHT_BUTTON) {
+        if(gx >= 0 && gy >= 0 && gx < w && gy < h) {
             from = IS_SHIP(state->grid[gy*w+gx]) ? 'B' : 
                 state->grid[gy*w+gx] == WATER ? 'W' : '-';
             to = '-';
@@ -2959,6 +2966,16 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             ui->cursor = false;
             
             return UI_UPDATE;
+        } else {
+            if (gy >= h && gx >= w) pos = -1;
+            else if (gy > h+1 || gx > w+1) pos = -1;
+            else if (gy >= h && gx >= 0 && gx < w) pos = gx;
+            else if (gx >= w && gy >= 0 && gy <= h) pos = gy+w;
+            else pos = -1;
+            if (pos >= 0 && state->borderclues[pos] >= 0) {
+                sprintf(buf, "D%d", pos);
+                return dupstr(buf);
+            }
         }
     }
     
@@ -2985,8 +3002,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             ui->drag_ok = true;
         }
         
-        if(IS_MOUSE_RELEASE(button) && ui->drag_ok)
-        {
+        if(IS_MOUSE_RELEASE(button) && ui->drag_ok) {
             int xmin, xmax, ymin, ymax;
             
             from = ui->drag_from;
@@ -2999,62 +3015,12 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             
             ui->drag_ok = false;
             
-            if(boats_validate_move(state, xmin, ymin, xmax, ymax, from, to))
-            {
-                sprintf(buf, "P%d,%d,%d,%d,%c,%c", xmin, ymin, xmax, ymax, from, to);
-                    
-                return dupstr(buf);
-            }
-        }
-        return UI_UPDATE;
-    }
-    
-    if (IS_CURSOR_MOVE(button & ~MOD_MASK))
-    {
-        int cx = ui->cx, cy = ui->cy;
-        move_cursor(button & ~MOD_MASK, &ui->cx, &ui->cy, w, h, 0);
-        ui->cursor = true;
-        
-        /* Place boats or water by holding Shift or Ctrl while moving */
-        if(button & (MOD_CTRL|MOD_SHFT))
-        {
-            int xmin = min(cx, ui->cx);
-            int xmax = max(cx, ui->cx);
-            int ymin = min(cy, ui->cy);
-            int ymax = max(cy, ui->cy);
-            to = button & MOD_CTRL ? button & MOD_SHFT ? '-' : 'B' : 'W';
-            from = to == '-' ? '*' : '-';
-            
-            if(boats_validate_move(state, xmin, ymin, xmax, ymax, from, to))
-            {
+            if(boats_validate_move(state, xmin, ymin, xmax, ymax, from, to)) {
                 sprintf(buf, "P%d,%d,%d,%d,%c,%c", xmin, ymin, xmax, ymax, from, to);
                 return dupstr(buf);
             }
         }
-        
         return UI_UPDATE;
-    }
-    
-    if(ui->cursor && (button == CURSOR_SELECT ||
-        button == CURSOR_SELECT2 || button == '\b'))
-    {
-        gx = ui->cx;
-        gy = ui->cy;
-        
-        from = IS_SHIP(state->grid[gy*w+gx]) ? 'B' : 
-            state->grid[gy*w+gx] == WATER ? 'W' : '-';
-        to = '-';
-        
-        if(button == CURSOR_SELECT && from == '-')
-            to = 'B';
-        if(button == CURSOR_SELECT2 && from == '-')
-            to = 'W';
-            
-        if(boats_validate_move(state, gx, gy, gx, gy, from, to))
-        {
-            sprintf(buf, "P%d,%d,%d,%d,%c,%c", gx, gy, gx, gy, from, to);
-            return dupstr(buf);
-        }
     }
     
     return NULL;
@@ -3062,21 +3028,18 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
 
 static game_state *execute_move(const game_state *state, const char *move)
 {
-    int sx, sy, ex, ey, x, y;
+    int sx, sy, ex, ey, x, y, pos;
     int w = state->w;
     int h = state->h;
     char from, to;
     game_state *ret;
     
-    if(move[0] == 'P' && sscanf(move+1, "%d,%d,%d,%d,%c,%c", &sx, &sy, &ex, &ey, &from, &to) == 6)
-    {
+    if(move[0] == 'P' && sscanf(move+1, "%d,%d,%d,%d,%c,%c", &sx, &sy, &ex, &ey, &from, &to) == 6) {
         ret = dup_game(state);
         
         for(x = sx; x <= ex; x++)
-        for(y = sy; y <= ey; y++)
-        {
-            if(state->gridclues[y*w+x] == EMPTY)
-            {
+        for(y = sy; y <= ey; y++) {
+            if(state->gridclues[y*w+x] == EMPTY) {
                 if(IS_SHIP(ret->grid[y*w+x]) && from != 'B' && from != '*')
                     continue;
                 if(ret->grid[y*w+x] == EMPTY && from != '-' && from != '*')
@@ -3096,16 +3059,14 @@ static game_state *execute_move(const game_state *state, const char *move)
         return ret;
     }
     
-    else if(move[0] == 'S')
-    {
+    else if(move[0] == 'S') {
         const char *p;
         int i;
         ret = dup_game(state);
         
         p = move+1;
         
-        for(i = 0; i < w*h; i++)
-        {
+        for(i = 0; i < w*h; i++) {
             if (!*p || !(*p == 'W' || *p == 'B' || *p == '-')) {
                 free_game(ret);
                 return NULL;
@@ -3128,6 +3089,12 @@ static game_state *execute_move(const game_state *state, const char *move)
         
         return ret;
     }
+    else if (move[0] == 'D' && sscanf(move+1, "%d", &pos) == 1) {
+        ret = dup_game(state);
+        ret->borderdone[pos] = !state->borderdone[pos];
+        return ret;
+    }
+    
     return NULL;
 }
 
@@ -3155,6 +3122,7 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_SHIP_FLEET_STRIPE * 3 + i] = 0.0F;
         ret[COL_COUNT             * 3 + i] = 0.0F;
         ret[COL_COUNT_ERROR       * 3 + i] = 0.5F;
+        ret[COL_COUNT_DONE        * 3 + i] = 0.75F;
         ret[COL_COLLISION_ERROR   * 3 + i] = 0.25F;
         ret[COL_COLLISION_TEXT    * 3 + i] = 1.0F;
     }
@@ -3174,6 +3142,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->tilesize = 0;
     ds->fleeth = 0;
     ds->border = snewn(w + h, int);
+    ds->done = snewn(w + h, bool);
     ds->fleetcount = snewn(fleet, int);
     ds->gridfs = snewn(w * h, int);
     ds->oldgridfs = snewn(w * h, int);
@@ -3188,6 +3157,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     memset(ds->oldgridfs, 0, w*h * sizeof(int));
     memset(ds->oldfleetcount, 0, fleet * sizeof(int));
     memset(ds->oldborder, 0, w + h * sizeof(int));
+    memset(ds->done, false, w + h * sizeof(bool));
 
     return ds;
 }
@@ -3195,6 +3165,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
 static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 {
     sfree(ds->border);
+    sfree(ds->done);
     sfree(ds->fleetcount);
     sfree(ds->gridfs);
     sfree(ds->oldgridfs);
@@ -3433,7 +3404,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     for(x = 0; x < w; x++)
     {
         if(state->borderclues[x] == NO_CLUE || 
-            (!redraw && (ds->border[x] == ds->oldborder[x])))
+            (!redraw && (ds->border[x] == ds->oldborder[x]) && 
+                        (ds->done[x] == state->borderdone[x])))
             continue;
         
         tx = (x+1)*tilesize;
@@ -3446,9 +3418,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             tilesize, tilesize);
         draw_text(dr, tx, ty,
               FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
-              COL_COUNT, buf);
+              state->borderdone[x] ? COL_COUNT_DONE : COL_COUNT, buf);
         
         ds->oldborder[x] = ds->border[x];
+        ds->done[x] = state->borderdone[x];
     }
     
     /* Draw row numbers */
@@ -3456,7 +3429,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     for(y = 0; y < h; y++)
     {
         if(state->borderclues[y+w] == NO_CLUE || 
-            (!redraw && (ds->border[y+w] == ds->oldborder[y+w])))
+            (!redraw && (ds->border[y+w] == ds->oldborder[y+w]) && 
+                        (ds->done[y+w] == state->borderdone[y+w])))
             continue;
         
         ty = (y+1)*tilesize;
@@ -3469,9 +3443,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             tilesize, tilesize);
         draw_text(dr, tx, ty,
               FONT_VARIABLE, tilesize/2, ALIGN_VCENTRE|ALIGN_HRIGHT,
-              COL_COUNT, buf);
+              state->borderdone[y+w] ? COL_COUNT_DONE : COL_COUNT, buf);
         
         ds->oldborder[y+w] = ds->border[y+w];
+        ds->done[y+w] = state->borderdone[y+w];
     }
     
     boats_validate_gridclues(state, ds->gridfs);
