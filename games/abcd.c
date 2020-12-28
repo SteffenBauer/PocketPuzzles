@@ -38,7 +38,7 @@
 enum {
     COL_OUTERBG, COL_INNERBG, COL_ERRORBG,
     COL_GRID,
-    COL_BORDERLETTER, COL_TEXT,
+    COL_BORDERLETTER, COL_TEXT, COL_DONE,
     COL_GUESS, COL_ERROR, COL_PENCIL,
     COL_HIGHLIGHT, COL_LOWLIGHT,
     NCOLOURS
@@ -56,6 +56,7 @@ struct game_state {
     char *grid; /* size w*h */
     unsigned char *clues; /* remaining possibilities, size w*h*n */
     int *numbers; /* size n*(w+h) */
+    bool *num_done;
     bool completed, cheated;
 };
 
@@ -310,10 +311,12 @@ static game_state *blank_state(int w, int h, int n, bool diag)
     ret->grid = snewn(w * h, char);
     ret->clues = snewn(w * h * n, unsigned char);
     ret->numbers = snewn(l * n, int);
-    
+    ret->num_done = snewn(l * n, bool);
+
     memset(ret->grid, EMPTY, w * h);
     memset(ret->clues, true, w*h*n);
     memset(ret->numbers, 0, l*n * sizeof(int));
+    memset(ret->num_done, false, l*n * sizeof(bool));
     
     ret->completed = ret->cheated = false;
     
@@ -391,6 +394,7 @@ static game_state *dup_game(const game_state *state)
     memcpy(ret->grid, state->grid, w * h);
     memcpy(ret->clues, state->clues, w * h * n);
     memcpy(ret->numbers, state->numbers, l * n * sizeof(int));
+    memcpy(ret->num_done, state->num_done, l * n * sizeof(bool));
     
     ret->completed = state->completed;
     ret->cheated = state->cheated;
@@ -403,7 +407,7 @@ static void free_game(game_state *state)
     sfree(state->grid);
     sfree(state->clues);
     sfree(state->numbers);
-    
+    sfree(state->num_done);
     sfree(state);
 }
 
@@ -1106,6 +1110,18 @@ struct game_drawstate {
     bool initial;
 };
 
+static int clue_index(const game_state *state, int x, int y) {
+    bool horizontal = (x<0);
+    int w = state->w;
+    int h = state->h;
+    int n = state->n;
+    if (x >=0 && y>=0) return -2;
+    if (x<0 && y<0) return -2;
+    if (horizontal && y>=h) return -2;
+    if (!horizontal && x>=w) return -2;
+    return (horizontal ? HOR_CLUE(y,x+n) : VER_CLUE(x,y+n));
+}
+
 static char *interpret_move(const game_state *state, game_ui *ui, const game_drawstate *ds,
                 int ox, int oy, int button)
 {
@@ -1185,7 +1201,12 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             }
             ui->hdrag = false;
         }
-    } else if (button == LEFT_BUTTON) {
+    } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
+        int pos = clue_index(state,gx,gy);
+        if (pos >= 0 && pos < ((w+h)*n) && state->numbers[pos] >=0) {
+            sprintf(buf, "%c%d", 'D', pos);
+            return dupstr(buf);
+        }
         ui->hshow = false;
         ui->hcursor = false;
         ui->hhint = -1;
@@ -1259,13 +1280,12 @@ static game_state *execute_move(const game_state *state, const char *move)
     int h = state->h;
     int n = state->n;
     
-    int x, y, z;
+    int x, y, z, pos;
     char c, i;
     
     game_state *ret;
     
-    if(move[0] == 'S')
-    {
+    if(move[0] == 'S') {
         ret = dup_game(state);
         const char *p;
         p = move+1;
@@ -1287,21 +1307,17 @@ static game_state *execute_move(const game_state *state, const char *move)
     else if ((move[0] == 'P' || move[0] == 'R') &&
             sscanf(move+1, "%d,%d,%c", &x, &y, &c) == 3 &&
             x >= 0 && x < w && y >= 0 && y < h &&
-            (c == '-' || (c-'A' >= 0 && c-'A' < n))
-            )
-    {
+            (c == '-' || (c-'A' >= 0 && c-'A' < n))) {
         ret = dup_game(state);
         
-        if (c == '-')
-        {
+        if (c == '-') {
             if (move[0] == 'P' || ret->grid[y*w+x] == EMPTY)
                 memset(ret->clues + CUBOID(x,y,0), false, n);
             else
                 ret->grid[y*w+x] = EMPTY;
             return ret;
         }
-        else
-        {
+        else {
             i = c-'A';
             
             /* Toggle pencil mark */
@@ -1319,8 +1335,13 @@ static game_state *execute_move(const game_state *state, const char *move)
             return ret;
         }
     }
-    else if (move[0] == 'M')
-    {
+    else if (move[0] == 'D' && sscanf(move+1, "%d", &pos) == 1) {
+        ret = dup_game(state);
+        ret->num_done[pos] = !ret->num_done[pos];
+
+        return ret;
+    }
+    else if (move[0] == 'M') {
         ret = dup_game(state);
         
         for(y = 0; y < h; y++)
@@ -1371,6 +1392,7 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_ERROR        * 3 + i] = 0.75F;
         ret[COL_PENCIL       * 3 + i] = 0.0F;
         ret[COL_TEXT         * 3 + i] = 0.0F;
+        ret[COL_DONE         * 3 + i] = 0.75F;
         ret[COL_GRID         * 3 + i] = 0.5F;
     }
 
@@ -1482,9 +1504,14 @@ static void abcd_count_clues(const game_state *state, int *cluefs, int horizonta
             }
             
             if ((found > clue || found+empty < clue) && !(cluefs[pos] & FD_ERROR))
-                cluefs[pos] |= FD_ERROR ; 
+                cluefs[pos] |= FD_ERROR ;
             else if (found <= clue && found+empty >= clue && (cluefs[pos] & FD_ERROR))
-                cluefs[pos] &= ~FD_ERROR ; 
+                cluefs[pos] &= ~FD_ERROR ;
+
+            if (state->num_done[pos] && !(cluefs[pos] & FD_PENCIL))
+                cluefs[pos] |= FD_PENCIL;
+            else if (!state->num_done[pos] && (cluefs[pos] & FD_PENCIL))
+                cluefs[pos] &= ~FD_PENCIL;
         }
 }
 
@@ -1533,7 +1560,8 @@ static void abcd_draw_clues(drawing *dr, game_drawstate *ds, const game_state *s
                               ds->cluefs[pos] & FD_ERROR ? COL_ERRORBG : COL_OUTERBG);
                     draw_text(dr, ox + TILE_SIZE/2, oy + TILE_SIZE/2,
                             FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
-                            ds->cluefs[pos] & FD_ERROR ? COL_ERROR : COL_TEXT, buf);
+                            ds->cluefs[pos] & FD_ERROR ? COL_ERROR : 
+                            ds->cluefs[pos] & FD_PENCIL ? COL_DONE : COL_TEXT, buf);
                 }
                 draw_update(dr, ox, oy, TILE_SIZE-1, TILE_SIZE-1);
                 ds->oldcluefs[pos] = ds->cluefs[pos];

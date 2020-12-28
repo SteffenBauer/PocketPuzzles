@@ -84,11 +84,11 @@
 
 #### Grey-out of finished hints
 
-- [ ] ABCD
-- [ ] Boats
+- [X] ABCD
+- [X] Boats
 - [ ] Pattern
 - [ ] Salad
-- [ ] Tents
+- [X] Tents
 - [ ] Tracks
 
 #### Game specific UI settings
