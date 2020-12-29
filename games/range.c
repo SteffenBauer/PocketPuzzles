@@ -96,6 +96,7 @@ struct game_state {
     struct game_params params;
     bool has_cheated, was_solved;
     puzzle_size *grid;
+    bool *done;
 };
 
 #define DEFAULT_PRESET 0
@@ -203,6 +204,7 @@ static game_state *dup_game(const game_state *state)
 
     /* copy the poin_tee_, set a new value of the poin_ter_ */
     memdup(ret->grid, state->grid, n, puzzle_size);
+    memdup(ret->done, state->done, n, bool);
 
     return ret;
 }
@@ -210,6 +212,7 @@ static game_state *dup_game(const game_state *state)
 static void free_game(game_state *state)
 {
     sfree(state->grid);
+    sfree(state->done);
     sfree(state);
 }
 
@@ -278,8 +281,6 @@ enum {BLACK = -2, WHITE, EMPTY};
 
 static int const dr[4] = {+1,  0, -1,  0};
 static int const dc[4] = { 0, +1,  0, -1};
-static int const cursors[4] = /* must match dr and dc */
-{CURSOR_DOWN, CURSOR_RIGHT, CURSOR_UP, CURSOR_LEFT};
 
 typedef struct move {
     square square;
@@ -691,6 +692,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     int const w = params->w, h = params->h, n = w * h;
 
     puzzle_size *const grid = snewn(n, puzzle_size);
+    bool *const done = snewn(n, bool);
     int *const shuffle_1toN = snewn(n, int);
 
     int i, clues_removed;
@@ -700,6 +702,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     game_state state;
     state.params = *params;
     state.grid = grid;
+    state.done = done;
 
     interactive = false; /* I don't need it, I shouldn't use it*/
 
@@ -720,6 +723,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     encoding = newdesc_encode_game_description(n, grid);
 
     sfree(grid);
+    sfree(done);
     sfree(shuffle_1toN);
 
     return encoding;
@@ -1120,6 +1124,7 @@ static game_state *new_game(midend *me, const game_params *params,
 
     state->params = *params; /* structure copy */
     state->grid = snewn(n, puzzle_size);
+    state->done = snewn(n, bool);
 
     p = desc;
     i = 0;
@@ -1127,13 +1132,16 @@ static game_state *new_game(midend *me, const game_params *params,
         int c = *p++;
         if (c >= 'a' && c <= 'z') {
             int squares = c - 'a' + 1;
-        while (squares--)
-        state->grid[i++] = 0;
+            while (squares--) {
+                state->done[i] = false;
+                state->grid[i++] = 0;
+            }
         } else if (c == '_') {
             /* do nothing */;
         } else if (c > '0' && c <= '9') {
             int val = atoi(p-1);
             assert(val >= 1 && val <= params->w+params->h-1);
+            state->done[i] = false;
             state->grid[i++] = val;
             while (*p >= '0' && *p <= '9')
                 p++;
@@ -1179,7 +1187,7 @@ static void decode_ui(game_ui *ui, const char *encoding)
 
 typedef struct drawcell {
     puzzle_size value;
-    bool error, cursor;
+    bool error, cursor, done;
 } drawcell;
 
 struct game_drawstate {
@@ -1200,10 +1208,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     enum {none, forwards, backwards, hint};
     int const w = state->params.w, h = state->params.h;
     int r = ui->r, c = ui->c, action = none, cell;
-    bool shift = button & MOD_SHFT;
     button &= ~MOD_SHFT;
-
-    if (IS_CURSOR_SELECT(button) && !ui->cursor_show) return NULL;
 
     if (IS_MOUSE_DOWN(button)) {
         r = FROMCOORD(y + TILESIZE) - 1; /* or (x, y) < TILESIZE) */
@@ -1214,87 +1219,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->cursor_show = false;
     }
 
-    if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
-    /*
-     * Utterly awful hack, exactly analogous to the one in Slant,
-     * to configure the left and right mouse buttons the opposite
-     * way round.
-     *
-     * The original puzzle submitter thought it would be more
-     * useful to have the left button turn an empty square into a
-     * dotted one, on the grounds that that was what you did most
-     * often; I (SGT) felt instinctively that the left button
-     * ought to place black squares and the right button place
-     * dots, on the grounds that that was consistent with many
-     * other puzzles in which the left button fills in the data
-     * used by the solution checker while the right button places
-     * pencil marks for the user's convenience.
-     *
-     * My first beta-player wasn't sure either, so I thought I'd
-     * pre-emptively put in a 'configuration' mechanism just in
-     * case.
-     */
-    {
-        static int swap_buttons = -1;
-        if (swap_buttons < 0) {
-        char *env = getenv("RANGE_SWAP_BUTTONS");
-        swap_buttons = (env && (env[0] == 'y' || env[0] == 'Y'));
-        }
-        if (swap_buttons) {
-        if (button == LEFT_BUTTON)
-            button = RIGHT_BUTTON;
-        else
-            button = LEFT_BUTTON;
-        }
-    }
-    }
-
     switch (button) {
-      case CURSOR_SELECT : case   LEFT_BUTTON: action = backwards; break;
-      case CURSOR_SELECT2: case  RIGHT_BUTTON: action =  forwards; break;
-      case 'h': case 'H' :                     action =      hint; break;
-      case CURSOR_UP: case CURSOR_DOWN:
-      case CURSOR_LEFT: case CURSOR_RIGHT:
-        if (ui->cursor_show) {
-            int i;
-            for (i = 0; i < 4 && cursors[i] != button; ++i);
-            assert (i < 4);
-            if (shift) {
-                int pre_r = r, pre_c = c;
-                bool do_pre, do_post;
-                cell = state->grid[idx(r, c, state->params.w)];
-                do_pre = (cell == EMPTY);
-
-                if (out_of_bounds(ui->r + dr[i], ui->c + dc[i], w, h)) {
-                    if (do_pre)
-                        return nfmtstr(40, "W,%d,%d", pre_r, pre_c);
-                    else
-                        return NULL;
-                }
-
-                ui->r += dr[i];
-                ui->c += dc[i];
-
-                cell = state->grid[idx(ui->r, ui->c, state->params.w)];
-                do_post = (cell == EMPTY);
-
-                /* (do_pre ? "..." : "") concat (do_post ? "..." : "") */
-                if (do_pre && do_post)
-                    return nfmtstr(80, "W,%d,%dW,%d,%d",
-                                   pre_r, pre_c, ui->r, ui->c);
-                else if (do_pre)
-                    return nfmtstr(40, "W,%d,%d", pre_r, pre_c);
-                else if (do_post)
-                    return nfmtstr(40, "W,%d,%d", ui->r, ui->c);
-                else
-                    return UI_UPDATE;
-
-            } else if (!out_of_bounds(ui->r + dr[i], ui->c + dc[i], w, h)) {
-                ui->r += dr[i];
-                ui->c += dc[i];
-            }
-        } else ui->cursor_show = true;
-        return UI_UPDATE;
+      case   LEFT_BUTTON: action = backwards; break;
+      case  RIGHT_BUTTON: action =  forwards; break;
+      case 'h': case 'H' : action =      hint; break;
     }
 
     if (action == hint) {
@@ -1320,15 +1248,15 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
 
     cell = state->grid[idx(r, c, state->params.w)];
-    if (cell > 0) return NULL;
-
-    if (action == forwards) switch (cell) {
+    if (cell > 0 && action != none) {
+        return nfmtstr(40, "D,%d,%d", r, c);
+    }
+    else if (cell <= 0 && action == forwards) switch (cell) {
       case EMPTY: return nfmtstr(40, "W,%d,%d", r, c);
       case WHITE: return nfmtstr(40, "B,%d,%d", r, c);
       case BLACK: return nfmtstr(40, "E,%d,%d", r, c);
     }
-
-    else if (action == backwards) switch (cell) {
+    else if (cell <= 0 && action == backwards) switch (cell) {
       case BLACK: return nfmtstr(40, "W,%d,%d", r, c);
       case WHITE: return nfmtstr(40, "E,%d,%d", r, c);
       case EMPTY: return nfmtstr(40, "B,%d,%d", r, c);
@@ -1447,7 +1375,7 @@ found_error:
 
 static game_state *execute_move(const game_state *state, const char *move)
 {
-    signed int r, c, value, nchars, ntok;
+    signed int r, c, nchars, ntok;
     signed char what_to_do;
     game_state *ret;
 
@@ -1463,14 +1391,16 @@ static game_state *execute_move(const game_state *state, const char *move)
     for (; *move; move += nchars) {
         ntok = sscanf(move, "%c,%d,%d%n", &what_to_do, &r, &c, &nchars);
         if (ntok < 3) goto failure;
-        switch (what_to_do) {
-      case 'W': value = WHITE; break;
-      case 'E': value = EMPTY; break;
-      case 'B': value = BLACK; break;
-      default: goto failure;
-        }
         if (out_of_bounds(r, c, ret->params.w, ret->params.h)) goto failure;
-        ret->grid[idx(r, c, ret->params.w)] = value;
+        switch (what_to_do) {
+            case 'W': ret->grid[idx(r, c, ret->params.w)] = WHITE; break;
+            case 'E': ret->grid[idx(r, c, ret->params.w)] = EMPTY; break;
+            case 'B': ret->grid[idx(r, c, ret->params.w)] = BLACK; break;
+            case 'D': 
+                ret->done[idx(r, c, ret->params.w)] = !ret->done[idx(r, c, ret->params.w)];
+                break;
+            default: goto failure;
+        }
     }
 
     if (!ret->was_solved)
@@ -1521,6 +1451,7 @@ enum {
     COL_LOWLIGHT,
     COL_HIGHLIGHT = COL_ERROR, /* mkhighlight needs it, I don't */
     COL_CURSOR = COL_LOWLIGHT,
+    COL_DONE,
     NCOLOURS
 };
 
@@ -1549,17 +1480,19 @@ static float *game_colours(frontend *fe, int *ncolours)
     COLOUR(ret, COL_LOWLIGHT, 0.25F, 0.25F, 0.25F);
     COLOUR(ret, COL_GRID,  0.0F, 0.0F, 0.0F);
     COLOUR(ret, COL_ERROR, 0.5F, 0.5F, 0.5F);
+    COLOUR(ret, COL_DONE, 0.75F, 0.75F, 0.75F);
 
     *ncolours = NCOLOURS;
     return ret;
 }
 
-static drawcell makecell(puzzle_size value, bool error, bool cursor)
+static drawcell makecell(puzzle_size value, bool error, bool cursor, bool done)
 {
     drawcell ret;
     setmember(ret, value);
     setmember(ret, error);
     setmember(ret, cursor);
+    setmember(ret, done);
     return ret;
 }
 
@@ -1574,7 +1507,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
 
     ds->grid = snewn(n, drawcell);
     for (i = 0; i < n; ++i)
-        ds->grid[i] = makecell(w + h, false, false);
+        ds->grid[i] = makecell(w + h, false, false, false);
 
     return ds;
 }
@@ -1592,7 +1525,8 @@ static bool cell_eq(drawcell a, drawcell b)
     return
         cmpmember(a, b, value) &&
         cmpmember(a, b, error) &&
-        cmpmember(a, b, cursor);
+        cmpmember(a, b, cursor) &&
+        cmpmember(a, b, done);
 }
 
 static void draw_cell(drawing *dr, game_drawstate *ds, int r, int c,
@@ -1622,7 +1556,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
     for (i = r = 0; r < h; ++r) {
         for (c = 0; c < w; ++c, ++i) {
-            drawcell cell = makecell(state->grid[i], errors[i], false);
+            drawcell cell = makecell(state->grid[i], errors[i], false, state->done[i]);
             if (r == ui->r && c == ui->c && ui->cursor_show)
                 cell.cursor = true;
             if (!cell_eq(cell, ds->grid[i])) {
@@ -1658,12 +1592,12 @@ static void draw_cell(drawing *draw, game_drawstate *ds, int r, int c,
       case WHITE: draw_rect(draw, tx - dotsz / 2, ty - dotsz / 2, dotsz, dotsz, COL_USER);
       case BLACK: case EMPTY: break;
       default:
-    {
+        {
         char *msg = nfmtstr(10, "%d", cell.value);
         draw_text(draw, tx, ty, FONT_VARIABLE, ts * 3 / 5,
-              ALIGN_VCENTRE | ALIGN_HCENTRE, COL_GRID, msg);
+              ALIGN_VCENTRE | ALIGN_HCENTRE, cell.done ? COL_DONE : COL_TEXT, msg);
         sfree(msg);
-    }
+        }
     }
 
     draw_update(draw, x, y, ts + 1, ts + 1);

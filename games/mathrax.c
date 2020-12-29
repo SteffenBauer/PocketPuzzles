@@ -1313,6 +1313,7 @@ static game_state *execute_move(const game_state *oldstate, const char *move)
         if(move[0] == 'R') {
             if(c == '-' && state->grid[y*o+x] == 0) state->marks[y*o+x] = 0;
             else if(c == '-')                       state->grid[y*o+x] = 0;
+            else if (state->grid[y*o+x] == c-'0')   state->grid[y*o+x] = 0;
             else                                    state->grid[y*o+x] = c - '0';
         }
         if(move[0] == 'P') {

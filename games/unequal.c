@@ -355,22 +355,16 @@ static bool check_num_adj(digit *grid, game_state *state,
             int ot = (n == 1 && dn == 2) || (n == 2 && dn == 1);
             
             if ((f & ADJ_TO_DOUBLE(adjthan[i].f)) && !id) {
-                debug(("check_adj error (%d,%d):%d should be * (%d,%d):%d",
-                       x, y, n, x+dx, y+dy, dn));
                 if (me) GRID(state, flags, x, y) |= adjthan[i].fe;
                 ret = false;
             }
             else if ((f & adjthan[i].f) && (gd != 1 && !ot)) {
-                debug(("check_adj error (%d,%d):%d should be O (%d,%d):%d",
-                       x, y, n, x+dx, y+dy, dn));
                 if (me) GRID(state, flags, x, y) |= adjthan[i].fe;
                 ret = false;
             }
             else if (!(f & adjthan[i].f) && 
                      !(f & ADJ_TO_DOUBLE(adjthan[i].f)) && 
                       (id || (gd == 1))) {
-                debug(("check_adj error (%d,%d):%d should be neither * or O (%d,%d):%d",
-                       x, y, n, x+dx, y+dy, dn));
                 if (me) GRID(state, flags, x, y) |= adjthan[i].fe;
                 ret = false;
             }
@@ -379,22 +373,16 @@ static bool check_num_adj(digit *grid, game_state *state,
             int gd = abs(n-dn);
 
             if ((f & adjthan[i].f) && (gd != 1)) {
-                debug(("check_adj error (%d,%d):%d should be | (%d,%d):%d",
-                       x, y, n, x+dx, y+dy, dn));
                 if (me) GRID(state, flags, x, y) |= adjthan[i].fe;
                 ret = false;
             }
             if (!(f & adjthan[i].f) && (gd == 1)) {
-                debug(("check_adj error (%d,%d):%d should not be | (%d,%d):%d",
-                       x, y, n, x+dx, y+dy, dn));
                 if (me) GRID(state, flags, x, y) |= adjthan[i].fe;
                 ret = false;
             }
 
         } else {
             if ((f & adjthan[i].f) && (n <= dn)) {
-                debug(("check_adj error (%d,%d):%d not > (%d,%d):%d",
-                       x, y, n, x+dx, y+dy, dn));
                 if (me) GRID(state, flags, x, y) |= adjthan[i].fe;
                 ret = false;
             }
@@ -426,7 +414,6 @@ static bool check_num_error(digit *grid, game_state *state,
     }
 
     if (!ret) {
-        debug(("check_num_error (%d,%d) duplicate %d", x, y, val));
         if (mark_errors) GRID(state, flags, x, y) |= F_ERROR;
     }
     return ret;
@@ -514,7 +501,6 @@ static void solver_add_link(struct solver_ctx *ctx,
 {
     if (ctx->alinks < ctx->nlinks+1) {
         ctx->alinks = ctx->alinks*2 + 1;
-        /*debug(("resizing ctx->links, new size %d", ctx->alinks));*/
         ctx->links = sresize(ctx->links, ctx->alinks, struct solver_link);
     }
     ctx->links[ctx->nlinks].gx = gx;
@@ -523,8 +509,6 @@ static void solver_add_link(struct solver_ctx *ctx,
     ctx->links[ctx->nlinks].ly = ly;
     ctx->links[ctx->nlinks].len = len;
     ctx->nlinks++;
-    /*debug(("Adding new link: len %d (%d,%d) < (%d,%d), nlinks now %d",
-           len, lx, ly, gx, gy, ctx->nlinks));*/
 }
 
 static struct solver_ctx *new_ctx(game_state *state)
@@ -851,7 +835,6 @@ static game_state *solver_hint(const game_state *state, int *diff_r,
 
     for (diff = mindiff; diff <= maxdiff; diff++) {
         r = solver_state(ret, diff);
-        debug(("solver_state after %s %d", unequal_diffnames[diff], r));
         if (r != 0) goto done;
     }
 
@@ -1535,8 +1518,6 @@ static game_state *execute_move(const game_state *state, const char *move)
     game_state *ret = NULL;
     int x, y, n, i, rc;
 
-    debug(("execute_move: %s", move));
-
     if ((move[0] == 'P' || move[0] == 'R') &&
         sscanf(move+1, "%d,%d,%d", &x, &y, &n) == 3 &&
         x >= 0 && x < state->order && y >= 0 && y < state->order &&
@@ -1547,7 +1528,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         if (move[0] == 'P' && n > 0)
             HINT(ret, x, y, n-1) = !HINT(ret, x, y, n-1);
         else {
-            GRID(ret, nums, x, y) = n;
+            GRID(ret, nums, x, y) = GRID(ret, nums, x, y) == n ? 0 : n;
 
             /* real change to grid; check for completion */
             if (!ret->completed && check_complete(ret->nums, ret, true) > 0)
@@ -1915,8 +1896,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int x, y, i;
     bool hchanged = false, stale;
-
-    debug(("highlight old (%d,%d), new (%d,%d)", ds->hx, ds->hy, ui->hx, ui->hy));
 
     if (!ds->started) {
         draw_rect(dr, 0, 0, DRAW_SIZE, DRAW_SIZE, COL_BACKGROUND);

@@ -1850,8 +1850,7 @@ static game_state *execute_move(const game_state *from, const char *move)
             ret->pencil[y*w+x] = 0;
         }
         else {
-            ret->grid[y*w+x] = n;
-            /* ret->pencil[y*w+x] = 0; */
+            ret->grid[y*w+x] = ret->grid[y*w+x] == n ? 0 : n;
 
             if (!ret->completed && !check_errors(ret, NULL))
                 ret->completed = true;

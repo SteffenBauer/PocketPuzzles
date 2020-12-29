@@ -1568,10 +1568,15 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
                 sprintf(buf, "P%d,%d,%c", x, y, (ui->hhint == '\b') ? '-' : ui->hhint);
                 return dupstr(buf);
             }
-            else {
+            else if (ui->hhint == ' ' && button == LEFT_BUTTON) {
                 ui->hx = x; ui->hy = y;
                 ui->hshow = true;
-                ui->hpencil = (button == RIGHT_BUTTON);
+                ui->hpencil = false;
+            }
+            else if (ui->hhint == ' ' && (state->grid[y*w+x] == 0)) {
+                ui->hx = x; ui->hy = y;
+                ui->hshow = true;
+                ui->hpencil = true;
             }
             return UI_UPDATE;
         }
@@ -1637,23 +1642,22 @@ static game_state *execute_move(const game_state *oldstate, const char *move)
         if(move[0] == 'R') {
             switch(c) {
                 case 'T':
-                    state->grid[y*w+x] = FM_UP;
+                    state->grid[y*w+x] = state->grid[y*w+x] == FM_UP ? EMPTY : FM_UP;
                     break;
                 case 'D':
-                    state->grid[y*w+x] = FM_DOWN;
+                    state->grid[y*w+x] = state->grid[y*w+x] == FM_DOWN ? EMPTY : FM_DOWN;
                     break;
                 case 'W':
-                    state->grid[y*w+x] = FM_LEFT;
+                    state->grid[y*w+x] = state->grid[y*w+x] == FM_LEFT ? EMPTY : FM_LEFT;
                     break;
                 case 'E':
-                    state->grid[y*w+x] = FM_RIGHT;
+                    state->grid[y*w+x] = state->grid[y*w+x] == FM_RIGHT ? EMPTY : FM_RIGHT;
                     break;
                 default:
                     if (state->grid[y*w+x] == EMPTY)
                         state->marks[y*w+x] = EMPTY;
                     else
                         state->grid[y*w+x] = EMPTY;
-                    /* state->marks[y*w+x] = EMPTY; */
                     break;
             }
         }

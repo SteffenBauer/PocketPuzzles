@@ -81,6 +81,9 @@ static char const dominosa_diffchars[] = DIFFLIST(ENCODE);
 enum {
     COL_BACKGROUND,
     COL_TEXT,
+    COL_TEXTCLASH,
+    COL_TEXTHIGH_1,
+    COL_TEXTHIGH_2,
     COL_DOMINO,
     COL_DOMINOCLASH,
     COL_DOMINOTEXT,
@@ -2765,12 +2768,15 @@ static float *game_colours(frontend *fe, int *ncolours)
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND  * 3 + i] = 1.0F;
         ret[COL_TEXT        * 3 + i] = 0.0F;
+        ret[COL_TEXTCLASH   * 3 + i] = 0.5F;
+        ret[COL_TEXTHIGH_1  * 3 + i] = 0.25F;
+        ret[COL_TEXTHIGH_2  * 3 + i] = 0.75F;
         ret[COL_DOMINO      * 3 + i] = 0.0F;
-        ret[COL_DOMINOCLASH * 3 + i] = 0.25F;
+        ret[COL_DOMINOCLASH * 3 + i] = 0.75F;
         ret[COL_DOMINOTEXT  * 3 + i] = 1.0F;
         ret[COL_EDGE        * 3 + i] = 0.0F;
-        ret[COL_HIGHLIGHT_1 * 3 + i] = 0.75F;
-        ret[COL_HIGHLIGHT_2 * 3 + i] = 0.5F;
+        ret[COL_HIGHLIGHT_1 * 3 + i] = 0.6F;
+        ret[COL_HIGHLIGHT_2 * 3 + i] = 0.4F;
     }
 
     *ncolours = NCOLOURS;
@@ -2898,6 +2904,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
                 draw_rect(dr, cx+DOMINO_CLASH, cy+DOMINO_CLASH, TILESIZE-2*DOMINO_CLASH, TILESIZE, COL_DOMINOCLASH);
             else if (type == TYPE_B)
                 draw_rect(dr, cx+DOMINO_CLASH, cy, TILESIZE-2*DOMINO_CLASH, TILESIZE-DOMINO_CLASH, COL_DOMINOCLASH);
+            nc = COL_TEXTCLASH;
         }
 
 
@@ -2930,8 +2937,10 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
 
     if (flags & DF_HIGHLIGHT_1) {
         draw_rect(dr, cx+TILESIZE/4, cy+TILESIZE/4, TILESIZE/2, TILESIZE/2, COL_HIGHLIGHT_1);
+        nc = COL_TEXTHIGH_1;
     } else if (flags & DF_HIGHLIGHT_2) {
         draw_rect(dr, cx+TILESIZE/4, cy+TILESIZE/4, TILESIZE/2, TILESIZE/2, COL_HIGHLIGHT_2);
+        nc = COL_TEXTHIGH_2;
     }
 
     sprintf(str, "%d", state->numbers->numbers[y*w+x]);

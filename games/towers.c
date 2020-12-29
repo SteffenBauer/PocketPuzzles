@@ -1374,7 +1374,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             }
             ui->hdrag = false;
         }
-    } else if (button == LEFT_BUTTON) {
+    } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         if (is_clue(state, tx, ty)) {
             sprintf(buf, "%c%d,%d", 'D', tx, ty);
             return dupstr(buf);
@@ -1457,8 +1457,7 @@ static game_state *execute_move(const game_state *from, const char *move)
         if (move[0] == 'P' && n > 0) {
             ret->pencil[y*w+x] ^= 1L << n;
         } else {
-            ret->grid[y*w+x] = n;
-            /* ret->pencil[y*w+x] = 0; */
+            ret->grid[y*w+x] = ret->grid[y*w+x] == n ? 0 : n;
 
             if (!ret->completed && !check_errors(ret, NULL))
                 ret->completed = true;
