@@ -1326,7 +1326,7 @@ static game_state *execute_move(const game_state *state, const char *move)
             
             /* Enter letter */
             else
-                ret->grid[y*w+x] = i;
+                ret->grid[y*w+x] = ret->grid[y*w+x] == i ? EMPTY : i;
             
             /* Check if the puzzle has been completed */
             if (!ret->completed && abcd_validate_puzzle(ret) == 0)

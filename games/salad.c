@@ -1439,8 +1439,8 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     }
 
     if(ui->hshow && (state->gridclues[pos] == 0 || state->gridclues[pos] == LATINH_CIRCLE)) {
-        if ((button >= '1' && button <= '9') ||
-            (button >= 'A' && button <= 'I') ||
+        if ((button >= '1' && button <= '9') || 
+            (button >= 'A' && button <= 'I') || 
             button == '\b') {
             digit d = 0;
             
@@ -1584,8 +1584,15 @@ static game_state *execute_move(const game_state *state, const char *move)
         else if(move[0] == 'R' && c != 'X' && c != 'O')
         {
             d = (digit)c - '0';
-            ret->grid[y*o+x] = d;
-            ret->holes[y*o+x] = LATINH_CIRCLE;
+            if (ret->grid[y*o+x] == d) {
+                ret->grid[y*o+x] = 0;
+                if(ret->gridclues[y*o+x] != LATINH_CIRCLE)
+                    ret->holes[y*o+x] = 0;
+            }
+            else {
+                ret->grid[y*o+x] = d;
+                ret->holes[y*o+x] = LATINH_CIRCLE;
+            }
         }
         /* Add/remove pencil mark */
         else if(move[0] == 'P' && c != 'X' && c != 'O')
@@ -1597,7 +1604,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         else if(move[0] == 'R' && c == 'X')
         {
             ret->grid[y*o+x] = 0;
-            ret->holes[y*o+x] = LATINH_CROSS;
+            ret->holes[y*o+x] = ret->holes[y*o+x] == LATINH_CROSS ? 0 : LATINH_CROSS;
         }
         /* Add/remove pencil mark for hole */
         else if(move[0] == 'P' && c == 'X')
@@ -1608,7 +1615,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         else if(move[0] == 'R' && c == 'O')
         {
             ret->grid[y*o+x] = 0;
-            ret->holes[y*o+x] = LATINH_CIRCLE;
+            ret->holes[y*o+x] = ret->holes[y*o+x] == LATINH_CIRCLE ? 0 : LATINH_CIRCLE;
         }
         /* Toggle circle without emptying */
         else if(move[0] == 'P' && c == 'O')

@@ -262,6 +262,7 @@ struct game_state {
     unsigned int *sflags;       /* size w*h */
     struct numbers *numbers;
     int *num_errors;            /* size w+h */
+    bool *num_done;
     bool completed, used_solve, impossible;
 };
 
@@ -332,12 +333,14 @@ static void clear_game(game_state *state)
     state->numbers->col_s = state->numbers->row_s = -1;
 
     memset(state->num_errors, 0, (w+h) * sizeof(int));
+    memset(state->num_done, 0, (w+h) * sizeof(bool));
 
     state->completed = state->used_solve = state->impossible = false;
 }
 
 static game_state *blank_game(const game_params *params)
 {
+    int i;
     game_state *state = snew(game_state);
     int w = params->w, h = params->h;
 
@@ -350,6 +353,8 @@ static game_state *blank_game(const game_params *params)
     state->numbers->numbers = snewn(w+h, int);
 
     state->num_errors = snewn(w+h, int);
+    state->num_done = snewn(w+h, bool);
+    for (i=0;i<w+h;i++) state->num_done[i] = false;
 
     clear_game(state);
 
@@ -377,6 +382,8 @@ static game_state *dup_game(const game_state *state)
     state->numbers->refcount++;
     ret->num_errors = snewn(w+h, int);
     memcpy(ret->num_errors, state->num_errors, (w+h)*sizeof(int));
+    ret->num_done = snewn(w+h, bool);
+    memcpy(ret->num_done, state->num_done, (w+h)*sizeof(bool));
 
     ret->completed = state->completed;
     ret->used_solve = state->used_solve;
@@ -392,6 +399,7 @@ static void free_game(game_state *state)
         sfree(state->numbers);
     }
     sfree(state->num_errors);
+    sfree(state->num_done);
     sfree(state->sflags);
     sfree(state);
 }
@@ -1937,6 +1945,7 @@ struct game_drawstate {
     int w, h, sz;
     unsigned int *flags, *flags_drag;
     int *num_errors;
+    bool *num_done;
 };
 
 static void update_ui_drag(const game_state *state, game_ui *ui, int gx, int gy)
@@ -2095,7 +2104,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->dragging = false;
 
         if (!INGRID(state, gx, gy)) {
-            /* can't drag from off grid */
+            if (gx >= 0 && gx < (state)->p.w && gy == -1) {
+                sprintf(tmpbuf, "D%d", gx);
+                return dupstr(tmpbuf);
+            }
+            else if (gy >= 0 && gy < (state)->p.h && gx == (state)->p.w) {
+                sprintf(tmpbuf, "D%d", gy + (state)->p.w);
+                return dupstr(tmpbuf);
+            }
             return NULL;
         }
 
@@ -2111,13 +2127,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->clicky = y;
         ui->drag_sx = ui->drag_ex = gx;
         ui->drag_sy = ui->drag_ey = gy;
-        /* update_ui_drag(state, ui, gx, gy); */
+        update_ui_drag(state, ui, gx, gy);
 
         return UI_UPDATE;
     }
 
     if (IS_MOUSE_DRAG(button)) {
         ui->cursor_active = false;
+        if (!INGRID(state, gx, gy)) return NULL;
         update_ui_drag(state, ui, gx, gy);
         return UI_UPDATE;
     }
@@ -2185,7 +2202,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
 static game_state *execute_move(const game_state *state, const char *move)
 {
-    int w = state->p.w, x, y, n, i;
+    int w = state->p.w, x, y, n, i, clue;
     char c, d;
     unsigned f;
     game_state *ret = dup_game(state);
@@ -2199,7 +2216,15 @@ static game_state *execute_move(const game_state *state, const char *move)
         if (c == 'S') {
             ret->used_solve = true;
             move++;
-        } else if (c == 'T' || c == 't' || c == 'N' || c == 'n') {
+        } 
+        else if (c == 'D') {
+            move++;
+            if (sscanf(move, "%d%n", &clue, &n) != 1)
+                goto badmove;
+            move += n;
+            ret->num_done[clue] = !ret->num_done[clue];
+        }
+        else if (c == 'T' || c == 't' || c == 'N' || c == 'n') {
             /* set track, clear track; set notrack, clear notrack */
             move++;
             if (sscanf(move, "%c%d,%d%n", &d, &x, &y, &n) != 3)
@@ -2217,7 +2242,7 @@ static game_state *execute_move(const game_state *state, const char *move)
                 for (i = 0; i < 4; i++) {
                     unsigned df = 1<<i;
 
-                    if (MOVECHAR(df) == d) {
+                    if (MOVECHAR(df) == d && f != S_NOTRACK) {
                         if (c == 'T' || c == 'N')
                             S_E_SET(ret, x, y, df, f);
                         else
@@ -2276,7 +2301,7 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 enum {
     COL_BACKGROUND, 
     COL_TRACK_BACKGROUND,
-    COL_GRID, COL_CLUE, COL_CURSOR,
+    COL_GRID, COL_CLUE, COL_CURSOR, COL_DONE,
     COL_TRACK, COL_TRACK_CLUE, COL_SLEEPER,
     COL_DRAGON, COL_DRAGOFF,
     COL_ERROR, COL_ERROR_BACKGROUND,
@@ -2296,11 +2321,12 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_CLUE             * 3 + i] = 0.0F;
         ret[COL_GRID             * 3 + i] = 0.5F;
         ret[COL_CURSOR           * 3 + i] = 0.6F;
+        ret[COL_DONE             * 3 + i] = 0.75F;
         ret[COL_ERROR_BACKGROUND * 3 + i] = 0.25F;
         ret[COL_SLEEPER          * 3 + i] = 0.25F;
         ret[COL_ERROR            * 3 + i] = 0.75F;
-        ret[COL_DRAGON           * 3 + i] = 0.25F;
-        ret[COL_DRAGOFF          * 3 + i] = 0.75F;
+        ret[COL_DRAGON           * 3 + i] = 0.4F;
+        ret[COL_DRAGOFF          * 3 + i] = 0.9F;
     }
 
     *ncolours = NCOLOURS;
@@ -2324,8 +2350,11 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
         ds->flags[i] = ds->flags_drag[i] = 0;
 
     ds->num_errors = snewn(ds->w+ds->h, int);
-    for (i = 0; i < ds->w+ds->h; i++)
+    ds->num_done = snewn(ds->w+ds->h, bool);
+    for (i = 0; i < ds->w+ds->h; i++) {
         ds->num_errors[i] = 0;
+        ds->num_done[i] = false;
+    }
 
     return ds;
 }
@@ -2335,6 +2364,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
     sfree(ds->flags);
     sfree(ds->flags_drag);
     sfree(ds->num_errors);
+    sfree(ds->num_done);
     sfree(ds);
 }
 
@@ -2638,10 +2668,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     }
 
     for (i = 0; i < w+h; i++) {
-        if (force || (state->num_errors[i] != ds->num_errors[i])) {
+        if (force || 
+           (state->num_errors[i] != ds->num_errors[i]) ||
+           (state->num_done[i] != ds->num_done[i])) {
             ds->num_errors[i] = state->num_errors[i];
+            ds->num_done[i] = state->num_done[i];
             draw_clue(dr, ds, w, state->numbers->numbers[i], i,
-                      ds->num_errors[i] ? COL_ERROR : COL_CLUE,
+                      ds->num_errors[i] ? COL_ERROR : 
+                      ds->num_done[i]   ? COL_DONE : COL_CLUE,
               ds->num_errors[i] ? COL_ERROR_BACKGROUND : COL_BACKGROUND);
         }
     }

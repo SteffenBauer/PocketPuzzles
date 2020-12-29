@@ -4179,8 +4179,7 @@ static game_state *execute_move(const game_state *from, const char *move)
             int index = (y*cr+x) * cr + (n-1);
             ret->pencil[index] = !ret->pencil[index];
         } else {
-            ret->grid[y*cr+x] = n;
-            /* memset(ret->pencil + (y*cr+x)*cr, 0, cr); */
+            ret->grid[y*cr+x] = ret->grid[y*cr+x] == n ? 0 : n;
 
             /*
              * We've made a real change to the grid. Check to see

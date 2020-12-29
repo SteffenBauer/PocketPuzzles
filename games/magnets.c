@@ -1707,26 +1707,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     char *nullret = NULL, buf[80], movech;
     enum { CYCLE_MAGNET, CYCLE_NEUTRAL } action;
 
-    if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->cur_x, &ui->cur_y, state->w, state->h, false);
-        ui->cur_visible = true;
-        return UI_UPDATE;
-    } else if (IS_CURSOR_SELECT(button)) {
-        if (!ui->cur_visible) {
-            ui->cur_visible = true;
-            return UI_UPDATE;
-        }
-        action = (button == CURSOR_SELECT) ? CYCLE_MAGNET : CYCLE_NEUTRAL;
-        gx = ui->cur_x;
-        gy = ui->cur_y;
-    } else if (INGRID(state, gx, gy) &&
-               (button == LEFT_BUTTON || button == RIGHT_BUTTON)) {
-        if (ui->cur_visible) {
-            ui->cur_visible = false;
-            nullret = UI_UPDATE;
-        }
+    if (INGRID(state, gx, gy) && (button == LEFT_BUTTON || button == RIGHT_BUTTON)) {
         action = (button == LEFT_BUTTON) ? CYCLE_MAGNET : CYCLE_NEUTRAL;
-    } else if (button == LEFT_BUTTON && is_clue(state, gx, gy)) {
+    } else if ((button == LEFT_BUTTON || button == RIGHT_BUTTON) && is_clue(state, gx, gy)) {
         sprintf(buf, "D%d,%d", gx, gy);
         return dupstr(buf);
     } else
@@ -1758,7 +1741,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             movech = '.';
     } else {
         assert(!"unknown action");
-    movech = 0;               /* placate optimiser */
+        movech = 0;               /* placate optimiser */
     }
 
     sprintf(buf, "%c%d,%d", movech, gx, gy);

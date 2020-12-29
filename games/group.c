@@ -1718,7 +1718,7 @@ static game_state *execute_move(const game_state *from, const char *move)
             else if (move[0] == 'P' && n > 0) {
                 ret->pencil[y*w+x] ^= 1 << n;
             } else {
-                ret->grid[y*w+x] = n;
+                ret->grid[y*w+x] = ret->grid[y*w+x] == n ? 0 : n;
             }
 
             if (!*mp)

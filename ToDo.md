@@ -87,9 +87,9 @@
 - [X] ABCD
 - [X] Boats
 - [ ] Pattern
-- [ ] Salad
+- [X] Range
 - [X] Tents
-- [ ] Tracks
+- [X] Tracks
 
 #### Game specific UI settings
 
