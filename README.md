@@ -12,6 +12,8 @@ To get a mostly complete collection for all puzzles ever written for the SGT puz
 
 ### Development history
 
+**30.12.2020 v0.7.1** Implemented 'hint grey-out'. In the puzzles with this feature, one can now click on a game hint to grey it out. This serves the purpose of marking a hint as 'done', so it doesn't distract anymore from puzzle solving. See ToDo.md for list of affected games.
+
 **27.12.2020 v0.7.0** Implemented 'one-click symbol fill' entry method in games that use numbers/letters/symbols in a grid (see ToDo.md for the list of affected games). Usage: When no grid cell is currently highlighted or 'pencil mark highlighted', one can press a control button. That button is then highlighted until pressed again or another button is highlighted. While a button is selected, clicking into a cell directly enters that symbol; long-click enters a pencil mark.
 
 **15.12.2020 v0.6.3** Added 'Map' and 'Samegame'; switched both games from color to grayscale textures.
