@@ -2325,8 +2325,8 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_ERROR_BACKGROUND * 3 + i] = 0.25F;
         ret[COL_SLEEPER          * 3 + i] = 0.25F;
         ret[COL_ERROR            * 3 + i] = 0.75F;
-        ret[COL_DRAGON           * 3 + i] = 0.4F;
-        ret[COL_DRAGOFF          * 3 + i] = 0.9F;
+        ret[COL_DRAGON           * 3 + i] = 0.75F;
+        ret[COL_DRAGOFF          * 3 + i] = 1.0F;
     }
 
     *ncolours = NCOLOURS;
@@ -2543,6 +2543,7 @@ static void draw_square(drawing *dr, game_drawstate *ds,
     c = COL_TRACK;
     flags_best = best_bits((flags & DS_NOTRACK) == DS_NOTRACK,
                            (flags_drag & DS_NOTRACK) == DS_NOTRACK, &c);
+    if (c == COL_DRAGON) c = COL_TRACK;
     if (flags_best) {
         off = HALFSZ/2;
         draw_thick_line(dr, LINE_THICK, cx - off, cy - off, cx + off, cy + off, c);
@@ -2551,6 +2552,7 @@ static void draw_square(drawing *dr, game_drawstate *ds,
 
     c = COL_TRACK;
     flags_best = best_bits(flags >> DS_NSHIFT, flags_drag >> DS_NSHIFT, &c);
+    if (c == COL_DRAGON) c = COL_TRACK;
     for (d = 1; d < 16; d *= 2) {
         off = t16;
         cx = ox + t2;
