@@ -1123,7 +1123,7 @@ static int clue_index(const game_state *state, int x, int y) {
 }
 
 static char *interpret_move(const game_state *state, game_ui *ui, const game_drawstate *ds,
-                int ox, int oy, int button)
+                int ox, int oy, int button, bool swapped)
 {
     int w = state->w;
     int h = state->h;
@@ -1140,8 +1140,15 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     
     /* Mouse click */
     if (gx >= 0 && gx < w && gy >= 0 && gy < h) {
+        /* One-click fill */
+        if (((button == LEFT_RELEASE && !swapped) || 
+             (button == LEFT_BUTTON && swapped)) &&
+             (!ui->hdrag && (ui->hhint >= 0))) {
+            sprintf(buf, "R%d,%d,%c", gx, gy, (ui->hhint == EMPTY) ? '-' : 'A' + ui->hhint);
+            return dupstr(buf);
+        }
         /* Select square for letter placement */
-        if (button == LEFT_BUTTON) {
+        else if (button == LEFT_BUTTON) {
             /* One-click fill */
             if (ui->hhint >= 0) {
                 ui->hdrag = false;
@@ -1193,13 +1200,6 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
         }
         else if (button == LEFT_DRAG) {
             ui->hdrag = true;
-        }
-        else if (button == LEFT_RELEASE) {
-            if (!ui->hdrag && (ui->hhint >= 0)) {
-                sprintf(buf, "R%d,%d,%c", gx, gy, (ui->hhint == EMPTY) ? '-' : 'A' + ui->hhint);
-                return dupstr(buf);
-            }
-            ui->hdrag = false;
         }
     } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         int pos = clue_index(state,gx,gy);

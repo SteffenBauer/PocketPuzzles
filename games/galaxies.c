@@ -2337,7 +2337,7 @@ static void coord_round_to_edge(float x, float y, int *xr, int *yr)
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     /* UI operations (play mode):
      *

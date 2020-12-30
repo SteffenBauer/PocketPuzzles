@@ -1154,7 +1154,7 @@ struct game_drawstate {
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     bool control = button & MOD_CTRL, shift = button & MOD_SHFT;
     button &= ~MOD_MASK;

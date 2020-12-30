@@ -858,7 +858,7 @@ struct game_drawstate {
 enum {MAYBE_LEFT, MAYBE_RIGHT, ON_LEFT, ON_RIGHT, OFF_LEFT, OFF_RIGHT};
 
 static char *interpret_move(const game_state *state, game_ui *ui,
-                            const game_drawstate *ds, int x, int y, int button)
+                            const game_drawstate *ds, int x, int y, int button, bool swapped)
 {
     int w = state->shared->params.w, h = state->shared->params.h;
 

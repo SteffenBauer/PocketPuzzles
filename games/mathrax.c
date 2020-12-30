@@ -1143,7 +1143,7 @@ struct game_drawstate {
 #define FROMCOORD(x) ( (x < (tilesize/2)) ? -1 : ((x)-(tilesize/2)) / tilesize )
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int ox, int oy, int button)
+                            int ox, int oy, int button, bool swapped)
 {
     int o = state->o;
     int tilesize = ds->tilesize;
@@ -1159,8 +1159,15 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     
     /* Mouse click */
     if (gx >= 0 && gx < o && gy >= 0 && gy < o) {
+        if (((button == LEFT_RELEASE && !swapped) || 
+             (button == LEFT_BUTTON && swapped)) &&
+             (!ui->hdrag && (ui->hhint >= 0)) &&
+             !(state->flags[gy*o+gx] & F_IMMUTABLE)) {
+            sprintf(buf, "R%d,%d,%c", gx, gy, (char)((ui->hhint > 0) ? '0' + ui->hhint : '-'));
+            return dupstr(buf);
+        }
         /* Select square for letter placement */
-        if (button == LEFT_BUTTON) {
+        else if (button == LEFT_BUTTON) {
             /* One-click fill */
             if (ui->hhint >= 0) {
                 ui->hdrag = false;
@@ -1219,15 +1226,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         else if (button == LEFT_DRAG) {
             ui->hdrag = true;
         }
-        else if (button == LEFT_RELEASE) {
-            if (!ui->hdrag && (ui->hhint >= 0) && 
-                !(state->flags[gy*o+gx] & F_IMMUTABLE)) {
-                sprintf(buf, "R%d,%d,%c", gx, gy, (char)((ui->hhint > 0) ? '0' + ui->hhint : '-'));
-                return dupstr(buf);
-            }
-            ui->hdrag = false;
-        }
-    } else if (button == LEFT_BUTTON) {
+    } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         ui->cshow = false;
         ui->cpencil = false;
         ui->hhint = -1;

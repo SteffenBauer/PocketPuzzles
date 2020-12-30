@@ -557,7 +557,7 @@ struct game_drawstate {
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int cx = -1, cy = -1, dx, dy;
     char buf[80];

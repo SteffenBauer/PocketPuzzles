@@ -653,7 +653,7 @@ static bool compute_hint(const game_state *state, int *out_x, int *out_y)
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int cx = X(state, state->gap_pos), nx = cx;
     int cy = Y(state, state->gap_pos), ny = cy;

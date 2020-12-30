@@ -1543,7 +1543,7 @@ struct game_drawstate {
 #define FROMCOORD(x) ( ((x) < (ds->tilesize/2)) ? -1 : ((x)-(ds->tilesize/2)) / ds->tilesize )
 
 static char *interpret_move(const game_state *state, game_ui *ui, const game_drawstate *ds,
-                int mx, int my, int button)
+                int mx, int my, int button, bool swapped)
 {
     int w = state->w;
     int h = state->h;
@@ -1554,7 +1554,15 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     
     button &= ~MOD_MASK;
 
-    if (IS_MOUSE_DOWN(button)) {
+    if (((button == LEFT_RELEASE && !swapped) || 
+         (button == LEFT_BUTTON && swapped)) &&
+         (!ui->hdrag && (ui->hhint != ' ') && 
+         (x >= 0) && (x < w) && (y >= 0) && (y < h) &&
+         !(state->grid[y*w+x] & FM_FIXED))) {
+        sprintf(buf, "R%d,%d,%c", x, y, (ui->hhint == '\b') ? '-' : ui->hhint);
+        return dupstr(buf);
+    }
+    else if (IS_MOUSE_DOWN(button)) {
         if (ui->hshow && (x >= 0) && (x < w) && (y >= 0) && (y < h) && (x==ui->hx) && (y==ui->hy)) {
             ui->hshow = ui->hpencil = false; 
             ui->hx = ui->hy = -1;
@@ -1591,15 +1599,6 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     }
     else if (button == LEFT_DRAG) {
         ui->hdrag = true;
-    }
-    else if (button == LEFT_RELEASE) {
-        if (!ui->hdrag && (ui->hhint != ' ') && 
-            (x >= 0) && (x < w) && (y >= 0) && (y < h) &&
-             !(state->grid[y*w+x] & FM_FIXED)) {
-                sprintf(buf, "R%d,%d,%c", x, y, (ui->hhint == '\b') ? '-' : ui->hhint);
-                return dupstr(buf);
-        }
-        ui->hdrag = false;
     }
     else if (ui->hshow && (button == 'T' || button == 'D' || button == 'W' || button == 'E' || button == '\b')) {
         m = ui->hpencil ? 'P' : 'R';

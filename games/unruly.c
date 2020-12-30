@@ -1458,7 +1458,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int ox, int oy, int button)
+                            int ox, int oy, int button, bool swapped)
 {
     int hx = ui->cx;
     int hy = ui->cy;

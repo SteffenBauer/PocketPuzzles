@@ -1474,7 +1474,7 @@ static bool check_errors(const game_state *state, long *errors)
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int w = state->par.w;
     int tx, ty;
@@ -1511,7 +1511,16 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                     return UI_UPDATE;  /* no-op */
             }
         }
-    } else if (IS_MOUSE_DOWN(button)) {
+    } 
+    else if (((button == LEFT_RELEASE && !swapped) || 
+              (button == LEFT_BUTTON && swapped)) && 
+              (!ui->hdrag && ui->hhint >= 0) &&
+              (tx >= 0 && tx < w && ty >= 0 && ty < w) && 
+               !state->common->immutable[ty*w+tx]) {
+        sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
+        return dupstr(buf);
+    }
+    else if (IS_MOUSE_DOWN(button)) {
         if (tx >= 0 && tx < w && ty >= 0 && ty < w) {
             int otx = tx, oty = ty;
             tx = state->sequence[tx];
@@ -1599,13 +1608,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
         return UI_UPDATE;
     } 
-    if (button == LEFT_RELEASE && !ui->hdrag && ui->hhint >= 0) {
-        if ((tx >= 0 && tx < w && ty >= 0 && ty < w) && !state->common->immutable[ty*w+tx]) {
-            sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
-            return dupstr(buf);
-        }
-        ui->hdrag = false;
-    }
 
     if (ui->hshow &&
     ((ISCHAR(button) && FROMCHAR(button, state->par.id) <= w) || button == '\b')) {

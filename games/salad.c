@@ -1359,7 +1359,7 @@ struct game_drawstate {
 #define FROMCOORD(x) ( ((x)/ TILE_SIZE) - 1 )
 
 static char *interpret_move(const game_state *state, game_ui *ui, const game_drawstate *ds,
-                int x, int y, int button)
+                int x, int y, int button, bool swapped)
 {
     int i, o, nums, pos, gx, gy;
     char buf[80];
@@ -1372,7 +1372,19 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     button &= ~MOD_MASK;
     
     if(gx >= 0 && gx < o && gy >= 0 && gy < o) {
-        if(button == LEFT_BUTTON) {
+        if (((button == LEFT_RELEASE && !swapped) || 
+             (button == LEFT_BUTTON && swapped)) &&
+             (!ui->hdrag && (ui->hhint >= 0)) &&
+             (state->gridclues[(gy*o)+gx] == 0 ||
+              state->gridclues[(gy*o)+gx] == LATINH_CIRCLE)) {
+            sprintf(buf, "R%d,%d,%c", gx, gy, 
+                   (char)((ui->hhint == ('X' - 'A' + 1)) ? 'X' :
+                          (ui->hhint == ('O' - 'A' + 1)) ? 'O' :
+                          (ui->hhint > 0)                ? ui->hhint + '0' :
+                                                           '-'));
+            return dupstr(buf);
+        }
+        else if(button == LEFT_BUTTON) {
             if (ui->hhint >= 0) {
                 ui->hdrag = false;
             }
@@ -1419,19 +1431,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
         else if (button == LEFT_DRAG) {
             ui->hdrag = true;
         }
-        else if (button == LEFT_RELEASE) {
-            if (!ui->hdrag && ui->hhint >= 0 && 
-               (state->gridclues[(gy*o)+gx] == 0 ||
-                state->gridclues[(gy*o)+gx] == LATINH_CIRCLE)) {
-                sprintf(buf, "R%d,%d,%c", gx, gy, 
-                        (char)((ui->hhint == ('X' - 'A' + 1)) ? 'X' :
-                               (ui->hhint == ('O' - 'A' + 1)) ? 'O' :
-                               (ui->hhint > 0)                ? ui->hhint + '0' :
-                                                                '-'));
-                return dupstr(buf);
-            }
-        }
-    } else if (button == LEFT_BUTTON) {
+    } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         ui->hshow = false;
         ui->hpencil = false;
         ui->hhint = -1;

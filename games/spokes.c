@@ -1035,7 +1035,7 @@ struct game_drawstate {
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int ox, int oy, int button)
+                            int ox, int oy, int button, bool swapped)
 {
     int tilesize = ds->tilesize;
     int x = FROMCOORD(ox);

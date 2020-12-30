@@ -860,7 +860,7 @@ void midend_restart_game(midend *me)
     midend_set_timer(me);
 }
 
-static bool midend_really_process_key(midend *me, int x, int y, int button)
+static bool midend_really_process_key(midend *me, int x, int y, int button, bool swapped)
 {
     game_state *oldstate =
         me->ourgame->dup_game(me->states[me->statepos - 1].state);
@@ -873,7 +873,7 @@ static bool midend_really_process_key(midend *me, int x, int y, int button)
     if (!IS_UI_FAKE_KEY(button)) {
         movestr = me->ourgame->interpret_move(
             me->states[me->statepos-1].state,
-            me->ui, me->drawstate, x, y, button);
+            me->ui, me->drawstate, x, y, button, swapped);
     }
 
     if (!movestr) {
@@ -976,7 +976,7 @@ static bool midend_really_process_key(midend *me, int x, int y, int button)
     return ret;
 }
 
-bool midend_process_key(midend *me, int x, int y, int button)
+bool midend_process_key(midend *me, int x, int y, int button, bool swapped)
 {
     bool ret = true;
 
@@ -1078,7 +1078,7 @@ bool midend_process_key(midend *me, int x, int y, int button)
          */
         ret = ret && midend_really_process_key
             (me, x, y, (me->pressed_mouse_button +
-                        (LEFT_RELEASE - LEFT_BUTTON)));
+                        (LEFT_RELEASE - LEFT_BUTTON)), swapped);
     }
 
     /*
@@ -1101,7 +1101,7 @@ bool midend_process_key(midend *me, int x, int y, int button)
     /*
      * Now send on the event we originally received.
      */
-    ret = ret && midend_really_process_key(me, x, y, button);
+    ret = ret && midend_really_process_key(me, x, y, button, swapped);
 
     /*
      * And update the currently pressed button.

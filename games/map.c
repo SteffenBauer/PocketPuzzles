@@ -2210,7 +2210,7 @@ static int region_from_coords(const game_state *state,
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     char *bufp, buf[256];
     bool alt_button;
@@ -2227,7 +2227,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->drag_pencil = state->pencil[r];
             if (ui->drag_colour >= 0)
                 ui->drag_pencil = 0;
-            ui->highlight_region = (button == RIGHT_BUTTON) ? r : -1;
+            ui->highlight_region = ((!swapped && button == RIGHT_BUTTON) || (swapped && button == LEFT_BUTTON)) ? r : -1;
         } else {
             ui->drag_colour = -1;
             ui->drag_pencil = 0;

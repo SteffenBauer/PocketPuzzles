@@ -1089,7 +1089,7 @@ static int find_move_dest(const game_state *from, int direction,
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int direction, mask, i;
     int skey[2], dkey[2];
