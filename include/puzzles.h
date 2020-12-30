@@ -312,7 +312,7 @@ void midend_reset_tilesize(midend *me);
 void midend_new_game(midend *me);
 void midend_restart_game(midend *me);
 void midend_stop_anim(midend *me);
-bool midend_process_key(midend *me, int x, int y, int button);
+bool midend_process_key(midend *me, int x, int y, int button, bool swapped);
 key_label *midend_request_keys(midend *me, int *nkeys);
 bool midend_is_key_highlighted(midend *me, char c);
 void midend_force_redraw(midend *me);
@@ -668,7 +668,7 @@ struct game {
     void (*changed_state)(game_ui *ui, const game_state *oldstate,
                           const game_state *newstate);
     char *(*interpret_move)(const game_state *state, game_ui *ui,
-                            const game_drawstate *ds, int x, int y, int button);
+                            const game_drawstate *ds, int x, int y, int button, bool swapped);
     game_state *(*execute_move)(const game_state *state, const char *move);
     int preferred_tilesize;
     void (*compute_size)(const game_params *params, int tilesize,

@@ -1706,7 +1706,7 @@ static bool check_errors(const game_state *state, long *errors)
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int w = state->par.w;
     int tx, ty;
@@ -1718,7 +1718,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     ty = FROMCOORD(y);
 
     if (tx >= 0 && tx < w && ty >= 0 && ty < w) {
-        if (button == LEFT_BUTTON) {
+        if (((button == LEFT_RELEASE && !swapped) || 
+            (button == LEFT_BUTTON && swapped)) &&
+            (!ui->hdrag && (ui->hhint >= 0))) {
+            sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
+            return dupstr(buf);
+        }
+        else if (button == LEFT_BUTTON) {
             if (ui->hhint >= 0) {
                 ui->hdrag = false;
             }
@@ -1736,7 +1742,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hcursor = false;
             return UI_UPDATE;
         }
-        if (button == RIGHT_BUTTON) {
+        else if (button == RIGHT_BUTTON) {
             if ((ui->hhint >= 0) && (state->grid[ty*w+tx] == 0)) {
                 sprintf(buf, "P%d,%d,%d", tx, ty, ui->hhint);
                 return dupstr(buf);
@@ -1759,17 +1765,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hdrag = false;
             return UI_UPDATE;
         }
-        if (button == LEFT_DRAG) {
+        else if (button == LEFT_DRAG) {
             ui->hdrag = true;
         }
-        if (button == LEFT_RELEASE) {
-            if (!ui->hdrag && (ui->hhint >= 0)) {
-                sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
-                return dupstr(buf);
-            }
-            ui->hdrag = false;
-        }
-    } else if (button == LEFT_BUTTON) {
+    } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         ui->hshow = false;
         ui->hcursor = false;
         ui->hhint = -1;

@@ -3969,7 +3969,7 @@ struct game_drawstate {
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int cr = state->cr;
     int tx, ty;
@@ -3981,7 +3981,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     ty = (y + TILE_SIZE - BORDER) / TILE_SIZE - 1;
 
     if (tx >= 0 && tx < cr && ty >= 0 && ty < cr) {
-        if (button == LEFT_BUTTON) {
+        if (((button == LEFT_RELEASE && !swapped) || 
+             (button == LEFT_BUTTON && swapped)) &&
+             (!ui->hdrag && ui->hhint >= 0)) {
+            sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
+            return dupstr(buf);
+        }
+        else if (button == LEFT_BUTTON) {
             if (state->immutable[ty*cr+tx]) {
                 ui->hshow = false;
                 ui->hhint = -1;
@@ -3999,7 +4005,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hcursor = false;
             return UI_UPDATE;
         }
-        if (button == RIGHT_BUTTON) {
+        else if (button == RIGHT_BUTTON) {
             /*
              * Pencil-mode highlighting for non filled squares.
              */
@@ -4025,17 +4031,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hdrag = false;
             return UI_UPDATE;
         }
-        if (button == LEFT_DRAG) {
+        else if (button == LEFT_DRAG) {
             ui->hdrag = true;
         }
-        if (button == LEFT_RELEASE) {
-            if (!ui->hdrag && ui->hhint >= 0) {
-                sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
-                return dupstr(buf);
-            }
-            ui->hdrag = false;
-        } 
-    } else if (button == LEFT_BUTTON) {
+    } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         ui->hshow = false;
         ui->hpencil = false;
         ui->hhint = -1;

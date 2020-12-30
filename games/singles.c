@@ -1443,7 +1443,7 @@ struct game_drawstate {
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int mx, int my, int button)
+                            int mx, int my, int button, bool swapped)
 {
     char buf[80], c;
     int i, x = FROMCOORD(mx), y = FROMCOORD(my);

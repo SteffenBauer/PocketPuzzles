@@ -1031,7 +1031,7 @@ int move_type(const game_state *state, int dx, int dy)
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int dx=0, dy=0;
     char *move;

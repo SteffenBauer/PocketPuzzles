@@ -873,7 +873,7 @@ struct game_drawstate {
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int gx = -1, gy = -1, rangeno = -1, wouldflash = 0;
     enum { NONE, TOGGLE_BALL, TOGGLE_LOCK, FIRE, REVEAL,

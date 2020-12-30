@@ -2380,7 +2380,7 @@ struct game_drawstate {
 
 static char *interpret_move(const game_state *from, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int cx, cy;
     char buf[256];

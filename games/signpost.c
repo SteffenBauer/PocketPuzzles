@@ -1274,7 +1274,7 @@ struct game_drawstate {
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int mx, int my, int button)
+                            int mx, int my, int button, bool swapped)
 {
     int x = FROMCOORD(mx), y = FROMCOORD(my), w = state->w;
     char buf[80];
@@ -1688,7 +1688,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * as not to stomp on the real UI's drag state. */
     if (ui->dragging) {
         game_ui uicopy = *ui;
-        char *movestr = interpret_move(state, &uicopy, ds, ui->dx, ui->dy, LEFT_RELEASE);
+        char *movestr = interpret_move(state, &uicopy, ds, ui->dx, ui->dy, LEFT_RELEASE, false);
 
         if (movestr != NULL && strcmp(movestr, "") != 0) {
             postdrop = execute_move(state, movestr);

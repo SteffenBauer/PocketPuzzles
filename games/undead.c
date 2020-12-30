@@ -2114,7 +2114,7 @@ static int clue_index(const game_state *state, int x, int y)
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int gx,gy;
     int g,xi;
@@ -2190,7 +2190,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (xi >= 0 && !state->common->fixed[xi]) {
             g = state->guess[xi];
             if (!ui->hshow) {
-                if (button == LEFT_BUTTON) {
+                if (((button == LEFT_RELEASE && !swapped) || 
+                     (button == LEFT_BUTTON && swapped)) &&
+                     (!ui->hdrag && (ui->hhint != ' '))) {
+                    sprintf(buf, "%c%d", (ui->hhint == '\b') ? 'E' : ui->hhint, xi);
+                    return dupstr(buf);
+                }
+                else if (button == LEFT_BUTTON) {
                     if (ui->hhint != ' ') {
                         ui->hdrag = false;
                     }
@@ -2215,13 +2221,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 }
                 else if (button == LEFT_DRAG) {
                     ui->hdrag = true;
-                }
-                else if (button == LEFT_RELEASE) {
-                    if (!ui->hdrag && (ui->hhint != ' ')) {
-                        sprintf(buf, "%c%d", (ui->hhint == '\b') ? 'E' : ui->hhint, xi);
-                        return dupstr(buf);
-                    }
-                    ui->hdrag = false;
                 }
             }
             else if (ui->hshow) {

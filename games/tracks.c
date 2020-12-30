@@ -2091,7 +2091,7 @@ static game_state *copy_and_apply_drag(const game_state *state, const game_ui *u
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int w = state->p.w, direction;
     int gx = FROMCOORD(x), gy = FROMCOORD(y);

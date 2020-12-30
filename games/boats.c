@@ -2925,7 +2925,7 @@ static bool boats_validate_move(const game_state *state, int sx, int sy, int ex,
 }
 
 static char *interpret_move(const game_state *state, game_ui *ui, const game_drawstate *ds,
-                int ox, int oy, int button)
+                int ox, int oy, int button, bool swapped)
 {
     char buf[80];
     char from, to;

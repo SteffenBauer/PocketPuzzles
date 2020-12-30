@@ -2557,7 +2557,7 @@ static char *ascent_mouse_click(const game_state *state, game_ui *ui,
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int ox, int oy, int button)
+                            int ox, int oy, int button, bool swapped)
 {
     int w = state->w, h = state->h;
     int gx, gy;

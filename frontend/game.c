@@ -400,7 +400,7 @@ void gameTap(int x, int y) {
             fe->current_pointer = (fe->swapped ? RIGHT_BUTTON : LEFT_BUTTON);
         else {
             fe->current_pointer = LEFT_BUTTON;
-            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_BUTTON);
+            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_BUTTON, fe->swapped);
         }
     }
 }
@@ -408,7 +408,7 @@ void gameTap(int x, int y) {
 void gameLongTap(int x, int y) {
     if (coord_in_gamecanvas(x, y) && fe->with_rightpointer) {
         midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), 
-                           (fe->swapped ? LEFT_BUTTON : RIGHT_BUTTON));
+                           (fe->swapped ? LEFT_BUTTON : RIGHT_BUTTON), fe->swapped);
         fe->current_pointer = (fe->swapped ? LEFT_BUTTON : RIGHT_BUTTON);
     }
 }
@@ -417,21 +417,23 @@ void gameDrag(int x, int y) {
     if (coord_in_gamecanvas(x, y)) {
         if (fe->current_pointer == LEFT_BUTTON) {
             if (fe->with_rightpointer && !fe->swapped)
-                midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), LEFT_BUTTON);
-            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_DRAG);
+                midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), 
+                    (fe->pointerdown_y)-(fe->yoffset), LEFT_BUTTON, fe->swapped);
+            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_DRAG, fe->swapped);
             fe->current_pointer = LEFT_DRAG;
         }
         else if (fe->current_pointer == LEFT_DRAG) {
-            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_DRAG);
+            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_DRAG, fe->swapped);
         }
         else if (fe->current_pointer == RIGHT_BUTTON) {
             if (fe->with_rightpointer && fe->swapped)
-                midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), RIGHT_BUTTON);
-            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_DRAG);
+                midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset),
+                    (fe->pointerdown_y)-(fe->yoffset), RIGHT_BUTTON, fe->swapped);
+            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_DRAG, fe->swapped);
             fe->current_pointer = RIGHT_DRAG;
         }
         else if (fe->current_pointer == RIGHT_DRAG) {
-            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_DRAG);
+            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_DRAG, fe->swapped);
             fe->current_pointer = RIGHT_DRAG;
         }
     }
@@ -443,19 +445,21 @@ void gameRelease(int x, int y) {
     if (coord_in_gamecanvas(init_tap_x, init_tap_y)) {
         if (fe->current_pointer == LEFT_BUTTON) {
             if (fe->with_rightpointer && !fe->swapped)
-                midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), LEFT_BUTTON);
-            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_RELEASE);
+                midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset),
+                    (fe->pointerdown_y)-(fe->yoffset), LEFT_BUTTON, fe->swapped);
+            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_RELEASE, fe->swapped);
         }
         else if (fe->current_pointer == LEFT_DRAG) {
-            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_RELEASE);
+            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_RELEASE, fe->swapped);
         }
         else if (fe->current_pointer == RIGHT_BUTTON) {
             if (fe->with_rightpointer && fe->swapped)
-                midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset), (fe->pointerdown_y)-(fe->yoffset), RIGHT_BUTTON);
-            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_RELEASE);
+                midend_process_key(me, (fe->pointerdown_x)-(fe->xoffset),
+                    (fe->pointerdown_y)-(fe->yoffset), RIGHT_BUTTON, fe->swapped);
+            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_RELEASE, fe->swapped);
         }
         else if (fe->current_pointer == RIGHT_DRAG) {
-            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_RELEASE);
+            midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), RIGHT_RELEASE, fe->swapped);
         }
         fe->current_pointer = 0;
     }
@@ -484,13 +488,13 @@ void gameRelease(int x, int y) {
                             fe->gamelayout.menubtn_size+2, typeMenuHandler);
                         return;
                     case ACTION_CTRL:
-                        midend_process_key(me, 0, 0, fe->gameButton[i].actionParm.c);
+                        midend_process_key(me, 0, 0, fe->gameButton[i].actionParm.c, fe->swapped);
                         break;
                     case ACTION_UNDO:
-                        if (midend_can_undo(me)) midend_process_key(me, 0, 0 , UI_UNDO);
+                        if (midend_can_undo(me)) midend_process_key(me, 0, 0 , UI_UNDO, fe->swapped);
                         break;
                     case ACTION_REDO:
-                        if (midend_can_redo(me)) midend_process_key(me, 0, 0, UI_REDO);
+                        if (midend_can_redo(me)) midend_process_key(me, 0, 0, UI_REDO, fe->swapped);
                         break;
                     case ACTION_SWAP:
                         fe->swapped = !fe->swapped;
@@ -505,13 +509,13 @@ void gameRelease(int x, int y) {
 }
 
 void gamePrev() {
-    if (midend_can_undo(me)) midend_process_key(me, 0, 0 , UI_UNDO);
+    if (midend_can_undo(me)) midend_process_key(me, 0, 0 , UI_UNDO, fe->swapped);
     gameDrawFurniture();
     SoftUpdate();
 }
 
 void gameNext() {
-    if (midend_can_redo(me)) midend_process_key(me, 0, 0, UI_REDO);
+    if (midend_can_redo(me)) midend_process_key(me, 0, 0, UI_REDO, fe->swapped);
     gameDrawFurniture();
     SoftUpdate();
 }
@@ -698,7 +702,9 @@ static LAYOUTTYPE gameGetLayout() {
     keys = midend_request_keys(me, &nkeys);
     if (keys == NULL) nkeys = 0;
 
-    addkeys = (fe->with_rightpointer) ? 3 : 2; // Left/right switch button 
+    addkeys = strcmp(fe->currentgame->name, "Ascent")==0   ? 2 :
+              strcmp(fe->currentgame->name, "Signpost")==0 ? 2 :
+              fe->with_rightpointer                        ? 3 : 2;
     fe->numGameButtons = 4 + nkeys + addkeys;
     fe->with_twoctrllines = (nkeys+addkeys) > 9;
     fe->with_statusbar = midend_wants_statusbar(me);
@@ -727,12 +733,14 @@ static LAYOUTTYPE gameGetLayout() {
         }
     }
 
-    if (fe->with_rightpointer) {
-        fe->gameButton[fe->btnSwapIDX = i++] = btn_swap;
+    if (strcmp(fe->currentgame->name, "Ascent")==0 ||
+        strcmp(fe->currentgame->name, "Signpost")==0 ||
+        !fe->with_rightpointer) {
         fe->gameButton[fe->btnUndoIDX = i++] = btn_undo;
         fe->gameButton[fe->btnRedoIDX = i++] = btn_redo;
     }
     else {
+        fe->gameButton[fe->btnSwapIDX = i++] = btn_swap;
         fe->gameButton[fe->btnUndoIDX = i++] = btn_undo;
         fe->gameButton[fe->btnRedoIDX = i++] = btn_redo;
     }

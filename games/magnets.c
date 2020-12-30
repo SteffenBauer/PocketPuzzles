@@ -1701,7 +1701,7 @@ static int clue_index(const game_state *state, int x, int y)
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button)
+                            int x, int y, int button, bool swapped)
 {
     int gx = FROMCOORD(x), gy = FROMCOORD(y), idx, curr;
     char *nullret = NULL, buf[80], movech;

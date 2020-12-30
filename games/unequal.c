@@ -1405,7 +1405,7 @@ struct game_drawstate {
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int ox, int oy, int button)
+                            int ox, int oy, int button, bool swapped)
 {
     int x = FROMCOORD(ox), y = FROMCOORD(oy), n;
     char buf[80];
@@ -1417,7 +1417,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if ((oy - COORD(y) > TILE_SIZE) || (ox - COORD(x) > TILE_SIZE))
             return NULL;
 
-        if (button == LEFT_BUTTON) {
+        if (((button == LEFT_RELEASE && !swapped) || 
+             (button == LEFT_BUTTON && swapped)) &&
+             (!ui->hdrag && (ui->hhint >= 0))) {
+            sprintf(buf, "R%d,%d,%d", x, y, ui->hhint);
+            return dupstr(buf);
+        }
+        else if (button == LEFT_BUTTON) {
             /* normal highlighting for non-immutable squares */
             if (GRID(state, flags, x, y) & F_IMMUTABLE) {
                 ui->hshow = false;
@@ -1441,7 +1447,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hdrag = false;
             return UI_UPDATE;
         }
-        if (button == RIGHT_BUTTON) {
+        else if (button == RIGHT_BUTTON) {
             /* pencil highlighting for non-filled squares */
             if (GRID(state, nums, x, y) != 0) {
                 ui->hshow = false;
@@ -1463,18 +1469,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hdrag = false;
             return UI_UPDATE;
         }
-        if (button == LEFT_DRAG) {
+        else if (button == LEFT_DRAG) {
             ui->hdrag = true;
         }
-        if (button == LEFT_RELEASE) {
-            if (!ui->hdrag && (ui->hhint >= 0)) {
-                sprintf(buf, "R%d,%d,%d", x, y, ui->hhint);
-                ui->hdrag = false;
-                return dupstr(buf);
-            }
-            ui->hdrag = false;
-        }
-    } else if (button == LEFT_BUTTON) {
+    } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         ui->hshow = false;
         ui->hpencil = false;
         ui->hcursor = false;
