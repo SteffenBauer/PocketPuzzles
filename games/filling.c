@@ -1224,16 +1224,16 @@ static const char *validate_desc(const game_params *params, const char *desc)
 static key_label *game_request_keys(const game_params *params, int *nkeys)
 {
     int i;
-    key_label *keys = snewn(11, key_label);
+    key_label *keys = snewn(10, key_label);
 
-    *nkeys = 11;
+    *nkeys = 10;
 
-    for(i = 0; i < 10; ++i) {
-        keys[i].button = '0' + i;
-        keys[i].label = NULL;
+    for(i = 1; i < 10; ++i) {
+        keys[i-1].button = '0' + i;
+        keys[i-1].label = NULL;
     }
-    keys[10].button = '\b';
-    keys[10].label = NULL;
+    keys[i-1].button = '\b';
+    keys[i-1].label = NULL;
 
     return keys;
 }
@@ -1385,11 +1385,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     if (button == LEFT_BUTTON || button == LEFT_DRAG) {
         /* A left-click anywhere will clear the current selection. */
-        if (button == LEFT_BUTTON) {
-            if (ui->sel) {
-                sfree(ui->sel);
-                ui->sel = NULL;
-            }
+        if (button == LEFT_BUTTON && ui->sel) {
+            sfree(ui->sel);
+            ui->sel = NULL;
+            return UI_UPDATE;
         }
         if (tx >= 0 && tx < w && ty >= 0 && ty < h) {
             if (!ui->sel) {
@@ -1403,56 +1402,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return UI_UPDATE;
     }
 
-    if (IS_CURSOR_MOVE(button)) {
-        ui->cur_visible = true;
-        move_cursor(button, &ui->cur_x, &ui->cur_y, w, h, false);
-    if (ui->keydragging) goto select_square;
-        return UI_UPDATE;
-    }
-    if (button == CURSOR_SELECT) {
-        if (!ui->cur_visible) {
-            ui->cur_visible = true;
-            return UI_UPDATE;
-        }
-    ui->keydragging = !ui->keydragging;
-    if (!ui->keydragging) return UI_UPDATE;
-
-      select_square:
-        if (!ui->sel) {
-            ui->sel = snewn(w*h, bool);
-            memset(ui->sel, 0, w*h*sizeof(bool));
-        }
-    if (!state->shared->clues[w*ui->cur_y + ui->cur_x])
-        ui->sel[w*ui->cur_y + ui->cur_x] = true;
-    return UI_UPDATE;
-    }
-    if (button == CURSOR_SELECT2) {
-    if (!ui->cur_visible) {
-        ui->cur_visible = true;
-        return UI_UPDATE;
-    }
-        if (!ui->sel) {
-            ui->sel = snewn(w*h, bool);
-            memset(ui->sel, 0, w*h*sizeof(bool));
-        }
-    ui->keydragging = false;
-    if (!state->shared->clues[w*ui->cur_y + ui->cur_x])
-        ui->sel[w*ui->cur_y + ui->cur_x] ^= 1;
-    for (i = 0; i < w*h && !ui->sel[i]; i++);
-    if (i == w*h) {
-        sfree(ui->sel);
-        ui->sel = NULL;
-    }
-    return UI_UPDATE;
-    }
-
-    if (button == '\b' || button == 27) {
-    sfree(ui->sel);
-    ui->sel = NULL;
-    ui->keydragging = false;
-    return UI_UPDATE;
-    }
-
+    if (button == '\b') button = '0';
     if (button < '0' || button > '9') return NULL;
     button -= '0';
     if (button > (w == 2 && h == 2 ? 3 : max(w, h))) return NULL;

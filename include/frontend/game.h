@@ -43,7 +43,7 @@ struct frontend {
   bool finished;            /* Whether game was finished (for showing finish message) */
   irect cliprect;           /* Initial screen clip rectangle upon game init */
 
-  const char *statustext;   /* Currently shown status text (needed for screen redraw) */
+  char *statustext;   /* Currently shown status text (needed for screen redraw) */
 
   struct timeval last_time;
   int time_int;

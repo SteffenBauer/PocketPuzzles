@@ -209,7 +209,7 @@ void ink_blitter_load(void *handle, blitter *bl, int x, int y) {
 }
 
 void ink_status_bar(void *handle, const char *text) {
-  fe->statustext = text;
+  /* fe->statustext = text; */
 }
 
 
@@ -381,7 +381,6 @@ void gameTap(int x, int y) {
     init_tap_x = x;
     init_tap_y = y;
 
-
     for (i=0;i<fe->numGameButtons;i++) {
         if ((fe->gameButton[i].action != ACTION_SWAP) &&
             coord_in_button(x, y, &fe->gameButton[i])) {
@@ -401,6 +400,8 @@ void gameTap(int x, int y) {
         else {
             fe->current_pointer = LEFT_BUTTON;
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_BUTTON, fe->swapped);
+            gameDrawFurniture();
+            SoftUpdate();
         }
     }
 }
@@ -410,6 +411,8 @@ void gameLongTap(int x, int y) {
         midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), 
                            (fe->swapped ? LEFT_BUTTON : RIGHT_BUTTON), fe->swapped);
         fe->current_pointer = (fe->swapped ? LEFT_BUTTON : RIGHT_BUTTON);
+        gameDrawFurniture();
+        SoftUpdate();
     }
 }
 
@@ -437,6 +440,8 @@ void gameDrag(int x, int y) {
             fe->current_pointer = RIGHT_DRAG;
         }
     }
+    gameDrawFurniture();
+    SoftUpdate();
 }
 
 void gameRelease(int x, int y) {
@@ -522,9 +527,13 @@ void gameNext() {
 
 static void gameDrawStatusBar() {
     char buf[256];
+    char *me_status = midend_get_statustext(me);
     if (!fe->gamelayout.with_statusbar) return;
+    if (me_status != NULL && fe->statustext != NULL && strcmp(me_status, fe->statustext) == 0) return;
     gameSetupStatusBar();
-    sprintf(buf, "%s                               ", midend_get_statustext(me));
+    sfree(fe->statustext);
+    fe->statustext = dupstr(me_status);
+    sprintf(buf, "%s                               ", fe->statustext ? fe->statustext : "");
     SetFont(fe->gamefont, BLACK);
     DrawString(10, fe->gamelayout.statusbar.starty+12, buf);
 }
@@ -765,7 +774,7 @@ static void gameDrawFurniture() {
 }
 
 static void gameRestartGame() {
-    fe->statustext = "";
+    fe->statustext = NULL;
     midend_restart_game(me);
     fe->finished = false;
     gameDrawFurniture();
@@ -788,7 +797,7 @@ static void gameSwitchPreset(int index) {
 
 void gameStartNewGame() {
     ShowPureHourglassForce();
-    fe->statustext = "";
+    fe->statustext = NULL;
     midend_new_game(me);
     HideHourglass();
     gamePrepareFrontend();
@@ -809,7 +818,7 @@ bool gameResumeGame() {
                 }
                 else {
                     ShowPureHourglassForce();
-                    fe->statustext = "";
+                    fe->statustext = NULL;
                     midend_new_game(me);
                     HideHourglass();
                 }
@@ -829,7 +838,7 @@ bool gameResumeGame() {
 
 void gameSetGame(const struct game *thegame) {
     fe->currentgame = thegame;
-    fe->statustext = "";
+    fe->statustext = NULL;
     if (me != NULL) midend_free(me);
     me = midend_new(fe, thegame, &ink_drawing, fe);
     stateLoadParams(me, thegame);
@@ -869,6 +878,7 @@ void gameScreenFree() {
         CloseFont(fe->gamefont);
         SetClipRect(&fe->cliprect);
         deactivate_timer(fe);
+        sfree(fe->statustext);
         sfree(fe->gameButton);
         sfree(fe);
         sfree(typeMenu);
