@@ -2435,7 +2435,8 @@ static const char rules[] = "You have a grid of squares, some of which contain t
 "- There are exactly as many tents as trees.\n"
 "- The tents and trees can be matched up in such a way that each tent is directly adjacent (horizontally or vertically, but not diagonally) to its own tree. A tent may be adjacent to other trees as well as its own.\n"
 "- No two tents are adjacent horizontally, vertically or diagonally.\n"
-"- The number of tents in each row, and in each column, matches the numbers given round the sides of the grid.";
+"- The number of tents in each row, and in each column, matches the numbers given round the sides of the grid.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Tents", "games.tents", "tents", rules,

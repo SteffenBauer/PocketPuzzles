@@ -1880,7 +1880,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 static const char rules[] = "On each square of the grid you can build a tower, with its height ranging from 1 to the size of the grid. Build a tower on every square, in such a way that:\n\n"
 "- Each row contains every possible height of tower once.\n"
 "- Each column contains every possible height of tower once.\n"
-"- Each numeric clue describes the number of towers that can be 'seen' if you look into the square from that direction, assuming that shorter towers are hidden behind taller ones.";
+"- Each numeric clue describes the number of towers that can be 'seen' if you look into the square from that direction, assuming that shorter towers are hidden behind taller ones.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Towers", "games.towers", "towers", rules,

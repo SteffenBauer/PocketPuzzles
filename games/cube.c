@@ -1720,7 +1720,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 static const char rules[] = "You have a grid of 16 squares, six of which are grey; on one square rests a cube. A move is to roll the cube to an adjacent square.\n\n"
 "- If you roll a white face of the cube onto a grey square, the grey square is picked up on the face of the cube.\n"
 "- If you roll a grey face of the cube on to a white square, the shade is put down again.\n\n"
-"Your job is to get all six grey squares onto the six faces of the cube at the same time. Try to do it in as few moves as possible.";
+"Your job is to get all six grey squares onto the six faces of the cube at the same time. Try to do it in as few moves as possible.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Cube", "games.cube", "cube", rules,

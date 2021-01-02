@@ -2161,7 +2161,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 
 static const char rules[] = "Place each given character once in every row and column. Some squares remain empty. This puzzle contains two modes:\n\n"
 "- ABC End View: Letters on the side show which letter appears first when 'looking' into the grid.\n"
-"- Number Ball: Squares with a ball must contain a number.";
+"- Number Ball: Squares with a ball must contain a number.\n\n\n"
+"This puzzle was implemented by Lennard Sprong.";
 
 const struct game thegame = {
     "Salad", NULL, NULL, rules,

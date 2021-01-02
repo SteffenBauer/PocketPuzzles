@@ -3036,7 +3036,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #endif
 
 static const char rules[] = "The computer prepares a network by connecting up the centres of squares in a grid, and then shuffles the network by rotating every tile randomly.\n\n"
-"Your job is to rotate it all back into place. The successful solution will be an entirely connected network, with no closed loops. As a visual aid, all tiles which are connected to the one in the middle are highlighted.";
+"Your job is to rotate it all back into place. The successful solution will be an entirely connected network, with no closed loops. As a visual aid, all tiles which are connected to the one in the middle are highlighted.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Net", "games.net", "net", rules,

@@ -1782,7 +1782,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 
 static const char rules[] = "You have a grid of squares; each square (except the last one) contains an arrow, and some squares also contain numbers. Your job is to connect the squares to form a continuous list of numbers starting at 1 and linked in the direction of the arrows - so the arrow inside the square with the number 1 will point to the square containing the number 2, which will point to the square containing the number 3, etc. Each square can be any distance away from the previous one, as long as it is somewhere in the direction of the arrow.\n\n"
 "- If you connect together two squares where one of them has a number in it, the appropriate number will appear in the other square.\n"
-"- If you connect two non-numbered squares, they will be assigned temporary labels ('a' / 'a+1' etc.), that will be replaced with numbers once you connect the sequence with a numberes square.";
+"- If you connect two non-numbered squares, they will be assigned temporary labels ('a' / 'a+1' etc.), that will be replaced with numbers once you connect the sequence with a numberes square.\n\n\n"
+"This puzzle was contributed by James Harvey.";
 
 const struct game thegame = {
     "Signpost", "games.signpost", "signpost", rules,

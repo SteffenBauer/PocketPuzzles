@@ -2731,7 +2731,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #endif
 
 static const char rules[] = "You are given a grid of squares, some of which are filled with train tracks. You need to complete the track from A to B so that the rows and columns contain the same number of track segments as are indicated in the clues to the top and right of the grid.\n\n"
-"There are only straight and 90 degree curved rails, and the track may not cross itself.";
+"There are only straight and 90 degree curved rails, and the track may not cross itself.\n\n\n"
+"This puzzle was contributed by James Harvey.";
 
 const struct game thegame = {
     "Tracks", "games.tracks", "tracks", rules,

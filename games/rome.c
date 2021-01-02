@@ -1983,7 +1983,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 
 static const char rules[] = "Place arrows in each empty grid cell, pointing in one direction (N, E, W, S), such that:\n\n"
 "- When following these arrows, the path from each cell must ultimately end in one of the goals.\n"
-"- All arrows in one area must point in different directions.";
+"- All arrows in one area must point in different directions.\n\n\n"
+"This puzzle was implemented by Lennard Sprong.";
 
 const struct game thegame = {
     "Rome", NULL, NULL, rules,

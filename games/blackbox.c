@@ -1463,7 +1463,8 @@ static const char rules[] = "Deduce the positions of the hidden balls by firing 
 "- A beam that would re-emerge from its entry location is considered to be ‘reflected’, indicated as 'R'.\n"
 "- A beam which would get deflected before entering the arena by a ball to the front-left or front-right of its entry point is also ‘reflected’ back.\n"
 "- Otherwise a number appears at the firing point and the location where the beam emerges.\n\n"
-"You can place guesses as to the location of the balls; once you have placed enough balls a button appears to have your guesses checked.";
+"You can place guesses as to the location of the balls; once you have placed enough balls a button appears to have your guesses checked.\n\n"
+"This puzzle was contributed by James Harvey.";
 
 const struct game thegame = {
     "BlackBox", "games.blackbox", "blackbox", rules,

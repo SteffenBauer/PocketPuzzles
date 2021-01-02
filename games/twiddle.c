@@ -1203,7 +1203,8 @@ static const char rules[] = "You are given a grid of square tiles, each containi
 "- Normal: Orientation is not significant in the basic puzzle.\n"
 "- Orientable: Each tile will have a triangle drawn in it. All the triangles must be pointing upwards to complete the puzzle.\n"
 "- Rows only: Your aim is to arrange all the 1s into the first row, all the 2s into the second row, and so on.\n"
-"- Bigger size: A bigger group of tiles is rotated.";
+"- Bigger size: A bigger group of tiles is rotated.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Twiddle", "games.twiddle", "twiddle", rules,

@@ -1833,7 +1833,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 
 static const char rules[] = "You have a grid of squares, which must all be filled in either black or white.\n\n"
 "Beside each row of the grid are listed the lengths of the runs of black squares on that row; above each column are listed the lengths of the runs of black squares in that column.\n\n"
-"Your aim is to fill in the entire grid black or white.";
+"Your aim is to fill in the entire grid black or white.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Pattern", "games.pattern", "pattern", rules,

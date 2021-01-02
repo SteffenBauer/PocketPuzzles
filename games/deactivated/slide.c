@@ -2160,7 +2160,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame slide
 #endif
 
-static const char rules[] = "Several different-sized block pieces are placed inside a box. Among the blocks, there is a special one which must be moved to a special area designated by the game board. The blocks can only be slided horizontally and vertically.";
+static const char rules[] = "Several different-sized block pieces are placed inside a box. Among the blocks, there is a special one which must be moved to a special area designated by the game board. The blocks can only be slided horizontally and vertically.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Slide", NULL, NULL, rules,

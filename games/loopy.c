@@ -3333,7 +3333,8 @@ static int game_status(const game_state *state)
 #endif
 
 static const char rules[] = "You are given a grid of dots, marked with light lines to indicate which dots you are allowed to connect directly together. Your aim is to use some subset of those light lines to draw a single unbroken loop from dot to dot within the grid.\n\n"
-"Some of the spaces between the lines contain numbers. These numbers indicate how many of the lines around that space form part of the loop. The loop you draw must correctly satisfy all of these clues to be considered a correct solution.";
+"Some of the spaces between the lines contain numbers. These numbers indicate how many of the lines around that space form part of the loop. The loop you draw must correctly satisfy all of these clues to be considered a correct solution.\n\n\n"
+"This puzzle was originally contributed to this collection by Mike Pinna, and subsequently enhanced to handle various types of non-square grid by Lambros Lambrou.";
 
 const struct game thegame = {
     "Loopy", "games.loopy", "loopy", rules,

@@ -1141,7 +1141,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #endif
 
 static const char rules[] = "A number of pegs are placed in holes on a board. You can remove a peg by jumping an adjacent peg over it (horizontally or vertically) to a vacant hole on the other side. Your aim is to remove all but one of the pegs initially present.\n\n"
-"This game, best known as 'Peg Solitaire', is possibly one of the oldest puzzle games still commonly known.";
+"This game, best known as 'Peg Solitaire', is possibly one of the oldest puzzle games still commonly known.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Pegs", "games.pegs", "pegs", rules,

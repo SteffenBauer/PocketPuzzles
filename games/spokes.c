@@ -1472,7 +1472,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 static const char rules[] = "Connect all hubs using horizontal, vertical and diagonal lines, in a way that:\n\n"
 "- A digit on a hub tells how many spokes meet there.\n"
 "- No spokes may cross each other.\n"
-"- All hubs and spokes must form a connected graph in the end.";
+"- All hubs and spokes must form a connected graph in the end.\n\n\n"
+"This puzzle was implemented by Lennard Sprong.";
 
 const struct game thegame = {
     "Spokes", NULL, NULL, rules,

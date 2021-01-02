@@ -3608,7 +3608,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 static const char rules[] = "Place the given fleet of ships into the grid, in such a way that:\n\n"
 "- The ships don't touch each other, neither horizontally, vertically, or diagonally\n"
 "- The numbers at the right / bottom indicate how many ship segments are in the according row / column.\n"
-"- A wave in a cell indicates a fixed empty cell.";
+"- A wave in a cell indicates a fixed empty cell.\n\n\n"
+"This puzzle was implemented by Lennard Sprong.";
 
 const struct game thegame = {
     "Boats", NULL, NULL, rules,

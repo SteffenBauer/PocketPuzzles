@@ -1681,7 +1681,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame samegame
 #endif
 
-static const char rules[] = "You have a grid of coloured squares, which you have to clear by highlighting contiguous regions of more than one coloured square; the larger the region you highlight, the more points you get.\n\nIf you clear the grid you win.\n\nIf you end up with nothing but single squares (i.e., there are no more clickable regions left) you lose.\n\nRemoving a region causes the rest of the grid to shuffle up: blocks that are suspended will fall down (first), and then empty columns are filled from the right.";
+static const char rules[] = "You have a grid of coloured squares, which you have to clear by highlighting contiguous regions of more than one coloured square; the larger the region you highlight, the more points you get.\n\nIf you clear the grid you win.\n\nIf you end up with nothing but single squares (i.e., there are no more clickable regions left) you lose.\n\nRemoving a region causes the rest of the grid to shuffle up: blocks that are suspended will fall down (first), and then empty columns are filled from the right.\n\n\n"
+"This puzzle was contributed by James Harvey.";
 
 const struct game thegame = {
     "SameGame", "games.samegame", "samegame", rules,

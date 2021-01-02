@@ -4734,7 +4734,8 @@ static const char rules[] = "Each square must be filled in with a digit from 1 t
 "You are given some of the numbers as clues; your aim is to place the rest of the numbers correctly. This puzzle contains some additional special modes:\n\n"
 "- 'X': Each of the square's two main diagonals contains only one occurrence of each digit.\n"
 "- 'Jigsaw': The sub-blocks are arbitrary shapes.\n"
-"- 'Killer': The grid is divided into ‘cages’ by coloured lines, and for each cage the the sum of all the digits in that cage must be the given number. No digit may appear more than once within a cage, even if the cage crosses the boundaries of existing regions.";
+"- 'Killer': The grid is divided into ‘cages’ by coloured lines, and for each cage the the sum of all the digits in that cage must be the given number. No digit may appear more than once within a cage, even if the cage crosses the boundaries of existing regions.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Solo", "games.solo", "solo", rules,

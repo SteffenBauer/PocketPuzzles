@@ -1212,7 +1212,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame palisade
 #endif
 
-static const char rules[] = "You're given a grid of squares, some of which contain numbers. Your goal is to subdivide the grid into contiguous regions, all of the same (given) size, such that each square containing a number is adjacent to exactly that many edges (including those between the inside and the outside of the grid).";
+static const char rules[] = "You're given a grid of squares, some of which contain numbers. Your goal is to subdivide the grid into contiguous regions, all of the same (given) size, such that each square containing a number is adjacent to exactly that many edges (including those between the inside and the outside of the grid).\n\n\n"
+"This puzzle was contributed by Jonas Kölker.";
 
 const struct game thegame = {
     "Palisade", "games.palisade", "palisade", rules,
