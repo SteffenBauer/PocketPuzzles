@@ -2,7 +2,7 @@
 #define POCKETPUZZLES_CHOOSER_HEADER
 #include "common.h"
 
-#define CHOOSER_COLS 5
+#define CHOOSER_COLS 4
 #define CHOOSER_ROWS 5
 #define CONTROL_NUM 2
 #define CFONTSIZE 36
@@ -22,6 +22,9 @@ struct chooserAttributes {
 
     int control_padding;
     int chooser_padding;
+
+    int chooser_cols;
+    int chooser_rows;
 
     int btnHomeIDX;
     int btnDrawIDX;
