@@ -179,12 +179,13 @@ static void chooserSetupButtons() {
     int i,c,r,p,pi,n;
 
     for(i=0;i<ca.num_games;i++) {
-        p = i / (CHOOSER_COLS*CHOOSER_ROWS);
-        pi = i % (CHOOSER_COLS*CHOOSER_ROWS);
-        c = pi % CHOOSER_COLS;
-        r = pi / CHOOSER_COLS;
+        p = i / (ca.chooser_cols*ca.chooser_rows);
+        pi = i % (ca.chooser_cols*ca.chooser_rows);
+        c = pi % ca.chooser_cols;
+        r = pi / ca.chooser_cols;
         ca.chooserButton[i].posx = (c+1)*ca.chooser_padding + c*ca.chooserlayout.chooser_size;
-        ca.chooserButton[i].posy = 50 + ca.chooserlayout.maincanvas.starty + r*(32+CFONTSIZE+ca.chooserlayout.chooser_size);
+        ca.chooserButton[i].posy = 50 + ca.chooserlayout.maincanvas.starty +
+                                   r*(32+CFONTSIZE+ca.chooserlayout.chooser_size);
         ca.chooserButton[i].page = p;
         ca.chooserButton[i].action = ACTION_LAUNCH;
         ca.chooserButton[i].size = ca.chooserlayout.chooser_size;
@@ -257,12 +258,17 @@ void chooserScreenInit() {
         if (mygames[ca.num_games].thegame == NULL) break;
         ca.num_games++;
     }
-    ca.current_chooserpage = 0;
-    ca.chooser_lastpage = (ca.num_games-1) / (CHOOSER_COLS * CHOOSER_ROWS);
-
     ca.chooserlayout = getLayout(LAYOUT_BUTTONBAR);
+
+    ca.chooser_cols = CHOOSER_COLS;
     ca.control_padding = (ScreenWidth()-(CONTROL_NUM*ca.chooserlayout.control_size))/(CONTROL_NUM+1);
-    ca.chooser_padding = (ScreenWidth()-(CHOOSER_COLS*ca.chooserlayout.chooser_size))/(CHOOSER_COLS+1);
+    ca.chooser_padding = (ScreenWidth()-(ca.chooser_cols*ca.chooserlayout.chooser_size))/(ca.chooser_cols+1);
+
+    ca.chooser_rows = (int)((ca.chooserlayout.maincanvas.height-50) / 
+        (32+CFONTSIZE+ca.chooserlayout.chooser_size));
+
+    ca.current_chooserpage = 0;
+    ca.chooser_lastpage = (ca.num_games-1) / (ca.chooser_cols * ca.chooser_rows);
 
     ca.numChooserButtons = ca.num_games + 5;
     ca.chooserButton = smalloc(ca.numChooserButtons*sizeof(BUTTON));

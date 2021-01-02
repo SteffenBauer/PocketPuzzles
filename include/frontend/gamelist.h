@@ -9,7 +9,7 @@ extern const struct game abcd, ascent, blackbox, boats, bridges,
                          netslide, palisade, pattern, pearl, pegs,
                          range, rect, rome, salad, samegame,
                          signpost, singles, sixteen, slant, slide,
-                         sokoban, solo, spokes, tents, towers,
+                         sokoban, solo, spokes, sticks, tents, towers,
                          tracks, twiddle, undead, unequal, unruly,
                          untangle, walls;
 
@@ -21,7 +21,7 @@ extern ibitmap game_abcd, game_ascent, game_blackbox, game_boats, game_bridges,
                game_netslide, game_palisade, game_pattern, game_pearl, game_pegs,
                game_range, game_rect, game_rome, game_salad, game_samegame,
                game_signpost, game_singles, game_sixteen, game_slant, game_slide,
-               game_sokoban, game_solo, game_spokes, game_tents, game_towers, 
+               game_sokoban, game_solo, game_spokes, game_sticks, game_tents, game_towers, 
                game_tracks, game_twiddle, game_undead, game_unequal, game_unruly, 
                game_untangle, game_walls;
 
@@ -77,6 +77,7 @@ static GAMEINFO mygames[] = {
     { &game_sokoban,  &sokoban},
     { &game_solo,     &solo},
     { &game_spokes,   &spokes},
+    { &game_sticks,   &sticks},
     { &game_tents,    &tents},
     { &game_towers,   &towers},
 
