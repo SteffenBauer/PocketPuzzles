@@ -2711,7 +2711,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 static const char rules[] = "You have a grid of squares, with numbers written in some (but not all) of the squares.\n\n"
 "Your task is to subdivide the grid into rectangles of various sizes, such that:\n\n"
 "- Every rectangle contains exactly one numbered square\n"
-"- The area of each rectangle is equal to the number written in its numbered square.";
+"- The area of each rectangle is equal to the number written in its numbered square.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Rectangles", "games.rectangles", "rect", rules,

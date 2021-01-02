@@ -3666,7 +3666,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 static const char rules[] = "Create a path of numbers, using each number exactly once. Contains several modes:\n\n"
 "- Rectangular grid: Consecutive numbers must be orthogonally or diagonally adjacent.\n"
 "- Honeycomb and Hexagonal grid: The path can't cross itself.\n"
-"- Edges: Arrows outside the grid point to the row, column or diagonal where the number is located. Consecutive numbers must be orthogonally or diagonally adjacent.";
+"- Edges: Arrows outside the grid point to the row, column or diagonal where the number is located. Consecutive numbers must be orthogonally or diagonally adjacent.\n\n\n"
+"This puzzle was implemented by Lennard Sprong.";
 
 const struct game thegame = {
     "Ascent", NULL, NULL, rules,

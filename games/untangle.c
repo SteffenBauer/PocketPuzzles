@@ -1387,7 +1387,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #endif
 
 static const char rules[] = "You are given a number of points, some of which have lines drawn between them. You can move the points about arbitrarily; your aim is to position the points so that no line crosses another.\n\n"
-"Crossing lines are drawn in a light shade, non-crossing lines in thick black shade.";
+"Crossing lines are drawn in a light shade, non-crossing lines in thick black shade.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Untangle", "games.untangle", "untangle", rules,

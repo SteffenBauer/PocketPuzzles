@@ -2200,7 +2200,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 
 static const char rules[] = "A rather esoteric Latin-square puzzle, played with mathematical groups' Cayley tables.\n\n"
 "You are given a Cayley table of a group with most elements blank and a few clues, and you must fill it in so as to preserve the group axioms.\n\n"
-"Consult Wikipedia about Groups and Cayley tables before playing :-)";
+"Consult Wikipedia about Groups and Cayley tables before playing :-)\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Group", NULL, NULL, rules,

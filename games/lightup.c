@@ -2157,7 +2157,8 @@ static const char rules[] = "You have a grid of squares. Some are filled in blac
 "- All non-black squares are lit.\n"
 "- No light is lit by another light.\n"
 "- All numbered black squares have exactly that number of lights adjacent to them (in the four squares above, below, and to the side).\n\n"
-"Non-numbered black squares may have any number of lights adjacent to them.";
+"Non-numbered black squares may have any number of lights adjacent to them.\n\n\n"
+"This puzzle was contributed by James Harvey.";
 
 const struct game thegame = {
     "LightUp", "games.lightup", "lightup", rules,

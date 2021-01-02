@@ -3106,7 +3106,8 @@ static const char rules[] = "You have a set of islands distributed across the pl
 "- The number of bridges terminating at any island is equal to the number written in that island.\n"
 "- Two bridges may run in parallel between the same two islands, but no more than two may do so.\n"
 "- No bridge crosses another bridge.\n"
-"- All the islands are connected together.";
+"- All the islands are connected together.\n\n\n"
+"This puzzle was contributed by James Harvey.";
 
 const struct game thegame = {
     "Bridges", "games.bridges", "bridges", rules,

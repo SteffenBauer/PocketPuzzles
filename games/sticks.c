@@ -1253,7 +1253,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame sticks
 #endif
 
-static const char rules[] = "Fill each white cell with a horizontal or vertical line going through the center of the cell, with the following rules:\n\n- A number overlapping a line indicates the length of that line.\n- A line can't overlap more than one number.\n- Numbers in black cells indicate the amount of lines connected to the cell.";
+static const char rules[] = "Fill each white cell with a horizontal or vertical line going through the center of the cell, with the following rules:\n\n- A number overlapping a line indicates the length of that line.\n- A line can't overlap more than one number.\n- Numbers in black cells indicate the amount of lines connected to the cell.\n\n\n"
+"This puzzle was implemented by Lennard Sprong.";
 
 const struct game thegame = {
     "Sticks", NULL, NULL, rules,

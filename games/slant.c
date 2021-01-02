@@ -3010,7 +3010,9 @@ static const char rules[] = "You have a grid of squares, and some circles with c
 "- Any point with a circled number has precisely that many lines meeting at it.\n\n"
 "Creek: Color each square either black or white, so that:\n\n"
 "- All white squares must form a connected area.\n"
-"- The circled clues indicate how many black squares are around it.";
+"- The circled clues indicate how many black squares are around it.\n\n\n"
+"This puzzle was implemented by Simon Tatham.\n"
+"The 'Creek' variation was contributed by Steffen Bauer.";
 
 const struct game thegame = {
     "Slant", "games.slant", "slant", rules,

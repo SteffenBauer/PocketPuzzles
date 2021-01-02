@@ -1047,7 +1047,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 
 static const char rules[] = "Fill in the grid with light and dark clusters.\n\n"
 "- Tiles with a dot are adjacent to exactly 1 other tile of the same shade.\n"
-"- All other tiles are adjacent to at least 2 tiles of the same shade.";
+"- All other tiles are adjacent to at least 2 tiles of the same shade.\n\n\n"
+"This puzzle was implemented by Lennard Sprong.";
 
 const struct game thegame = {
     "Clusters", NULL, NULL, rules,

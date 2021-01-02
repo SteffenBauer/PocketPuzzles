@@ -1392,7 +1392,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #endif
 
 static const char rules[] = "The game is played on a board of squares, where each square is a floor or a wall. Some floor squares contain barrels, and some floor squares are marked as storage locations.\n\n"
-"You may move horizontally or vertically onto empty squares (never through walls or barrels). You can move a barrel by walking up to it and pushing it to the square beyond. Barrels cannot be pulled and cannot be pushed to squares with walls or other barrels. The number of barrels equals the number of storage locations. The puzzle is solved when all barrels are placed at storage locations.";
+"You may move horizontally or vertically onto empty squares (never through walls or barrels). You can move a barrel by walking up to it and pushing it to the square beyond. Barrels cannot be pulled and cannot be pushed to squares with walls or other barrels. The number of barrels equals the number of storage locations. The puzzle is solved when all barrels are placed at storage locations.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Sokoban", NULL, NULL, rules,

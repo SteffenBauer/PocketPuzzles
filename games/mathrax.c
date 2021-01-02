@@ -1644,7 +1644,8 @@ static const char rules[] = "Fill the latin square with numbers. Some grid inter
 "- Arithmetic operation (+, -, *, /): The operation on both diagonal numbers must result in the given number.\n"
 "- Equal (=): Both diagonal numbers must be the same.\n"
 "- Even (E): All numbers around the clue must be even.\n"
-"- Odd (O): All numbers around the clue must be odd.\n";
+"- Odd (O): All numbers around the clue must be odd.\n\n\n"
+"This puzzle was implemented by Lennard Sprong.";
 
 const struct game thegame = {
     "Mathrax", NULL, NULL, rules,

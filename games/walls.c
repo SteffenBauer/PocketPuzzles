@@ -1308,7 +1308,8 @@ static const char rules[] = "Draw a single continuous line through all cells in 
 "- The line enters the grid from one open border, and leaves the grid through another open border.\n"
 "- All grid cells are visited once.\n"
 "- The line may not cross itself or form loops.\n"
-"- The line cannot go through a wall.";
+"- The line cannot go through a wall.\n\n\n"
+"This puzzle was contributed by Steffen Bauer.";
 
 const struct game thegame = {
     "Walls", "games.walls", "walls", rules,

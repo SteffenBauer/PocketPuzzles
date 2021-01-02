@@ -1217,7 +1217,8 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 
 static const char rules[] = "You have a grid of squares, some light and some dark.\n\n"
 "Your aim is to light all the squares up at the same time. You can choose any square and flip its state from light to dark or dark to light, but when you do so, other squares around it change state as well.\n\n"
-"Each square contains a small diagram showing which other squares change when you flip it.";
+"Each square contains a small diagram showing which other squares change when you flip it.\n\n\n"
+"This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Flip", "games.flip", "flip", rules,
