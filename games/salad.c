@@ -54,6 +54,7 @@ enum {
     COL_E_BG,
     COL_E_BORDERCLUE,
     COL_E_NUM, /* Error */
+    COL_E_BALL,
     COL_E_HOLE,
     NCOLOURS
 };
@@ -1690,6 +1691,7 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_E_BG         * 3 + i] = 0.25F;
         ret[COL_E_BORDERCLUE * 3 + i] = 0.25F;
         ret[COL_E_NUM        * 3 + i] = 0.75F;
+        ret[COL_E_BALL       * 3 + i] = 0.75F;
         ret[COL_E_HOLE       * 3 + i] = 0.5F;
     }
     *ncolours = NCOLOURS;
@@ -1826,12 +1828,28 @@ static void salad_set_drawflags(game_drawstate *ds, const game_ui *ui, const gam
             /* Mark count errors */
             d = state->grid[i];
             if(state->holes[i] == LATINH_CROSS && 
-                (ds->rowcount[y+(nums*o)] > (o-nums) || ds->colcount[x+(nums*o)] > (o-nums)))
-            {
+                (ds->rowcount[y+(nums*o)] > (o-nums) || 
+                 ds->colcount[x+(nums*o)] > (o-nums))) {
                 ds->gridfs[i] |= FD_ERROR;
             }
-            else if(d > 0 && (ds->rowcount[y+((d-1)*o)] > 1 || ds->colcount[x+((d-1)*o)] > 1))
-            {
+            if (state->holes[i] == LATINH_CIRCLE && d == 0) {
+                int j;
+                int numcount, ballcount;
+                numcount = ballcount = 0;
+                for (j=0;j<o;j++) {
+                    if (state->grid[y*o+j] > 0) numcount++;
+                    if (state->holes[y*o+j] == LATINH_CIRCLE && state->grid[y*o+j] == 0) ballcount++;
+                }
+                if ((nums - numcount) < ballcount) ds->gridfs[i] |= FD_ERROR;
+                numcount = ballcount = 0;
+                for (j=0;j<o;j++) {
+                    if (state->grid[j*o+x] > 0) numcount++;
+                    if (state->holes[j*o+x] == LATINH_CIRCLE && state->grid[j*o+x] == 0) ballcount++;
+                }
+                if ((nums - numcount) < ballcount) ds->gridfs[i] |= FD_ERROR;
+            }
+            else if(d > 0 && (ds->rowcount[y+((d-1)*o)] > 1 || 
+                              ds->colcount[x+((d-1)*o)] > 1)) {
                 ds->gridfs[i] |= FD_ERROR;
             }
             
@@ -1905,7 +1923,10 @@ static void salad_draw_balls(drawing *dr, game_drawstate *ds, int x, int y, cons
         bgcolor = (ds->gridfs[i] & FD_CURSOR ? COL_LOWLIGHT : 
                    ds->gridfs[i] & FD_ERROR  ? COL_E_BG :
                                                COL_BACKGROUND);
-    color = (state->gridclues[i] ? COL_I_BALL : COL_G_BALL);
+    color = (state->gridclues[i]       ? COL_I_BALL :
+             ds->gridfs[i] & FD_CURSOR ? COL_G_BALL :
+             ds->gridfs[i] & FD_ERROR  ? COL_E_BALL :
+                                         COL_G_BALL);
     
     draw_circle(dr, tx, ty, TILE_SIZE*0.4, color, color);
     draw_circle(dr, tx, ty, TILE_SIZE*0.38, bgcolor, color);
