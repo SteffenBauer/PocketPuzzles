@@ -982,7 +982,8 @@ struct game_ui {
     int drag_start;
     int drag_end;
     int drag;
-    
+    bool highlight;
+
     int cx, cy;
 };
 
@@ -993,6 +994,7 @@ static game_ui *new_ui(const game_state *state)
     ui->drag_start = -1;
     ui->drag_end = -1;
     ui->drag = DRAG_NONE;
+    ui->highlight = false;
     ui->cx = ui->cy = 0;
     
     return ui;
@@ -1056,6 +1058,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         
         ui->drag_start = y*w+x;
         ui->drag = button == LEFT_BUTTON ? DRAG_LEFT : DRAG_RIGHT;
+        ui->highlight = (!swapped && button == RIGHT_BUTTON) ||
+                        ( swapped && button == LEFT_BUTTON);
     }
     if(button == LEFT_BUTTON || button == RIGHT_BUTTON || 
         button == LEFT_DRAG || button == RIGHT_DRAG)
@@ -1092,6 +1096,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->drag_start = -1;
         ui->drag_end = -1;
         ui->drag = DRAG_NONE;
+        ui->highlight = false;
     }
 
     if(drag != DRAG_NONE)
@@ -1327,7 +1332,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             error_disconnected = !connected && !ds->isolated[dsf_canonify(ds->scratch->dsf, i)];
             error_number = lines > state->numbers[i] || ds->scratch->marked[i] > ds->scratch->nodes[i] - state->numbers[i];
             is_done = lines == state->numbers[i];
-            is_holding = i == ui->drag_start && ui->drag == DRAG_RIGHT;
+            is_holding = i == ui->drag_start && ui->highlight;
 
             fill = is_holding   ? COL_FILL_HOLDING :
                    error_number ? COL_FILL_ERROR : 
