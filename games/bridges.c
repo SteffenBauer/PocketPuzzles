@@ -2026,6 +2026,7 @@ struct game_ui {
     int cur_x, cur_y;           /* cursor position */
     bool cur_visible;
     bool show_hints;
+    bool highlight;
 };
 
 static char *ui_cancel_drag(game_ui *ui)
@@ -2044,6 +2045,7 @@ static game_ui *new_ui(const game_state *state)
     ui->cur_y = state->islands[0].y;
     ui->cur_visible = false;
     ui->show_hints = false;
+    ui->highlight = false;
     return ui;
 }
 
@@ -2269,6 +2271,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->dragx_src = gx;
             ui->dragy_src = gy;
             ui->drag_is_noline = (button == RIGHT_BUTTON);
+            ui->highlight = (!swapped && button == RIGHT_BUTTON) ||
+                            ( swapped && button == LEFT_BUTTON);
             return UI_UPDATE;
         } else
             return ui_cancel_drag(ui);
@@ -2286,6 +2290,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return UI_UPDATE;
         }
     } else if (button == LEFT_RELEASE || button == RIGHT_RELEASE) {
+        ui->highlight = false;
         if (ui->dragging) {
             return finish_drag(state, ui);
         } else {
@@ -2801,7 +2806,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
                 if (flash)
                     idata |= DI_COL_FLASH;
-                if (is_drag_src && is==is_drag_src && ui->drag_is_noline)
+                if (is_drag_src && is==is_drag_src && ui->highlight)
                     idata |= DI_COL_SELECTED;
 
                 else if (island_impossible(is, v & G_MARK) || (v & G_WARN))
