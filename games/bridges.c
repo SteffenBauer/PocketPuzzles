@@ -1635,12 +1635,6 @@ static int solve_sub(game_state *state, int difficulty, int depth)
     return 0;
 }
 
-static void solve_for_hint(game_state *state)
-{
-    map_group(state);
-    solve_sub(state, 10, 0);
-}
-
 static int solve_from_scratch(game_state *state, int difficulty)
 {
     map_clear(state);
@@ -2264,9 +2258,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             int x, int y, int button, bool swapped)
 {
     int gx = FROMCOORD(x), gy = FROMCOORD(y);
-    char buf[80], *ret;
+    char buf[80];
     grid_type ggrid = INGRID(state,gx,gy) ? GRID(state,gx,gy) : 0;
-    bool shift = button & MOD_SHFT, control = button & MOD_CTRL;
     button &= ~MOD_MASK;
 
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
@@ -2275,6 +2268,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (ggrid & G_ISLAND) {
             ui->dragx_src = gx;
             ui->dragy_src = gy;
+            ui->drag_is_noline = (button == RIGHT_BUTTON);
             return UI_UPDATE;
         } else
             return ui_cancel_drag(ui);
@@ -2305,154 +2299,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             sprintf(buf, "M%d,%d", gx, gy);
             return dupstr(buf);
         }
-    } else if (button == 'h' || button == 'H') {
-        game_state *solved = dup_game(state);
-        solve_for_hint(solved);
-        ret = game_state_diff(state, solved);
-        free_game(solved);
-        return ret;
-    } else if (IS_CURSOR_MOVE(button)) {
-        ui->cur_visible = true;
-        if (control || shift) {
-            ui->dragx_src = ui->cur_x;
-            ui->dragy_src = ui->cur_y;
-            ui->dragging = true;
-            ui->drag_is_noline = !control;
-        }
-        if (ui->dragging) {
-            int nx = ui->cur_x, ny = ui->cur_y;
-
-            move_cursor(button, &nx, &ny, state->w, state->h, false);
-            if (nx == ui->cur_x && ny == ui->cur_y)
-                return NULL;
-            update_drag_dst(state, ui, ds,
-                             COORD(nx)+TILE_SIZE/2,
-                             COORD(ny)+TILE_SIZE/2);
-            return finish_drag(state, ui);
-        } else {
-            int dx = (button == CURSOR_RIGHT) ? +1 : (button == CURSOR_LEFT) ? -1 : 0;
-            int dy = (button == CURSOR_DOWN)  ? +1 : (button == CURSOR_UP)   ? -1 : 0;
-            int dorthx = 1 - abs(dx), dorthy = 1 - abs(dy);
-            int dir, orth, nx = x, ny = y;
-
-            /* 'orthorder' is a tweak to ensure that if you press RIGHT and
-             * happen to move upwards, when you press LEFT you then tend
-             * downwards (rather than upwards again). */
-            int orthorder = (button == CURSOR_LEFT || button == CURSOR_UP) ? 1 : -1;
-
-            /* This attempts to find an island in the direction you're
-             * asking for, broadly speaking. If you ask to go right, for
-             * example, it'll look for islands to the right and slightly
-             * above or below your current horiz. position, allowing
-             * further above/below the further away it searches. */
-
-            assert(GRID(state, ui->cur_x, ui->cur_y) & G_ISLAND);
-            /* currently this is depth-first (so orthogonally-adjacent
-             * islands across the other side of the grid will be moved to
-             * before closer islands slightly offset). Swap the order of
-             * these two loops to change to breadth-first search. */
-            for (orth = 0; ; orth++) {
-                bool oingrid = false;
-                for (dir = 1; ; dir++) {
-                    bool dingrid = false;
-
-                    if (orth > dir) continue; /* only search in cone outwards. */
-
-                    nx = ui->cur_x + dir*dx + orth*dorthx*orthorder;
-                    ny = ui->cur_y + dir*dy + orth*dorthy*orthorder;
-                    if (INGRID(state, nx, ny)) {
-                        dingrid = true;
-                        oingrid = true;
-                        if (GRID(state, nx, ny) & G_ISLAND) goto found;
-                    }
-
-                    nx = ui->cur_x + dir*dx - orth*dorthx*orthorder;
-                    ny = ui->cur_y + dir*dy - orth*dorthy*orthorder;
-                    if (INGRID(state, nx, ny)) {
-                        dingrid = true;
-                        oingrid = true;
-                        if (GRID(state, nx, ny) & G_ISLAND) goto found;
-                    }
-
-                    if (!dingrid) break;
-                }
-                if (!oingrid) return UI_UPDATE;
-            }
-            /* not reached */
-
-found:
-            ui->cur_x = nx;
-            ui->cur_y = ny;
-            return UI_UPDATE;
-        }
-    } else if (IS_CURSOR_SELECT(button)) {
-        if (!ui->cur_visible) {
-            ui->cur_visible = true;
-            return UI_UPDATE;
-        }
-        if (ui->dragging || button == CURSOR_SELECT2) {
-            ui_cancel_drag(ui);
-            if (ui->dragx_dst == -1 && ui->dragy_dst == -1) {
-                sprintf(buf, "M%d,%d", ui->cur_x, ui->cur_y);
-                return dupstr(buf);
-            } else
-                return UI_UPDATE;
-        } else {
-            grid_type v = GRID(state, ui->cur_x, ui->cur_y);
-            if (v & G_ISLAND) {
-                ui->dragging = true;
-                ui->dragx_src = ui->cur_x;
-                ui->dragy_src = ui->cur_y;
-                ui->dragx_dst = ui->dragy_dst = -1;
-                ui->drag_is_noline = (button == CURSOR_SELECT2);
-                return UI_UPDATE;
-            }
-        }
-    } else if ((button >= '0' && button <= '9') ||
-               (button >= 'a' && button <= 'f') ||
-               (button >= 'A' && button <= 'F')) {
-        /* jump to island with .count == number closest to cur_{x,y} */
-        int best_x = -1, best_y = -1, best_sqdist = -1, number = -1, i;
-
-        if (button >= '0' && button <= '9')
-            number = (button == '0' ? 16 : button - '0');
-        else if (button >= 'a' && button <= 'f')
-            number = 10 + button - 'a';
-        else if (button >= 'A' && button <= 'F')
-            number = 10 + button - 'A';
-
-        if (!ui->cur_visible) {
-            ui->cur_visible = true;
-            return UI_UPDATE;
-        }
-
-        for (i = 0; i < state->n_islands; ++i) {
-            int x = state->islands[i].x, y = state->islands[i].y;
-            int dx = x - ui->cur_x, dy = y - ui->cur_y;
-            int sqdist = dx*dx + dy*dy;
-
-            if (state->islands[i].count != number)
-                continue;
-            if (x == ui->cur_x && y == ui->cur_y)
-                continue;
-
-            /* new_game() reads the islands in row-major order, so by
-             * breaking ties in favor of `first in state->islands' we
-             * also break ties by `lexicographically smallest (y, x)'.
-             * Thus, there's a stable pattern to how ties are broken
-             * which the user can learn and use to navigate faster. */
-            if (best_sqdist == -1 || sqdist < best_sqdist) {
-                best_x = x;
-                best_y = y;
-                best_sqdist = sqdist;
-            }
-        }
-        if (best_x != -1 && best_y != -1) {
-            ui->cur_x = best_x;
-            ui->cur_y = best_y;
-            return UI_UPDATE;
-        } else
-            return NULL;
     } else if (button == 'g' || button == 'G') {
         ui->show_hints = !ui->show_hints;
         return UI_UPDATE;
@@ -2955,9 +2801,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
                 if (flash)
                     idata |= DI_COL_FLASH;
-                if (is_drag_src && (is == is_drag_src ||
-                                    (is_drag_dst && is == is_drag_dst)))
+                if (is_drag_src && is==is_drag_src && ui->drag_is_noline)
                     idata |= DI_COL_SELECTED;
+
                 else if (island_impossible(is, v & G_MARK) || (v & G_WARN))
                     idata |= DI_COL_WARNING;
                 else

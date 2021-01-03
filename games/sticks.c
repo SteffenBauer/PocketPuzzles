@@ -877,7 +877,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (state->grid[i] & F_BLOCK)
         return NULL;
 
-    if (button == LEFT_RELEASE) {
+    if (button == LEFT_BUTTON) {
         char buf[256];
         sprintf(buf, "%c%d", state->grid[i] & F_VER ? 'A' :
                              state->grid[i] & F_HOR ? 'C' : 'B', i);
@@ -1222,7 +1222,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                     3*tilesize/5, ALIGN_HCENTRE | ALIGN_VCENTRE,
                     tile & F_ERROR ? COL_NUMERR : tile & F_BLOCK ? COL_NUMBER : COL_GRID, buf);
             }
-           draw_update(dr, COORD(x), COORD(y), tilesize, tilesize);
+            draw_update(dr, COORD(x), COORD(y), tilesize, tilesize);
         }
     }
 }

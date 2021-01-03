@@ -3054,7 +3054,8 @@ static const char rules[] = "You are given a grid of squares, some of which cont
 "- Zombies are visible by any means.\n\n"
 "You are told the total number of each type of monster in the grid. Also around the edge of the grid are written numbers, which indicate how many monsters can be seen if you look into the grid along a row or column starting from that position. (The diagonal mirrors are reflective on both sides).\n"
 "If your reflected line of sight crosses the same monster more than once, the number will count it each time it is visible, not just once.\n\n\n"
-"This puzzle was contributed by Steffen Bauer.";
+"This puzzle was contributed by Steffen Bauer.\n"
+"The monster icons were designed by Simon Tatham.";
 
 const struct game thegame = {
     "Undead", "games.undead", "undead", rules,

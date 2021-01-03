@@ -1326,10 +1326,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             
             error_disconnected = !connected && !ds->isolated[dsf_canonify(ds->scratch->dsf, i)];
             error_number = lines > state->numbers[i] || ds->scratch->marked[i] > ds->scratch->nodes[i] - state->numbers[i];
-            is_holding = i == ui->drag_start || i == ui->drag_end;
             is_done = lines == state->numbers[i];
+            is_holding = i == ui->drag_start && ui->drag == DRAG_RIGHT;
 
-            fill = is_holding   ? COL_FILL_HOLDING : 
+            fill = is_holding   ? COL_FILL_HOLDING :
                    error_number ? COL_FILL_ERROR : 
                    is_done      ? COL_FILL_DONE : 
                                   COL_BACKGROUND;
@@ -1367,9 +1367,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                  * from the exact same starting position.
                  */
                 if (d < 4)
-                    draw_thick_line(dr, thick, tx2, ty2, tx, ty, COL_LINE);
+                    draw_thick_line(dr, thick*2, tx2, ty2, tx, ty, COL_LINE);
                 else
-                    draw_thick_line(dr, thick, tx, ty, tx2, ty2, COL_LINE);
+                    draw_thick_line(dr, thick*2, tx, ty, tx2, ty2, COL_LINE);
             }
             
             spokes_draw_hub(dr, tx, ty, radius, thick, state->spokes[i], border, fill, COL_MARK);
@@ -1428,12 +1428,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             
             if(diag == DIR_BOTRIGHT)
             {
-                draw_thick_line(dr, thick,
+                draw_thick_line(dr, thick*2,
                     tx, ty, tx + tilesize, ty + tilesize, COL_LINE);
             }
             if(diag == DIR_BOTLEFT)
             {
-                draw_thick_line(dr, thick,
+                draw_thick_line(dr, thick*2,
                     tx, ty + tilesize, tx + tilesize, ty, COL_LINE);
             }
             
