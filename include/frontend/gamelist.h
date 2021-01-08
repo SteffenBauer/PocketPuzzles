@@ -2,7 +2,7 @@
 #define POCKETPUZZLES_GAMELIST
 
 extern const struct game abcd, ascent, blackbox, boats, bridges,
-                         clusters, cube, dominosa, fifteen, filling,
+                         clusters, creek, cube, dominosa, fifteen, filling,
                          flip, flood, galaxies, group, guess,
                          inertia, keen, lightup, loopy, magnets,
                          map, mathrax, mines, mosaic, net,
@@ -14,7 +14,7 @@ extern const struct game abcd, ascent, blackbox, boats, bridges,
                          untangle, walls;
 
 extern ibitmap game_abcd, game_ascent, game_blackbox, game_boats, game_bridges,
-               game_clusters, game_cube, game_dominosa, game_fifteen, game_filling,
+               game_clusters, game_creek, game_cube, game_dominosa, game_fifteen, game_filling,
                game_flip, game_flood, game_galaxies, game_group, game_guess,
                game_inertia, game_keen, game_lightup, game_loopy, game_magnets,
                game_map, game_mathrax, game_mines, game_mosaic, game_net,
@@ -33,6 +33,7 @@ static GAMEINFO mygames[] = {
     { &game_bridges,  &bridges},
 
     { &game_clusters, &clusters},
+    { &game_creek,    &creek},
     { &game_cube,     &cube},
     { &game_dominosa, &dominosa},
     { &game_fifteen,  &fifteen},
