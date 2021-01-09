@@ -41,7 +41,7 @@ extern ibitmap icon_home, icon_home_tap, icon_redraw, icon_redraw_tap,
 
 static imenuex chooserMenu[] = {
     { ITEM_HEADER,   0, "Puzzles",            NULL, NULL,           NULL, NULL },
-    { ITEM_ACTIVE, 101, "Settings",           NULL, &menu_settings, NULL, NULL },
+    /* { ITEM_ACTIVE, 101, "Settings",           NULL, &menu_settings, NULL, NULL }, */
     { ITEM_ACTIVE, 102, "Resume last game",   NULL, &menu_restart,  NULL, NULL },
     { ITEM_ACTIVE, 103, "Reset presets",      NULL, &menu_reset,    NULL, NULL },
     { ITEM_ACTIVE, 104, "About",              NULL, &menu_help,     NULL, NULL },

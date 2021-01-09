@@ -1633,9 +1633,8 @@ static char *move_string_diff(const game_state *before, const game_state *after,
                              (ntf & df) ? 'T' : 't', MOVECHAR(df), i%w, i/w);
                 sep = ";";
             }
-            if ((onf & df) != (nnf & df)) {
-                p += sprintf(p, "%s%c%c%d,%d", sep,
-                             (nnf & df) ? 'N' : 'n', MOVECHAR(df), i%w, i/w);
+            if (((onf & df) != (nnf & df)) && !(nnf & df)) {
+                p += sprintf(p, "%s%c%c%d,%d", sep, 'n', MOVECHAR(df), i%w, i/w);
                 sep = ";";
             }
         }
@@ -1870,12 +1869,9 @@ static bool check_completion(game_state *state, bool mark)
 /* Code borrowed from Pearl. */
 
 struct game_ui {
-    bool dragging, clearing, notrack;
+    bool dragging, clearing, notrack, edgeflip;
     int drag_sx, drag_sy, drag_ex, drag_ey; /* drag start and end grid coords */
     int clickx, clicky;    /* pixel position of initial click */
-
-    int curx, cury;        /* grid position of keyboard cursor; uses half-size grid */
-    bool cursor_active;     /* true iff cursor is shown */
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1885,9 +1881,8 @@ static game_ui *new_ui(const game_state *state)
     ui->clearing = false;
     ui->notrack = false;
     ui->dragging = false;
+    ui->edgeflip = false;
     ui->drag_sx = ui->drag_sy = ui->drag_ex = ui->drag_ey = -1;
-    ui->cursor_active = false;
-    ui->curx = ui->cury = 1;
 
     return ui;
 }
@@ -1931,12 +1926,10 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 #define DS_ERROR (1 << 8)
 #define DS_CLUE (1 << 9)
 #define DS_NOTRACK (1 << 10)
-#define DS_CURSOR (1 << 12) /* cursor in square (centre, or on edge) */
 #define DS_TRACK (1 << 13)
 #define DS_CLEARING (1 << 14)
 
 #define DS_NSHIFT 16    /* R/U/L/D shift, for no-track edge flags */
-#define DS_CSHIFT 20    /* R/U/L/D shift, for cursor-on-edge */
 
 struct game_drawstate {
     int sz6, grid_line_all, grid_line_tl, grid_line_br;
@@ -2026,7 +2019,7 @@ static bool ui_can_flip_square(const game_state *state, int x, int y, bool notra
     } else {
         /* If we're setting S_TRACK, we cannot have any S_NOTRACK (we could have
           E_NOTRACK, though, because one or two wouldn't rule out a track) */
-        if (!(sf & S_TRACK) && (sf & S_NOTRACK))
+        if (!(sf & S_TRACK) && ((sf & S_NOTRACK) || (trackc > 0)))
             return false;
     }
     return true;
@@ -2085,25 +2078,27 @@ static game_state *copy_and_apply_drag(const game_state *state, const game_ui *u
     return after;
 }
 
-#define KEY_DIRECTION(btn) (\
-    (btn) == CURSOR_DOWN ? D : (btn) == CURSOR_UP ? U :\
-    (btn) == CURSOR_LEFT ? L : R)
-
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
-                            int x, int y, int button, bool swapped)
-{
+                            int x, int y, int button, bool swapped) {
     int w = state->p.w, direction;
-    int gx = FROMCOORD(x), gy = FROMCOORD(y);
+    int gx, gy;
     char tmpbuf[80];
-
-    /* --- mouse operations --- */
+    int cx, cy;
+    int x2, y2;
+    
+    gx = FROMCOORD(x);
+    gy = FROMCOORD(y);
+    cx = CENTERED_COORD(gx);
+    cy = CENTERED_COORD(gy);
 
     if (IS_MOUSE_DOWN(button)) {
-        ui->cursor_active = false;
         ui->dragging = false;
+        ui->edgeflip = false;
 
         if (!INGRID(state, gx, gy)) {
+            ui->clearing = ui->notrack = ui->dragging = ui->edgeflip = false;
+            ui->drag_sx = ui->drag_sy = ui->drag_ex = ui->drag_ey = -1;
             if (gx >= 0 && gx < (state)->p.w && gy == -1) {
                 sprintf(tmpbuf, "D%d", gx);
                 return dupstr(tmpbuf);
@@ -2115,32 +2110,61 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return NULL;
         }
 
-        if (button == RIGHT_BUTTON) {
-            ui->notrack = true;
-            ui->clearing = state->sflags[gy*w+gx] & S_NOTRACK;
-        } else {
-            ui->notrack = false;
-            ui->clearing = state->sflags[gy*w+gx] & S_TRACK;
-        }
-
         ui->clickx = x;
         ui->clicky = y;
-        ui->drag_sx = ui->drag_ex = gx;
-        ui->drag_sy = ui->drag_ey = gy;
-        update_ui_drag(state, ui, gx, gy);
-
-        return UI_UPDATE;
-    }
-
+        if (abs(x-cx) < abs(y-cy)) direction = (y < cy) ? U : D;
+        else                       direction = (x < cx) ? L : R;
+        x2 = gx + DX(direction);
+        y2 = gy + DY(direction);
+        if (INGRID(state, x2, y2) && (button == LEFT_BUTTON) && 
+            ((state->sflags[gy*w + gx] & S_TRACK) || 
+             (state->sflags[gy*w + gx] & S_CLUE) ||
+             (S_E_COUNT(state, gx, gy, E_TRACK) > 0)) && 
+            ((state->sflags[y2*w + x2] & S_TRACK) || 
+             (state->sflags[y2*w + x2] & S_CLUE) ||
+             (S_E_COUNT(state, gx, gy, E_TRACK) > 0) ||
+             (S_E_COUNT(state, x2, y2, E_TRACK) > 0))) {
+            if (ui_can_flip_edge(state, gx, gy, direction, false)) {
+                ui->clearing = ui->notrack = ui->dragging = ui->edgeflip = false;
+                ui->drag_sx = ui->drag_sy = ui->drag_ex = ui->drag_ey = -1;
+                ui->edgeflip = true;
+                return edge_flip_str(state, gx, gy, direction, false, tmpbuf);
+            }
+        } else if (INGRID(state, x2, y2) && (button == RIGHT_BUTTON) &&
+            ((state->sflags[gy*w + gx] & S_TRACK) || 
+             (state->sflags[gy*w + gx] & S_CLUE) ||
+             (S_E_COUNT(state, gx, gy, E_TRACK) > 0)) &&
+            ((state->sflags[y2*w + x2] & S_TRACK) || 
+             (state->sflags[y2*w + x2] & S_CLUE) ||
+             (S_E_COUNT(state, x2, y2, E_TRACK) > 0))) {
+            if (ui_can_flip_edge(state, gx, gy, direction, true)) {
+                ui->clearing = ui->notrack = ui->dragging = ui->edgeflip = false;
+                ui->drag_sx = ui->drag_sy = ui->drag_ex = ui->drag_ey = -1;
+                ui->edgeflip = true;
+                return edge_flip_str(state, gx, gy, direction, true, tmpbuf);
+            }
+        }
+        else {
+            ui->edgeflip = false;
+            if (button == RIGHT_BUTTON) {
+                ui->notrack = true;
+                ui->clearing = state->sflags[gy*w+gx] & S_NOTRACK;
+            } else {
+                ui->notrack = false;
+                ui->clearing = state->sflags[gy*w+gx] & S_TRACK;
+            }
+            ui->drag_sx = ui->drag_ex = gx;
+            ui->drag_sy = ui->drag_ey = gy;
+            update_ui_drag(state, ui, gx, gy);
+            return UI_UPDATE;
+        }
+    } 
     if (IS_MOUSE_DRAG(button)) {
-        ui->cursor_active = false;
         if (!INGRID(state, gx, gy)) return NULL;
         update_ui_drag(state, ui, gx, gy);
         return UI_UPDATE;
-    }
-
+    } 
     if (IS_MOUSE_RELEASE(button)) {
-        ui->cursor_active = false;
         if (ui->dragging &&
             (ui->drag_sx != ui->drag_ex || ui->drag_sy != ui->drag_ey)) {
             game_state *dragged = copy_and_apply_drag(state, ui);
@@ -2148,53 +2172,16 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
             ui->dragging = false;
             free_game(dragged);
-
             return ret;
-        } else {
-            int cx, cy;
-
-            /* We might still have been dragging (and just done a one-
-             * square drag): cancel drag, so undo doesn't make it like
-             * a drag-in-progress. */
-            ui->dragging = false;
-
-            /* Click (or tiny drag). Work out which edge we were
-             * closest to. */
-
-            /*
-             * We process clicks based on the mouse-down location,
-             * because that's more natural for a user to carefully
-             * control than the mouse-up.
-             */
-            x = ui->clickx;
-            y = ui->clicky;
-
-            cx = CENTERED_COORD(gx);
-            cy = CENTERED_COORD(gy);
-
-            if (!INGRID(state, gx, gy) || FROMCOORD(x) != gx || FROMCOORD(y) != gy)
-                return UI_UPDATE;
-
-            if (max(abs(x-cx),abs(y-cy)) < TILE_SIZE/4) {
-                if (ui_can_flip_square(state, gx, gy, button == RIGHT_RELEASE))
-                    return square_flip_str(state, gx, gy, button == RIGHT_RELEASE, tmpbuf);
-                return UI_UPDATE;
-            } else {
-                if (abs(x-cx) < abs(y-cy)) {
-                    /* Closest to top/bottom edge. */
-                    direction = (y < cy) ? U : D;
-                } else {
-                    /* Closest to left/right edge. */
-                    direction = (x < cx) ? L : R;
-                }
-                if (ui_can_flip_edge(state, gx, gy, direction,
-                        button == RIGHT_RELEASE))
-                    return edge_flip_str(state, gx, gy, direction,
-                            button == RIGHT_RELEASE, tmpbuf);
-                else
-                    return UI_UPDATE;
-            }
         }
+        if (!ui->edgeflip && ui_can_flip_square(state, gx, gy, button == RIGHT_RELEASE)) {
+            ui->clearing = ui->notrack = ui->dragging = ui->edgeflip = false;
+            ui->drag_sx = ui->drag_sy = ui->drag_ex = ui->drag_ey = -1;
+            return square_flip_str(state, gx, gy, button == RIGHT_RELEASE, tmpbuf);
+        }
+        ui->clearing = ui->notrack = ui->dragging = ui->edgeflip = false;
+        ui->drag_sx = ui->drag_sy = ui->drag_ex = ui->drag_ey = -1;
+        return UI_UPDATE;
     }
 
     return NULL;
@@ -2242,7 +2229,7 @@ static game_state *execute_move(const game_state *state, const char *move)
                 for (i = 0; i < 4; i++) {
                     unsigned df = 1<<i;
 
-                    if (MOVECHAR(df) == d && f != S_NOTRACK) {
+                    if (MOVECHAR(df) == d){ /*  && f != S_NOTRACK) { */
                         if (c == 'T' || c == 'N')
                             S_E_SET(ret, x, y, df, f);
                         else
@@ -2301,7 +2288,7 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 enum {
     COL_BACKGROUND, 
     COL_TRACK_BACKGROUND,
-    COL_GRID, COL_CLUE, COL_CURSOR, COL_DONE,
+    COL_GRID, COL_CLUE, COL_DONE,
     COL_TRACK, COL_TRACK_CLUE, COL_SLEEPER,
     COL_DRAGON, COL_DRAGOFF,
     COL_ERROR, COL_ERROR_BACKGROUND,
@@ -2320,7 +2307,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_TRACK            * 3 + i] = 0.5F;
         ret[COL_CLUE             * 3 + i] = 0.0F;
         ret[COL_GRID             * 3 + i] = 0.5F;
-        ret[COL_CURSOR           * 3 + i] = 0.6F;
         ret[COL_DONE             * 3 + i] = 0.75F;
         ret[COL_ERROR_BACKGROUND * 3 + i] = 0.25F;
         ret[COL_SLEEPER          * 3 + i] = 0.25F;
@@ -2513,27 +2499,6 @@ static void draw_square(drawing *dr, game_drawstate *ds,
     draw_rect(dr, ox + GRID_LINE_TL, oy + GRID_LINE_TL,
               TILE_SIZE - GRID_LINE_ALL, TILE_SIZE - GRID_LINE_ALL, (flags & DS_ERROR) ? COL_ERROR_BACKGROUND : bg);
 
-    /* More outlines for clue squares. */
-    if (flags & DS_CURSOR) {
-        int curx, cury, curw, curh;
-
-        off = t16;
-        curx = ox + off; cury = oy + off;
-        curw = curh = TILE_SIZE - (2*off) + 1;
-
-        if (flags & (U << DS_CSHIFT)) {
-            cury = oy - off; curh = 2*off + 1;
-        } else if (flags & (D << DS_CSHIFT)) {
-            cury = oy + TILE_SIZE - off; curh = 2*off + 1;
-        } else if (flags & (L << DS_CSHIFT)) {
-            curx = ox - off; curw = 2*off + 1;
-        } else if (flags & (R << DS_CSHIFT)) {
-            curx = ox + TILE_SIZE - off; curw = 2*off + 1;
-        }
-
-        draw_rect_outline(dr, curx, cury, curw, curh, COL_GRID);
-    }
-
     /* Draw tracks themselves */
     c = (flags & DS_CLUE) ? COL_TRACK_CLUE : COL_TRACK;
     flags_best = best_bits(flags, flags_drag, &c);
@@ -2624,17 +2589,6 @@ static unsigned int s2d_flags(const game_state *state, int x, int y, const game_
         f |= DS_NOTRACK;
     if ((state->sflags[y*w+x] & S_TRACK) || (S_E_COUNT(state, x, y, E_TRACK) > 0))
         f |= DS_TRACK;
-
-    if (ui->cursor_active) {
-        if (ui->curx >= x*2 && ui->curx <= (x+1)*2 &&
-            ui->cury >= y*2 && ui->cury <= (y+1)*2) {
-            f |= DS_CURSOR;
-            if (ui->curx == x*2)        f |= (L << DS_CSHIFT);
-            if (ui->curx == (x+1)*2)    f |= (R << DS_CSHIFT);
-            if (ui->cury == y*2)        f |= (U << DS_CSHIFT);
-            if (ui->cury == (y+1)*2)    f |= (D << DS_CSHIFT);
-        }
-    }
 
     return f;
 }

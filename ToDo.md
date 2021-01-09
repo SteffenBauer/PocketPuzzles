@@ -61,7 +61,8 @@
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 - [X] Bridges: Change Path button to indicator
 - [ ] Pearl: "No line" on right click instead of release
-- [ ] Tracks: Rework UI (cell versus border clicks)
+- [X] Tracks: Rework UI (cell versus border clicks)
+- [X] Creek: Separate from Slant as standalone game
 
 #### One-click symbol fill
 
