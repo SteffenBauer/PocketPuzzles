@@ -3,9 +3,7 @@
 #include "common.h"
 
 #define CHOOSER_COLS 4
-#define CHOOSER_ROWS 5
 #define CONTROL_NUM 2
-#define CFONTSIZE 36
 
 bool chooserInitialized;
 
@@ -15,6 +13,7 @@ struct chooserAttributes {
     int chooser_lastpage;
 
     ifont *chooserfont;
+    int cfontsize;
 
     int num_games;
     int numChooserButtons;

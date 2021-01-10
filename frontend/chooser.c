@@ -132,7 +132,7 @@ static void chooserDrawChooserButtons(int page) {
             button_to_normal(&ca.chooserButton[i], false);
             DrawTextRect(ca.chooserButton[i].posx-(ca.chooser_padding/2),
                          ca.chooserButton[i].posy+ca.chooserButton[i].size+5,
-                         ca.chooserButton[i].size+ca.chooser_padding, CFONTSIZE,
+                         ca.chooserButton[i].size+ca.chooser_padding, ca.cfontsize,
                          ca.chooserButton[i].actionParm.thegame->name, ALIGN_CENTER);
         }
         else if (ca.chooserButton[i].action == ACTION_LAUNCH) {
@@ -172,7 +172,7 @@ static void chooserDrawMenu() {
     button_to_normal(&ca.chooserButton[ca.btnMenuIDX], false);
 
     SetFont(ca.chooserfont, BLACK);
-    DrawTextRect(0, (ca.chooserlayout.menubtn_size/2)-(CFONTSIZE/2), ScreenWidth(), CFONTSIZE, "PUZZLES", ALIGN_CENTER);
+    DrawTextRect(0, (ca.chooserlayout.menubtn_size/2)-(ca.cfontsize/2), ScreenWidth(), ca.cfontsize, "PUZZLES", ALIGN_CENTER);
 }
 
 static void chooserSetupButtons() {
@@ -185,7 +185,7 @@ static void chooserSetupButtons() {
         r = pi / ca.chooser_cols;
         ca.chooserButton[i].posx = (c+1)*ca.chooser_padding + c*ca.chooserlayout.chooser_size;
         ca.chooserButton[i].posy = 50 + ca.chooserlayout.maincanvas.starty +
-                                   r*(32+CFONTSIZE+ca.chooserlayout.chooser_size);
+                                   r*(32+ca.cfontsize+ca.chooserlayout.chooser_size);
         ca.chooserButton[i].page = p;
         ca.chooserButton[i].action = ACTION_LAUNCH;
         ca.chooserButton[i].size = ca.chooserlayout.chooser_size;
@@ -251,7 +251,8 @@ void chooserScreenShow() {
 }
 
 void chooserScreenInit() {
-    ca.chooserfont = OpenFont("LiberationSans-Bold", CFONTSIZE, 0);
+    ca.cfontsize = (int)(ScreenWidth()/30);
+    ca.chooserfont = OpenFont("LiberationSans-Bold", ca.cfontsize, 0);
 
     ca.num_games = 0;
     while (true) {
@@ -265,7 +266,7 @@ void chooserScreenInit() {
     ca.chooser_padding = (ScreenWidth()-(ca.chooser_cols*ca.chooserlayout.chooser_size))/(ca.chooser_cols+1);
 
     ca.chooser_rows = (int)((ca.chooserlayout.maincanvas.height-50) / 
-        (32+CFONTSIZE+ca.chooserlayout.chooser_size));
+        (32+ca.cfontsize+ca.chooserlayout.chooser_size));
 
     ca.current_chooserpage = 0;
     ca.chooser_lastpage = (ca.num_games-1) / (ca.chooser_cols * ca.chooser_rows);

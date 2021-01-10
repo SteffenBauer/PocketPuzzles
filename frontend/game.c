@@ -561,7 +561,7 @@ static void gameDrawMenu() {
     button_to_normal(&fe->gameButton[fe->btnTypeIDX], false);
 
     SetFont(fe->gamefont, BLACK);
-    DrawTextRect(0, (fe->gamelayout.menubtn_size/2)-(GFONTSIZE/2), ScreenWidth(), GFONTSIZE, fe->currentgame->name, ALIGN_CENTER);
+    DrawTextRect(0, (fe->gamelayout.menubtn_size/2)-(fe->gfontsize/2), ScreenWidth(), fe->gfontsize, fe->currentgame->name, ALIGN_CENTER);
 }
 static void gameSetupStatusBar() {
     if (!fe->gamelayout.with_statusbar) return;
@@ -858,7 +858,8 @@ void gameScreenShow() {
 void gameScreenInit() {
     fe = snew(frontend);
     fe->cliprect = GetClipRect();
-    fe->gamefont = OpenFont("LiberationSans-Bold", GFONTSIZE, 0);
+    fe->gfontsize = (int)(ScreenWidth()/30);
+    fe->gamefont = OpenFont("LiberationSans-Bold", fe->gfontsize, 0);
     fe->gameButton = NULL;
     fe->isTimer = false;
     typeMenu = NULL;

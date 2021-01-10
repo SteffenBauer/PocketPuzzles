@@ -151,12 +151,12 @@ static void paramSetItemNum(int i, int n) {
     char buf[256];
     int x, y;
     x = ScreenWidth() - 3*pa.paramlayout.menubtn_size - 20;
-    y = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(PFONTSIZE/2);
+    y = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(pa.pfontsize/2);
     sprintf(buf, "%i", n);
     sfree(pa.cfg[i].u.string.sval);
     pa.cfg[i].u.string.sval = dupstr(buf);
-    FillArea(x, y, pa.paramlayout.menubtn_size, PFONTSIZE, 0x00FFFFFF);
-    DrawTextRect(x, y, pa.paramlayout.menubtn_size, PFONTSIZE, pa.cfg[i].u.string.sval, ALIGN_CENTER);
+    FillArea(x, y, pa.paramlayout.menubtn_size, pa.pfontsize, 0x00FFFFFF);
+    DrawTextRect(x, y, pa.paramlayout.menubtn_size, pa.pfontsize, pa.cfg[i].u.string.sval, ALIGN_CENTER);
 }
 
 static void paramDecreaseItem(int i) {
@@ -187,7 +187,7 @@ static void paramDrawMenu() {
     button_to_normal(&pa.paramButton[pa.btnDrawIDX], false);
 
     SetFont(pa.paramfont, BLACK);
-    DrawTextRect(0, (pa.paramlayout.menubtn_size/2)-(PFONTSIZE/2), ScreenWidth(), PFONTSIZE, pa.title, ALIGN_CENTER);
+    DrawTextRect(0, (pa.paramlayout.menubtn_size/2)-(pa.pfontsize/2), ScreenWidth(), pa.pfontsize, pa.title, ALIGN_CENTER);
 }
 
 static void paramDrawPanel(bool inverse) {
@@ -200,7 +200,7 @@ static void paramDrawPanel(bool inverse) {
         FillArea(0, pa.paramlayout.buttonpanel.starty, ScreenWidth(), pa.paramlayout.buttonpanel.height, 0x00000000);    
         SetFont(pa.paramfont, WHITE);
     }
-    DrawTextRect(0, pa.paramlayout.buttonpanel.starty+pa.paramlayout.buttonpanel.height/2-(PFONTSIZE/2), ScreenWidth(), PFONTSIZE, "OK", ALIGN_CENTER);
+    DrawTextRect(0, pa.paramlayout.buttonpanel.starty+pa.paramlayout.buttonpanel.height/2-(pa.pfontsize/2), ScreenWidth(), pa.pfontsize, "OK", ALIGN_CENTER);
     PartialUpdate(0, pa.paramlayout.buttonpanel.starty, ScreenWidth(), pa.paramlayout.buttonpanel.height);
 }
 
@@ -215,12 +215,12 @@ static void paramDrawParams() {
             StretchBitmap(xn, pa.paramItem[i].y, pa.paramlayout.menubtn_size, 
                           pa.paramlayout.menubtn_size, pa.paramItem[i].bitmap, 0); */
         SetFont(pa.paramfont, BLACK);
-        y = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(PFONTSIZE/2);
-        DrawTextRect(xn, y, ScreenWidth()-2*xn, PFONTSIZE, pa.cfg[i].name, ALIGN_LEFT);
+        y = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(pa.pfontsize/2);
+        DrawTextRect(xn, y, ScreenWidth()-2*xn, pa.pfontsize, pa.cfg[i].name, ALIGN_LEFT);
         switch(pa.paramItem[i].type) {
             case C_STRING:
                 button_to_normal(&pa.paramItem[i].item.n.decrease, false);
-                DrawTextRect(xi, y, pa.paramlayout.menubtn_size, PFONTSIZE, pa.cfg[i].u.string.sval, ALIGN_CENTER);
+                DrawTextRect(xi, y, pa.paramlayout.menubtn_size, pa.pfontsize, pa.cfg[i].u.string.sval, ALIGN_CENTER);
                 button_to_normal(&pa.paramItem[i].item.n.increase, false);
                 break;
             case C_CHOICES:
@@ -237,12 +237,12 @@ static void choice_to_normal(int i) {
     int c, yf, yt;
     c = pa.cfg[i].u.choices.selected;
     yf = pa.paramItem[i].y;
-    yt = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(PFONTSIZE/2);
+    yt = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(pa.pfontsize/2);
     FillArea(ScreenWidth()- 5*pa.paramlayout.menubtn_size - 20, yf, 
              5*pa.paramlayout.menubtn_size, pa.paramlayout.menubtn_size, 0x00FFFFFF);
     SetFont(pa.paramfont, BLACK);
     DrawTextRect(ScreenWidth()- 5*pa.paramlayout.menubtn_size - 20, yt, 
-                 5*pa.paramlayout.menubtn_size, PFONTSIZE, 
+                 5*pa.paramlayout.menubtn_size, pa.pfontsize, 
                  pa.paramItem[i].item.c.choices[c], ALIGN_CENTER);
 }
 
@@ -250,12 +250,12 @@ static void choice_to_tapped(int i) {
     int c, yf, yt;
     c = pa.cfg[i].u.choices.selected;
     yf = pa.paramItem[i].y;
-    yt = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(PFONTSIZE/2);
+    yt = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(pa.pfontsize/2);
     FillArea(ScreenWidth()- 5*pa.paramlayout.menubtn_size - 20, yf, 
              5*pa.paramlayout.menubtn_size, pa.paramlayout.menubtn_size, 0x00000000);
     SetFont(pa.paramfont, WHITE);
     DrawTextRect(ScreenWidth()- 5*pa.paramlayout.menubtn_size - 20, yt, 
-                 5*pa.paramlayout.menubtn_size, PFONTSIZE, 
+                 5*pa.paramlayout.menubtn_size, pa.pfontsize, 
                  pa.paramItem[i].item.c.choices[c], ALIGN_CENTER);
 }
 
@@ -403,7 +403,8 @@ void paramScreenShow() {
 }
 
 void paramScreenInit() {
-    pa.paramfont = OpenFont("LiberationSans-Bold", PFONTSIZE, 0);
+    pa.pfontsize = (int)(ScreenWidth()/30);
+    pa.paramfont = OpenFont("LiberationSans-Bold", pa.pfontsize, 0);
     pa.paramButton = NULL;
     pa.title = NULL;
     pa.cfg = NULL;
