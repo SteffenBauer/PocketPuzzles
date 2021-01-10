@@ -1,5 +1,21 @@
 ## ChangeLog
 
+## 0.7.2 - 2021/01/10
+
+### Added
+* *Sticks* puzzle
+* Drag mechanism in *Creek* puzzle
+* Mention individual game contributors in respective "How to play" infoboxes
+
+### Changed
+* Extract *Creek* into separate puzzle
+* UX handling in *Tracks* puzzle
+* Calculate chooser button layout and screen fontsizes according to screen resolution
+
+### Fixed
+* Statusbar update
+* Reduce screen redraw in *Spokes* and *Bridges* puzzles
+
 ## 0.7.1 - 2020/12/30
 
 ### Added

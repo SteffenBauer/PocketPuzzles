@@ -3,8 +3,6 @@
 #include "common.h"
 #include "puzzles.h"
 
-#define GFONTSIZE 36
-
 bool gameInitialized;
 
 typedef struct {
@@ -53,6 +51,7 @@ struct frontend {
   int ncolours;
   float *colours;
   ifont *gamefont;
+  int gfontsize;
 };
 
 struct blitter {

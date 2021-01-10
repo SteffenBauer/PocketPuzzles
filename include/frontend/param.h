@@ -2,8 +2,6 @@
 #define POCKETPUZZLES_PARAM_HEADER
 #include "common.h"
 
-#define PFONTSIZE 36
-
 bool paramInitialized;
 
 struct item_number {
@@ -48,6 +46,7 @@ struct paramparams {
     int btnDrawIDX;
 
     ifont *paramfont;
+    int pfontsize;
 
     midend *me;
     char *title;
