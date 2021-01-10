@@ -1,4 +1,51 @@
-### ToDo for individual games
+## ToDo
+
+### Milestones for alpha version
+
+- [X] Basic GUI framework
+- [X] Generate game bitmaps (game icons, menu buttons, control buttons)
+- [X] Game chooser
+- [X] Game screen menubar
+- [X] Game screen statusbar
+- [X] Game presets
+- [X] Drawing callback functions
+- [X] Game initialization
+- [X] Game launch
+- [X] 'Game solved' announcement
+- [X] Screen click handling
+- [X] Colors -> Greyscale
+- [X] Implement game menu controls (new, restart, solve)
+- [X] Implement swap / undo / redo functionality
+- [X] Handling of physical device buttons
+- [X] Setup of game specific control buttons
+- [X] Setup of game specific type presets
+- [X] Save / restore game presets on screen change / app exit / relaunch
+- [X] Save / restore of current game state on screen change / app exit / relaunch
+- [X] 'About' box
+
+### Milestones for beta version
+
+- [X] Implement custom game parameters entry screen
+- [X] Implement help screen
+- [X] Better color palette for greyscale screen (done for all active games)
+- [X] Better error visualization suitable for greyscale screen (done for all active games)
+- [X] Modify games with dragging for better handling of eInk screen limitations (done for all active games)
+- [X] B/W texture drawing for games depending on color output (done for all active games)
+
+### For future versions
+
+- [X] Ability to mark games as favorite
+- [X] Entry buttons indicating status (Bridges, Dominosa, games with one-click fill)
+- [ ] Context menu for chooser buttons (Launch, Resume, Clear prefs, Set/Unset as favorite)
+- [ ] Check draw update efficiency in all games
+- [ ] Check all games for memory leaks
+- [ ] General settings (show/hide statusbar, orientation, chooser style, color/grey mode)
+- [ ] Information screen explaining game controls
+- [ ] Color mode
+- [ ] Screen orientation handling
+- [ ] Generate separate documentation eBook
+
+## ToDo for individual games
 
 - [X] Ascent: Add number keys; better error display, allow number erase by backspace
 - [X] Boats: Change error for incomplete boats, adjacent boats, and wrong boat numbers
