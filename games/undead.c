@@ -2433,9 +2433,9 @@ static game_state *execute_move(const game_state *state, const char *move)
             c == 'g' || c == 'v' || c == 'z') {
             move++;
             sscanf(move, "%d%n", &x, &n);
-            if (c == 'G') ret->guess[x] = ret->guess[x] == 1 ? 7 : 1;
-            if (c == 'V') ret->guess[x] = ret->guess[x] == 2 ? 7 : 2;
-            if (c == 'Z') ret->guess[x] = ret->guess[x] == 4 ? 7 : 4;
+            if (c == 'G') ret->guess[x] = !solver && (ret->guess[x] == 1) ? 7 : 1;
+            if (c == 'V') ret->guess[x] = !solver && (ret->guess[x] == 2) ? 7 : 2;
+            if (c == 'Z') ret->guess[x] = !solver && (ret->guess[x] == 4) ? 7 : 4;
             if (c == 'E' && ret->guess[x] == 7)
                 ret->pencils[x] = 0;
             if (c == 'E' && ret->guess[x] != 7)
