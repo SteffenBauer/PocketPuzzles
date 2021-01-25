@@ -216,6 +216,8 @@ static const char *validate_params(const game_params *params, bool full)
         return "Width and height must both be at least three";
     if (params->w > 12 || params->h > 12)
         return "Width and height must both be at most 12";
+    if (params->diff == DIFF_HARD && (params->w > 10 || params->h > 10))
+        return "Width and height for a hard puzzle should be at most 10";
     return NULL;
 }
 
@@ -1088,7 +1090,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 
 #define PREFERRED_TILESIZE 32
 #define TILESIZE (ds->tilesize)
-#define BORDER TILESIZE
+#define BORDER (TILESIZE)
 #define CLUE_RADIUS (TILESIZE / 3)
 #define CLUE_TEXTSIZE (TILESIZE / 2)
 #define COORD(x)  ( (x) * TILESIZE + BORDER )

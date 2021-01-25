@@ -993,7 +993,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 
 #define PREFERRED_TILE_SIZE 48
 #define TILESIZE (ds->tilesize)
-#define BORDER (3*TILESIZE/4)
+#define BORDER (TILESIZE/2)
 #define COORD(x) ( (x) * TILESIZE + BORDER )
 #define CENTERED_COORD(x) ( COORD(x) + TILESIZE/2 )
 #define FROMCOORD(x) ( ((x) < BORDER) ? -1 : ((x) - BORDER) / TILESIZE )

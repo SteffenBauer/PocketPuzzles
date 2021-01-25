@@ -1505,11 +1505,7 @@ struct game_drawstate {
 
 #define PREFERRED_TILESIZE 32
 #define TILESIZE (ds->tilesize)
-#ifdef SMALL_SCREEN
-#define BORDER    (TILESIZE / 4)
-#else
-#define BORDER    (TILESIZE)
-#endif
+#define BORDER    (TILESIZE / 2)
 #define HIGHLIGHT_WIDTH (TILESIZE / 8)
 #define COORD(x)  ( (x) * TILESIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILESIZE) / TILESIZE - 1 )

@@ -59,11 +59,7 @@
 #define PREFERRED_TILE_SIZE 32
 #define TILE_SIZE (ds->tilesize)
 #define LINE_THICK ((TILE_SIZE+128)/48)
-#ifdef SMALL_SCREEN
-#define WINDOW_OFFSET 4
-#else
-#define WINDOW_OFFSET 16
-#endif
+#define WINDOW_OFFSET (TILE_SIZE / 2)
 
 #define ROTATE_TIME 0.0F
 #define FLASH_FRAME 0.0F
@@ -2067,7 +2063,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 {
     char *nullret;
     int tx = -1, ty = -1, dir = 0;
-    bool shift = button & MOD_SHFT, ctrl = button & MOD_CTRL;
     enum {
         NONE, ROTATE_LEFT, ROTATE_180, ROTATE_RIGHT, TOGGLE_LOCK, JUMBLE,
         MOVE_ORIGIN, MOVE_SOURCE, MOVE_ORIGIN_AND_SOURCE, MOVE_CURSOR
@@ -2216,33 +2211,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
 #endif /* USE_DRAGGING */
 
-    } else if (IS_CURSOR_MOVE(button)) {
-        switch (button) {
-          case CURSOR_UP:       dir = U; break;
-          case CURSOR_DOWN:     dir = D; break;
-          case CURSOR_LEFT:     dir = L; break;
-          case CURSOR_RIGHT:    dir = R; break;
-          default:              return nullret;
-        }
-        if (shift && ctrl) action = MOVE_ORIGIN_AND_SOURCE;
-        else if (shift)    action = MOVE_ORIGIN;
-        else if (ctrl)     action = MOVE_SOURCE;
-        else               action = MOVE_CURSOR;
-    } else if (button == 'a' || button == 's' || button == 'd' ||
-           button == 'A' || button == 'S' || button == 'D' ||
-               button == 'f' || button == 'F' ||
-               IS_CURSOR_SELECT(button)) {
-    tx = ui->cur_x;
-    ty = ui->cur_y;
-    if (button == 'a' || button == 'A' || button == CURSOR_SELECT)
-        action = ROTATE_LEFT;
-    else if (button == 's' || button == 'S' || button == CURSOR_SELECT2)
-        action = TOGGLE_LOCK;
-    else if (button == 'd' || button == 'D')
-        action = ROTATE_RIGHT;
-        else if (button == 'f' || button == 'F')
-            action = ROTATE_180;
-        ui->cur_visible = true;
     } else if (button == 'j' || button == 'J') {
     /* XXX should we have some mouse control for this? */
     action = JUMBLE;
@@ -2625,20 +2593,6 @@ static void draw_tile(drawing *dr, game_drawstate *ds, int x, int y,
         if (y < ds->height)
             draw_rect(dr, gridl, ty+TILE_SIZE-border_br,
                       gridr-gridl, border_br, COL_BORDER);
-    }
-
-    /*
-     * Draw the keyboard cursor.
-     */
-    if (tile & TILE_KEYBOARD_CURSOR) {
-        int cursorcol = (tile & TILE_LOCKED) ? COL_BACKGROUND : COL_LOCKED;
-        int inset_outer = TILE_SIZE/8, inset_inner = inset_outer + LINE_THICK;
-        draw_rect(dr, tx + inset_outer, ty + inset_outer,
-                  TILE_SIZE - 2*inset_outer, TILE_SIZE - 2*inset_outer,
-                  cursorcol);
-        draw_rect(dr, tx + inset_inner, ty + inset_inner,
-                  TILE_SIZE - 2*inset_inner, TILE_SIZE - 2*inset_inner,
-                  bg);
     }
 
     radius = (TILE_SIZE+1)/2;
