@@ -2862,7 +2862,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (i=0;i<state->map->n;i++) {
         if (state->pencil[i] > 0) {
             draw_textured_pencil(dr, 
-                COORD(state->map->regionx[i])/2, COORD(state->map->regiony[i])/2, 
+                COORD(state->map->regionx[i])/2-BORDER/2, COORD(state->map->regiony[i])/2-BORDER/2, 
                 TILESIZE, TILESIZE, state->pencil[i]);
         }
     }
