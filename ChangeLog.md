@@ -1,5 +1,14 @@
 ## ChangeLog
 
+## 0.7.3 - 2021/02/08
+
+### Changed
+* Reworked border size in *Map*, *Dominosa*, *Galaxies*, *Inertia*, *Mines*, *Net*, *Rect*, *Sokoban*, *Walls* for better screen utilization
+* Reorganized icons folder
+
+### Fixed
+* *Undead*: Fix incorrect redraw on 'Show solution'
+
 ## 0.7.2 - 2021/01/10
 
 ### Added
