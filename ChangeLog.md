@@ -1,5 +1,15 @@
 ## ChangeLog
 
+## 0.7.4 - 2021/02/17
+
+### Added
+* Swiping in chooser to switch pages
+* *Undead*: Show number of placed monster types
+
+### Changed
+* Chooser page indicator / select buttons
+* UX handling in *Tracks* puzzle partially reverted.
+
 ## 0.7.3 - 2021/02/08
 
 ### Changed
