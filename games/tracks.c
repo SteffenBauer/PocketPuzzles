@@ -2217,15 +2217,16 @@ static game_state *execute_move(const game_state *state, const char *move)
             f = (c == 'T' || c == 't') ? S_TRACK : S_NOTRACK;
 
             if (d == 'S') {
+                for (i=0;i<4;i++) S_E_CLEAR(ret, x, y, 1<<i, S_NOTRACK);
                 if (c == 'T' || c == 'N')
                     ret->sflags[y*w+x] |= f;
-                else
+                else 
                     ret->sflags[y*w+x] &= ~f;
             } else if (d == 'U' || d == 'D' || d == 'L' || d == 'R') {
                 for (i = 0; i < 4; i++) {
                     unsigned df = 1<<i;
 
-                    if (MOVECHAR(df) == d){ /*  && f != S_NOTRACK) { */
+                    if (MOVECHAR(df) == d) {
                         if (c == 'T' || c == 'N')
                             S_E_SET(ret, x, y, df, f);
                         else

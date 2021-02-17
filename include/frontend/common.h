@@ -49,6 +49,7 @@ typedef enum {
     ACTION_MENU,
     ACTION_NEXT,
     ACTION_PREV,
+    ACTION_SWITCH,
     ACTION_LAUNCH,
     ACTION_BACK,
     ACTION_GAME,
@@ -82,7 +83,7 @@ typedef struct gameinfo {
 bool coord_in_button(int x, int y, BUTTON *button);
 bool release_button(int x, int y, BUTTON *button);
 void button_to_normal(BUTTON *button, bool update);
-void button_to_tapped(BUTTON *button);
+void button_to_tapped(BUTTON *button, bool update);
 void button_to_cleared(BUTTON *button, bool update);
 void activate_button(BUTTON *button);
 void deactivate_button(BUTTON *button);

@@ -19,6 +19,9 @@ struct chooserAttributes {
     int numChooserButtons;
     BUTTON *chooserButton;
 
+    int numPageButtons;
+    BUTTON *pageButton;
+
     int control_padding;
     int chooser_padding;
 
@@ -28,12 +31,10 @@ struct chooserAttributes {
     int btnHomeIDX;
     int btnDrawIDX;
     int btnMenuIDX;
-    int btnPrevIDX;
-    int btnNextIDX;
 } ca;
 
 extern ibitmap icon_home, icon_home_tap, icon_redraw, icon_redraw_tap,
-               bt_west, bt_east, ic_star,
+               bt_west, bt_east, ic_star, bt_page, bt_page_select,
                icon_menu, icon_menu_tap,
                menu_new, menu_star,
                menu_settings, menu_restart, menu_help, menu_reset;
@@ -64,6 +65,7 @@ void chooserDrag(int x, int y);
 void chooserRelease(int x, int y);
 void chooserPrev();
 void chooserNext();
+void chooserSwitch(int page);
 void chooserSerialise();
 
 extern void gameSetGame(const struct game *thegame);

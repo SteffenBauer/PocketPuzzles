@@ -26,7 +26,7 @@ void button_to_normal(BUTTON *button, bool update) {
     }
     if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
-void button_to_tapped(BUTTON *button) {
+void button_to_tapped(BUTTON *button, bool update) {
     if (button->bitmap_tap != NULL) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap_tap, 0);
     }
@@ -39,7 +39,7 @@ void button_to_tapped(BUTTON *button) {
         draw_buttonchar(button);
         InvertArea(button->posx, button->posy, button->size, button->size);
     }
-    PartialUpdate(button->posx, button->posy, button->size, button->size);
+    if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
 static void draw_buttonchar(BUTTON *button) {
     ifont *font; char buf[2];
