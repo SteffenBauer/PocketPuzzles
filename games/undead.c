@@ -62,6 +62,7 @@ enum {
     COL_GRID,
     COL_TEXT,
     COL_ERROR,
+    COL_ERROR_TEXT,
     COL_HIGHLIGHT,
     COL_GHOST,
     COL_ZOMBIE,
@@ -266,6 +267,7 @@ struct game_common {
 struct game_state {
     struct game_common *common;
     int *guess;
+    int monster_counts[3];
     unsigned char *pencils;
     bool *cell_errors;
     bool *hint_errors;
@@ -328,8 +330,10 @@ static game_state *new_state(const game_params *params) {
     state->hints_done = snewn(2 * state->common->num_paths, bool);
     memset(state->hints_done, 0,
            2 * state->common->num_paths * sizeof(bool));
-    for (i=0;i<3;i++)
+    for (i=0;i<3;i++) {
         state->count_errors[i] = false;
+        state->monster_counts[i] = 0;
+    }
 
     state->solved = false;
     state->cheated = false;
@@ -339,6 +343,7 @@ static game_state *new_state(const game_params *params) {
 
 static game_state *dup_game(const game_state *state)
 {
+    int i;
     game_state *ret = snew(game_state);
 
     ret->common = state->common;
@@ -378,9 +383,10 @@ static game_state *dup_game(const game_state *state)
     }
     else ret->hints_done = NULL;
 
-    ret->count_errors[0] = state->count_errors[0];
-    ret->count_errors[1] = state->count_errors[1];
-    ret->count_errors[2] = state->count_errors[2];
+    for (i=0;i<3;i++) {
+        ret->count_errors[i] = state->count_errors[i];
+        ret->monster_counts[i] = state->monster_counts[i];
+    }
 
     ret->solved = state->solved;
     ret->cheated = state->cheated;
@@ -2071,6 +2077,7 @@ struct game_drawstate {
     unsigned char *pencils;
 
     bool count_errors[3];
+    int monster_counts[3];
     bool *cell_errors;
     bool *hint_errors;
     bool *hints_done;
@@ -2294,21 +2301,21 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 static bool check_numbers_draw(game_state *state, int *guess) {
     bool valid, filled;
     int i,x,y,xy;
-    int count_ghosts, count_vampires, count_zombies;
 
-    count_ghosts = count_vampires = count_zombies = 0;
+    for (i=0;i<3;i++)
+        state->monster_counts[i] = 0;
     for (i=0;i<state->common->num_total;i++) {
-        if (guess[i] == 1) count_ghosts++;
-        if (guess[i] == 2) count_vampires++;
-        if (guess[i] == 4) count_zombies++;
+        if (guess[i] == 1) state->monster_counts[0]++;
+        if (guess[i] == 2) state->monster_counts[1]++;
+        if (guess[i] == 4) state->monster_counts[2]++;
     }
 
     valid = true;
-    filled = (count_ghosts + count_vampires + count_zombies >=
+    filled = ((state->monster_counts[0]+state->monster_counts[1]+state->monster_counts[2]) >=
               state->common->num_total);
 
-    if (count_ghosts > state->common->num_ghosts ||
-        (filled && count_ghosts != state->common->num_ghosts) ) {
+    if (state->monster_counts[0] > state->common->num_ghosts ||
+        (filled && state->monster_counts[0] != state->common->num_ghosts) ) {
         valid = false;
         state->count_errors[0] = true;
         for (x=1;x<state->common->params.w+1;x++)
@@ -2319,8 +2326,8 @@ static bool check_numbers_draw(game_state *state, int *guess) {
                     state->cell_errors[xy] = true;
             }
     }
-    if (count_vampires > state->common->num_vampires ||
-        (filled && count_vampires != state->common->num_vampires) ) {
+    if (state->monster_counts[1] > state->common->num_vampires ||
+        (filled && state->monster_counts[1] != state->common->num_vampires) ) {
         valid = false;
         state->count_errors[1] = true;
         for (x=1;x<state->common->params.w+1;x++)
@@ -2331,8 +2338,8 @@ static bool check_numbers_draw(game_state *state, int *guess) {
                     state->cell_errors[xy] = true;
             }
     }
-    if (count_zombies > state->common->num_zombies ||
-        (filled && count_zombies != state->common->num_zombies) )  {
+    if (state->monster_counts[2] > state->common->num_zombies ||
+        (filled && state->monster_counts[2] != state->common->num_zombies) )  {
         valid = false;
         state->count_errors[2] = true;
         for (x=1;x<state->common->params.w+1;x++)
@@ -2522,7 +2529,8 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
         ret[COL_GRID       * 3 + i] = 0.0F;
         ret[COL_TEXT       * 3 + i] = 0.0F;
-        ret[COL_ERROR      * 3 + i] = 0.5F;
+        ret[COL_ERROR      * 3 + i] = 0.25F;
+        ret[COL_ERROR_TEXT * 3 + i] = 0.75F;
         ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
         ret[COL_GHOST      * 3 + i] = 1.0F;
         ret[COL_VAMPIRE    * 3 + i] = 0.9F;
@@ -2543,11 +2551,10 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->started = ds->solved = false;
     ds->w = state->common->params.w;
     ds->h = state->common->params.h;
-
-    ds->count_errors[0] = false;
-    ds->count_errors[1] = false;
-    ds->count_errors[2] = false;
-
+    for (i=0;i<3;i++) {
+        ds->count_errors[i] = false;
+        ds->monster_counts[i] = 0;
+    }
     ds->monsters = snewn(state->common->num_total,int);
     for (i=0;i<(state->common->num_total);i++)
         ds->monsters[i] = 7;
@@ -2767,37 +2774,43 @@ static void draw_monster(drawing *dr, game_drawstate *ds, int x, int y,
 
 static void draw_monster_count(drawing *dr, game_drawstate *ds,
                                const game_state *state, int c) {
-    int dx,dy;
+    int dx,dy,nw;
+    int mx,cx,mw,cw;
     char buf[8];
-    char bufm[8];
 
     dy = TILESIZE/4;
-    dx = BORDER+(ds->w+2)*TILESIZE/2+TILESIZE/4;
+    dx = BORDER+(ds->w+2)*TILESIZE/2;
+    nw = ((state->common->num_ghosts > 9) || 
+          (state->common->num_vampires > 9 ) ||
+          (state->common->num_zombies > 9)) ? 5 : 3;
     switch (c) {
       case 0:
-        sprintf(buf,"%d",state->common->num_ghosts);
-        sprintf(bufm,"G");
-        dx -= 3*TILESIZE/2;
+        sprintf(buf,"%d/%d",state->common->num_ghosts, state->monster_counts[0]);
+        dx = BORDER + (ds->w+2)*TILESIZE/2 - 5 - 2*TILESIZE/3 - nw*TILESIZE/4;
         break;
       case 1:
-        sprintf(buf,"%d",state->common->num_vampires);
-        sprintf(bufm,"V");
+        sprintf(buf,"%d/%d",state->common->num_vampires, state->monster_counts[1]);
+        dx = BORDER + (ds->w+2)*TILESIZE/2;
         break;
       case 2:
-        sprintf(buf,"%d",state->common->num_zombies);
-        sprintf(bufm,"Z");
-        dx += 3*TILESIZE/2;
+        sprintf(buf,"%d/%d",state->common->num_zombies, state->monster_counts[2]);
+        dx = BORDER + (ds->w+2)*TILESIZE/2 + 5 + 2*TILESIZE/3 + nw*TILESIZE/4;
         break;
     }
+    mx = dx-2*TILESIZE/3;
+    mw = 2*TILESIZE/3;
+    cx = dx;
+    cw = nw*TILESIZE/4;
 
-    draw_rect(dr, dx-2*TILESIZE/3, dy, 3*TILESIZE/2, TILESIZE,
+    draw_rect(dr, mx, dy, mw, TILESIZE, COL_BACKGROUND);
+    draw_monster(dr, ds, mx+mw/2, dy+TILESIZE/2, mw, 1<<c);
+    clip(dr, cx, dy+TILESIZE/4, cw, TILESIZE/2);
+    draw_rect(dr, cx, dy+TILESIZE/4, cw, TILESIZE/2,
               (state->count_errors[c] ? COL_ERROR : COL_BACKGROUND));
-    draw_monster(dr, ds, dx-TILESIZE/3, dy+TILESIZE/2,
-                 2*TILESIZE/3, 1<<c);
-    draw_text(dr, dx, dy+TILESIZE/2, FONT_VARIABLE, TILESIZE/2,
-              ALIGN_HLEFT|ALIGN_VCENTRE, COL_TEXT, buf);
-    draw_update(dr, dx-2*TILESIZE/3, dy, 3*TILESIZE/2, TILESIZE);
-
+    draw_text(dr, cx+cw/2, dy+TILESIZE/2, FONT_VARIABLE, 3*TILESIZE/8,
+              ALIGN_HCENTRE|ALIGN_VCENTRE, (state->count_errors[c] ? COL_ERROR_TEXT : COL_TEXT), buf);
+    unclip(dr);
+    draw_update(dr, mx, dy, mw+cw, TILESIZE);
     return;
 }
 
@@ -2826,9 +2839,9 @@ static void draw_path_hint(drawing *dr, game_drawstate *ds,
 
     if (hint >= 0) sprintf(buf,"%d", hint);
     else           sprintf(buf," ");
-    draw_rect(dr, dx, dy, text_size, text_size, (ds->hint_errors[hint_index]) ? COL_ERROR : COL_BACKGROUND);
+    draw_rect(dr, dx, dy, text_size, text_size, ds->hint_errors[hint_index] ? COL_ERROR : COL_BACKGROUND);
     draw_text(dr, text_dx, text_dy, FONT_FIXED, TILESIZE / 2,
-              ALIGN_HCENTRE | ALIGN_VCENTRE, color, buf);
+              ALIGN_HCENTRE | ALIGN_VCENTRE, (ds->hint_errors[hint_index] ? COL_ERROR_TEXT : color), buf);
     draw_update(dr, dx, dy, text_size, text_size);
 
     return;
@@ -2951,7 +2964,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             stale = true;
             ds->count_errors[i] = state->count_errors[i];
         }
-
+        if (ds->monster_counts[i] != state->monster_counts[i]) {
+            stale = true;
+            ds->monster_counts[i] = state->monster_counts[i];
+        }
         if (stale) {
             draw_monster_count(dr, ds, state, i);
         }
