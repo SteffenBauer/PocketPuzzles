@@ -360,12 +360,12 @@ static void gameCheckButtonState() {
     if (!midend_can_redo(me) && redo->active) deactivate_button(redo);
     if (fe->with_rightpointer) {
         swap = &fe->gameButton[fe->btnSwapIDX];
-        fe->swapped ? button_to_tapped(swap) : button_to_normal(swap, false);
+        fe->swapped ? button_to_tapped(swap, false) : button_to_normal(swap, false);
     }
     for (i=0;i<fe->numGameButtons;i++) {
         if (fe->gameButton[i].action == ACTION_CTRL)
             if (midend_is_key_highlighted(me, fe->gameButton[i].actionParm.c))
-                button_to_tapped(&fe->gameButton[i]);
+                button_to_tapped(&fe->gameButton[i], false);
             else
                 button_to_normal(&fe->gameButton[i], false);
     }
@@ -388,9 +388,15 @@ void gameTap(int x, int y) {
             if (fe->gameButton[i].type == BTN_CHAR)
                 is_active = midend_is_key_highlighted(me, fe->gameButton[i].actionParm.c);
             if (is_active) button_to_normal(&fe->gameButton[i], true);
-            else           button_to_tapped(&fe->gameButton[i]);
+            else           button_to_tapped(&fe->gameButton[i], true);
+        }
+        if ((fe->gameButton[i].action == ACTION_SWAP) &&
+            coord_in_button(x, y, &fe->gameButton[i])) {
+            if (fe->swapped) button_to_normal(&fe->gameButton[i], true);
+            else             button_to_tapped(&fe->gameButton[i], true);
         }
     }
+
 
     if (coord_in_gamecanvas(x, y) && (fe->current_pointer == 0)) {
         fe->pointerdown_x = x;

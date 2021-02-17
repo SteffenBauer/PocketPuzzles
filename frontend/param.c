@@ -40,15 +40,15 @@ void paramTap(int x, int y) {
 
     for (i=0;i<pa.numParamButtons;i++) {
         if (coord_in_button(x, y, &pa.paramButton[i]))
-            button_to_tapped(&pa.paramButton[i]);
+            button_to_tapped(&pa.paramButton[i], false);
     }
     for (i=0;i<pa.numParams;i++) {
         switch(pa.paramItem[i].type) {
             case C_STRING:
                 if (coord_in_button(x, y, &pa.paramItem[i].item.n.decrease))
-                    button_to_tapped(&pa.paramItem[i].item.n.decrease);
+                    button_to_tapped(&pa.paramItem[i].item.n.decrease, false);
                 if (coord_in_button(x, y, &pa.paramItem[i].item.n.increase))
-                    button_to_tapped(&pa.paramItem[i].item.n.increase);
+                    button_to_tapped(&pa.paramItem[i].item.n.increase, false);
                 break;
             case C_CHOICES:
                 if (coord_in_choice(x, y, i))
@@ -56,7 +56,7 @@ void paramTap(int x, int y) {
                 break;
             case C_BOOLEAN:
                 if (coord_in_button(x, y, &pa.paramItem[i].item.b.indicator))
-                    button_to_tapped(&pa.paramItem[i].item.b.indicator);
+                    button_to_tapped(&pa.paramItem[i].item.b.indicator, false);
                 break;
         }
     }

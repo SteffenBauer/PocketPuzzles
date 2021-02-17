@@ -48,7 +48,12 @@ void chooserTap(int x, int y) {
     int i;
     for (i=0;i<ca.numChooserButtons;i++) {
         if (coord_in_button(x, y, &ca.chooserButton[i]))
-            button_to_tapped(&ca.chooserButton[i]);
+            button_to_tapped(&ca.chooserButton[i], true);
+    }
+    for (i=0;i<ca.numPageButtons;i++) {
+        if (coord_in_button(x, y, &ca.pageButton[i])) {
+            button_to_tapped(&ca.pageButton[i], true);
+        }
     }
 }
 
@@ -75,9 +80,24 @@ void chooserDrag(int x, int y) { }
 
 void chooserRelease(int x, int y) {
     int i;
-    for (i=0;i<ca.numChooserButtons;i++) {
-        if (coord_in_button(init_tap_x, init_tap_y, &ca.chooserButton[i])) {
-            button_to_normal(&ca.chooserButton[i], true);
+
+    if (init_tap_y > ca.chooserlayout.maincanvas.starty) {
+        if      (((init_tap_x - x) > ScreenWidth()/10) && 
+                 (ca.current_chooserpage < ca.chooser_lastpage)) {
+            chooserNext();
+            return;
+        }
+        else if (((x - init_tap_x) > ScreenWidth()/10) && 
+                 (ca.current_chooserpage > 0)) {
+            chooserPrev();
+            return;
+        }
+    }
+    if (init_tap_y < ca.chooserlayout.buttonpanel.starty) {
+        for (i=0;i<ca.numChooserButtons;i++) {
+            if (coord_in_button(init_tap_x, init_tap_y, &ca.chooserButton[i]))
+                button_to_normal(&ca.chooserButton[i], true);
+
             if (release_button(x, y, &ca.chooserButton[i])) {
                 switch(ca.chooserButton[i].action) {
                     case ACTION_HOME:
@@ -91,18 +111,21 @@ void chooserRelease(int x, int y) {
                             ScreenWidth()-10-ca.chooserlayout.menubtn_size ,
                             ca.chooserlayout.menubtn_size +2, chooserMenuHandler);
                         break;
-                    case ACTION_PREV:
-                        chooserPrev();
-                        break;
-                    case ACTION_NEXT:
-                        chooserNext();
-                        break;
                     case ACTION_LAUNCH:
                         gameSetGame(ca.chooserButton[i].actionParm.thegame);
                         gameStartNewGame();
                         switchToGameScreen();
                         break;
                 }
+            }
+        }
+        return;
+    }
+    else if (init_tap_y > ca.chooserlayout.buttonpanel.starty) {
+        for (i=0;i<ca.numPageButtons;i++) {
+            if (release_button(x, y, &ca.pageButton[i])) {
+                chooserSwitch(ca.pageButton[i].page);
+                break;
             }
         }
     }
@@ -116,8 +139,15 @@ void chooserPrev() {
 }
 
 void chooserNext() {
-    if (ca.current_chooserpage <= ca.chooser_lastpage) {
+    if (ca.current_chooserpage < ca.chooser_lastpage) {
         ca.current_chooserpage += 1;
+        chooserRefreshCanvas();
+    }
+}
+
+void chooserSwitch(int page) {
+    if ((page >= 0) && (page <= ca.chooser_lastpage)) {
+        ca.current_chooserpage = page;
         chooserRefreshCanvas();
     }
 }
@@ -142,24 +172,14 @@ static void chooserDrawChooserButtons(int page) {
 }
 
 static void chooserDrawControlButtons(int page) {
+    int i;
     FillArea(0, ca.chooserlayout.buttonpanel.starty, ScreenWidth(), ca.chooserlayout.buttonpanel.height, 0x00FFFFFF);
-    FillArea(0, ca.chooserlayout.buttonpanel.starty, ScreenWidth(), 1, 0x00000000);
 
-    if (page == 0) {
-        ca.chooserButton[ca.btnPrevIDX].active = false;
-        button_to_cleared(&ca.chooserButton[ca.btnPrevIDX], false);
-    }
-    else {
-        ca.chooserButton[ca.btnPrevIDX].active = true;
-        button_to_normal(&ca.chooserButton[ca.btnPrevIDX], false);
-    }
-    if (page == ca.chooser_lastpage) {
-        ca.chooserButton[ca.btnNextIDX].active = false;
-        button_to_cleared(&ca.chooserButton[ca.btnNextIDX], false);
-    }
-    else {
-        ca.chooserButton[ca.btnNextIDX].active = true;
-        button_to_normal(&ca.chooserButton[ca.btnNextIDX], false);
+    for (i=0;i<ca.numPageButtons;i++) {
+        if (page == ca.pageButton[i].page)
+            button_to_tapped(&ca.pageButton[i], false);
+        else
+            button_to_normal(&ca.pageButton[i], false);
     }
 }
 
@@ -209,6 +229,17 @@ static void chooserSetupButtons() {
         }
     }
 
+    for (n=0;n<ca.numPageButtons;n++) {
+        int pos = ScreenWidth()/2 - 
+                  (ca.chooserlayout.control_size*ca.numPageButtons)/2 + 
+                  n*ca.chooserlayout.control_size;
+        ca.pageButton[n] = (BUTTON){
+            true, BTN_CTRL, 
+            pos, ca.chooserlayout.buttonpanel.starty +ca.chooserlayout.control_size/4, 
+            ca.chooserlayout.control_size/2, n, 
+            ACTION_SWITCH, 0x00, &bt_page, &bt_page_select, NULL};
+    }
+
     ca.chooserButton[ca.btnHomeIDX = i++] = (BUTTON){ true,  BTN_MENU, 
         10, ca.chooserlayout.menu.starty, 
         ca.chooserlayout.menubtn_size, 0, 
@@ -223,16 +254,6 @@ static void chooserSetupButtons() {
         ScreenWidth() - 1*ca.chooserlayout.menubtn_size - 10, ca.chooserlayout.menu.starty, 
         ca.chooserlayout.menubtn_size, 0,
         ACTION_MENU, ' ', &icon_menu, &icon_menu_tap, NULL};
-
-    ca.chooserButton[ca.btnPrevIDX = i++] = (BUTTON){ false, BTN_CTRL, 
-        ca.control_padding, ca.chooserlayout.buttonpanel.starty + 2, 
-        ca.chooserlayout.control_size, 0, 
-        ACTION_PREV, ' ', &bt_west, NULL, NULL};
-
-    ca.chooserButton[ca.btnNextIDX = i++] = (BUTTON){ false, BTN_CTRL, 
-        2*ca.control_padding + ca.chooserlayout.control_size, 
-        ca.chooserlayout.buttonpanel.starty + 2, ca.chooserlayout.control_size, 0, 
-        ACTION_NEXT, ' ', &bt_east, NULL, NULL};
 }
 
 void chooserRefreshCanvas() {
@@ -274,6 +295,9 @@ void chooserScreenInit() {
     ca.numChooserButtons = ca.num_games + 5;
     ca.chooserButton = smalloc(ca.numChooserButtons*sizeof(BUTTON));
 
+    ca.numPageButtons = ca.chooser_lastpage + 1;
+    ca.pageButton = smalloc(ca.numPageButtons*sizeof(BUTTON));
+
     chooserSetupButtons();
     chooserInitialized = true;
 }
@@ -286,6 +310,7 @@ void chooserScreenFree() {
     if (chooserInitialized) {
         CloseFont(ca.chooserfont);
         sfree(ca.chooserButton);
+        sfree(ca.pageButton);
         chooserInitialized = false;
     }
 }
