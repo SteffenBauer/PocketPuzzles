@@ -2116,21 +2116,17 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         else                       direction = (x < cx) ? L : R;
         x2 = gx + DX(direction);
         y2 = gy + DY(direction);
-        if (INGRID(state, x2, y2) && (button == LEFT_BUTTON) && 
-            ((state->sflags[gy*w + gx] & S_TRACK) || 
-             (state->sflags[gy*w + gx] & S_CLUE) ||
-             (S_E_COUNT(state, gx, gy, E_TRACK) > 0)) && 
-            ((state->sflags[y2*w + x2] & S_TRACK) || 
-             (state->sflags[y2*w + x2] & S_CLUE) ||
-             (S_E_COUNT(state, gx, gy, E_TRACK) > 0) ||
-             (S_E_COUNT(state, x2, y2, E_TRACK) > 0))) {
+        
+        if ((max(abs(x-cx),abs(y-cy)) > TILE_SIZE/4) && button == LEFT_BUTTON) {
             if (ui_can_flip_edge(state, gx, gy, direction, false)) {
-                ui->clearing = ui->notrack = ui->dragging = ui->edgeflip = false;
+                ui->clearing = ui->notrack = ui->dragging = false;
                 ui->drag_sx = ui->drag_sy = ui->drag_ex = ui->drag_ey = -1;
                 ui->edgeflip = true;
                 return edge_flip_str(state, gx, gy, direction, false, tmpbuf);
             }
-        } else if (INGRID(state, x2, y2) && (button == RIGHT_BUTTON) &&
+            return UI_UPDATE;
+        }
+        else if ((max(abs(x-cx),abs(y-cy)) > TILE_SIZE/4) && button == RIGHT_BUTTON &&
             ((state->sflags[gy*w + gx] & S_TRACK) || 
              (state->sflags[gy*w + gx] & S_CLUE) ||
              (S_E_COUNT(state, gx, gy, E_TRACK) > 0)) &&
@@ -2138,7 +2134,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
              (state->sflags[y2*w + x2] & S_CLUE) ||
              (S_E_COUNT(state, x2, y2, E_TRACK) > 0))) {
             if (ui_can_flip_edge(state, gx, gy, direction, true)) {
-                ui->clearing = ui->notrack = ui->dragging = ui->edgeflip = false;
+                ui->clearing = ui->notrack = ui->dragging = false;
                 ui->drag_sx = ui->drag_sy = ui->drag_ex = ui->drag_ey = -1;
                 ui->edgeflip = true;
                 return edge_flip_str(state, gx, gy, direction, true, tmpbuf);
@@ -2288,7 +2284,7 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 enum {
     COL_BACKGROUND, 
     COL_TRACK_BACKGROUND,
-    COL_GRID, COL_CLUE, COL_DONE,
+    COL_GRID, COL_CROSS, COL_CLUE, COL_DONE,
     COL_TRACK, COL_TRACK_CLUE, COL_SLEEPER,
     COL_DRAGON, COL_DRAGOFF,
     COL_ERROR, COL_ERROR_BACKGROUND,
@@ -2307,6 +2303,7 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_TRACK            * 3 + i] = 0.5F;
         ret[COL_CLUE             * 3 + i] = 0.0F;
         ret[COL_GRID             * 3 + i] = 0.5F;
+        ret[COL_CROSS            * 3 + i] = 0.0F;
         ret[COL_DONE             * 3 + i] = 0.75F;
         ret[COL_ERROR_BACKGROUND * 3 + i] = 0.25F;
         ret[COL_SLEEPER          * 3 + i] = 0.25F;
@@ -2505,19 +2502,17 @@ static void draw_square(drawing *dr, game_drawstate *ds,
     draw_tracks_specific(dr, ds, x, y, flags_best, c, (flags & DS_ERROR) ? COL_ERROR : COL_SLEEPER);
 
     /* Draw no-track marks, if present, in square and on edges. */
-    c = COL_TRACK;
     flags_best = best_bits((flags & DS_NOTRACK) == DS_NOTRACK,
                            (flags_drag & DS_NOTRACK) == DS_NOTRACK, &c);
-    if (c == COL_DRAGON) c = COL_TRACK;
+    if (c != COL_DRAGOFF) c = ((flags & DS_NOTRACK) || (flags_drag & DS_NOTRACK)) ? COL_CROSS : COL_TRACK;
     if (flags_best) {
         off = HALFSZ/2;
         draw_thick_line(dr, LINE_THICK, cx - off, cy - off, cx + off, cy + off, c);
         draw_thick_line(dr, LINE_THICK, cx - off, cy + off, cx + off, cy - off, c);
     }
 
-    c = COL_TRACK;
     flags_best = best_bits(flags >> DS_NSHIFT, flags_drag >> DS_NSHIFT, &c);
-    if (c == COL_DRAGON) c = COL_TRACK;
+    c = COL_CROSS;
     for (d = 1; d < 16; d *= 2) {
         off = t16;
         cx = ox + t2;
