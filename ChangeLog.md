@@ -1,5 +1,13 @@
 ## ChangeLog
 
+## 0.7.5 - 2021/02/23
+
+### Changed
+* *Signpost*: Coloring of start / end cells in a sequence.
+
+### Fixed
+* *Creek*: Bug that disconnected grid still counted as valid solution.
+
 ## 0.7.4 - 2021/02/17
 
 ### Added
