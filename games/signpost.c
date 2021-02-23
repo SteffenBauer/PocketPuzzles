@@ -1578,6 +1578,8 @@ static void tile_redraw(drawing *dr, game_drawstate *ds, int tx, int ty,
     bool empty = (num == 0 && !(f & F_ARROW_POINT) && !(f & F_ARROW_INPOINT));
     bool isseq = ((f & F_ARROW_POINT) || (f & F_ARROW_INPOINT));
     bool midseq = ((f & F_ARROW_POINT) && (f & F_ARROW_INPOINT));
+    bool startseq = ((f & F_ARROW_POINT) && !(f & F_ARROW_INPOINT));
+    /* bool endseq = (!(f & F_ARROW_POINT) && (f & F_ARROW_INPOINT)); */
 
     /* Calculate colours. */
 
@@ -1586,15 +1588,15 @@ static void tile_redraw(drawing *dr, game_drawstate *ds, int tx, int ty,
              isseq         ? COL_VLIGHTGREY :
                              COL_WHITE;
 
-    arrowcol = (f & F_ERROR)    ? COL_VLIGHTGREY :
-               (isset && midseq) ? COL_VLIGHTGREY :
-               midseq           ? COL_DARKGREY :
-                                  COL_BLACK;
+    arrowcol = (f & F_ERROR)                   ? COL_VLIGHTGREY :
+               (isset && (startseq || midseq)) ? COL_VLIGHTGREY :
+               (startseq || midseq)            ? COL_DARKGREY :
+                                                 COL_BLACK;
 
-    textcol = (f & F_ERROR)     ? COL_VLIGHTGREY :
-              (isset && midseq) ? COL_VLIGHTGREY :
-              midseq            ? COL_DARKGREY :
-                                  COL_BLACK;
+    textcol = (f & F_ERROR)       ? COL_VLIGHTGREY :
+              (isset && (midseq)) ? COL_VLIGHTGREY :
+              (midseq)            ? COL_DARKGREY :
+                                    COL_BLACK;
 
     sarrowcol = (f & F_ERROR)   ? COL_VLIGHTGREY :
                                   COL_BLACK;

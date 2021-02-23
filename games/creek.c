@@ -416,7 +416,7 @@ static bool check_completed_creek(int w, int h,
     memset(errors, 0, W*H);
 
     if (!check_connectedness_creek(w, h, dsf, soln, clues, DIFF_EASY)) {
-        err = false;
+        err = true;
         for (y = 0; y < h; y++) {
             for (x = 0; x < w; x++) {
                 if (soln[y*w+x] < 0) {
@@ -1254,7 +1254,6 @@ static game_state *execute_move(const game_state *state, const char *move)
      * errors in the grid.
      */
     ret->completed = check_completed_creek(w, h, ret->clues->clues, ret->soln, ret->errors, ret->clues->tmpdsf) || ret->completed;
-
     return ret;
 }
 
