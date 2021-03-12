@@ -21,6 +21,8 @@ FRONTENDHDRS := $(wildcard include/frontend/*.h)
 
 HEADERS := $(wildcard include /*.h)
 
+ICONS := $(wildcard icons/*/*.bmp)
+
 all: build/SGTPuzzles.app
 
 build/SGTPuzzles.app: icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS)
@@ -28,8 +30,8 @@ build/SGTPuzzles.app: icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS)
 	LC_ALL=C $(CC) -s icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS) -I./include -o ./build/SGTPuzzles.app $(CFLAGS)
 	LC_ALL=C $(STRIP) ./build/SGTPuzzles.app
 
-icons/icons.c: ./icons/*.bmp
-	LC_ALL=C $(PBRES) -c ./icons/icons.c -4 ./icons/*.bmp
+icons/icons.c: $(ICONS)
+	LC_ALL=C $(PBRES) -c ./icons/icons.c -4 $(ICONS)
 
 frontend/%.o: frontend/%.c $(HEADERS) $(FRONTENDHDRS)
 	LC_ALL=C $(CC) -c $< -o $@ -I./include $(CFLAGS)

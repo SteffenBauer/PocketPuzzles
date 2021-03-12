@@ -94,22 +94,28 @@
 - [X] Sixteen: Remove animation
 - [X] Twiddle: Remove animation
 - [X] Dominosa: Number highlighting in numerical buttons
-- [ ] Galaxies: Rework right-drag / arrow handling
 - [X] Loopy: Reverse whole cell on hint number error
 - [X] Map: Remove drag animation
 - [X] Map: Color fill pattern
-- [ ] Netslide: Remove animation. Thicker lines.
-- [ ] Pearl: Better error display for error line
 - [X] Samegame: Add color fill pattern
 - [X] Signpost: Rework cell arrow highlighting to avoid whole screen redraw
 - [X] Solo: Number highlighting indication in numerical buttons
-- [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
 - [X] Loopy: Check min/max grid sizes
-- [ ] Loopy: Fix polygon error fill in Penrose grids
 - [X] Bridges: Change Path button to indicator
-- [ ] Pearl: "No line" on right click instead of release
 - [X] Tracks: Rework UI (cell versus border clicks)
 - [X] Creek: Separate from Slant as standalone game
+- [ ] Galaxies: Rework right-drag / arrow handling
+- [ ] Loopy: Fix polygon error fill in Penrose grids
+- [ ] Mathrax: Deactivate useless 'recursive' game difficulty
+- [ ] Mosaic: Undo of whole drag sequence
+- [ ] Netslide: Remove animation. Thicker lines.
+- [ ] Pearl: Better error display for error line
+- [ ] Pearl: "No line" on right click instead of release
+- [ ] Slant: 'Hard' game difficulty (backtracking)
+- [ ] Sticks: Implement dragging
+- [ ] Twiddle: Re-activate basic animation (?)
+- [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
+- [ ] Walls: Expand solver / difficulty levels (implement area parity criteria)
 
 #### One-click symbol fill
 
@@ -129,7 +135,7 @@
 - [ ] Boats
 - [ ] Pattern
 - [ ] Tents
-- [ ] Undead
+- [X] Undead
 
 #### Grey-out of finished hints
 
@@ -137,6 +143,7 @@
 - [X] Boats
 - [ ] Pattern
 - [X] Range
+- [ ] Salad (in ABC End View Mode)
 - [X] Tents
 - [X] Tracks
 
