@@ -1,5 +1,10 @@
 ## ChangeLog
 
+## 0.7.6 - 2021/03/12
+
+### Fixed
+* Crash when launching any game from chooser, due to sneaky memory corruption bug.
+
 ## 0.7.5 - 2021/02/23
 
 ### Changed

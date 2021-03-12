@@ -203,12 +203,15 @@ static void chooserSetupButtons() {
         pi = i % (ca.chooser_cols*ca.chooser_rows);
         c = pi % ca.chooser_cols;
         r = pi / ca.chooser_cols;
+        ca.chooserButton[i].active = true;
         ca.chooserButton[i].posx = (c+1)*ca.chooser_padding + c*ca.chooserlayout.chooser_size;
         ca.chooserButton[i].posy = 50 + ca.chooserlayout.maincanvas.starty +
                                    r*(32+ca.cfontsize+ca.chooserlayout.chooser_size);
+        ca.chooserButton[i].size = ca.chooserlayout.chooser_size;
         ca.chooserButton[i].page = p;
         ca.chooserButton[i].action = ACTION_LAUNCH;
-        ca.chooserButton[i].size = ca.chooserlayout.chooser_size;
+        ca.chooserButton[i].bitmap_tap = NULL;
+        ca.chooserButton[i].bitmap_disabled = NULL;
     }
 
     n = 0;
