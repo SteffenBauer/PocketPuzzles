@@ -486,7 +486,6 @@ void gameRelease(int x, int y) {
                         return;
                     case ACTION_DRAW:
                         gameScreenShow();
-                        FullUpdate();
                         return;
                     case ACTION_GAME:
                         OpenMenuEx(gameMenu, gameMenu_selectedIndex, 
@@ -552,8 +551,8 @@ static void gameDrawControlButtons() {
     for (i=0;i<fe->numGameButtons;i++)
         button_to_normal(&fe->gameButton[i], false);
 
-    deactivate_button(&fe->gameButton[fe->numGameButtons-6]);
-    deactivate_button(&fe->gameButton[fe->numGameButtons-5]);
+    deactivate_button(&fe->gameButton[fe->btnUndoIDX]);
+    deactivate_button(&fe->gameButton[fe->btnRedoIDX]);
     gameCheckButtonState();
 }
 
@@ -745,6 +744,7 @@ static LAYOUTTYPE gameGetLayout() {
             fe->gameButton[i].actionParm.c = keys[i].button;
             fe->gameButton[i].bitmap = NULL;
             fe->gameButton[i].bitmap_tap = NULL;
+            fe->gameButton[i].bitmap_disabled = NULL;
         }
     }
 
@@ -855,6 +855,7 @@ void gameScreenShow() {
     ClearScreen();
     DrawPanel(NULL, "", "", 0);
     gameDrawMenu();
+    fe->statustext = NULL;
     midend_force_redraw(me);
     gameDrawControlButtons();
     gameDrawStatusBar();
@@ -867,6 +868,7 @@ void gameScreenInit() {
     fe->gfontsize = (int)(ScreenWidth()/30);
     fe->gamefont = OpenFont("LiberationSans-Bold", fe->gfontsize, 0);
     fe->gameButton = NULL;
+    fe->statustext = NULL;
     fe->isTimer = false;
     typeMenu = NULL;
     me = NULL;
