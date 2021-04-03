@@ -195,37 +195,10 @@ static const char *validate_params(const game_params *params, bool full)
 }
 
 /*****************************************************************************
- * STRINGIFICATION OF GAME STATE                                             *
+ * GAME GENERATION AND SOLVER                                                *
  *****************************************************************************/
 
 #define EMPTY 0
-
-/* Example of plaintext rendering:
- *  +---+---+---+---+---+---+---+
- *  | 6 |   |   | 2 |   |   | 2 |
- *  +---+---+---+---+---+---+---+
- *  |   | 3 |   | 6 |   | 3 |   |
- *  +---+---+---+---+---+---+---+
- *  | 3 |   |   |   |   |   | 1 |
- *  +---+---+---+---+---+---+---+
- *  |   | 2 | 3 |   | 4 | 2 |   |
- *  +---+---+---+---+---+---+---+
- *  | 2 |   |   |   |   |   | 3 |
- *  +---+---+---+---+---+---+---+
- *  |   | 5 |   | 1 |   | 4 |   |
- *  +---+---+---+---+---+---+---+
- *  | 4 |   |   | 3 |   |   | 3 |
- *  +---+---+---+---+---+---+---+
- *
- * This puzzle instance is taken from the nikoli website
- * Encoded (unsolved and solved), the strings are these:
- * 7x7:6002002030603030000010230420200000305010404003003
- * 7x7:6662232336663232331311235422255544325413434443313
- */
-
-/*****************************************************************************
- * GAME GENERATION AND SOLVER                                                *
- *****************************************************************************/
 
 static const int dx[4] = {-1, 1, 0, 0};
 static const int dy[4] = {0, 0, -1, 1};
@@ -245,7 +218,7 @@ struct solver_state
 static game_state *new_game(midend *, const game_params *, const char *);
 static void free_game(game_state *);
 
-#define SENTINEL sz
+#define SENTINEL (sz+1)
 
 static bool mark_region(int *board, int w, int h, int i, int n, int m) {
     int j;
@@ -347,12 +320,17 @@ retry:
             const int square = dsf_canonify(dsf, board[i]);
             const int size = dsf_size(dsf, square);
             int merge = SENTINEL, min = maxsize - size + 1;
-        bool error = false;
+            bool error = false;
             int neighbour, neighbour_size, j;
+            int directions[4];
+
+            for (j = 0; j < 4; ++j)
+                directions[j] = j;
+            shuffle(directions, 4, sizeof(int), rs);
 
             for (j = 0; j < 4; ++j) {
-                const int x = (board[i] % w) + dx[j];
-                const int y = (board[i] / w) + dy[j];
+                const int x = (board[i] % w) + dx[directions[j]];
+                const int y = (board[i] / w) + dy[directions[j]];
                 if (x < 0 || x >= w || y < 0 || y >= h) continue;
 
                 neighbour = dsf_canonify(dsf, w*y + x);
@@ -364,7 +342,7 @@ retry:
                 /* find the smallest neighbour to merge with, which
                  * wouldn't make the region too large.  (This is
                  * guaranteed by the initial value of `min'.) */
-                if (neighbour_size < min) {
+                if (neighbour_size < min && random_upto(rs, 10)) {
                     min = neighbour_size;
                     merge = neighbour;
                 }
