@@ -82,7 +82,6 @@ void paramRelease(int x, int y) {
                         return;
                     case ACTION_DRAW:
                         paramScreenShow();
-                        FullUpdate();
                         return;
                 }
             }

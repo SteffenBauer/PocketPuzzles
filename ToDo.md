@@ -107,6 +107,7 @@
 - [ ] Galaxies: Rework right-drag / arrow handling
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 - [ ] Mathrax: Deactivate useless 'recursive' game difficulty
+- [ ] Map: Optimize redraw of area hint marks
 - [ ] Mosaic: Undo of whole drag sequence
 - [ ] Netslide: Remove animation. Thicker lines.
 - [ ] Pearl: Better error display for error line
@@ -129,6 +130,7 @@
 - [X] Undead
 - [X] Unequal
 - [X] Group
+- [ ] Filling
 
 #### Rework Border error highlighting
 
