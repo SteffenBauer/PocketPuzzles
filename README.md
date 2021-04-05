@@ -30,6 +30,8 @@ See [ToDo.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/ToDo.md)
 
 Connect your PocketBook with you PC with an USB cable. Copy `release/SGTPuzzles.app` to the folder `/applications` on your device. Unmount the USB connection, and reboot the PocketBook. You should now see an entry `@SGTPuzzles` among your apps.
 
+If you want the newest possible version build from the latest commit, use `release/nightly/SGTPuzzles.app`.
+
 ### Build
 
 Clone the [pocketbook SDK](https://github.com/blchinezu/pocketbook-sdk/) and set it up for the firmware of your device.
@@ -51,7 +53,7 @@ I received reports that the app works with these devices:
 * PB740  - InkPad 3
 * PB633  - Pocketbook Color
 * PB1040 - InkPad X
-* PB626  - Touch Lux 3 (with minor issues so far, see [#12](/../../issues/12))
+* PB626  - Touch Lux 3 (see [#12](/../../issues/12) for possible issue, but should be fixed now)
 
 I'm interested in reports from more devices; especially how it looks like on color screen and on devices with screen resolution different than the Touch HD 3.
 
