@@ -1,5 +1,18 @@
 ## ChangeLog
 
+## 0.7.7 - 2021/04/23
+
+### Added
+* *Loopy*: New grid type *compass dodecagonal*
+
+### Changed
+* *Filling*: Sync with upstream (better randomization in puzzle generation, bugfixes)
+* Deactivated puzzles *Group* and *Sokoban*, deemed too esoteric (Group) or generator yet too simple (Sokoban)
+
+### Fixed
+* Bug of disappearing statusbar on manually triggered screen redraw
+* Removed unneccessary double screen updates on manual refresh
+
 ## 0.7.6 - 2021/03/12
 
 ### Fixed

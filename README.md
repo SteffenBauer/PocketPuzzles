@@ -8,7 +8,7 @@ Port of [Simon Tatham's Portable Puzzle Collection](http://www.chiark.greenend.o
 
 Inspired by and building on the work of [Port to Android by Chris Boyle](https://github.com/chrisboyle/sgtpuzzles) and [Puzzles for pocketbook by mnk](https://github.com/svn2github/pocketbook-free/tree/master/puzzles)
 
-To get a mostly complete collection for all puzzles ever written for the SGT puzzles, I'm planning to also include unofficial puzzles and puzzle variations from [puzzles-unreleased](https://github.com/x-sheep/puzzles-unreleased) and [sgtpuzzles-extended](https://github.com/SteffenBauer/sgtpuzzles-extended), the unofficial *Group*, *Sokoban*, and *Slide* puzzles from the original collection, and the *Mosaic* puzzle from [here](https://github.com/kohend/simon-puzzles)
+To get a mostly complete collection for all puzzles ever written for the SGT puzzles, I'm planning to also include unofficial puzzles and puzzle variations from [puzzles-unreleased](https://github.com/x-sheep/puzzles-unreleased) and [sgtpuzzles-extended](https://github.com/SteffenBauer/sgtpuzzles-extended), and the *Mosaic* puzzle from [here](https://github.com/kohend/simon-puzzles)
 
 ### Development history
 
