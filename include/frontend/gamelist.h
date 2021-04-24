@@ -42,7 +42,7 @@ static GAMEINFO mygames[] = {
     { &game_flip,     &flip},
     { &game_flood,    &flood},
     { &game_galaxies, &galaxies},
-    { &game_group,    &group},
+//    { &game_group,    &group},
     { &game_guess,    &guess},
 
     { &game_inertia,  &inertia},
@@ -75,7 +75,7 @@ static GAMEINFO mygames[] = {
     { &game_slant,    &slant},
 //    { &game_slide,    &slide},
 
-    { &game_sokoban,  &sokoban},
+//    { &game_sokoban,  &sokoban},
     { &game_solo,     &solo},
     { &game_spokes,   &spokes},
     { &game_sticks,   &sticks},

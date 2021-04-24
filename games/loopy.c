@@ -263,6 +263,7 @@ static solver_state *solve_game_rec(const solver_state *sstate);
     A("Penrose (rhombs)",PENROSE_P3,3,3,12)                        \
     A("Great-Great-Dodecagonal",GREATGREATDODECAGONAL,2,2,4)      \
     A("Kagome",KAGOME,3,3,6)                                      \
+    A("Compass-Dodecagonal",COMPASSDODECAGONAL,2,2,5)             \
     /* end of list */
 
 #define GRID_NAME(title,type,amin,omin,amax) title,
