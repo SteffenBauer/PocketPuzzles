@@ -1855,16 +1855,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     int color;
     cell c, p;
     bool stale, hchanged;
-    /*
-     * The initial contents of the window are not guaranteed and
-     * can vary with front ends. To be on the safe side, all games
-     * should start by drawing a big background-colour rectangle
-     * covering the whole window.
-     */
     if(ds->redraw)
     {
-        draw_rect(dr, 0, 0, (w+1)*tilesize, (h+1)*tilesize, COL_BACKGROUND);
-        draw_update(dr, 0, 0, (w+1)*tilesize, (h+1)*tilesize);
         draw_rect(dr, (0.5*tilesize) - (GRIDEXTRA*2), 
             (0.5*tilesize) - (GRIDEXTRA*2),
             (w*tilesize) + (GRIDEXTRA*2),

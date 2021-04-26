@@ -22,12 +22,12 @@
 #define INGRID(s,x,y) ((x) >= 0 && (x) < (s)->w && (y) >= 0 && (y) < (s)->h)
 
 enum {
+    COL_WHITE,
     COL_BLACK,
     COL_VDARKGREY,
     COL_DARKGREY,
     COL_LIGHTGREY,
     COL_VLIGHTGREY,
-    COL_WHITE,
     NCOLOURS
 };
 
@@ -1703,7 +1703,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     if (!ds->started) {
         int aw = TILE_SIZE * state->w;
         int ah = TILE_SIZE * state->h;
-        draw_rect(dr, 0, 0, aw + 2 * BORDER, ah + 2 * BORDER, COL_WHITE);
         draw_rect_outline(dr, BORDER - 1, BORDER - 1, aw + 2, ah + 2, COL_VDARKGREY);
         draw_update(dr, 0, 0, aw + 2 * BORDER, ah + 2 * BORDER);
     }

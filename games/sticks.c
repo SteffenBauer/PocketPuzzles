@@ -1171,7 +1171,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     
     if (ds->grid[0] == ~0)
     {
-        draw_rect(dr, 0, 0, (w + 1)*tilesize, (h + 1)*tilesize, COL_BACKGROUND);
         draw_rect(dr, COORD(0) - tilesize / 10, COORD(0) - tilesize / 10,
             tilesize*w + 2 * (tilesize / 10) - 1,
             tilesize*h + 2 * (tilesize / 10) - 1, COL_GRID);

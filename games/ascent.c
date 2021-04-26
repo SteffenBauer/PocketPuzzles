@@ -2252,7 +2252,6 @@ struct game_drawstate {
     int offsetx, offsety;
 
     int *colours;
-    bool redraw;
     cell *oldpositions;
     number *oldgrid;
     cell oldheld;
@@ -3114,7 +3113,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->oldheld = 0;
     ds->old_next_target = 0;
     ds->old_prev_target = 0;
-    ds->redraw = true;
     ds->colours = snewn(s, int);
     ds->oldgrid = snewn(s, number);
     ds->oldpositions = snewn(s, cell);
@@ -3296,12 +3294,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         ds->bl_on = false;
     }
 
-    if(ds->redraw)
-    {
-        draw_rect(dr, 0, 0, ds->w, ds->h, COL_BACKGROUND);
-        draw_update(dr, 0, 0, ds->w, ds->h);
-    }
-    
     /* Add confirmed path lines */
     for (i = 0; i < w*h; i++)
     {
@@ -3397,7 +3389,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         }
     }
 
-    ds->redraw = false;
     ds->oldheld = ui->held;
     ds->old_next_target = ui->next_target_mode & TARGET_SHOW ? ui->next_target : NUMBER_EMPTY;
     ds->old_prev_target = ui->prev_target_mode & TARGET_SHOW ? ui->prev_target : NUMBER_EMPTY;

@@ -20,9 +20,6 @@
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + 2*TILE_SIZE) / TILE_SIZE - 2 )
 
-#define ANIM_TIME 0.13F
-#define FLASH_FRAME 0.13F
-
 #define X(state, i) ( (i) % (state)->w )
 #define Y(state, i) ( (i) / (state)->w )
 #define C(state, x, y) ( (y) * (state)->w + (x) )
@@ -885,21 +882,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int i, bgcolour;
     int cur_x = -1, cur_y = -1;
 
-    if (flashtime > 0) {
-        int frame = (int)(flashtime / FLASH_FRAME);
-        bgcolour = (frame % 2 ? COL_LOWLIGHT : COL_HIGHLIGHT);
-    } else
-        bgcolour = COL_BACKGROUND;
+    bgcolour = COL_BACKGROUND;
 
     if (!ds->started) {
         int coords[10];
-
-        draw_rect(dr, 0, 0,
-              TILE_SIZE * state->w + 2 * BORDER,
-              TILE_SIZE * state->h + 2 * BORDER, COL_BACKGROUND);
-        draw_update(dr, 0, 0,
-                TILE_SIZE * state->w + 2 * BORDER,
-                TILE_SIZE * state->h + 2 * BORDER);
 
         /*
          * Recessed area containing the whole puzzle.
@@ -1028,9 +1014,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             assert(abs(dy) == TILE_SIZE);
         }
 
-        c = (animtime / ANIM_TIME);
-        if (c < 0.0F) c = 0.0F;
-        if (c > 1.0F) c = 1.0F;
+        c = 0.0F;
 
         x = x0 + (int)(c * dx);
         y = y0 + (int)(c * dy);
@@ -1047,7 +1031,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                       COL_LOWLIGHT : bgcolour);
 
         if (x2 != -1 || y2 != -1)
-        draw_tile(dr, ds, state, x2, y2, t, bgcolour);
+            draw_tile(dr, ds, state, x2, y2, t, bgcolour);
     }
     ds->tiles[i] = t0;
     }

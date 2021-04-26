@@ -1111,7 +1111,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 
 struct game_drawstate {
     int tilesize;
-    bool started;
     long *grid;
     long *todraw;
 };
@@ -1305,7 +1304,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     struct game_drawstate *ds = snew(struct game_drawstate);
 
     ds->tilesize = 0;
-    ds->started = false;
     ds->grid = snewn((w+2)*(h+2), long);
     ds->todraw = snewn((w+2)*(h+2), long);
     for (i = 0; i < (w+2)*(h+2); i++)
@@ -1350,7 +1348,7 @@ static void draw_tile_creek(drawing *dr, game_drawstate *ds, game_clues *clues,
           (v & CR_ERR)   ? COL_CREEK_EMPTY :
           (v & CR_BLACK) ? COL_CREEK_FILLED :
           (v & CR_WHITE) ? COL_CREEK_EMPTY :
-          (x<0 || x==w || y<0 || y==h) ? COL_LIGHT : COL_CREEK_UNDEF);
+          (x<0 || x==w || y<0 || y==h) ? COL_BACKGROUND : COL_CREEK_UNDEF);
 
     if (v & CR_ERR)
         draw_circle(dr, COORD(x) + (ds->tilesize)/2, COORD(y) + (ds->tilesize)/2, (9+ ds->tilesize) / 20, COL_ERROR, COL_GRID);
@@ -1401,15 +1399,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int w = state->p.w, h = state->p.h, W = w+1, H = h+1;
     int x, y;
 
-    if (!ds->started) {
-        int ww, wh;
-        game_compute_size(&state->p, TILESIZE, &ww, &wh);
-        draw_rect(dr, 0, 0, ww, wh, COL_LIGHT);
-        draw_update(dr, 0, 0, ww, wh);
-        ds->started = true;
-    }
-
-    /* Creek */
     for (y = -1; y <= h; y++) {
         for (x = -1; x <= w; x++) {
             ds->todraw[(y+1)*(w+2)+(x+1)] = 0;

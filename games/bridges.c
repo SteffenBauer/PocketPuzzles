@@ -90,8 +90,6 @@
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILE_SIZE) / TILE_SIZE - 1 )
 
-#define FLASH_TIME 0.50F
-
 enum {
     COL_BACKGROUND,
     COL_FOREGROUND,
@@ -2129,14 +2127,12 @@ struct game_drawstate {
 #define DL_COLMASK      0x18
 #define DL_COL_NORMAL   0x00
 #define DL_COL_WARNING  0x08
-#define DL_COL_FLASH    0x10
 #define DL_COL_SELECTED 0x18
 #define DL_LOCK         0x20
 #define DL_MASK         0x3F
 /* Flags for island data */
 #define DI_COLMASK      0x03
 #define DI_COL_NORMAL   0x00
-#define DI_COL_FLASH    0x01
 #define DI_COL_WARNING  0x02
 #define DI_COL_SELECTED 0x03
 #define DI_BGMASK       0x0C
@@ -2747,19 +2743,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int x, y, lv, lh;
     grid_type v;
-    bool flash = false;
     struct island *is, *is_drag_src = NULL, *is_drag_dst = NULL;
-
-    if (flashtime) {
-        int f = (int)(flashtime * 5 / FLASH_TIME);
-        if (f == 1 || f == 3) flash = true;
-    }
 
     /* Clear screen, if required. */
     if (!ds->started) {
-        draw_rect(dr, 0, 0,
-                  TILE_SIZE * ds->w + 2 * BORDER,
-                  TILE_SIZE * ds->h + 2 * BORDER, COL_BACKGROUND);
 #ifdef DRAW_GRID
         draw_rect_outline(dr,
                           COORD(0)-1, COORD(0)-1,
@@ -2804,8 +2791,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
                 is = INDEX(state, gridi, x, y);
 
-                if (flash)
-                    idata |= DI_COL_FLASH;
                 if (is_drag_src && is==is_drag_src && ui->highlight)
                     idata |= DI_COL_SELECTED;
 
@@ -2861,12 +2846,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                          (ui->show_hints &&
                           between_island(state,x,y,0,1)) ? DL_COUNT_HINT : 0);
 
-                hdata |= (flash ? DL_COL_FLASH :
-                          v & G_WARN ? DL_COL_WARNING :
+                hdata |= (v & G_WARN ? DL_COL_WARNING :
                           selh ? DL_COL_SELECTED :
                           DL_COL_NORMAL);
-                vdata |= (flash ? DL_COL_FLASH :
-                          v & G_WARN ? DL_COL_WARNING :
+                vdata |= (v & G_WARN ? DL_COL_WARNING :
                           selv ? DL_COL_SELECTED :
                           DL_COL_NORMAL);
 
