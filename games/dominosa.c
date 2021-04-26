@@ -2489,7 +2489,6 @@ static bool is_key_highlighted(const game_ui *ui, char c) {
 #define FROMCOORD(x) ( ((x) - BORDER + TILESIZE) / TILESIZE - 1 )
 
 struct game_drawstate {
-    bool started;
     int w, h, tilesize;
     unsigned long *visible;
 };
@@ -2788,7 +2787,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     struct game_drawstate *ds = snew(struct game_drawstate);
     int i;
 
-    ds->started = false;
     ds->w = state->w;
     ds->h = state->h;
     ds->visible = snewn(ds->w * ds->h, unsigned long);
@@ -2821,7 +2819,6 @@ enum {
  */
 #define DF_HIGHLIGHT_1  0x10
 #define DF_HIGHLIGHT_2  0x20
-#define DF_FLASH        0x40
 #define DF_CLASH        0x80
 
 #define DF_CURSOR        0x01000
@@ -2959,14 +2956,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int n = state->params.n, w = state->w, h = state->h, wh = w*h;
     int x, y, i;
     unsigned char *used;
-
-    if (!ds->started) {
-        int pw, ph;
-        game_compute_size(&state->params, TILESIZE, &pw, &ph);
-    draw_rect(dr, 0, 0, pw, ph, COL_BACKGROUND);
-    draw_update(dr, 0, 0, pw, ph);
-    ds->started = true;
-    }
 
     /*
      * See how many dominoes of each type there are, so we can

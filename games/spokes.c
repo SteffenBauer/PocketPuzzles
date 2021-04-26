@@ -1304,13 +1304,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     bool error_disconnected, error_number, is_holding, is_done;
     buf[1] = '\0';
 
-    /* Initialize background */
-    if(ds->colors[0] == ~0)
-    {
-        draw_rect(dr, 0, 0, w*tilesize, h*tilesize, COL_BACKGROUND);
-        draw_update(dr, 0, 0, w*tilesize, h*tilesize);
-    }
-    
     double thick = (tilesize <= 80 ? 2 : 4);
     float radius = tilesize/3.5F;
     

@@ -3389,13 +3389,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     int ymax = max(ui->dsy, ui->dey);
     char ship;
     bool redraw = ds->redraw;
-    
-    if(redraw)
-    {
-        draw_rect(dr, 0, 0, (w+2)*tilesize, (h+2)*tilesize + ds->fleeth, COL_BACKGROUND);
-        draw_update(dr, 0, 0, (w+2)*tilesize, (h+2)*tilesize + ds->fleeth);
-    }
-    
+
     boats_count_ships(state, NULL, NULL, ds->border);
     boats_check_fleet(state, ds->fleetcount, ds->gridfs);
     

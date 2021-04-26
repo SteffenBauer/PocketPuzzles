@@ -53,9 +53,12 @@ I received reports that the app works with these devices:
 * PB740  - InkPad 3
 * PB633  - Pocketbook Color
 * PB1040 - InkPad X
-* PB626  - Touch Lux 3 (see [#12](/../../issues/12) for possible issue, but should be fixed now)
+* PB626  - Touch Lux 3 (see note below)
+* PB628  - Touch Lux 5 (see note below)
 
-I'm interested in reports from more devices; especially how it looks like on color screen and on devices with screen resolution different than the Touch HD 3.
+**Please note** The app for developed for a device with screen resolution of 1072 x 1448 pixels. The app should be scaling according to the available resolution, but might have issues displaying certain UI elements on devices with a different resolution.
+
+I'm interested in reports from more devices; especially how it looks like on color screen and on devices with screen resolution different than the Touch HD 3. When submitting an issue, please provide relevant screenshots.
 
 ### MIT License
 

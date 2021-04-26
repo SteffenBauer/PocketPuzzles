@@ -1670,10 +1670,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     {
         int rx = (w+n) * TILE_SIZE + (TILE_SIZE*3/4);
         int ry = (h+n) * TILE_SIZE + (TILE_SIZE*3/4);
-        
+
         /* Draw a rectangle covering the screen for background */
         draw_rect(dr, 0, 0, rx, ry, COL_OUTERBG);
-        
+
         /* Draw the letters in the corner */
         abcd_draw_borderletters(dr, ds, n, COL_BORDERLETTER);
         draw_update(dr, 0, 0, rx, ry);

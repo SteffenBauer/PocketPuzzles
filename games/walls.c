@@ -1258,12 +1258,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int w = state->shared->w, h = state->shared->h;
     int i;
 
-    if (!ds->started) {
+/*    if (!ds->started) {
         draw_rect(dr, 0, 0, w*TILESIZE + 2*BORDER, h*TILESIZE + 2*BORDER,
                     COL_BACKGROUND);
         ds->started = true;
     }
-
+*/
     for (i=0;i<state->shared->wh;i++)
         draw_square(dr, ds, ui, i, state);
 

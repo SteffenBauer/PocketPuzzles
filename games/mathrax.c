@@ -1495,7 +1495,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     
     if(ds->redraw)
     {
-        draw_rect(dr, 0, 0, (o+1)*tilesize, (o+1)*tilesize, COL_BACKGROUND);
         draw_rect(dr, (tilesize/2), (tilesize/2)-1, o*tilesize+1, o*tilesize+1, COL_BORDER);
         draw_update(dr, 0, 0, (o+1)*tilesize, (o+1)*tilesize);
     }

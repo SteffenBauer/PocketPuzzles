@@ -2216,7 +2216,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     bool alt_button;
     int drop_region;
 
-    if (button == '+' )
+    if (button == '+')
         return dupstr("M");
 
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
@@ -2318,12 +2318,22 @@ static game_state *execute_move(const game_state *state, const char *move)
 {
     int n = state->p.n;
     game_state *ret = dup_game(state);
-    int c, k, adv, i;
+    int c, adv, i, j, k;
 
     if (move && move[0] == 'M') {
         for (i = 0; i < ret->map->n; i++) {
-            if (ret->colouring[i] == -1)
+            if (ret->colouring[i] == -1) {
                 ret->pencil[i] = 15;
+                for (j = graph_vertex_start(state->map->graph, state->map->n,
+                         state->map->ngraph, i);
+                     (j < state->map->ngraph) && 
+                     (state->map->graph[j] < state->map->n*(i+1));
+                     j++) {
+                    k = state->map->graph[j] - i*state->map->n;
+                    if (ret->colouring[k] >= 0)
+                        ret->pencil[i] &= ~(1 << ret->colouring[k]);
+                }
+            }
         }
         return ret;
     }
@@ -2761,19 +2771,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y, i;
     ds->drag_visible = false;
 
-    /*
-     * The initial contents of the window are not guaranteed and
-     * can vary with front ends. To be on the safe side, all games
-     * should start by drawing a big background-colour rectangle
-     * covering the whole window.
-     */
     if (!ds->started) {
-        int ww, wh;
-
-        game_compute_size(&state->p, TILESIZE, &ww, &wh);
-        draw_rect(dr, 0, 0, ww, wh, COL_BACKGROUND);
         draw_rect(dr, COORD(0), COORD(0), w*TILESIZE+1, h*TILESIZE+1, COL_GRID);
-        draw_update(dr, 0, 0, ww, wh);
+        draw_update(dr, COORD(0), COORD(0), w*TILESIZE+1, h*TILESIZE+1);
         ds->started = true;
     }
 
@@ -2817,34 +2817,34 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * Add error markers to the `todraw' array.
      */
     for (i = 0; i < state->map->ngraph; i++) {
-    int v1 = state->map->graph[i] / n;
-    int v2 = state->map->graph[i] % n;
-    int xo, yo;
+        int v1 = state->map->graph[i] / n;
+        int v2 = state->map->graph[i] % n;
+        int xo, yo;
 
-    if (state->colouring[v1] < 0 || state->colouring[v2] < 0)
-        continue;
-    if (state->colouring[v1] != state->colouring[v2])
-        continue;
+        if (state->colouring[v1] < 0 || state->colouring[v2] < 0)
+            continue;
+        if (state->colouring[v1] != state->colouring[v2])
+            continue;
 
-    x = state->map->edgex[i];
-    y = state->map->edgey[i];
+        x = state->map->edgex[i];
+        y = state->map->edgey[i];
 
-    xo = x % 2; x /= 2;
-    yo = y % 2; y /= 2;
+        xo = x % 2; x /= 2;
+        yo = y % 2; y /= 2;
 
-    ds->todraw[y*w+x] |= ERR_BASE << (yo*3+xo);
-    if (xo == 0) {
-        assert(x > 0);
-        ds->todraw[y*w+(x-1)] |= ERR_BASE << (yo*3+2);
-    }
-    if (yo == 0) {
-        assert(y > 0);
-        ds->todraw[(y-1)*w+x] |= ERR_BASE << (2*3+xo);
-    }
-    if (xo == 0 && yo == 0) {
-        assert(x > 0 && y > 0);
-        ds->todraw[(y-1)*w+(x-1)] |= ERR_BASE << (2*3+2);
-    }
+        ds->todraw[y*w+x] |= ERR_BASE << (yo*3+xo);
+        if (xo == 0) {
+            assert(x > 0);
+            ds->todraw[y*w+(x-1)] |= ERR_BASE << (yo*3+2);
+        }
+        if (yo == 0) {
+            assert(y > 0);
+            ds->todraw[(y-1)*w+x] |= ERR_BASE << (2*3+xo);
+        }
+        if (xo == 0 && yo == 0) {
+            assert(x > 0 && y > 0);
+            ds->todraw[(y-1)*w+(x-1)] |= ERR_BASE << (2*3+2);
+        }
     }
 
     /*

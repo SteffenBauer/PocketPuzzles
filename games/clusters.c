@@ -946,9 +946,6 @@ static void clusters_draw_err_rectangle(drawing *dr, int x, int y, int tilesize)
     draw_rect(dr, x + s - margin - thick, y + margin, thick, s - 2 * margin, COL_ERROR);
 }
 
-#define FLASH_FRAME 0.1F
-#define FLASH_TIME (FLASH_FRAME * 3)
-
 static void game_redraw(drawing *dr, game_drawstate *ds,
     const game_state *oldstate, const game_state *state,
     int dir, const game_ui *ui,
@@ -959,13 +956,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y, d;
     int tilesize = ds->tilesize;
 
-    char flash = flashtime > 0 && ((int)(flashtime / FLASH_FRAME) & 1) == 0;
-
     if(ds->grid[0] == ~0)
     {
-        draw_rect(dr, 0, 0, (w + 1)*tilesize, (h + 1)*tilesize, COL_BACKGROUND);
-        draw_update(dr, 0, 0, (w + 1)*tilesize, (h + 1)*tilesize);
-
         draw_rect(dr, COORD(0) - tilesize / 10, COORD(0) - tilesize / 10,
             tilesize*w + 2 * (tilesize / 10) - 1,
             tilesize*h + 2 * (tilesize / 10) - 1, COL_GRID);
@@ -984,7 +976,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 }
             }
 
-            if (flash) tile ^= COLMASK;
             if (ui->cursor && ui->cx == x && ui->cy == y) tile |= F_CURSOR;
 
             if(ds->grid[y*w + x] == tile)

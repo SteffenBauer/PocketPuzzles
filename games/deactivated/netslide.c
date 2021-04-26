@@ -25,7 +25,6 @@
 #define U 0x02
 #define L 0x04
 #define D 0x08
-#define FLASHING 0x10
 #define ACTIVE 0x20
 /* Corner flags go in the barriers array */
 #define RU 0x10
@@ -41,8 +40,8 @@
 #define C(x) ( (((x) & 0x0E) >> 1) | (((x) & 0x01) << 3) )
 #define F(x) ( (((x) & 0x0C) >> 2) | (((x) & 0x03) << 2) )
 #define ROT(x, n) ( ((n)&3) == 0 ? (x) : \
-		    ((n)&3) == 1 ? A(x) : \
-		    ((n)&3) == 2 ? F(x) : C(x) )
+            ((n)&3) == 1 ? A(x) : \
+            ((n)&3) == 2 ? F(x) : C(x) )
 
 /* X and Y displacements */
 #define X(x) ( (x) == R ? +1 : (x) == L ? -1 : 0 )
@@ -50,7 +49,7 @@
 
 /* Bit count */
 #define COUNT(x) ( (((x) & 0x08) >> 3) + (((x) & 0x04) >> 2) + \
-		   (((x) & 0x02) >> 1) + ((x) & 0x01) )
+           (((x) & 0x02) >> 1) + ((x) & 0x01) )
 
 #define PREFERRED_TILE_SIZE 48
 #define TILE_SIZE (ds->tilesize)
@@ -59,11 +58,9 @@
 #define WINDOW_OFFSET 0
 
 #define ANIM_TIME 0.13F
-#define FLASH_FRAME 0.07F
 
 enum {
     COL_BACKGROUND,
-    COL_FLASHING,
     COL_BORDER,
     COL_WIRE,
     COL_ENDPOINT,
@@ -113,17 +110,17 @@ static int xyd_cmp(void *av, void *bv) {
     struct xyd *a = (struct xyd *)av;
     struct xyd *b = (struct xyd *)bv;
     if (a->x < b->x)
-	return -1;
+    return -1;
     if (a->x > b->x)
-	return +1;
+    return +1;
     if (a->y < b->y)
-	return -1;
+    return -1;
     if (a->y > b->y)
-	return +1;
+    return +1;
     if (a->direction < b->direction)
-	return -1;
+    return -1;
     if (a->direction > b->direction)
-	return +1;
+    return +1;
     return 0;
 }
 
@@ -200,7 +197,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;               /* structure copy */
     return ret;
 }
 
@@ -306,11 +303,11 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->width <= 1 || params->height <= 1)
-	return "Width and height must both be greater than one";
+    return "Width and height must both be greater than one";
     if (params->barrier_probability < 0)
-	return "Barrier probability may not be negative";
+    return "Barrier probability may not be negative";
     if (params->barrier_probability > 1)
-	return "Barrier probability may not be greater than 1";
+    return "Barrier probability may not be greater than 1";
     return NULL;
 }
 
@@ -319,7 +316,7 @@ static const char *validate_params(const game_params *params, bool full)
  */
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     tree234 *possibilities, *barriertree;
     int w, h, x, y, cx, cy, nbarriers;
@@ -382,126 +379,126 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     possibilities = newtree234(xyd_cmp);
 
     if (cx+1 < w)
-	add234(possibilities, new_xyd(cx, cy, R));
+    add234(possibilities, new_xyd(cx, cy, R));
     if (cy-1 >= 0)
-	add234(possibilities, new_xyd(cx, cy, U));
+    add234(possibilities, new_xyd(cx, cy, U));
     if (cx-1 >= 0)
-	add234(possibilities, new_xyd(cx, cy, L));
+    add234(possibilities, new_xyd(cx, cy, L));
     if (cy+1 < h)
-	add234(possibilities, new_xyd(cx, cy, D));
+    add234(possibilities, new_xyd(cx, cy, D));
 
     while (count234(possibilities) > 0) {
-	int i;
-	struct xyd *xyd;
-	int x1, y1, d1, x2, y2, d2, d;
+    int i;
+    struct xyd *xyd;
+    int x1, y1, d1, x2, y2, d2, d;
 
-	/*
-	 * Extract a randomly chosen possibility from the list.
-	 */
-	i = random_upto(rs, count234(possibilities));
-	xyd = delpos234(possibilities, i);
-	x1 = xyd->x;
-	y1 = xyd->y;
-	d1 = xyd->direction;
-	sfree(xyd);
+    /*
+     * Extract a randomly chosen possibility from the list.
+     */
+    i = random_upto(rs, count234(possibilities));
+    xyd = delpos234(possibilities, i);
+    x1 = xyd->x;
+    y1 = xyd->y;
+    d1 = xyd->direction;
+    sfree(xyd);
 
-	OFFSET(x2, y2, x1, y1, d1, params);
-	d2 = F(d1);
+    OFFSET(x2, y2, x1, y1, d1, params);
+    d2 = F(d1);
 #ifdef GENERATION_DIAGNOSTICS
-	printf("picked (%d,%d,%c) <-> (%d,%d,%c)\n",
-	       x1, y1, "0RU3L567D9abcdef"[d1], x2, y2, "0RU3L567D9abcdef"[d2]);
+    printf("picked (%d,%d,%c) <-> (%d,%d,%c)\n",
+           x1, y1, "0RU3L567D9abcdef"[d1], x2, y2, "0RU3L567D9abcdef"[d2]);
 #endif
 
-	/*
-	 * Make the connection. (We should be moving to an as yet
-	 * unused tile.)
-	 */
-	index(params, tiles, x1, y1) |= d1;
-	assert(index(params, tiles, x2, y2) == 0);
-	index(params, tiles, x2, y2) |= d2;
+    /*
+     * Make the connection. (We should be moving to an as yet
+     * unused tile.)
+     */
+    index(params, tiles, x1, y1) |= d1;
+    assert(index(params, tiles, x2, y2) == 0);
+    index(params, tiles, x2, y2) |= d2;
 
-	/*
-	 * If we have created a T-piece, remove its last
-	 * possibility.
-	 */
-	if (COUNT(index(params, tiles, x1, y1)) == 3) {
-	    struct xyd xyd1, *xydp;
+    /*
+     * If we have created a T-piece, remove its last
+     * possibility.
+     */
+    if (COUNT(index(params, tiles, x1, y1)) == 3) {
+        struct xyd xyd1, *xydp;
 
-	    xyd1.x = x1;
-	    xyd1.y = y1;
-	    xyd1.direction = 0x0F ^ index(params, tiles, x1, y1);
+        xyd1.x = x1;
+        xyd1.y = y1;
+        xyd1.direction = 0x0F ^ index(params, tiles, x1, y1);
 
-	    xydp = find234(possibilities, &xyd1, NULL);
+        xydp = find234(possibilities, &xyd1, NULL);
 
-	    if (xydp) {
+        if (xydp) {
 #ifdef GENERATION_DIAGNOSTICS
-		printf("T-piece; removing (%d,%d,%c)\n",
-		       xydp->x, xydp->y, "0RU3L567D9abcdef"[xydp->direction]);
+        printf("T-piece; removing (%d,%d,%c)\n",
+               xydp->x, xydp->y, "0RU3L567D9abcdef"[xydp->direction]);
 #endif
-		del234(possibilities, xydp);
-		sfree(xydp);
-	    }
-	}
+        del234(possibilities, xydp);
+        sfree(xydp);
+        }
+    }
 
-	/*
-	 * Remove all other possibilities that were pointing at the
-	 * tile we've just moved into.
-	 */
-	for (d = 1; d < 0x10; d <<= 1) {
-	    int x3, y3, d3;
-	    struct xyd xyd1, *xydp;
+    /*
+     * Remove all other possibilities that were pointing at the
+     * tile we've just moved into.
+     */
+    for (d = 1; d < 0x10; d <<= 1) {
+        int x3, y3, d3;
+        struct xyd xyd1, *xydp;
 
-	    OFFSET(x3, y3, x2, y2, d, params);
-	    d3 = F(d);
+        OFFSET(x3, y3, x2, y2, d, params);
+        d3 = F(d);
 
-	    xyd1.x = x3;
-	    xyd1.y = y3;
-	    xyd1.direction = d3;
+        xyd1.x = x3;
+        xyd1.y = y3;
+        xyd1.direction = d3;
 
-	    xydp = find234(possibilities, &xyd1, NULL);
+        xydp = find234(possibilities, &xyd1, NULL);
 
-	    if (xydp) {
+        if (xydp) {
 #ifdef GENERATION_DIAGNOSTICS
-		printf("Loop avoidance; removing (%d,%d,%c)\n",
-		       xydp->x, xydp->y, "0RU3L567D9abcdef"[xydp->direction]);
+        printf("Loop avoidance; removing (%d,%d,%c)\n",
+               xydp->x, xydp->y, "0RU3L567D9abcdef"[xydp->direction]);
 #endif
-		del234(possibilities, xydp);
-		sfree(xydp);
-	    }
-	}
+        del234(possibilities, xydp);
+        sfree(xydp);
+        }
+    }
 
-	/*
-	 * Add new possibilities to the list for moving _out_ of
-	 * the tile we have just moved into.
-	 */
-	for (d = 1; d < 0x10; d <<= 1) {
-	    int x3, y3;
+    /*
+     * Add new possibilities to the list for moving _out_ of
+     * the tile we have just moved into.
+     */
+    for (d = 1; d < 0x10; d <<= 1) {
+        int x3, y3;
 
-	    if (d == d2)
-		continue;	       /* we've got this one already */
+        if (d == d2)
+        continue;           /* we've got this one already */
 
-	    if (!params->wrapping) {
-		if (d == U && y2 == 0)
-		    continue;
-		if (d == D && y2 == h-1)
-		    continue;
-		if (d == L && x2 == 0)
-		    continue;
-		if (d == R && x2 == w-1)
-		    continue;
-	    }
+        if (!params->wrapping) {
+        if (d == U && y2 == 0)
+            continue;
+        if (d == D && y2 == h-1)
+            continue;
+        if (d == L && x2 == 0)
+            continue;
+        if (d == R && x2 == w-1)
+            continue;
+        }
 
-	    OFFSET(x3, y3, x2, y2, d, params);
+        OFFSET(x3, y3, x2, y2, d, params);
 
-	    if (index(params, tiles, x3, y3))
-		continue;	       /* this would create a loop */
+        if (index(params, tiles, x3, y3))
+        continue;           /* this would create a loop */
 
 #ifdef GENERATION_DIAGNOSTICS
-	    printf("New frontier; adding (%d,%d,%c)\n",
-		   x2, y2, "0RU3L567D9abcdef"[d]);
+        printf("New frontier; adding (%d,%d,%c)\n",
+           x2, y2, "0RU3L567D9abcdef"[d]);
 #endif
-	    add234(possibilities, new_xyd(x2, y2, d));
-	}
+        add234(possibilities, new_xyd(x2, y2, d));
+    }
     }
     /* Having done that, we should have no possibilities remaining. */
     assert(count234(possibilities) == 0);
@@ -512,22 +509,22 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      */
     barriertree = newtree234(xyd_cmp);
     for (y = 0; y < h; y++) {
-	for (x = 0; x < w; x++) {
+    for (x = 0; x < w; x++) {
 
-	    if (!(index(params, tiles, x, y) & R) &&
+        if (!(index(params, tiles, x, y) & R) &&
                 (params->wrapping || x < w-1))
-		add234(barriertree, new_xyd(x, y, R));
-	    if (!(index(params, tiles, x, y) & D) &&
+        add234(barriertree, new_xyd(x, y, R));
+        if (!(index(params, tiles, x, y) & D) &&
                 (params->wrapping || y < h-1))
-		add234(barriertree, new_xyd(x, y, D));
-	}
+        add234(barriertree, new_xyd(x, y, D));
+    }
     }
 
     /*
      * Save the unshuffled grid in aux.
      */
     {
-	char *solution;
+    char *solution;
         int i;
 
         /*
@@ -535,13 +532,13 @@ static char *new_game_desc(const game_params *params, random_state *rs,
          * can just dupstr this in solve_game().
          */
 
-	solution = snewn(w * h + 2, char);
+    solution = snewn(w * h + 2, char);
         solution[0] = 'S';
         for (i = 0; i < w * h; i++)
             solution[i+1] = "0123456789abcdef"[tiles[i] & 0xF];
         solution[w*h+1] = '\0';
 
-	*aux = solution;
+    *aux = solution;
     }
 
     /*
@@ -619,42 +616,42 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     assert(nbarriers >= 0 && nbarriers <= count234(barriertree));
 
     while (nbarriers > 0) {
-	int i;
-	struct xyd *xyd;
-	int x1, y1, d1, x2, y2, d2;
+    int i;
+    struct xyd *xyd;
+    int x1, y1, d1, x2, y2, d2;
 
-	/*
-	 * Extract a randomly chosen barrier from the list.
-	 */
-	i = random_upto(rs, count234(barriertree));
-	xyd = delpos234(barriertree, i);
+    /*
+     * Extract a randomly chosen barrier from the list.
+     */
+    i = random_upto(rs, count234(barriertree));
+    xyd = delpos234(barriertree, i);
 
-	assert(xyd != NULL);
+    assert(xyd != NULL);
 
-	x1 = xyd->x;
-	y1 = xyd->y;
-	d1 = xyd->direction;
-	sfree(xyd);
+    x1 = xyd->x;
+    y1 = xyd->y;
+    d1 = xyd->direction;
+    sfree(xyd);
 
-	OFFSET(x2, y2, x1, y1, d1, params);
-	d2 = F(d1);
+    OFFSET(x2, y2, x1, y1, d1, params);
+    d2 = F(d1);
 
-	index(params, barriers, x1, y1) |= d1;
-	index(params, barriers, x2, y2) |= d2;
+    index(params, barriers, x1, y1) |= d1;
+    index(params, barriers, x2, y2) |= d2;
 
-	nbarriers--;
+    nbarriers--;
     }
 
     /*
      * Clean up the rest of the barrier list.
      */
     {
-	struct xyd *xyd;
+    struct xyd *xyd;
 
-	while ( (xyd = delpos234(barriertree, 0)) != NULL)
-	    sfree(xyd);
+    while ( (xyd = delpos234(barriertree, 0)) != NULL)
+        sfree(xyd);
 
-	freetree234(barriertree);
+    freetree234(barriertree);
     }
 
     /*
@@ -786,14 +783,14 @@ static game_state *new_game(midend *me, const game_params *params,
      * Set up border barriers if this is a non-wrapping game.
      */
     if (!state->wrapping) {
-	for (x = 0; x < state->width; x++) {
-	    barrier(state, x, 0) |= U;
-	    barrier(state, x, state->height-1) |= D;
-	}
-	for (y = 0; y < state->height; y++) {
-	    barrier(state, 0, y) |= L;
-	    barrier(state, state->width-1, y) |= R;
-	}
+    for (x = 0; x < state->width; x++) {
+        barrier(state, x, 0) |= U;
+        barrier(state, x, state->height-1) |= D;
+    }
+    for (y = 0; y < state->height; y++) {
+        barrier(state, 0, y) |= L;
+        barrier(state, state->width-1, y) |= R;
+    }
     }
 
     /*
@@ -801,7 +798,7 @@ static game_state *new_game(midend *me, const game_params *params,
      * prettily when they meet.
      */
     for (y = 0; y < state->height; y++) {
-	for (x = 0; x < state->width; x++) {
+    for (x = 0; x < state->width; x++) {
             int dir;
 
             for (dir = 1; dir < 0x10; dir <<= 1) {
@@ -841,7 +838,7 @@ static game_state *new_game(midend *me, const game_params *params,
                         barrier(state, x3, y3) |= (F(dir) << 4);
                 }
             }
-	}
+    }
     }
 
     return state;
@@ -883,8 +880,8 @@ static char *solve_game(const game_state *state, const game_state *currstate,
                         const char *aux, const char **error)
 {
     if (!aux) {
-	*error = "Solution not known for this puzzle";
-	return NULL;
+    *error = "Solution not known for this puzzle";
+    return NULL;
     }
 
     return dupstr(aux);
@@ -933,31 +930,31 @@ static unsigned char *compute_active(const game_state *state,
     add234(todo, new_xyd(state->cx, state->cy, 0));
 
     while ( (xyd = delpos234(todo, 0)) != NULL) {
-	int x1, y1, d1, x2, y2, d2;
+    int x1, y1, d1, x2, y2, d2;
 
-	x1 = xyd->x;
-	y1 = xyd->y;
-	sfree(xyd);
+    x1 = xyd->x;
+    y1 = xyd->y;
+    sfree(xyd);
 
-	for (d1 = 1; d1 < 0x10; d1 <<= 1) {
-	    OFFSET(x2, y2, x1, y1, d1, state);
-	    d2 = F(d1);
+    for (d1 = 1; d1 < 0x10; d1 <<= 1) {
+        OFFSET(x2, y2, x1, y1, d1, state);
+        d2 = F(d1);
 
-	    /*
-	     * If the next tile in this direction is connected to
-	     * us, and there isn't a barrier in the way, and it
-	     * isn't already marked active, then mark it active and
-	     * add it to the to-examine list.
-	     */
-	    if ((x2 != moving_col && y2 != moving_row) &&
+        /*
+         * If the next tile in this direction is connected to
+         * us, and there isn't a barrier in the way, and it
+         * isn't already marked active, then mark it active and
+         * add it to the to-examine list.
+         */
+        if ((x2 != moving_col && y2 != moving_row) &&
                 (tile(state, x1, y1) & d1) &&
-		(tile(state, x2, y2) & d2) &&
-		!(barrier(state, x1, y1) & d1) &&
-		!index(state, active, x2, y2)) {
-		index(state, active, x2, y2) = ACTIVE;
-		add234(todo, new_xyd(x2, y2, 0));
-	    }
-	}
+        (tile(state, x2, y2) & d2) &&
+        !(barrier(state, x1, y1) & d1) &&
+        !index(state, active, x2, y2)) {
+        index(state, active, x2, y2) = ACTIVE;
+        add234(todo, new_xyd(x2, y2, 0));
+        }
+    }
     }
     /* Now we expect the todo list to have shrunk to zero size. */
     assert(count234(todo) == 0);
@@ -1117,9 +1114,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
 
     if (dx == 0)
-	sprintf(buf, "C%d,%d", cx, dy);
+    sprintf(buf, "C%d,%d", cx, dy);
     else
-	sprintf(buf, "R%d,%d", cy, dx);
+    sprintf(buf, "R%d,%d", cy, dx);
     return dupstr(buf);
 }
 
@@ -1130,40 +1127,40 @@ static game_state *execute_move(const game_state *from, const char *move)
     bool col;
 
     if ((move[0] == 'C' || move[0] == 'R') &&
-	sscanf(move+1, "%d,%d", &c, &d) == 2 &&
-	c >= 0 && c < (move[0] == 'C' ? from->width : from->height)) {
-	col = (move[0] == 'C');
+    sscanf(move+1, "%d,%d", &c, &d) == 2 &&
+    c >= 0 && c < (move[0] == 'C' ? from->width : from->height)) {
+    col = (move[0] == 'C');
     } else if (move[0] == 'S' &&
-	       strlen(move) == from->width * from->height + 1) {
-	int i;
-	ret = dup_game(from);
-	ret->used_solve = true;
-	ret->completed = ret->move_count = 1;
+           strlen(move) == from->width * from->height + 1) {
+    int i;
+    ret = dup_game(from);
+    ret->used_solve = true;
+    ret->completed = ret->move_count = 1;
 
-	for (i = 0; i < from->width * from->height; i++) {
-	    c = move[i+1];
-	    if (c >= '0' && c <= '9')
-		c -= '0';
-	    else if (c >= 'A' && c <= 'F')
-		c -= 'A' - 10;
-	    else if (c >= 'a' && c <= 'f')
-		c -= 'a' - 10;
-	    else {
-		free_game(ret);
-		return NULL;
-	    }
-	    ret->tiles[i] = c;
-	}
-	return ret;
+    for (i = 0; i < from->width * from->height; i++) {
+        c = move[i+1];
+        if (c >= '0' && c <= '9')
+        c -= '0';
+        else if (c >= 'A' && c <= 'F')
+        c -= 'A' - 10;
+        else if (c >= 'a' && c <= 'f')
+        c -= 'a' - 10;
+        else {
+        free_game(ret);
+        return NULL;
+        }
+        ret->tiles[i] = c;
+    }
+    return ret;
     } else
-	return NULL;		       /* can't parse move string */
+    return NULL;               /* can't parse move string */
 
     ret = dup_game(from);
 
     if (col)
-	slide_col(ret, d, c);
+    slide_col(ret, d, c);
     else
-	slide_row(ret, d, c);
+    slide_row(ret, d, c);
 
     ret->move_count++;
     ret->last_move_row = col ? -1 : c;
@@ -1174,22 +1171,22 @@ static game_state *execute_move(const game_state *from, const char *move)
      * See if the game has been completed.
      */
     if (!ret->completed) {
-	unsigned char *active = compute_active(ret, -1, -1);
-	int x1, y1;
+    unsigned char *active = compute_active(ret, -1, -1);
+    int x1, y1;
         bool complete = true;
 
-	for (x1 = 0; x1 < ret->width; x1++)
-	    for (y1 = 0; y1 < ret->height; y1++)
-		if (!index(ret, active, x1, y1)) {
-		    complete = false;
-		    goto break_label;  /* break out of two loops at once */
-		}
-	break_label:
+    for (x1 = 0; x1 < ret->width; x1++)
+        for (y1 = 0; y1 < ret->height; y1++)
+        if (!index(ret, active, x1, y1)) {
+            complete = false;
+            goto break_label;  /* break out of two loops at once */
+        }
+    break_label:
 
-	sfree(active);
+    sfree(active);
 
-	if (complete)
-	    ret->completed = ret->move_count;
+    if (complete)
+        ret->completed = ret->move_count;
     }
 
     return ret;
@@ -1239,77 +1236,35 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret;
 
     ret = snewn(NCOLOURS * 3, float);
     *ncolours = NCOLOURS;
 
-    /*
-     * Basic background colour is whatever the front end thinks is
-     * a sensible default.
-     */
-    frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
-
-    /*
-     * Wires are black.
-     */
-    ret[COL_WIRE * 3 + 0] = 0.0F;
-    ret[COL_WIRE * 3 + 1] = 0.0F;
-    ret[COL_WIRE * 3 + 2] = 0.0F;
-
-    /*
-     * Powered wires and powered endpoints are cyan.
-     */
-    ret[COL_POWERED * 3 + 0] = 0.0F;
-    ret[COL_POWERED * 3 + 1] = 1.0F;
-    ret[COL_POWERED * 3 + 2] = 1.0F;
-
-    /*
-     * Barriers are red.
-     */
-    ret[COL_BARRIER * 3 + 0] = 1.0F;
-    ret[COL_BARRIER * 3 + 1] = 0.0F;
-    ret[COL_BARRIER * 3 + 2] = 0.0F;
-
-    /*
-     * Unpowered endpoints are blue.
-     */
-    ret[COL_ENDPOINT * 3 + 0] = 0.0F;
-    ret[COL_ENDPOINT * 3 + 1] = 0.0F;
-    ret[COL_ENDPOINT * 3 + 2] = 1.0F;
-
-    /*
-     * Tile borders are a darker grey than the background.
-     */
-    ret[COL_BORDER * 3 + 0] = 0.5F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_BORDER * 3 + 1] = 0.5F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_BORDER * 3 + 2] = 0.5F * ret[COL_BACKGROUND * 3 + 2];
-
-    /*
-     * Flashing tiles are a grey in between those two.
-     */
-    ret[COL_FLASHING * 3 + 0] = 0.75F * ret[COL_BACKGROUND * 3 + 0];
-    ret[COL_FLASHING * 3 + 1] = 0.75F * ret[COL_BACKGROUND * 3 + 1];
-    ret[COL_FLASHING * 3 + 2] = 0.75F * ret[COL_BACKGROUND * 3 + 2];
-
-    ret[COL_LOWLIGHT * 3 + 0] = ret[COL_BACKGROUND * 3 + 0] * 0.8F;
-    ret[COL_LOWLIGHT * 3 + 1] = ret[COL_BACKGROUND * 3 + 1] * 0.8F;
-    ret[COL_LOWLIGHT * 3 + 2] = ret[COL_BACKGROUND * 3 + 2] * 0.8F;
-    ret[COL_TEXT * 3 + 0] = 0.0;
-    ret[COL_TEXT * 3 + 1] = 0.0;
-    ret[COL_TEXT * 3 + 2] = 0.0;
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND * 3 + i] = 1.0F;
+        ret[COL_WIRE       * 3 + i] = 0.0F;
+        ret[COL_POWERED    * 3 + i] = 0.75F;
+        ret[COL_BARRIER    * 3 + i] = 0.25F;
+        ret[COL_ENDPOINT   * 3 + i] = 0.25F;
+        ret[COL_BORDER     * 3 + i] = 0.5F;
+        ret[COL_TEXT       * 3 + i] = 0.0F;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.75F;
+    }
 
     return ret;
 }
 
 static void draw_filled_line(drawing *dr, int x1, int y1, int x2, int y2,
-			     int colour)
+                 int colour)
 {
     draw_line(dr, x1-1, y1, x2-1, y2, COL_WIRE);
     draw_line(dr, x1+1, y1, x2+1, y2, COL_WIRE);
     draw_line(dr, x1, y1-1, x2, y2-1, COL_WIRE);
     draw_line(dr, x1, y1+1, x2, y2+1, COL_WIRE);
     draw_line(dr, x1, y1, x2, y2, colour);
+    /*draw_rect(dr, x1, y1, x2-x1, y2-y1, colour); */
 }
 
 static void draw_rect_coords(drawing *dr, int x1, int y1, int x2, int y2,
@@ -1404,7 +1359,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
               COL_BORDER);
     draw_rect(dr, bx+TILE_BORDER, by+TILE_BORDER,
               TILE_SIZE-TILE_BORDER, TILE_SIZE-TILE_BORDER,
-              tile & FLASHING ? COL_FLASHING : COL_BACKGROUND);
+              COL_BACKGROUND);
 
     /*
      * Draw the wires.
@@ -1416,8 +1371,8 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
             ex = (TILE_SIZE - TILE_BORDER - 1.0F) / 2.0F * X(dir);
             ey = (TILE_SIZE - TILE_BORDER - 1.0F) / 2.0F * Y(dir);
             draw_filled_line(dr, bx+(int)cx, by+(int)cy,
-			     bx+(int)(cx+ex), by+(int)(cy+ey),
-			     COL_WIRE);
+                 bx+(int)(cx+ex), by+(int)(cy+ey),
+                 COL_WIRE);
         }
     }
     for (dir = 1; dir < 0x10; dir <<= 1) {
@@ -1425,7 +1380,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
             ex = (TILE_SIZE - TILE_BORDER - 1.0F) / 2.0F * X(dir);
             ey = (TILE_SIZE - TILE_BORDER - 1.0F) / 2.0F * Y(dir);
             draw_line(dr, bx+(int)cx, by+(int)cy,
-		      bx+(int)(cx+ex), by+(int)(cy+ey), col);
+              bx+(int)(cx+ex), by+(int)(cy+ey), col);
         }
     }
 
@@ -1582,28 +1537,16 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         int dir, const game_ui *ui,
                         float t, float ft)
 {
-    int x, y, frame;
+    int x, y;
     unsigned char *active;
     float xshift = 0.0;
     float yshift = 0.0;
     int cur_x = -1, cur_y = -1;
 
-    /*
-     * Clear the screen and draw the exterior barrier lines if this
-     * is our first call.
-     */
     if (!ds->started) {
         int phase;
 
         ds->started = true;
-
-        draw_rect(dr, 0, 0, 
-                  BORDER * 2 + WINDOW_OFFSET * 2 + TILE_SIZE * state->width + TILE_BORDER,
-                  BORDER * 2 + WINDOW_OFFSET * 2 + TILE_SIZE * state->height + TILE_BORDER,
-                  COL_BACKGROUND);
-        draw_update(dr, 0, 0, 
-                    BORDER * 2 + WINDOW_OFFSET*2 + TILE_SIZE*state->width + TILE_BORDER,
-                    BORDER * 2 + WINDOW_OFFSET*2 + TILE_SIZE*state->height + TILE_BORDER);
 
         for (phase = 0; phase < 2; phase++) {
 
@@ -1686,15 +1629,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 (1 - t / ANIM_TIME) * state->last_move_dir;
     }
     
-    frame = -1;
-    if (ft > 0) {
-        /*
-         * We're animating a completion flash. Find which frame
-         * we're at.
-         */
-        frame = (int)(ft / FLASH_FRAME);
-    }
-
     /*
      * Draw any tile which differs from the way it was last drawn.
      */
@@ -1713,24 +1647,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (x = 0; x < ds->width; x++)
         for (y = 0; y < ds->height; y++) {
             unsigned char c = tile(state, x, y) | index(state, active, x, y);
-
-            /*
-             * In a completion flash, we adjust the FLASHING bit
-             * depending on our distance from the centre point and
-             * the frame number.
-             */
-            if (frame >= 0) {
-                int xdist, ydist, dist;
-                xdist = (x < state->cx ? state->cx - x : x - state->cx);
-                ydist = (y < state->cy ? state->cy - y : y - state->cy);
-                dist = (xdist > ydist ? xdist : ydist);
-
-                if (frame >= dist && frame < dist+4) {
-                    int flash = (frame - dist) & 1;
-                    flash = flash ? FLASHING : 0;
-                    c = (c &~ FLASHING) | flash;
-                }
-            }
 
             if (index(state, ds->visible, x, y) != c ||
                 index(state, ds->visible, x, y) == 0xFF ||
@@ -1766,29 +1682,28 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * Update the status bar.
      */
     {
-	char statusbuf[256];
-	int i, n, a;
+    char statusbuf[256];
+    int i, n, a;
 
-	n = state->width * state->height;
-	for (i = a = 0; i < n; i++)
-	    if (active[i])
-		a++;
+    n = state->width * state->height;
+    for (i = a = 0; i < n; i++)
+        if (active[i])
+        a++;
 
-	if (state->used_solve)
-	    sprintf(statusbuf, "Moves since auto-solve: %d",
-		    state->move_count - state->completed);
-	else
-	    sprintf(statusbuf, "%sMoves: %d",
-		    (state->completed ? "COMPLETED! " : ""),
-		    (state->completed ? state->completed : state->move_count));
+    if (state->used_solve)
+        sprintf(statusbuf, "Moves since auto-solve: %d",
+            state->move_count - state->completed);
+    else
+        sprintf(statusbuf, "%sMoves: %d",
+            (state->completed ? "COMPLETED! " : ""),
+            (state->completed ? state->completed : state->move_count));
 
-        if (state->movetarget)
-            sprintf(statusbuf + strlen(statusbuf), " (target %d)",
-                    state->movetarget);
+    if (state->movetarget)
+        sprintf(statusbuf + strlen(statusbuf), " (target %d)", state->movetarget);
 
-	sprintf(statusbuf + strlen(statusbuf), " Active: %d/%d", a, n);
+    sprintf(statusbuf + strlen(statusbuf), " Active: %d/%d", a, n);
 
-	status_bar(dr, statusbuf);
+    status_bar(dr, statusbuf);
     }
 
     sfree(active);
@@ -1797,31 +1712,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 static float game_anim_length(const game_state *oldstate,
                               const game_state *newstate, int dir, game_ui *ui)
 {
-    return ANIM_TIME;
+    return 0.0F;
 }
 
 static float game_flash_length(const game_state *oldstate,
                                const game_state *newstate, int dir, game_ui *ui)
 {
-    /*
-     * If the game has just been completed, we display a completion
-     * flash.
-     */
-    if (!oldstate->completed && newstate->completed &&
-	!oldstate->used_solve && !newstate->used_solve) {
-        int size;
-        size = 0;
-        if (size < newstate->cx+1)
-            size = newstate->cx+1;
-        if (size < newstate->cy+1)
-            size = newstate->cy+1;
-        if (size < newstate->width - newstate->cx)
-            size = newstate->width - newstate->cx;
-        if (size < newstate->height - newstate->cy)
-            size = newstate->height - newstate->cy;
-        return FLASH_FRAME * (size+4);
-    }
-
     return 0.0F;
 }
 
@@ -1888,9 +1784,9 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, game_print_size, game_print,
-    true,			       /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
-    0,				       /* flags */
+    0,                       /* flags */
 };
 
 /* vim: set shiftwidth=4 tabstop=8: */

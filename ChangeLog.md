@@ -1,5 +1,12 @@
 ## ChangeLog
 
+## 0.7.8-nightly
+
+### Changed
+* Sync with upstream (Centralize initial clearing of puzzle window)
+* *Map*: Hint button places only possible colours.
+* *Guess*: Minor UX tweaks
+
 ## 0.7.7 - 2021/04/23
 
 ### Added

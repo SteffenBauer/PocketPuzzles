@@ -1475,39 +1475,32 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     /* This was entirely cloned from fifteen.c; it should probably be
      * moved into some generic 'draw-recessed-rectangle' utility fn. */
     if (!ds->started) {
-    int coords[10];
+        int coords[10];
 
-    draw_rect(dr, 0, 0,
-          TILESIZE * w + 2 * BORDER,
-          TILESIZE * h + 2 * BORDER, COL_BACKGROUND);
-    draw_update(dr, 0, 0,
-            TILESIZE * w + 2 * BORDER,
-            TILESIZE * h + 2 * BORDER);
+        /*
+         * Recessed area containing the whole puzzle.
+         */
+        coords[0] = COORD(w) + HIGHLIGHT_WIDTH - 1;
+        coords[1] = COORD(h) + HIGHLIGHT_WIDTH - 1;
+        coords[2] = COORD(w) + HIGHLIGHT_WIDTH - 1;
+        coords[3] = COORD(0) - HIGHLIGHT_WIDTH;
+        coords[4] = coords[2] - TILESIZE;
+        coords[5] = coords[3] + TILESIZE;
+        coords[8] = COORD(0) - HIGHLIGHT_WIDTH;
+        coords[9] = COORD(h) + HIGHLIGHT_WIDTH - 1;
+        coords[6] = coords[8] + TILESIZE;
+        coords[7] = coords[9] - TILESIZE;
+        draw_polygon(dr, coords, 5, COL_HIGHLIGHT, COL_HIGHLIGHT);
 
-    /*
-     * Recessed area containing the whole puzzle.
-     */
-    coords[0] = COORD(w) + HIGHLIGHT_WIDTH - 1;
-    coords[1] = COORD(h) + HIGHLIGHT_WIDTH - 1;
-    coords[2] = COORD(w) + HIGHLIGHT_WIDTH - 1;
-    coords[3] = COORD(0) - HIGHLIGHT_WIDTH;
-    coords[4] = coords[2] - TILESIZE;
-    coords[5] = coords[3] + TILESIZE;
-    coords[8] = COORD(0) - HIGHLIGHT_WIDTH;
-    coords[9] = COORD(h) + HIGHLIGHT_WIDTH - 1;
-    coords[6] = coords[8] + TILESIZE;
-    coords[7] = coords[9] - TILESIZE;
-    draw_polygon(dr, coords, 5, COL_HIGHLIGHT, COL_HIGHLIGHT);
-
-    coords[1] = COORD(0) - HIGHLIGHT_WIDTH;
-    coords[0] = COORD(0) - HIGHLIGHT_WIDTH;
-    draw_polygon(dr, coords, 5, COL_LOWLIGHT, COL_LOWLIGHT);
+        coords[1] = COORD(0) - HIGHLIGHT_WIDTH;
+        coords[0] = COORD(0) - HIGHLIGHT_WIDTH;
+        draw_polygon(dr, coords, 5, COL_LOWLIGHT, COL_LOWLIGHT);
 
         draw_rect(dr, COORD(0) - SEP_WIDTH, COORD(0) - SEP_WIDTH,
                   TILESIZE * w + 2 * SEP_WIDTH, TILESIZE * h + 2 * SEP_WIDTH,
                   COL_SEPARATOR);
 
-    ds->started = true;
+        ds->started = true;
     }
 
     grid = snewn(wh, char);
