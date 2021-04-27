@@ -69,6 +69,7 @@ enum cell_state {
 struct game_params {
     int width;
     int height;
+    bool aggressive;
 };
 
 typedef struct board_state board_state;
@@ -94,20 +95,18 @@ struct board_state {
     struct board_cell *actual_board;
 };
 
-struct board_cell
-{
-    char clue;
+struct board_cell {
+    signed char clue;
     bool shown;
 };
 
 struct solution_cell {
-    char cell;
+    signed char cell;
     bool solved;
     bool needed;
 };
 
-struct desc_cell
-{
+struct desc_cell {
     char clue;
     bool shown;
     bool value;
@@ -115,8 +114,7 @@ struct desc_cell
     bool empty;
 };
 
-struct game_ui
-{
+struct game_ui {
     bool solved;
     bool in_progress;
     int last_x, last_y, last_state;
@@ -124,7 +122,7 @@ struct game_ui
 
 struct game_drawstate {
     int tilesize;
-    char *state;
+    int *state;
 };
 
 static game_params *default_params(void)
@@ -133,6 +131,7 @@ static game_params *default_params(void)
 
     ret->width = DEFAULT_SIZE;
     ret->height = DEFAULT_SIZE;
+    ret->aggressive = true;
 
     return ret;
 }
@@ -140,16 +139,19 @@ static game_params *default_params(void)
 static bool game_fetch_preset(int i, char **name, game_params **params)
 {
     const int sizes[6] = {5, 6, 8, 10, 12, 15};
+    const bool aggressiveness[6] = { true, true, true, true, true, false };
     if (i < 0 || i > 5) {
         return false;
     }
     game_params *res = snew(game_params);
     res->height = sizes[i];
     res->width = sizes[i];
+    res->aggressive = aggressiveness[i];
     *params=res;
-    char *value = snewn(25, char);
+
+    char value[80];
     sprintf(value, "Size: %dx%d", sizes[i], sizes[i]);
-    *name = value;
+    *name = dupstr(value);
     return true;
 }
 
@@ -174,29 +176,47 @@ static void decode_params(game_params *params, char const *string)
         params->height = atoi(string);
         while (*string && isdigit((unsigned char)*string)) string++;
     }
+    if (*string == 'h') {
+        string++;
+        params->aggressive = atoi(string);
+        while (*string && isdigit((unsigned char)*string)) string++;
+    }
+
 }
 
 static char *encode_params(const game_params *params, bool full)
 {
-    char encoded[20] = "";
-    sprintf(encoded, "%dx%d", params->width, params->height);
+    char encoded[128];
+    int pos = 0;
+    pos += sprintf(encoded + pos, "%dx%d", params->width, params->height);
+    if (full) {
+        if (params->aggressive)
+            pos += sprintf(encoded + pos, "h%d", params->aggressive);
+    }
     return dupstr(encoded);
 }
 
 static config_item *game_configure(const game_params *params)
 {
-    config_item *config = snewn(3, config_item);
-    char *value = snewn(12, char);
-    config[0].type=C_STRING;
-    config[0].name="Height";
-    sprintf(value,"%d", params->height);
-    config[0].u.string.sval=value;
-    value = snewn(12, char);
-    config[1].type=C_STRING;
-    config[1].name="Width";
-    sprintf(value,"%d", params->width);
-    config[1].u.string.sval=value;
-    config[2].type=C_END;
+    config_item *config = snewn(4, config_item);
+    char value[80];
+
+    config[0].type = C_STRING;
+    config[0].name = "Height";
+    sprintf(value, "%d", params->height);
+    config[0].u.string.sval = dupstr(value);
+
+    config[1].type = C_STRING;
+    config[1].name = "Width";
+    sprintf(value, "%d", params->width);
+    config[1].u.string.sval = dupstr(value);
+
+    config[2].name = "Aggressive generation (longer)";
+    config[2].type = C_BOOLEAN;
+    config[2].u.boolean.bval = params->aggressive;
+
+    config[3].type = C_END;
+
     return config;
 }
 
@@ -205,6 +225,7 @@ static game_params *custom_params(const config_item *cfg)
     game_params *res = snew(game_params);
     res->height=atol(cfg[0].u.string.sval);
     res->width=atol(cfg[1].u.string.sval);
+    res->aggressive = cfg[2].u.boolean.bval;
     return res;
 }
 
@@ -220,7 +241,8 @@ static const char *validate_params(const game_params *params, bool full)
 }
 
 static bool get_pixel(const game_params *params, const bool *image,
-                      const int x, const int y) {
+                      const int x, const int y)
+{
     const bool *pixel;
     pixel = get_coords(params, image, x, y);
     if (pixel) {
@@ -231,7 +253,8 @@ static bool get_pixel(const game_params *params, const bool *image,
 
 static void populate_cell(const game_params *params, const bool *image,
                           const int x, const int y, bool edge,
-                          struct desc_cell *desc) {
+                          struct desc_cell *desc)
+{
     int clue = 0;
     bool xEdge = false;
     bool yEdge = false;
@@ -291,9 +314,8 @@ static void populate_cell(const game_params *params, const bool *image,
         desc->full = false;
         if (clue == 9) {
             desc->full = true;
-        } else if (edge &&
-            ((xEdge && yEdge && clue == 4) ||
-            ((xEdge || yEdge) && clue == 6))) {
+        } else if (edge && ((xEdge && yEdge && clue == 4) ||
+                           ((xEdge || yEdge) && clue == 6))) {
             desc->full = true;
         }
     }
@@ -303,7 +325,8 @@ static void populate_cell(const game_params *params, const bool *image,
 
 static void count_around(const game_params *params,
                          struct solution_cell *sol, int x, int y,
-                         int *marked, int *blank, int *total) {
+                         int *marked, int *blank, int *total)
+{
     int i, j;
     struct solution_cell *curr = NULL;
     (*total)=0;
@@ -326,7 +349,8 @@ static void count_around(const game_params *params,
 }
 
 static void count_around_state(const game_state *state, int x, int y,
-                               int *marked, int *blank, int *total) {
+                               int *marked, int *blank, int *total)
+{
     int i, j;
     char *curr = NULL;
     (*total)=0;
@@ -350,7 +374,8 @@ static void count_around_state(const game_state *state, int x, int y,
 
 static void count_clues_around(const game_params *params,
                                struct desc_cell *desc, int x, int y,
-                               int *clues, int *total) {
+                               int *clues, int *total)
+{
     int i, j;
     struct desc_cell *curr = NULL;
     (*total)=0;
@@ -370,7 +395,8 @@ static void count_clues_around(const game_params *params,
 }
 
 static void mark_around(const game_params *params,
-                        struct solution_cell *sol, int x, int y, int mark) {
+                        struct solution_cell *sol, int x, int y, int mark)
+{
     int i, j, marked = 0;
     struct solution_cell *curr;
 
@@ -387,7 +413,10 @@ static void mark_around(const game_params *params,
     }
 }
 
-static char solve_cell(const game_params *params, struct desc_cell *desc, struct board_cell *board, struct solution_cell *sol, int x, int y) {
+static char solve_cell(const game_params *params, struct desc_cell *desc,
+                       struct board_cell *board, struct solution_cell *sol,
+                       int x, int y)
+{
     struct desc_cell curr;
 
     if (desc) {
@@ -415,8 +444,7 @@ static char solve_cell(const game_params *params, struct desc_cell *desc, struct
         mark_around(params, sol, x, y, STATE_MARKED);
         return 1;
     }
-    if (curr.empty && curr.shown)
-    {
+    if (curr.empty && curr.shown) {
         sol[(y*params->width)+x].solved = true;
         if (marked+blank < total) {
             sol[(y*params->width)+x].needed = true;
@@ -454,16 +482,19 @@ static char solve_cell(const game_params *params, struct desc_cell *desc, struct
     }
 }
 
-static bool solve_check(const game_params *params, struct desc_cell *desc, random_state *rs, struct solution_cell **sol_return) {
+static bool solve_check(const game_params *params, struct desc_cell *desc,
+                       random_state *rs, struct solution_cell **sol_return)
+{
     int x,y, i;
     int board_size = params->height*params->width;
-    struct solution_cell *sol = snewn(board_size, struct solution_cell), *curr_sol;
+    struct solution_cell *sol = snewn(board_size, struct solution_cell),
+        *curr_sol;
     bool made_progress = true, error = false;
     int solved = 0, curr = 0, shown = 0;
     needed_list_item *head = NULL, *curr_needed, **needed_array;
     struct desc_cell *curr_desc;
 
-    memset(sol, 0, board_size * sizeof(struct solution_cell));
+    memset(sol, 0, board_size * sizeof(*sol));
     for (y=0; y < params->height; y++) {
         for (x=0; x < params->width; x++) {
             curr_desc=get_coords(params, desc, x, y);
@@ -480,20 +511,20 @@ static bool solve_check(const game_params *params, struct desc_cell *desc, rando
     needed_array = snewn(shown, needed_list_item*);
     curr_needed = head;
     i = 0;
-    while (curr_needed)
-    {
+    while (curr_needed) {
         needed_array[i] = curr_needed;
         curr_needed = curr_needed->next;
         i++;
     }
     if (rs) {
-        shuffle(needed_array, shown, sizeof(needed_list_item*), rs);
+        shuffle(needed_array, shown, sizeof(*needed_array), rs);
     }
     solved = 0;
     while (solved < shown && made_progress && !error) {
         made_progress = false;
         for (i=0; i < shown; i++) {
-            curr = solve_cell(params, desc, NULL, sol, needed_array[i]->x, needed_array[i]->y);
+            curr = solve_cell(params, desc, NULL, sol, needed_array[i]->x,
+                              needed_array[i]->y);
             if (curr < 0) {
                 error = true;
                 break;
@@ -530,16 +561,20 @@ static bool solve_check(const game_params *params, struct desc_cell *desc, rando
     return solved == board_size;
 }
 
-static bool solve_game_actual(const game_params *params, struct board_cell *desc, struct solution_cell **sol_return) {
+static bool solve_game_actual(const game_params *params,
+                              struct board_cell *desc,
+                              struct solution_cell **sol_return)
+{
     int x, y;
     int board_size = params->height*params->width;
     struct solution_cell *sol = snewn(board_size, struct solution_cell);
     bool made_progress = true, error = false;
     int solved = 0, iter = 0, curr = 0;
 
-    memset(sol, 0, params->height*params->width * sizeof(struct solution_cell));
+    memset(sol, 0, params->height * params->width * sizeof(*sol));
     solved = 0;
-    while (solved < params->height*params->width && made_progress && !error) {
+    while (solved < params->height * params->width && made_progress
+           && !error) {
         for (y=0; y < params->height; y++) {
             for (x=0; x < params->width; x++) {
                 curr = solve_cell(params, NULL, desc, sol, x, y);
@@ -563,7 +598,9 @@ static bool solve_game_actual(const game_params *params, struct board_cell *desc
     return solved == params->height*params->width;
 }
 
-static void hide_clues(const game_params *params, struct desc_cell *desc, random_state *rs){
+static void hide_clues(const game_params *params, struct desc_cell *desc,
+                       random_state *rs)
+{
     int shown, total, x, y, i;
     int needed = 0;
     struct desc_cell *curr;
@@ -576,7 +613,7 @@ static void hide_clues(const game_params *params, struct desc_cell *desc, random
             count_clues_around(params, desc, x, y, &shown, &total);
             curr = get_coords(params, desc, x, y);
             curr_sol = get_coords(params, sol, x, y);
-            if (curr_sol->needed) { /*  && params->aggressive */
+            if (curr_sol->needed && params->aggressive) {
                 curr_needed = snew(needed_list_item);
                 curr_needed->x = x;
                 curr_needed->y = y;
@@ -588,20 +625,21 @@ static void hide_clues(const game_params *params, struct desc_cell *desc, random
             }
         }
     }
-    { /* if (params->aggressive) */
+    if (params->aggressive) {
         curr_needed = head;
         needed_array = snewn(needed, needed_list_item*);
-        memset(needed_array, 0, needed * sizeof(needed_list_item*));
+        memset(needed_array, 0, needed * sizeof(*needed_array));
         i = 0;
         while (curr_needed) {
             needed_array[i] = curr_needed;
             curr_needed = curr_needed->next;
             i++;
         }
-        shuffle(needed_array, needed, sizeof(needed_list_item*), rs);
+        shuffle(needed_array, needed, sizeof(*needed_array), rs);
         for (i=0; i < needed ; i++) {
             curr_needed = needed_array[i];
-            curr = get_coords(params, desc, curr_needed->x, curr_needed->y);
+            curr = 
+                get_coords(params, desc, curr_needed->x, curr_needed->y);
             if (curr) {
                 curr->shown = false;
                 if (!solve_check(params, desc, NULL, NULL)) {
@@ -617,10 +655,10 @@ static void hide_clues(const game_params *params, struct desc_cell *desc, random
     sfree(sol);
 }
 
-static bool start_point_check(size_t size, struct desc_cell *desc) {
+static bool start_point_check(size_t size, struct desc_cell *desc)
+{
     int i;
-    for (i=0; i < size; i++)
-    {
+    for (i = 0; i < size; i++) {
         if (desc[i].empty || desc[i].full){
             return true;
         }
@@ -628,7 +666,9 @@ static bool start_point_check(size_t size, struct desc_cell *desc) {
     return false;
 }
 
-static void generate_image(const game_params *params, random_state *rs, bool *image) {
+static void generate_image(const game_params *params, random_state *rs,
+                           bool *image)
+{
     int x,y;
     for (y=0; y< params->height; y++) {
         for (x=0; x < params->width; x++) {
@@ -643,10 +683,12 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     bool *image = snewn(params->height*params->width, bool);
     bool valid = false;
     char *desc_string = snewn((params->height*params->width)+1, char);
-    char *compressed_desc = snewn((params->height*params->width)+1, char);
+    char *compressed_desc = 
+        snewn((params->height * params->width)+1, char);
     char space_count;
 
-    struct desc_cell* desc=snewn(params->height*params->width, struct desc_cell);
+    struct desc_cell *desc = 
+        snewn(params->height * params->width, struct desc_cell);
     int x,y, location_in_str;
 
     while (!valid) {
@@ -654,13 +696,21 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
         for (y=0; y< params->height; y++) {
             for (x=0; x < params->width; x++) {
-                populate_cell(params, image, x, y, x*y == 0 || y == params->height - 1 || x == params->width -1, &desc[(y*params->width)+x]);
+                populate_cell(params, image, x, y, 
+                              x * y == 0 || y == params->height - 1 ||
+                              x == params->width -1,
+                              &desc[(y*params->width)+x]);
             }
         }
-        valid = start_point_check((params->height-1) * (params->width-1), desc);
-        if (valid) {
+        valid = 
+            start_point_check((params->height - 1) * (params->width - 1),
+                desc);
+        if (!valid) {
+
+        } else {
             valid = solve_check(params, desc, rs, NULL);
-            if (valid) {
+            if (!valid) {
+            } else {
                 hide_clues(params, desc, rs);
             }
         }
@@ -669,7 +719,8 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     for (y=0; y< params->height; y++) {
         for (x=0; x < params->width; x++) {
             if (desc[(y*params->width)+x].shown) {
-                sprintf(desc_string + location_in_str, "%d", desc[(y*params->width)+x].clue);
+                sprintf(desc_string + location_in_str, "%d",
+                    desc[(y*params->width)+x].clue);
             } else {
                 sprintf(desc_string + location_in_str, " ");
             }
@@ -682,17 +733,20 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         for (x=0; x < params->width; x++) {
             if (desc[(y*params->width)+x].shown) {
                 if (space_count >= 'a') {
-                    sprintf(compressed_desc + location_in_str, "%c", space_count);
+                    sprintf(compressed_desc + location_in_str, "%c",
+                        space_count);
                     location_in_str++;
                     space_count = 'a'-1;
                 }
-                sprintf(compressed_desc + location_in_str, "%d", desc[(y*params->width)+x].clue);
+                sprintf(compressed_desc + location_in_str, "%d",
+                    desc[(y*params->width)+x].clue);
                 location_in_str++;
             } else {
                 if (space_count <= 'z') {
                     space_count++;
                 } else {
-                    sprintf(compressed_desc + location_in_str, "%c", space_count);
+                    sprintf(compressed_desc + location_in_str, "%c",
+                        space_count);
                     location_in_str++;
                     space_count = 'a'-1;
                 }
@@ -703,13 +757,17 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         sprintf(compressed_desc + location_in_str, "%c", space_count);
         location_in_str++;
     }
+    sfree(image);
+    sfree(desc_string);
+    sfree(desc);
     compressed_desc[location_in_str] = '\0';
     return compressed_desc;
 }
 
 
 
-static const char *validate_desc(const game_params *params, const char *desc)
+static const char *validate_desc(const game_params *params,
+                                 const char *desc)
 {
     int size_dest = params->height*params->width;
     char *curr_desc = dupstr(desc);
@@ -717,8 +775,7 @@ static const char *validate_desc(const game_params *params, const char *desc)
     int length;
     length = 0;
 
-    while (*curr_desc != '\0')
-    {
+    while (*curr_desc != '\0') {
         if (*curr_desc >= 'a' && *curr_desc <= 'z') {
             length += *curr_desc-'a';
         }
@@ -748,10 +805,11 @@ static game_state *new_game(midend *me, const game_params *params,
     state->height = params->height;
     state->width = params->width;
     state->cells_contents = snewn(params->height*params->width, char);
-    memset(state->cells_contents, 0, params->height*params->width* sizeof(char));
+    memset(state->cells_contents, 0, params->height * params->width);
     state->board = snew(board_state);
     state->board->references = 1;
-    state->board->actual_board = snewn(params->height*params->width, struct board_cell);
+    state->board->actual_board = 
+        snewn(params->height * params->width, struct board_cell);
 
     while (*curr_desc != '\0') {
         if (*curr_desc >= '0' && *curr_desc <= '9'){
@@ -765,8 +823,7 @@ static game_state *new_game(midend *me, const game_params *params,
                 total_spaces = 1;
             }
             spaces = 0;
-            while (spaces < total_spaces)
-            {
+            while (spaces < total_spaces) {
                 state->board->actual_board[dest_loc].shown = false;
                 state->board->actual_board[dest_loc].clue = -1;
                 spaces++;
@@ -791,7 +848,8 @@ static game_state *dup_game(const game_state *state)
     ret->width = state->width;
     ret->height = state->height;
     ret->cells_contents = snewn(state->height*state->width, char);
-    memcpy(ret->cells_contents, state->cells_contents, state->height*state->width * sizeof(char));
+    memcpy(ret->cells_contents, state->cells_contents,
+        state->height * state->width);
     ret->board = state->board;
     ret->board->references++;
 
@@ -803,6 +861,7 @@ static void free_game(game_state *state)
     sfree(state->cells_contents);
     state->cells_contents = NULL;
     if (state->board->references <= 1) {
+        sfree(state->board->actual_board);
         sfree(state->board);
         state->board = NULL;
     } else {
@@ -811,8 +870,9 @@ static void free_game(game_state *state)
     sfree(state);
 }
 
-static char *solve_game(const game_state *state, const game_state *currstate,
-                        const char *aux, const char **error)
+static char *solve_game(const game_state *state,
+                        const game_state *currstate, const char *aux,
+                        const char **error)
 {
     struct solution_cell *sol = NULL;
     game_params param;
@@ -835,8 +895,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
     ret[0] = 's';
     i=0;
-    while (i < size)
-    {
+    while (i < size) {
         curr_ret = 0;
         bits = 0;
         while (bits < 8 && i < size) {
@@ -888,12 +947,13 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 }
 
 static char *interpret_move(const game_state *state, game_ui *ui,
-                            const game_drawstate *ds,
-                            int x, int y, int button, bool swapped)
+                            const game_drawstate *ds, int x, int y,
+                            int button, bool swapped)
 {
-    int gameX, gameY, i, srcX = ui->last_x, srcY = ui->last_y, dirX, dirY, diff;
+    int gameX, gameY, i, srcX = ui->last_x, srcY = 
+        ui->last_y, dirX, dirY, diff;
     char move_type;
-    char move_desc[80] = "";
+    char move_desc[80];
     char *ret = NULL;
     const char *cell_state;
     bool changed = false;
@@ -903,10 +963,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     gameX = (x-(ds->tilesize/2))/ds->tilesize;
     gameY = (y-(ds->tilesize/2))/ds->tilesize;
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
-        cell_state = get_coords(state, state->cells_contents, gameX, gameY);
+        cell_state = 
+            get_coords(state, state->cells_contents, gameX, gameY);
         if (cell_state) {
             ui->last_state = *cell_state & (STATE_BLANK | STATE_MARKED);
-            ui->last_state = (ui->last_state + ((button == RIGHT_BUTTON) ? 2 : 1)) % (STATE_BLANK | STATE_MARKED);
+            ui->last_state =
+                (ui->last_state +
+                    ((button ==
+                        RIGHT_BUTTON) ? 2 : 1)) % (STATE_BLANK | STATE_MARKED);
         }
         if (button == RIGHT_BUTTON) {
             /* Right button toggles twice */
@@ -914,7 +978,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         } else {
             move_type = 't';
         }
-        if (gameX >= 0 && gameY >= 0 && gameX < state->width && gameY < state->height) {
+        if (gameX >= 0 && gameY >= 0 && gameX < state->width &&
+            gameY < state->height) {
             sprintf(move_desc, "%c%d,%d", move_type, gameX, gameY);
             ui->last_x = gameX;
             ui->last_y = gameY;
@@ -927,9 +992,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     } else if (button == LEFT_DRAG || button == RIGHT_DRAG) {
         move_type = 'd';
         /* allowing only drags in straight lines */
-        if (gameX >= 0 && gameY >= 0 && gameX < state->width && gameY < state->height && ui->last_x >= 0 && ui->last_y >= 0 &&
+        if (gameX >= 0 && gameY >= 0 && gameX < state->width &&
+            gameY < state->height && ui->last_x >= 0 && ui->last_y >= 0 &&
             (gameY == ui->last_y || gameX == ui->last_x)) {
-            sprintf(move_desc, "%c%d,%d,%d,%d,%d", move_type, gameX, gameY, ui->last_x, ui->last_y, ui->last_state);
+            sprintf(move_desc, "%c%d,%d,%d,%d,%d", move_type, gameX, gameY,
+                    ui->last_x, ui->last_y, ui->last_state);
             if (srcX == gameX && srcY != gameY) {
                 dirX = 0;
                 diff = srcY - gameY;
@@ -950,9 +1017,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 }
             }
             for (i =  0 ; i < diff; i++) {
-                cell_state =  get_coords(state, state->cells_contents, gameX + (dirX * i), gameY + (dirY * i));
-                if (cell_state && (*cell_state & STATE_OK_NUM) == 0 &&
-                    ui->last_state > 0) {
+                cell_state =  get_coords(state, state->cells_contents,
+                                        gameX + (dirX * i),
+                                        gameY + (dirY * i));
+                if (cell_state && (*cell_state & STATE_OK_NUM) == 0
+                    && ui->last_state > 0) {
                     changed = true;
                     break;
                 }
@@ -968,9 +1037,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
     } else if (button == LEFT_RELEASE|| button == RIGHT_RELEASE) {
         move_type = 'e';
-        if (gameX >= 0 && gameY >= 0 && gameX < state->width && gameY < state->height && ui->last_x >= 0 && ui->last_y >= 0 &&
+        if (gameX >= 0 && gameY >= 0 && gameX < state->width &&
+            gameY < state->height && ui->last_x >= 0 && ui->last_y >= 0 &&
         (gameY == ui->last_y || gameX == ui->last_x)) {
-            sprintf(move_desc, "%c%d,%d,%d,%d,%d", move_type, gameX, gameY, ui->last_x, ui->last_y, ui->last_state);
+            sprintf(move_desc, "%c%d,%d,%d,%d,%d", move_type, gameX, gameY,
+                    ui->last_x, ui->last_y, ui->last_state);
             if (srcX == gameX && srcY != gameY) {
                 dirX = 0;
                 diff = srcY - gameY;
@@ -991,9 +1062,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 }
             }
             for (i =  0 ; i < diff; i++) {
-                cell_state =  get_coords(state, state->cells_contents, gameX + (dirX * i), gameY + (dirY * i));
-                if (cell_state && (*cell_state & STATE_OK_NUM) == 0 &&
-                    ui->last_state > 0) {
+                cell_state =  get_coords(state, state->cells_contents,
+                                         gameX + (dirX * i),
+                                         gameY + (dirY * i));
+                if (cell_state && (*cell_state & STATE_OK_NUM) == 0
+                    && ui->last_state > 0) {
                     changed = true;
                     break;
                 }
@@ -1009,7 +1082,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return ret;
 }
 
-static void update_board_state_around(game_state *state, int x, int y) {
+static void update_board_state_around(game_state *state, int x, int y)
+{
     int i, j;
     struct board_cell *curr;
     char *curr_state;
@@ -1019,14 +1093,19 @@ static void update_board_state_around(game_state *state, int x, int y) {
 
     for (i=-1; i < 2; i++) {
         for (j=-1; j < 2; j++) {
-            curr=get_coords(state, state->board->actual_board, x+i, y+j);
+            curr =
+                get_coords(state, state->board->actual_board, x + i,
+                           y + j);
             if (curr && curr->shown) {
-                curr_state = get_coords(state, state->cells_contents, x+i, y+j);
-                count_around_state(state, x+i, y+j, &marked, &blank, &total);
+                curr_state =
+                    get_coords(state, state->cells_contents, x + i, y + j);
+                count_around_state(state, x + i, y + j, &marked, &blank,
+                    &total);
                 if (curr->clue == marked && (total - marked - blank) == 0) {
                     *curr_state &= STATE_MARKED | STATE_BLANK;
                     *curr_state |= STATE_SOLVED;
-                } else if (curr->clue < marked || curr->clue > (total - blank)) {
+                } else if (curr->clue < marked
+                           || curr->clue > (total - blank)) {
                     *curr_state &= STATE_MARKED | STATE_BLANK;
                     *curr_state |= STATE_ERROR;
                 } else {
@@ -1042,48 +1121,45 @@ static game_state *execute_move(const game_state *state, const char *move)
     game_state *new_state = dup_game(state);
     int i = 0, x = -1, y = -1, clues_left = 0;
     int srcX = -1, srcY = -1, size = state->height * state->width;
-    char *comma, *cell, sol_char;
-    char coordinate[30] = "";
-    int steps = 1, bits, sol_location, dirX, dirY, diff, last_state = STATE_UNMARKED;
+    const char *p;
+    char *cell, sol_char;
+    int steps = 1, bits, sol_location, dirX, dirY, diff,
+        last_state = STATE_UNMARKED;
     unsigned int sol_value;
     struct board_cell *curr_cell;
-    /* Check location */
-    if (move[0] == 't' || move[0] == 'T' || move[0] == 'd' || move[0] == 'e') {
-        i++;
-        comma=strchr(move + i, ',');
-        if (comma != NULL) {
-            memset(coordinate, 0, sizeof(char)*12);
-            strncpy(coordinate, move + i, comma - move - 1);
-            x = atol(coordinate);
-            i = comma - move;
-            i++;
-            memset(coordinate, 0, sizeof(char)*12);
-            comma=strchr(move + i, ',');
-            if (comma) {
-                strncpy(coordinate, move + i, comma - move - 1);
-                y = atol(coordinate);
-                i = 1 + comma - move;
-                comma=strchr(move + i, ',');
-                strncpy(coordinate, move + i, comma - move - 1);
-                srcX = atol(coordinate);
-                i = 1 + comma - move;
-                comma=strchr(move + i, ',');
-                strncpy(coordinate, move + i, comma - move - 1);
-                srcY = atol(coordinate);
-                i = 1 + comma - move;
-                strcpy(coordinate, move + i);
-                last_state = atol(coordinate);
-            } else {
-                strcpy(coordinate, move + i);
-                y = atol(coordinate);
-            }
+    char move_type;
+    int nparams = 0, move_params[5];
+
+    p = move;
+    move_type = *p++;
+    switch (move_type) {
+      case 't':
+      case 'T':
+        nparams = 2;
+        break;
+      case 'd':
+      case 'e':
+        nparams = 5;
+        break;
+    }
+
+    for (i = 0; i < nparams; i++) {
+        move_params[i] = atoi(p);
+        while (*p && isdigit((unsigned char)*p)) p++;
+        if (i+1 < nparams) {
+            if (*p != ',')
+                return NULL;
+            p++;
         }
     }
-    if (move[0] == 't' || move[0] == 'T') {
-        if (move[0] == 'T') {
+
+    if (move_type == 't' || move_type == 'T') {
+        if (move_type == 'T') {
             steps++;
         }
-        if (x==-1 || y==-1) {
+        x = move_params[0];
+        y = move_params[1];
+        if (x == -1 || y == -1) {
             return new_state;
         }
         cell = get_coords(new_state, new_state->cells_contents, x, y);
@@ -1092,14 +1168,14 @@ static game_state *execute_move(const game_state *state, const char *move)
         }
         *cell = (*cell + steps) % STATE_OK_NUM;
         update_board_state_around(new_state, x, y);
-    } else if (move[0] == 's') {
+    } else if (move_type == 's') {
         new_state->not_completed_clues = 0;
         new_state->cheating = true;
         sol_location = 0;
         bits = 0;
-        i=1;
+        i = 1;
         while (i < strlen(move)) {
-            sol_value=0;
+            sol_value = 0;
             while (bits < 8) {
                 sol_value <<= 4;
                 sol_char = move[i];
@@ -1112,10 +1188,12 @@ static game_state *execute_move(const game_state *state, const char *move)
                 i++;
             }
             while (bits > 0 && sol_location < size) {
-                if (sol_value & 0b10000000) {
-                    new_state->cells_contents[sol_location] = STATE_MARKED_SOLVED;
+                if (sol_value & 0x80) {
+                    new_state->cells_contents[sol_location] =
+                        STATE_MARKED_SOLVED;
                 } else {
-                    new_state->cells_contents[sol_location] = STATE_BLANK_SOLVED;
+                    new_state->cells_contents[sol_location] =
+                        STATE_BLANK_SOLVED;
                 }
                 sol_value <<= 1;
                 bits--;
@@ -1123,7 +1201,12 @@ static game_state *execute_move(const game_state *state, const char *move)
             }
         }
         return new_state;
-    } else if (move[0] == 'd' || move[0] == 'e') {
+    } else if (move_type == 'd' || move_type == 'e') {
+        x = move_params[0];
+        y = move_params[1];
+        srcX = move_params[2];
+        srcY = move_params[3];
+        last_state = move_params[4];
         if (srcX == x && srcY != y) {
             dirX = 0;
             diff = srcY - y;
@@ -1143,24 +1226,27 @@ static game_state *execute_move(const game_state *state, const char *move)
                 dirX = 1;
             }
         }
-        for (i =  0 ; i < diff; i++) {
-            cell = get_coords(new_state, new_state->cells_contents, x + (dirX * i), y + (dirY * i));
+        for (i = 0; i < diff; i++) {
+            cell = get_coords(new_state, new_state->cells_contents,
+                              x + (dirX * i), y + (dirY * i));
             if ((*cell & STATE_OK_NUM) == 0) {
                 *cell = last_state;
-                update_board_state_around(new_state, x + (dirX * i), y + (dirY * i));
+                update_board_state_around(new_state, x + (dirX * i),
+                                          y + (dirY * i));
             }
         }
     }
-    for (y=0; y < state->height; y++) {
-        for (x=0; x < state->width; x++) {
+    for (y = 0; y < state->height; y++) {
+        for (x = 0; x < state->width; x++) {
             cell = get_coords(new_state, new_state->cells_contents, x, y);
-            curr_cell = get_coords(new_state, new_state->board->actual_board, x, y);
+            curr_cell = get_coords(new_state, new_state->board->actual_board,
+                                   x, y);
             if (curr_cell->shown && ((*cell & STATE_SOLVED) == 0)) {
                 clues_left++;
             }
         }
     }
-    new_state->not_completed_clues=clues_left;
+    new_state->not_completed_clues = clues_left;
     return new_state;
 }
 
@@ -1207,10 +1293,14 @@ static float *game_colours(frontend *fe, int *ncolours)
 
 static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
 {
-    struct game_drawstate *ds = snew(struct game_drawstate);
+    struct game_drawstate *ds = snew(game_drawstate);
+    int i;
 
     ds->tilesize = 0;
     ds->state = NULL;
+    ds->state = snewn(state->width * state->height, int);
+    for (i = 0; i < state->width * state->height; i++)
+        ds->state[i] = -1;
 
     return ds;
 }
@@ -1221,11 +1311,14 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
     sfree(ds);
 }
 
-static void draw_cell(drawing *dr, char cell, int ts, char clue_val, int x, int y) {
+static void draw_cell(drawing *dr, int cell, int ts, signed char clue_val,
+                      int x, int y)
+{
     int startX = ((x * ts) + ts/2)-1, startY = ((y * ts)+ ts/2)-1;
     int color, text_color = COL_TEXT_DARK;
 
-    draw_rect_outline(dr, startX-1, startY-1, ts+1, ts+1, COL_GRID);
+    draw_rect_outline(dr, startX - 1, startY - 1, ts + 1, ts + 1,
+                      COL_GRID);
 
     if (cell & STATE_MARKED) {
         if ((clue_val >= 0) && !(cell & STATE_SOLVED)) {
@@ -1234,16 +1327,14 @@ static void draw_cell(drawing *dr, char cell, int ts, char clue_val, int x, int 
         else {
             color = COL_MARKED; text_color = COL_TEXT_LIGHT;
         }
-    }
-    else if (cell & STATE_BLANK) {
+    } else if (cell & STATE_BLANK) {
         if ((clue_val >= 0) && !(cell & STATE_SOLVED)) {
             color = COL_BLANK_UNSOLVED; text_color = COL_TEXT_DARK_UNSOLVED;
         }
         else {
             color = COL_BLANK; text_color = COL_TEXT_DARK;
         }
-    }
-    else {
+    } else {
         color = COL_UNMARKED; text_color = COL_TEXT_DARK;
     }
 
@@ -1254,72 +1345,67 @@ static void draw_cell(drawing *dr, char cell, int ts, char clue_val, int x, int 
     }
 
     if (clue_val >= 0) {
-        char clue[5];
+        char clue[80];
         sprintf(clue, "%d", clue_val);
         draw_text(dr, startX + ts/2, startY + ts/2, 1, ts * 3/5,
         ALIGN_VCENTRE | ALIGN_HCENTRE, text_color, clue);
     }
+    draw_update(dr, startX, startY, ts - 1, ts - 1);
 }
 
 static void game_redraw(drawing *dr, game_drawstate *ds,
-                        const game_state *oldstate, const game_state *state,
-                        int dir, const game_ui *ui,
-                        float animtime, float flashtime)
+                        const game_state *oldstate,
+                        const game_state *state, int dir,
+                        const game_ui *ui, float animtime,
+                        float flashtime)
 {
-    /*
-     * The initial contents of the window are not guaranteed and
-     * can vary with front ends. To be on the safe side, all games
-     * should start by drawing a big background-colour rectangle
-     * covering the whole window.
-     */
     int x, y;
-    bool drawn = true;
-    char status[20] = "";
-    char clue_val;
-    if (!ds->state) {
-        drawn = false;
-        ds->state = snewn(state->width * state->width, char);
-        memset(ds->state, 0, sizeof(char) * state->width * state->width);
-    }
+    char status[80];
+    signed char clue_val;
 
     for (y=0;y<state->height;y++) {
         for (x=0;x<state->width;x++) {
-            if (!drawn || ds->state[(y*state->width)+x] != state->cells_contents[(y*state->width)+x]) {
-                if (state->board->actual_board[(y*state->width)+x].shown) {
-                    clue_val = state->board->actual_board[(y*state->width)+x].clue;
-                } else {
-                    clue_val = -1;
-                }
-                draw_cell(dr, state->cells_contents[(y*state->width)+x], ds->tilesize, clue_val, x, y);
-                ds->state[(y*state->width)+x] = state->cells_contents[(y*state->width)+x];
+            int cell = state->cells_contents[(y * state->width) + x];
+            if (state->board->actual_board[(y * state->width) + x].shown) {
+                clue_val = state->board->actual_board[
+                    (y * state->width) + x].clue;
+            } else {
+                clue_val = -1;
+            }
+            if (ds->state[(y * state->width) + x] != cell) {
+                draw_cell(dr, cell, ds->tilesize, clue_val, x, y);
+                ds->state[(y * state->width) + x] = cell;
             }
         }
     }
-    draw_update(dr, 0, 0, (state->width+1)*ds->tilesize, (state->height+1)*ds->tilesize);
     sprintf(status, "Clues left: %d", state->not_completed_clues);
     if (state->not_completed_clues == 0 && !state->cheating) {
         sprintf(status, "COMPLETED!");
     } else if (state->not_completed_clues == 0 && state->cheating) {
         sprintf(status, "Auto solved");
     }
-    status_bar(dr, dupstr(status));
+    status_bar(dr, status);
 }
 
 static float game_anim_length(const game_state *oldstate,
-                              const game_state *newstate, int dir, game_ui *ui)
+                              const game_state *newstate, int dir,
+                              game_ui *ui)
 {
     return 0.0F;
 }
 
 static float game_flash_length(const game_state *oldstate,
-                               const game_state *newstate, int dir, game_ui *ui)
+                               const game_state *newstate, int dir,
+                               game_ui *ui)
 {
     return 0.0F;
 }
 
 static int game_status(const game_state *state)
 {
-    return (state->not_completed_clues == 0 && !state->cheating) ? +1 : 0;
+    if (state->not_completed_clues == 0) 
+        return +1;
+    return 0;
 }
 
 static bool game_timing_state(const game_state *state, game_ui *ui)
@@ -1338,7 +1424,7 @@ static const char rules[] = "Paint all grid cells in black or white, so that the
 const struct game thegame = {
     "Mosaic", "games.mosaic", "mosaic", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1351,7 +1437,7 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* text_format */
     new_ui,
     free_ui,
     encode_ui,
@@ -1367,8 +1453,8 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL, /* get_cursor_location */
+    NULL, /* is_key_highlightes */
     game_status,
     false, false, NULL, NULL,
     true,                   /* wants_statusbar */
