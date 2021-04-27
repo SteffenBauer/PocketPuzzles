@@ -1895,10 +1895,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y, i;
     bool hchanged = false, stale;
 
-    if (!ds->started) {
-        draw_rect(dr, 0, 0, DRAW_SIZE, DRAW_SIZE, COL_BACKGROUND);
-        draw_update(dr, 0, 0, DRAW_SIZE, DRAW_SIZE);
-    }
     if (ds->hx != ui->hx || ds->hy != ui->hy ||
         ds->hshow != ui->hshow || ds->hpencil != ui->hpencil)
         hchanged = true;

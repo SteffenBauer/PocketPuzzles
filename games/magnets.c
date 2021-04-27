@@ -2072,11 +2072,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
     if (!ds->started) {
         /* draw background, corner +-. */
-        draw_rect(dr, 0, 0,
-                  TILE_SIZE * (w+2) + 2 * BORDER,
-                  TILE_SIZE * (h+2) + 2 * BORDER,
-                  COL_BACKGROUND);
-
         draw_sym(dr, ds, -1, -1, POSITIVE, COL_TEXT);
         draw_sym(dr, ds, state->w, state->h, NEGATIVE, COL_TEXT);
 

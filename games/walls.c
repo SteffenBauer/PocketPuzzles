@@ -1000,7 +1000,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 
 struct game_drawstate {
     int tilesize;
-    bool started;
 };
 
 static char *interpret_move(const game_state *state, game_ui *ui,
@@ -1124,7 +1123,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state) 
     struct game_drawstate *ds = snew(struct game_drawstate);
 
     ds->tilesize = 0;
-    ds->started = false;
     return ds;
 }
 
@@ -1258,12 +1256,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int w = state->shared->w, h = state->shared->h;
     int i;
 
-/*    if (!ds->started) {
-        draw_rect(dr, 0, 0, w*TILESIZE + 2*BORDER, h*TILESIZE + 2*BORDER,
-                    COL_BACKGROUND);
-        ds->started = true;
-    }
-*/
     for (i=0;i<state->shared->wh;i++)
         draw_square(dr, ds, ui, i, state);
 
