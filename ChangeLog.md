@@ -7,6 +7,9 @@
 * *Map*: Hint button places only possible colours.
 * *Guess*: Minor UX tweaks
 
+### Fixed
+* Game frontend tried to access non-existent swap key in *Ascent* and *Signpost*, causing crashes
+
 ## 0.7.7 - 2021/04/23
 
 ### Added

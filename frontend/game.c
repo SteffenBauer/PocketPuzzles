@@ -358,7 +358,7 @@ static void gameCheckButtonState() {
     if (midend_can_redo(me) && ! redo->active) activate_button(redo);
     if (!midend_can_undo(me) && undo->active) deactivate_button(undo);
     if (!midend_can_redo(me) && redo->active) deactivate_button(redo);
-    if (fe->with_rightpointer) {
+    if (fe->with_swap) {
         swap = &fe->gameButton[fe->btnSwapIDX];
         fe->swapped ? button_to_tapped(swap, false) : button_to_normal(swap, false);
     }
@@ -675,7 +675,6 @@ static void gamePrepareFrontend() {
     fe->height = y;
     fe->xoffset = (ScreenWidth() - fe->width)/2;
     fe->yoffset = fe->gamelayout.maincanvas.starty + (fe->gamelayout.maincanvas.height - fe->height) / 2 ;
-    
 }
 
 static BUTTON gameGetButton(const char *gameName, char key) {
@@ -711,14 +710,16 @@ static LAYOUTTYPE gameGetLayout() {
     struct key_label *keys;
 
     fe->with_rightpointer = fe->currentgame->flags & REQUIRE_RBUTTON;
+    fe->with_swap = fe->with_rightpointer;
+    if (strcmp(fe->currentgame->name, "Ascent")==0 ||
+        strcmp(fe->currentgame->name, "Signpost")==0)
+        fe->with_swap = false;
 
     sfree(fe->gameButton);
     keys = midend_request_keys(me, &nkeys);
     if (keys == NULL) nkeys = 0;
 
-    addkeys = strcmp(fe->currentgame->name, "Ascent")==0   ? 2 :
-              strcmp(fe->currentgame->name, "Signpost")==0 ? 2 :
-              fe->with_rightpointer                        ? 3 : 2;
+    addkeys = fe->with_swap ? 3 : 2;
     fe->numGameButtons = 4 + nkeys + addkeys;
     fe->with_twoctrllines = (nkeys+addkeys) > 9;
     fe->with_statusbar = midend_wants_statusbar(me);
@@ -748,17 +749,10 @@ static LAYOUTTYPE gameGetLayout() {
         }
     }
 
-    if (strcmp(fe->currentgame->name, "Ascent")==0 ||
-        strcmp(fe->currentgame->name, "Signpost")==0 ||
-        !fe->with_rightpointer) {
-        fe->gameButton[fe->btnUndoIDX = i++] = btn_undo;
-        fe->gameButton[fe->btnRedoIDX = i++] = btn_redo;
-    }
-    else {
+    if (fe->with_swap)
         fe->gameButton[fe->btnSwapIDX = i++] = btn_swap;
-        fe->gameButton[fe->btnUndoIDX = i++] = btn_undo;
-        fe->gameButton[fe->btnRedoIDX = i++] = btn_redo;
-    }
+    fe->gameButton[fe->btnUndoIDX = i++] = btn_undo;
+    fe->gameButton[fe->btnRedoIDX = i++] = btn_redo;
 
     fe->gameButton[fe->btnBackIDX = i++] = btn_back;
     fe->gameButton[fe->btnDrawIDX = i++] = btn_draw;
