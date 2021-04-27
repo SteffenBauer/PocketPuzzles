@@ -32,6 +32,7 @@ struct frontend {
   bool with_twoctrllines;   /* Game needs two lines of control buttons */
   bool with_statusbar;      /* Game needs the statusbar */
   bool with_rightpointer;   /* Game operates with right/long-click */
+  bool with_swap;           /* Game has a swap button */
   bool swapped;             /* Indicates if left/right click is swapped */
 
   int current_pointer;      /* Current pointer type (left/ right) */
