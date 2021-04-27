@@ -1967,16 +1967,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     char buf[80];
     bool hshow = ui->hshow;
     double thick = (TILE_SIZE <= 21 ? 1 : 2.5);
-    
-    if(ds->redraw)
-    {
-        /* Draw background */
-        draw_rect(dr, 0, 0, (o+2)*TILE_SIZE, (o+2)*TILE_SIZE, COL_BACKGROUND);
-        draw_update(dr, 0, 0, (o+2)*TILE_SIZE, (o+2)*TILE_SIZE);
-    }
-    
+
     salad_set_drawflags(ds, ui, state, hshow);
-    
+
     buf[1] = '\0';
     for(x = 0; x < o; x++)
         for(y = 0; y < o; y++)
