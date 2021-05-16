@@ -1,12 +1,12 @@
 ## ChangeLog
 
-## 0.7.8-nightly
+## 0.7.8 - 2021/05/16
 
 ### Changed
 * Sync with upstream (Centralize initial clearing of puzzle window)
 * *Map*: Hint button places only possible colours.
 * *Guess*: Minor UX tweaks
-* *Magnets*: Lower size requirements for tricky puzzles to avoid game generation hangs
+* *Magnets*: Adjust size requirements for tricky puzzles to avoid game generation hangs
 
 ### Fixed
 * Game frontend tried to access non-existent swap key in *Ascent* and *Signpost*, causing crashes
