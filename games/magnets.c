@@ -226,14 +226,14 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->diff == DIFF_EASY) {
+        if (params->w <= 2 && params->h <= 2) return "One side must be at least 3 for easy puzzles";
         if (params->w < 2) return "Width must be at least 2";
         if (params->h < 2) return "Height must be at least 2";
-        if (params->w == 2 && params->h == 2) return "One side must be at least 3 for easy puzzles";
     }
     else if (params->diff == DIFF_TRICKY) {
+        if (params->w <= 4 && params->h <= 4) return "One side must be at least 5 for tricky puzzles";
         if (params->w < 4) return "Width must be at least 4";
         if (params->h < 4) return "Height must be at least 4";
-        if (params->w == 4 && params->h == 4) return "One side must be at least 5 for tricky puzzles";
     }
     if (params->w > 12) return "Width must be at most 12";
     if (params->h > 12) return "Height must be at most 12";
