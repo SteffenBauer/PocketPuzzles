@@ -382,12 +382,14 @@ void paramPrepare(midend *me) {
     pa.numParamButtons = 2;
     pa.paramButton = smalloc(pa.numParamButtons*sizeof(BUTTON));
     pa.paramButton[pa.btnBackIDX = 0] = (BUTTON){ true,  BTN_MENU, 
-        10, pa.paramlayout.menu.starty, 
+        pa.paramlayout.menubtn_size/4,
+        pa.paramlayout.menu.starty,
         pa.paramlayout.menubtn_size, 0, 
         ACTION_BACK, ' ', &icon_back, &icon_back_tap, NULL};
 
     pa.paramButton[pa.btnDrawIDX = 1] = (BUTTON){ true,  BTN_MENU, 
-        ScreenWidth() - 1*pa.paramlayout.menubtn_size - 20, pa.paramlayout.menu.starty, 
+        ScreenWidth() - (10*pa.paramlayout.menubtn_size)/8,
+        pa.paramlayout.menu.starty,
         pa.paramlayout.menubtn_size, 0,
         ACTION_DRAW, ' ', &icon_redraw, &icon_redraw_tap, NULL};
 }

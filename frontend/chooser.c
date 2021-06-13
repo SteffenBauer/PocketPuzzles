@@ -235,7 +235,8 @@ static void chooserSetupButtons() {
     for (n=0;n<ca.numPageButtons;n++) {
         int pos = ScreenWidth()/2 - 
                   (ca.chooserlayout.control_size*ca.numPageButtons)/2 + 
-                  n*ca.chooserlayout.control_size;
+                  n*ca.chooserlayout.control_size +
+                  ca.chooserlayout.control_size/4;
         ca.pageButton[n] = (BUTTON){
             true, BTN_CTRL, 
             pos, ca.chooserlayout.buttonpanel.starty +ca.chooserlayout.control_size/4, 
@@ -244,17 +245,20 @@ static void chooserSetupButtons() {
     }
 
     ca.chooserButton[ca.btnHomeIDX = i++] = (BUTTON){ true,  BTN_MENU, 
-        10, ca.chooserlayout.menu.starty, 
+        ca.chooserlayout.menubtn_size/4,
+        ca.chooserlayout.menu.starty,
         ca.chooserlayout.menubtn_size, 0, 
         ACTION_HOME, ' ', &icon_home, &icon_home_tap, NULL};
 
     ca.chooserButton[ca.btnDrawIDX = i++] = (BUTTON){ true,  BTN_MENU, 
-        ScreenWidth() - 2*ca.chooserlayout.menubtn_size - 20, ca.chooserlayout.menu.starty, 
+        ScreenWidth() - (19*ca.chooserlayout.menubtn_size)/8,
+        ca.chooserlayout.menu.starty,
         ca.chooserlayout.menubtn_size, 0,
         ACTION_DRAW, ' ', &icon_redraw, &icon_redraw_tap, NULL};
 
     ca.chooserButton[ca.btnMenuIDX = i++] = (BUTTON){ true,  BTN_MENU, 
-        ScreenWidth() - 1*ca.chooserlayout.menubtn_size - 10, ca.chooserlayout.menu.starty, 
+        ScreenWidth() - (10*ca.chooserlayout.menubtn_size)/8,
+        ca.chooserlayout.menu.starty,
         ca.chooserlayout.menubtn_size, 0,
         ACTION_MENU, ' ', &icon_menu, &icon_menu_tap, NULL};
 }
