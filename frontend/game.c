@@ -560,13 +560,13 @@ static void gameDrawMenu() {
     FillArea(0, fe->gamelayout.menu.starty, ScreenWidth(), fe->gamelayout.menu.height, 0x00FFFFFF);
     FillArea(0, fe->gamelayout.menu.starty + fe->gamelayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
+    SetFont(fe->gamefont, BLACK);
+    DrawTextRect(0, (fe->gamelayout.menubtn_size/2)-(fe->gfontsize/2), ScreenWidth(), fe->gfontsize, fe->currentgame->name, ALIGN_CENTER);
+
     button_to_normal(&fe->gameButton[fe->btnBackIDX], false);
     button_to_normal(&fe->gameButton[fe->btnDrawIDX], false);
     button_to_normal(&fe->gameButton[fe->btnGameIDX], false);
     button_to_normal(&fe->gameButton[fe->btnTypeIDX], false);
-
-    SetFont(fe->gamefont, BLACK);
-    DrawTextRect(0, (fe->gamelayout.menubtn_size/2)-(fe->gfontsize/2), ScreenWidth(), fe->gfontsize, fe->currentgame->name, ALIGN_CENTER);
 }
 static void gameSetupStatusBar() {
     if (!fe->gamelayout.with_statusbar) return;
@@ -576,22 +576,22 @@ static void gameSetupStatusBar() {
 
 static void gameSetupMenuButtons() {
     fe->gameButton[fe->btnBackIDX].active = true;
-    fe->gameButton[fe->btnBackIDX].posx = 10;
+    fe->gameButton[fe->btnBackIDX].posx = fe->gamelayout.menubtn_size/4;
     fe->gameButton[fe->btnBackIDX].posy = fe->gamelayout.menu.starty;
     fe->gameButton[fe->btnBackIDX].size = fe->gamelayout.menubtn_size;
 
     fe->gameButton[fe->btnDrawIDX].active = true;
-    fe->gameButton[fe->btnDrawIDX].posx = ScreenWidth() - 30 - (3*fe->gamelayout.menubtn_size);
+    fe->gameButton[fe->btnDrawIDX].posx = ScreenWidth() - (28*fe->gamelayout.menubtn_size)/8;
     fe->gameButton[fe->btnDrawIDX].posy = fe->gamelayout.menu.starty;
     fe->gameButton[fe->btnDrawIDX].size = fe->gamelayout.menubtn_size;
 
     fe->gameButton[fe->btnGameIDX].active = true;
-    fe->gameButton[fe->btnGameIDX].posx = ScreenWidth() - 20 - (2*fe->gamelayout.menubtn_size);
+    fe->gameButton[fe->btnGameIDX].posx = ScreenWidth() - (19*fe->gamelayout.menubtn_size)/8;
     fe->gameButton[fe->btnGameIDX].posy = fe->gamelayout.menu.starty;
     fe->gameButton[fe->btnGameIDX].size = fe->gamelayout.menubtn_size;
 
     fe->gameButton[fe->btnTypeIDX].active = true;
-    fe->gameButton[fe->btnTypeIDX].posx = ScreenWidth() - 10 - fe->gamelayout.menubtn_size;
+    fe->gameButton[fe->btnTypeIDX].posx = ScreenWidth() - (10*fe->gamelayout.menubtn_size)/8;
     fe->gameButton[fe->btnTypeIDX].posy = fe->gamelayout.menu.starty;
     fe->gameButton[fe->btnTypeIDX].size = fe->gamelayout.menubtn_size;
 }

@@ -3,6 +3,7 @@
 ## 0.7.9 nightly
 
 ### Changed
+* Placement of menu and page chooser buttons
 * *Galaxies*: Disallow placing an edge touching a dot (sync with upstream)
 
 ## 0.7.8 - 2021/05/16
