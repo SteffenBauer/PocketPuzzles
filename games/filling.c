@@ -1203,15 +1203,19 @@ static key_label *game_request_keys(const game_params *params, int *nkeys)
 {
     int i;
     key_label *keys = snewn(10, key_label);
+    const int w = params->w;
+    const int h = params->h;
+    int maxkey = (w == 2 && h == 2 ? 3 : max(w, h));
+    if (maxkey > 9) maxkey = 9;
 
-    *nkeys = 10;
+    *nkeys = maxkey+1;
 
-    for(i = 1; i < 10; ++i) {
-        keys[i-1].button = '0' + i;
-        keys[i-1].label = NULL;
+    for(i = 0; i < maxkey; ++i) {
+        keys[i].button = '1' + i;
+        keys[i].label = NULL;
     }
-    keys[i-1].button = '\b';
-    keys[i-1].label = NULL;
+    keys[i].button = '\b';
+    keys[i].label = NULL;
 
     return keys;
 }
@@ -1287,8 +1291,8 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
 struct game_ui {
     bool *sel; /* w*h highlighted squares, or NULL */
-    int cur_x, cur_y;
-    bool cur_visible, keydragging;
+    int hhint; /* Selected button for auto-fill */
+    int dx, dy; /* Last dragged coordinates */
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1296,9 +1300,8 @@ static game_ui *new_ui(const game_state *state)
     game_ui *ui = snew(game_ui);
 
     ui->sel = NULL;
-    ui->cur_x = ui->cur_y = 0;
-    ui->cur_visible = false;
-    ui->keydragging = false;
+    ui->hhint = -1;
+    ui->dx = ui->dy = -1;
 
     return ui;
 }
@@ -1327,13 +1330,18 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
         sfree(ui->sel);
         ui->sel = NULL;
     }
-    ui->keydragging = false;
+    ui->dx = ui->dy = -1;
 }
 
 #define PREFERRED_TILE_SIZE 32
 #define TILE_SIZE (ds->tilesize)
 #define BORDER (TILE_SIZE / 2)
 #define BORDER_WIDTH (max(TILE_SIZE / 32, 1))
+
+static bool is_key_highlighted(const game_ui *ui, char c) {
+    if (c == '\b' && ui->hhint == 0) return true;
+    return ((c-'0') == ui->hhint);
+}
 
 struct game_drawstate {
     struct game_params params;
@@ -1353,6 +1361,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     const int tx = (x + TILE_SIZE - BORDER) / TILE_SIZE - 1;
     const int ty = (y + TILE_SIZE - BORDER) / TILE_SIZE - 1;
 
+    const int maxbutton = (w == 2 && h == 2) ? 3 : max(w, h);
+
     char *move = NULL;
     int i;
 
@@ -1366,31 +1376,57 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (button == LEFT_BUTTON && ui->sel) {
             sfree(ui->sel);
             ui->sel = NULL;
+            ui->dx = ui->dy = -1;
             return UI_UPDATE;
         }
-        if (tx >= 0 && tx < w && ty >= 0 && ty < h) {
+        else if (tx >= 0 && tx < w && ty >= 0 && ty < h) {
+            /* Start of selection. Highlight initial cell. */
             if (!ui->sel) {
                 ui->sel = snewn(w*h, bool);
                 memset(ui->sel, 0, w*h*sizeof(bool));
-            }
-            if (!state->shared->clues[w*ty+tx])
+                ui->dx = tx; ui->dy = ty;
                 ui->sel[w*ty+tx] = true;
+                return UI_UPDATE;
+            }
+            /* Dragged into next cell */
+            if (tx != ui->dx || ty != ui->dy) {
+                /* Drag from border or highlighted cell into clear cell. Highlight new cell. */
+                if ((ui->dx == -1 || ui->dy == -1 ||
+                     ui->sel[w*ui->dy+ui->dx]) &&
+                     !ui->sel[w*ty+tx]) {
+                    ui->sel[w*ty+tx] = true;
+                }
+                /* Drag from highlighted cell into highlighted cell. Clear old cell. */
+                else if (ui->dx != -1 && ui->dy != -1 && 
+                         ui->sel[w*ui->dy+ui->dx] && ui->sel[w*ty+tx]) {
+                    ui->sel[w*ui->dy+ui->dx] = false;
+                }
+                ui->dx = tx; ui->dy = ty;
+                return UI_UPDATE;
+            }
         }
-        ui->cur_visible = false;
-        return UI_UPDATE;
+        else {
+            ui->dx = -1; ui->dy = -1;
+        }
+        return NULL;
     }
 
     if (button == '\b') button = '0';
-    if (button < '0' || button > '9') return NULL;
-    button -= '0';
-    if (button > (w == 2 && h == 2 ? 3 : max(w, h))) return NULL;
-    ui->keydragging = false;
+    if (button >= '0' && button <= '9') button -= '0';
+
+    if (!ui->sel && button >= 0 && button <= 9 && button <= maxbutton) {
+        ui->hhint = ui->hhint != button ? button : -1;
+        return NULL;
+    }
+
+    if (button == LEFT_RELEASE && ui->hhint >= 0 && ui->sel)
+        button = ui->hhint;
+
+    if (button < 0 || button > 9 || button > maxbutton) return NULL;
 
     for (i = 0; i < w*h; i++) {
         char buf[32];
-        if ((ui->sel && ui->sel[i]) ||
-            (!ui->sel && ui->cur_visible && (w*ui->cur_y+ui->cur_x) == i)) {
-            if (state->shared->clues[i] != 0) continue; /* in case cursor is on clue */
+        if (ui->sel && ui->sel[i] && state->shared->clues[i] == 0) {
             if (state->board[i] != button) {
                 sprintf(buf, "%s%d", move ? "," : "", i);
                 if (move) {
@@ -1412,6 +1448,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (!ui->sel) return move ? move : NULL;
     sfree(ui->sel);
     ui->sel = NULL;
+    ui->dx = ui->dy = -1;
+
     /* Need to update UI at least, as we cleared the selection */
     return move ? move : UI_UPDATE;
 }
@@ -1476,10 +1514,10 @@ enum {
     COL_BACKGROUND,
     COL_GRID,
     COL_HIGHLIGHT,
+    COL_CLUEHIGH,
     COL_CORRECT,
     COL_ERROR,
     COL_USER,
-    COL_CURSOR,
     NCOLOURS
 };
 
@@ -1505,9 +1543,9 @@ static float *game_colours(frontend *fe, int *ncolours)
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
         ret[COL_GRID       * 3 + i] = 0.0F;
-        ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.5F;
+        ret[COL_CLUEHIGH   * 3 + i] = 0.75F;
         ret[COL_CORRECT    * 3 + i] = 0.9F;
-        ret[COL_CURSOR     * 3 + i] = 0.5F;
         ret[COL_ERROR      * 3 + i] = 0.5F;
         ret[COL_USER       * 3 + i] = 0.25F;
     }
@@ -1555,7 +1593,6 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 #define CORRECT_BG 0x200
 #define ERROR_BG   0x400
 #define USER_COL   0x800
-#define CURSOR_SQ 0x1000
 
 static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
                         int n, int flags)
@@ -1577,7 +1614,7 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
               BORDER + y*TILE_SIZE,
               TILE_SIZE,
               TILE_SIZE,
-              (flags & HIGH_BG ? COL_HIGHLIGHT :
+              (flags & HIGH_BG ? (flags & USER_COL ? COL_HIGHLIGHT : COL_CLUEHIGH) :
                flags & ERROR_BG ? COL_USER :
                flags & CORRECT_BG ? COL_CORRECT : COL_BACKGROUND));
 
@@ -1666,16 +1703,6 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
                   BORDER_WIDTH,
                   BORDER_WIDTH,
                   COL_GRID);
-
-    if (flags & CURSOR_SQ) {
-        int coff = TILE_SIZE/8;
-        draw_rect_outline(dr,
-                          BORDER + x*TILE_SIZE + coff,
-                          BORDER + y*TILE_SIZE + coff,
-                          TILE_SIZE - coff*2,
-                          TILE_SIZE - coff*2,
-                          COL_CURSOR);
-    }
 
     unclip(dr);
 
@@ -1768,31 +1795,30 @@ static void draw_grid(
                 /* clear all background flags */
             } else if (ui && ui->sel && ui->sel[i]) {
                 flags |= HIGH_BG;
+                if (state->shared->clues[i] == 0 && ui->hhint >= 0) v = ui->hhint;
             } else if (v) {
                 int size = dsf_size(ds->dsf_scratch, i);
                 if (size == v)
                     flags |= CORRECT_BG;
                 else if (size > v)
                     flags |= ERROR_BG;
-        else {
-            int rt = dsf_canonify(ds->dsf_scratch, i), j;
-            for (j = 0; j < w*h; ++j) {
-            int k;
-            if (dsf_canonify(ds->dsf_scratch, j) != rt) continue;
-            for (k = 0; k < 4; ++k) {
-                const int xx = j % w + dx[k], yy = j / w + dy[k];
-                if (xx >= 0 && xx < w && yy >= 0 && yy < h &&
-                state->board[yy*w + xx] == EMPTY)
-                goto noflag;
+                else {
+                    int rt = dsf_canonify(ds->dsf_scratch, i), j;
+                    for (j = 0; j < w*h; ++j) {
+                        int k;
+                        if (dsf_canonify(ds->dsf_scratch, j) != rt) continue;
+                        for (k = 0; k < 4; ++k) {
+                            const int xx = j % w + dx[k], yy = j / w + dy[k];
+                            if (xx >= 0 && xx < w && yy >= 0 && yy < h &&
+                                state->board[yy*w + xx] == EMPTY)
+                                goto noflag;
+                        }
+                    }
+                    flags |= ERROR_BG;
+                noflag:
+                    ;
+                }
             }
-            }
-            flags |= ERROR_BG;
-          noflag:
-            ;
-        }
-            }
-            if (ui && ui->cur_visible && x == ui->cur_x && y == ui->cur_y)
-              flags |= CURSOR_SQ;
 
             /*
              * Borders at the very edges of the grid are
@@ -1933,7 +1959,7 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,
-    NULL,
+    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
     false,                   /* wants_statusbar */

@@ -12,7 +12,7 @@
 
 enum {
     COL_BACKGROUND,
-    COL_FRAME, COL_SELECT, COL_MARK, COL_HOLD,
+    COL_FRAME, COL_SELECT, COL_LINEFILLED, COL_MARK, COL_HOLD,
     COL_EMPTY, /* must be COL_1 - 1 */
     COL_1, COL_2, COL_3, COL_4, COL_5, COL_6, COL_7, COL_8, COL_9,
     COL_CORRECTPLACE, COL_CORRECTCOLOUR,
@@ -175,11 +175,11 @@ static config_item *game_configure(const game_params *params)
     sprintf(buf, "%d", params->nguesses);
     ret[2].u.string.sval = dupstr(buf);
 
-    ret[3].name = "Allow blanks";
+    ret[3].name = "Allow blanks in guess";
     ret[3].type = C_BOOLEAN;
     ret[3].u.boolean.bval = params->allow_blank;
 
-    ret[4].name = "Allow duplicates";
+    ret[4].name = "Allow duplicates in solution";
     ret[4].type = C_BOOLEAN;
     ret[4].u.boolean.bval = params->allow_multiple;
 
@@ -823,9 +823,10 @@ static float *game_colours(frontend *fe, int *ncolours)
 
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND    * 3 + i] = 1.0F;
-        ret[COL_EMPTY         * 3 + i] = 0.5F;
+        ret[COL_EMPTY         * 3 + i] = 0.75F;
         ret[COL_CORRECTCOLOUR * 3 + i] = 1.0F;
         ret[COL_CORRECTPLACE  * 3 + i] = 0.0F;
+        ret[COL_LINEFILLED    * 3 + i] = 0.5F;
         ret[COL_MARK          * 3 + i] = 0.9F;
         ret[COL_SELECT        * 3 + i] = 0.0F;
         ret[COL_FRAME         * 3 + i] = 0.0F;
@@ -979,7 +980,7 @@ static void hint_redraw(drawing *dr, game_drawstate *ds, int guess,
     int rowx, rowy, i, scol, col, hintlen;
     bool need_redraw;
     int emptycol = (markable ? COL_MARK : COL_EMPTY);
-    int backcol = (markable ? COL_EMPTY : COL_BACKGROUND);
+    int backcol = (markable ? COL_LINEFILLED : COL_BACKGROUND);
 
     hintlen = (dest->npegs + 1)/2;
 

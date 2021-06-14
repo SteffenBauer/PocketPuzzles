@@ -130,7 +130,7 @@
 - [X] Undead
 - [X] Unequal
 - [X] Group
-- [ ] Filling
+- [X] Filling
 
 #### Rework Border error highlighting
 
