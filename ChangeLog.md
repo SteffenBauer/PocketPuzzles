@@ -2,9 +2,18 @@
 
 ## 0.7.9 nightly
 
+### Added
+* *Filling*: One-click fill
+* *Filling*: Undo of cell highlighting during dragging
+
 ### Changed
-* Placement of menu and page chooser buttons
+* Increase space between menu buttons
 * *Galaxies*: Disallow placing an edge touching a dot (sync with upstream)
+* *Guess*: Minor colour tweaks for better contrast
+
+### Fixed
+* Horizontal center placement of chooser page indicator
+* *Filling*: Show only allowed number buttons
 
 ## 0.7.8 - 2021/05/16
 
