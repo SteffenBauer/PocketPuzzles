@@ -8,7 +8,9 @@
 
 ### Changed
 * Increase space between menu buttons
+* 'Show solution' menu entry only in games supporting solve operation
 * *Galaxies*: Disallow placing an edge touching a dot (sync with upstream)
+* *Galaxies*: Remove debug code
 * *Guess*: Minor colour tweaks for better contrast
 
 ### Fixed

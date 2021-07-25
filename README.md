@@ -40,7 +40,7 @@ Clone the [pocketbook SDK](https://github.com/blchinezu/pocketbook-sdk/) and set
 
 Modify the path to your local copy of the SDK in the `Makefile` at the line `PBSDK ?= ...`
 
-Run: `make`
+Run: `make`, or `make -j4` to compile parallel using 4 processor cores (adjust according to your machine).
 
 When everything compiles successfully, you find `build/SGTPuzzles.app`. Copy this to the folder `/applications` on your device. Reboot if necessary after transfer.
 
