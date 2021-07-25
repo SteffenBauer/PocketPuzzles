@@ -315,6 +315,61 @@ void typeMenuHandler(int index) {
     }
 }
 
+static void gameBuildGameMenu() {
+    int i, np;
+
+    np = fe->currentgame->can_solve ? 7 : 6;
+
+    sfree(gameMenu);
+    gameMenu=snewn(np, imenuex);
+
+    for (i=0;i<np;i++) {
+        gameMenu[i].submenu = NULL;
+        gameMenu[i].reserved = NULL;
+        gameMenu[i].font = NULL;
+    }
+
+    i = 0;
+
+    gameMenu[i].type = ITEM_HEADER;
+    gameMenu[i].index = 0;
+    gameMenu[i].text = "Game";
+    gameMenu[i++].icon = NULL;
+
+    gameMenu[i].type = ITEM_ACTIVE;
+    gameMenu[i].index = 101;
+    gameMenu[i].text = "New";
+    gameMenu[i++].icon = &menu_new;
+
+    gameMenu[i].type = ITEM_ACTIVE;
+    gameMenu[i].index = 102;
+    gameMenu[i].text = "Restart";
+    gameMenu[i++].icon = &menu_restart;
+
+    if (fe->currentgame->can_solve) {
+        gameMenu[i].type = ITEM_ACTIVE;
+        gameMenu[i].index = 103;
+        gameMenu[i].text = "Show solution";
+        gameMenu[i++].icon = &menu_solve;
+    }
+
+    gameMenu[i].type = ITEM_ACTIVE;
+    gameMenu[i].index = 104;
+    gameMenu[i].text = "How to play";
+    gameMenu[i++].icon = &menu_help;
+
+    gameMenu[i].type = ITEM_ACTIVE;
+    gameMenu[i].index = 105;
+    gameMenu[i].text = "Save game and exit";
+    gameMenu[i++].icon = &menu_exit;
+
+    gameMenu[i].type = 0;
+    gameMenu[i].index = 199;
+    gameMenu[i].text = NULL;
+    gameMenu[i++].icon = NULL;
+}
+
+
 static void gameBuildTypeMenu() {
     int i, np, chosen;
     presets = midend_get_presets(me, NULL);
@@ -665,6 +720,7 @@ static void gamePrepareFrontend() {
     gameSetupMenuButtons();
     gameSetupControlButtons();
     gameSetupStatusBar();
+    gameBuildGameMenu();
     gameBuildTypeMenu();
 
     int x, y;
@@ -864,6 +920,7 @@ void gameScreenInit() {
     fe->gameButton = NULL;
     fe->statustext = NULL;
     fe->isTimer = false;
+    gameMenu = NULL;
     typeMenu = NULL;
     me = NULL;
     gameInitialized = true;
@@ -884,6 +941,7 @@ void gameScreenFree() {
         sfree(fe->statustext);
         sfree(fe->gameButton);
         sfree(fe);
+        sfree(gameMenu);
         sfree(typeMenu);
         if (me != NULL) midend_free(me);
         gameInitialized = false;

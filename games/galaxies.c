@@ -40,18 +40,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <ctype.h>
 #include <math.h>
 
 #include "puzzles.h"
-
-#ifdef DEBUGGING
-#define solvep debug
-#else
-static bool solver_show_working;
-#define solvep(x) do { if (solver_show_working) { printf x; } } while(0)
-#endif
 
 enum {
     COL_BACKGROUND,
@@ -264,12 +256,6 @@ static const char *validate_params(const game_params *params, bool full)
         return "Width and height must both be at least 3";
     if (params->w > 15 || params->h > 15)
         return "Width and height must both be at most 15";
-    /*
-     * This shouldn't be able to happen at all, since decode_params
-     * and custom_params will never generate anything that isn't
-     * within range.
-     */
-    assert(params->diff <= DIFF_UNREASONABLE);
 
     return NULL;
 }
@@ -279,13 +265,11 @@ static const char *validate_params(const game_params *params, bool full)
  */
 
 static void add_dot(space *space) {
-    assert(!(space->flags & F_DOT));
     space->flags |= F_DOT;
     space->nassoc = 0;
 }
 
 static void remove_dot(space *space) {
-    assert(space->flags & F_DOT);
     space->flags &= ~F_DOT;
 }
 
@@ -320,8 +304,6 @@ static void add_assoc(const game_state *state, space *tile, space *dot) {
     tile->dotx = dot->x;
     tile->doty = dot->y;
     dot->nassoc++;
-    /*debug(("add_assoc sp %d %d --> dot %d,%d, new nassoc %d.\n",
-           tile->x, tile->y, dot->x, dot->y, dot->nassoc));*/
 }
 
 static bool ok_to_add_assoc_with_opposite_internal(
@@ -360,10 +342,9 @@ static bool ok_to_add_assoc_with_opposite(
 static void add_assoc_with_opposite(game_state *state, space *tile, space *dot) {
     space *opposite = space_opposite_dot(state, tile, dot);
 
-    if(opposite)
+    if(opposite && ok_to_add_assoc_with_opposite_internal(
+           state, tile, opposite))
     {
-        assert(ok_to_add_assoc_with_opposite_internal(state, tile, opposite));
-
         remove_assoc_with_opposite(state, tile);
         add_assoc(state, tile, dot);
         remove_assoc_with_opposite(state, opposite);
@@ -372,11 +353,6 @@ static void add_assoc_with_opposite(game_state *state, space *tile, space *dot) 
 }
 
 #define IS_VERTICAL_EDGE(x) ((x % 2) == 0)
-
-
-static void dbg_state(const game_state *state)
-{
-}
 
 /* Space-enumeration callbacks should all return 1 for 'progress made',
  * -1 for 'impossible', and 0 otherwise. */
@@ -425,56 +401,6 @@ static int foreach_edge(game_state *state, space_cb cb, unsigned int f,
     return (ret1 || ret2) ? 1 : 0;
 }
 
-#if 0
-static int foreach_vertex(game_state *state, space_cb cb, unsigned int f,
-                          void *ctx)
-{
-    return foreach_sub(state, cb, f, ctx, 0, 0);
-}
-#endif
-
-#if 0
-static int is_same_assoc(game_state *state,
-                         int x1, int y1, int x2, int y2)
-{
-    space *s1, *s2;
-
-    if (!INGRID(state, x1, y1) || !INGRID(state, x2, y2))
-        return 0;
-
-    s1 = &SPACE(state, x1, y1);
-    s2 = &SPACE(state, x2, y2);
-    assert(s1->type == s_tile && s2->type == s_tile);
-    if ((s1->flags & F_TILE_ASSOC) && (s2->flags & F_TILE_ASSOC) &&
-        s1->dotx == s2->dotx && s1->doty == s2->doty)
-        return 1;
-    return 0; /* 0 if not same or not both associated. */
-}
-#endif
-
-#if 0
-static int edges_into_vertex(game_state *state,
-                             int x, int y)
-{
-    int dx, dy, nx, ny, count = 0;
-
-    assert(SPACE(state, x, y).type == s_vertex);
-    for (dx = -1; dx <= 1; dx++) {
-        for (dy = -1; dy <= 1; dy++) {
-            if (dx != 0 && dy != 0) continue;
-            if (dx == 0 && dy == 0) continue;
-
-            nx = x+dx; ny = y+dy;
-            if (!INGRID(state, nx, ny)) continue;
-            assert(SPACE(state, nx, ny).type == s_edge);
-            if (SPACE(state, nx, ny).flags & F_EDGE_SET)
-                count++;
-        }
-    }
-    return count;
-}
-#endif
-
 static space *space_opposite_dot(const game_state *state, const space *sp,
                                  const space *dot)
 {
@@ -488,15 +414,12 @@ static space *space_opposite_dot(const game_state *state, const space *sp,
     if (!INGRID(state, tx, ty)) return NULL;
 
     sp2 = &SPACE(state, tx, ty);
-    assert(sp2->type == sp->type);
     return sp2;
 }
 
 static space *tile_opposite(const game_state *state, const space *sp)
 {
     space *dot;
-
-    assert(sp->flags & F_TILE_ASSOC);
     dot = &SPACE(state, sp->dotx, sp->doty);
     return space_opposite_dot(state, sp, dot);
 }
@@ -544,7 +467,6 @@ static bool outline_tile_fordot(game_state *state, space *tile, bool mark)
     int i;
     bool didsth = false, edge, same;
 
-    assert(tile->type == s_tile);
     adjacencies(state, tile, eadj, tadj);
     for (i = 0; i < 4; i++) {
         if (!eadj[i]) continue;
@@ -597,8 +519,6 @@ static char *diff_game(const game_state *src, const game_state *dest,
     char achar = issolve ? 'a' : 'A';
     space *sps, *spd;
 
-    assert(src->sx == dest->sx && src->sy == dest->sy);
-
     if (issolve) {
         move[movelen++] = 'S';
         sep = ";";
@@ -608,8 +528,6 @@ static char *diff_game(const game_state *src, const game_state *dest,
         for (y = 0; y < src->sy; y++) {
             sps = &SPACE(src, x, y);
             spd = &SPACE(dest, x, y);
-
-            assert(sps->type == spd->type);
 
             len = 0;
             if (sps->type == s_tile) {
@@ -643,16 +561,12 @@ static char *diff_game(const game_state *src, const game_state *dest,
             }
         }
     }
-    debug(("diff_game src then dest:\n"));
-    dbg_state(src);
-    dbg_state(dest);
-    debug(("diff string %s\n", move));
     return move;
 }
 
 /* Returns true if a dot here would not be too close to any other dots
  * (and would avoid other game furniture). */
-static bool dot_is_possible(game_state *state, space *sp, bool allow_assoc)
+static bool dot_is_possible(const game_state *state, space *sp, bool allow_assoc)
 {
     int bx = 0, by = 0, dx, dy;
     space *adj;
@@ -807,7 +721,7 @@ static void free_game(game_state *state)
  * an edit mode.
  */
 
-static char *encode_game(game_state *state)
+static char *encode_game(const game_state *state)
 {
     char *desc, *p;
     int run, x, y, area;
@@ -839,7 +753,6 @@ static char *encode_game(game_state *state)
             }
         }
     }
-    assert(p - desc < area);
     *p++ = '\0';
     desc = sresize(desc, p - desc, char);
 
@@ -857,9 +770,6 @@ static int movedot_cb(game_state *state, space *tile, void *vctx)
 {
    struct movedot *md = (struct movedot *)vctx;
    space *newopp = NULL;
-
-   assert(tile->type == s_tile);
-   assert(md->olddot && md->newdot);
 
    if (!(tile->flags & F_TILE_ASSOC)) return 0;
    if (tile->dotx != md->olddot->x || tile->doty != md->olddot->y)
@@ -883,10 +793,6 @@ static int movedot_cb(game_state *state, space *tile, void *vctx)
        /* Move dot associations: anything that was associated
         * with the old dot, and its opposite wrt the new dot,
         * become associated with the new dot. */
-       assert(newopp);
-       debug(("Associating %d,%d and %d,%d with new dot %d,%d.\n",
-              tile->x, tile->y, newopp->x, newopp->y,
-              md->newdot->x, md->newdot->y));
        add_assoc(state, tile, md->newdot);
        add_assoc(state, newopp, md->newdot);
        return 1; /* we did something! */
@@ -905,13 +811,6 @@ static bool dot_expand_or_move(game_state *state, space *dot,
     int i, ret, nnew, cx, cy;
     struct movedot md;
 
-    debug(("dot_expand_or_move: %d tiles for dot %d,%d\n",
-           nadd, dot->x, dot->y));
-    for (i = 0; i < nadd; i++)
-        debug(("dot_expand_or_move:   dot %d,%d\n",
-               toadd[i]->x, toadd[i]->y));
-    assert(dot->flags & F_DOT);
-
     /* First off, could we just expand the current dot's tile to cover
      * the space(s) passed in and their opposites? */
     for (i = 0; i < nadd; i++) {
@@ -925,11 +824,6 @@ static bool dot_expand_or_move(game_state *state, space *dot,
         tileopp = space_opposite_dot(state, toadd[i], dot);
         add_assoc(state, toadd[i], dot);
         add_assoc(state, tileopp, dot);
-        debug(("Added associations %d,%d and %d,%d --> %d,%d\n",
-               toadd[i]->x, toadd[i]->y,
-               tileopp->x, tileopp->y,
-               dot->x, dot->y));
-        dbg_state(state);
     }
     return true;
 
@@ -945,8 +839,6 @@ noexpand:
     }
     /* If the CoG isn't a whole number, it's not possible. */
     if ((cx % nnew) != 0 || (cy % nnew) != 0) {
-        debug(("Unable to move dot %d,%d, CoG not whole number.\n",
-               dot->x, dot->y));
         return false;
     }
     cx /= nnew; cy /= nnew;
@@ -958,8 +850,6 @@ noexpand:
     md.op = MD_CHECK;
     ret = foreach_tile(state, movedot_cb, IMPOSSIBLE_QUITS, &md);
     if (ret == -1) {
-        debug(("Unable to move dot %d,%d, new dot not symmetrical.\n",
-               dot->x, dot->y));
         return false;
     }
     /* Also check whether all spaces we're adding would have a good
@@ -971,8 +861,6 @@ noexpand:
             tileopp = NULL;
         }
         if (!tileopp) {
-            debug(("Unable to move dot %d,%d, new dot not symmetrical.\n",
-               dot->x, dot->y));
             return false;
         }
     }
@@ -981,14 +869,10 @@ noexpand:
      * with the _old_ dot (so they'll get fixed up, with their opposites,
      * in the next step). */
     for (i = 0; i < nadd; i++) {
-        debug(("Associating to-add %d,%d with old dot %d,%d.\n",
-               toadd[i]->x, toadd[i]->y, dot->x, dot->y));
         add_assoc(state, toadd[i], dot);
     }
 
     /* Finally, move the dot and fix up all the old associations. */
-    debug(("Moving dot at %d,%d to %d,%d\n",
-           dot->x, dot->y, md.newdot->x, md.newdot->y));
     {
         remove_dot(dot);
         add_dot(md.newdot);
@@ -996,8 +880,6 @@ noexpand:
 
     md.op = MD_MOVE;
     ret = foreach_tile(state, movedot_cb, 0, &md);
-    assert(ret == 1);
-    dbg_state(state);
 
     return true;
 }
@@ -1020,15 +902,12 @@ static bool generate_try_block(game_state *state, random_state *rs,
      * a 5x5 grid shouldn't have anything >10 tiles, a 20x20 grid
      * nothing >40 tiles. */
     maxsz = (int)sqrt((double)(state->w * state->h)) * 2;
-    debug(("generate_try_block, maxsz %d\n", maxsz));
 
     /* Make a static list of the spaces; if any space is already
      * associated then quit immediately. */
     for (x = x1; x <= x2; x += 2) {
         for (y = y1; y <= y2; y += 2) {
-            assert(nadd < MAX_TOADD);
             sp = &SPACE(state, x, y);
-            assert(sp->type == s_tile);
             if (sp->flags & F_TILE_ASSOC) return false;
             toadd[nadd++] = sp;
         }
@@ -1037,7 +916,6 @@ static bool generate_try_block(game_state *state, random_state *rs,
     /* Make a list of the spaces outside of our block, and shuffle it. */
 #define OUTSIDE(x, y) do {                              \
     if (INGRID(state, (x), (y))) {                      \
-        assert(nout < MAX_OUTSIDE);                     \
         outside[nout++] = &SPACE(state, (x), (y));      \
     }                                                   \
 } while(0)
@@ -1055,8 +933,6 @@ static bool generate_try_block(game_state *state, random_state *rs,
         if (!(outside[i]->flags & F_TILE_ASSOC)) continue;
         dot = &SPACE(state, outside[i]->dotx, outside[i]->doty);
         if (dot->nassoc >= maxsz) {
-            debug(("Not adding to dot %d,%d, large enough (%d) already.\n",
-                   dot->x, dot->y, dot->nassoc));
             continue;
         }
         if (dot_expand_or_move(state, dot, toadd, nadd)) return true;
@@ -1070,7 +946,7 @@ static bool generate_try_block(game_state *state, random_state *rs,
 static void generate_pass(game_state *state, random_state *rs, int *scratch,
                          int perc, unsigned int flags)
 {
-    int sz = state->sx*state->sy, nspc, i, ret;
+    int sz = state->sx*state->sy, nspc, i;
 
     shuffle(scratch, sz, sizeof(int), rs);
 
@@ -1079,8 +955,6 @@ static void generate_pass(game_state *state, random_state *rs, int *scratch,
      * failing to generate because the nspc calculation would start
      * to overflow, causing the dots not to be filled in properly. */
     nspc = (int)(((long)perc * (long)sz) / 100L);
-    debug(("generate_pass: %d%% (%d of %dx%d) squares, flags 0x%x\n",
-           perc, nspc, state->sx, state->sy, flags));
 
     for (i = 0; i < nspc; i++) {
         space *sp = &state->grid[scratch[i]];
@@ -1103,7 +977,6 @@ static void generate_pass(game_state *state, random_state *rs, int *scratch,
         if (!(flags & GP_DOTS)) continue;
 
         if ((sp->type == s_edge) && (i % 2)) {
-            debug(("Omitting edge %d,%d as half-of.\n", sp->x, sp->y));
             continue;
         }
 
@@ -1111,14 +984,9 @@ static void generate_pass(game_state *state, random_state *rs, int *scratch,
          * if we can, and add one if so. */
         if (dot_is_possible(state, sp, false)) {
             add_dot(sp);
-            ret = solver_obvious_dot(state, sp);
-            assert(ret != -1);
-            debug(("Added dot (and obvious associations) at %d,%d\n",
-                   sp->x, sp->y));
-            dbg_state(state);
+            solver_obvious_dot(state, sp);
         }
     }
-    dbg_state(state);
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
@@ -1128,7 +996,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     char *desc;
     int *scratch, sz = state->sx*state->sy, i;
     int diff, ntries = 0;
-    bool cc;
 
     /* Random list of squares to try and process, one-by-one. */
     scratch = snewn(sz, int);
@@ -1149,16 +1016,13 @@ generate:
     for (i = 0; i < state->sx*state->sy; i++)
         if (state->grid[i].type == s_tile)
             outline_tile_fordot(state, &state->grid[i], true);
-    cc = check_complete(state, NULL, NULL);
-    assert(cc);
+    check_complete(state, NULL, NULL);
 
     copy = dup_game(state);
     clear_game(copy, false);
-    dbg_state(copy);
     diff = solver_state(copy, params->diff);
     free_game(copy);
 
-    assert(diff != DIFF_IMPOSSIBLE);
     if (diff != params->diff) {
         /*
          * We'll grudgingly accept a too-easy puzzle, but we must
@@ -1170,10 +1034,6 @@ generate:
     }
 
     desc = encode_game(state);
-#ifndef STANDALONE_SOLVER
-    debug(("new_game_desc generated: \n"));
-    dbg_state(state);
-#endif
 
     free_game(state);
     sfree(scratch);
@@ -1247,9 +1107,7 @@ static const char *validate_desc(const game_params *params, const char *desc)
     game_state *dummy = load_game(params, desc, &why);
     if (dummy) {
         free_game(dummy);
-        assert(!why);
-    } else
-        assert(why);
+    }
     return why;
 }
 
@@ -1258,7 +1116,6 @@ static game_state *new_game(midend *me, const game_params *params,
 {
     game_state *state = load_game(params, desc, NULL);
     if (!state) {
-        assert("Unable to load ?validated game.");
         return NULL;
     }
     return state;
@@ -1322,41 +1179,22 @@ static int solver_add_assoc(game_state *state, space *tile, int dx, int dy,
     dot = &SPACE(state, dx, dy);
     tile_opp = space_opposite_dot(state, tile, dot);
 
-    assert(tile->type == s_tile);
     if (tile->flags & F_TILE_ASSOC) {
         if ((tile->dotx != dx) || (tile->doty != dy)) {
-            solvep(("%*sSet %d,%d --> %d,%d (%s) impossible; "
-                    "already --> %d,%d.\n",
-                    solver_recurse_depth*4, "",
-                    tile->x, tile->y, dx, dy, why,
-                    tile->dotx, tile->doty));
             return -1;
         }
         return 0; /* no-op */
     }
     if (!tile_opp) {
-        solvep(("%*s%d,%d --> %d,%d impossible, no opposite tile.\n",
-                solver_recurse_depth*4, "", tile->x, tile->y, dx, dy));
         return -1;
     }
     if (tile_opp->flags & F_TILE_ASSOC &&
         (tile_opp->dotx != dx || tile_opp->doty != dy)) {
-        solvep(("%*sSet %d,%d --> %d,%d (%s) impossible; "
-                "opposite already --> %d,%d.\n",
-                solver_recurse_depth*4, "",
-                tile->x, tile->y, dx, dy, why,
-                tile_opp->dotx, tile_opp->doty));
         return -1;
     }
 
     add_assoc(state, tile, dot);
     add_assoc(state, tile_opp, dot);
-    solvep(("%*sSetting %d,%d --> %d,%d (%s).\n",
-            solver_recurse_depth*4, "",
-            tile->x, tile->y,dx, dy, why));
-    solvep(("%*sSetting %d,%d --> %d,%d (%s, opposite).\n",
-            solver_recurse_depth*4, "",
-            tile_opp->x, tile_opp->y, dx, dy, why));
     return 1;
 }
 
@@ -1365,10 +1203,6 @@ static int solver_obvious_dot(game_state *state, space *dot)
     int dx, dy, ret, didsth = 0;
     space *tile;
 
-    debug(("%*ssolver_obvious_dot for %d,%d.\n",
-           solver_recurse_depth*4, "", dot->x, dot->y));
-
-    assert(dot->flags & F_DOT);
     for (dx = -1; dx <= 1; dx++) {
         for (dy = -1; dy <= 1; dy++) {
             if (!INGRID(state, dot->x+dx, dot->y+dy)) continue;
@@ -1389,8 +1223,6 @@ static int solver_obvious(game_state *state)
 {
     int i, didsth = 0, ret;
 
-    debug(("%*ssolver_obvious.\n", solver_recurse_depth*4, ""));
-
     for (i = 0; i < state->ndots; i++) {
         ret = solver_obvious_dot(state, state->dots[i]);
         if (ret < 0) return -1;
@@ -1403,8 +1235,6 @@ static int solver_lines_opposite_cb(game_state *state, space *edge, void *ctx)
 {
     int didsth = 0, n, dx, dy;
     space *tiles[2], *tile_opp, *edge_opp;
-
-    assert(edge->type == s_edge);
 
     tiles_from_edge(state, edge, tiles);
 
@@ -1419,8 +1249,6 @@ static int solver_lines_opposite_cb(game_state *state, space *edge, void *ctx)
          tiles[0]->doty != tiles[1]->doty)) {
         /* No edge, but the two adjacent tiles are both
          * associated with different dots; add the edge. */
-        solvep(("%*sSetting edge %d,%d - tiles different dots.\n",
-               solver_recurse_depth*4, "", edge->x, edge->y));
         edge->flags |= F_EDGE_SET;
         didsth = 1;
     }
@@ -1428,15 +1256,10 @@ static int solver_lines_opposite_cb(game_state *state, space *edge, void *ctx)
     if (!(edge->flags & F_EDGE_SET)) return didsth;
     for (n = 0; n < 2; n++) {
         if (!tiles[n]) continue;
-        assert(tiles[n]->type == s_tile);
         if (!(tiles[n]->flags & F_TILE_ASSOC)) continue;
 
         tile_opp = tile_opposite(state, tiles[n]);
         if (!tile_opp) {
-            solvep(("%*simpossible: edge %d,%d has assoc. tile %d,%d"
-                   " with no opposite.\n",
-                   solver_recurse_depth*4, "",
-                   edge->x, edge->y, tiles[n]->x, tiles[n]->y));
             /* edge of tile has no opposite edge (off grid?);
              * this is impossible. */
             return -1;
@@ -1444,12 +1267,8 @@ static int solver_lines_opposite_cb(game_state *state, space *edge, void *ctx)
 
         dx = tiles[n]->x - edge->x;
         dy = tiles[n]->y - edge->y;
-        assert(INGRID(state, tile_opp->x+dx, tile_opp->y+dy));
         edge_opp = &SPACE(state, tile_opp->x+dx, tile_opp->y+dy);
         if (!(edge_opp->flags & F_EDGE_SET)) {
-            solvep(("%*sSetting edge %d,%d as opposite %d,%d\n",
-                   solver_recurse_depth*4, "",
-                   tile_opp->x-dx, tile_opp->y-dy, edge->x, edge->y));
             edge_opp->flags |= F_EDGE_SET;
             didsth = 1;
         }
@@ -1463,7 +1282,6 @@ static int solver_spaces_oneposs_cb(game_state *state, space *tile, void *ctx)
     space *edgeadj[4], *tileadj[4];
     int dotx, doty;
 
-    assert(tile->type == s_tile);
     if (tile->flags & F_TILE_ASSOC) return 0;
 
     adjacencies(state, tile, edgeadj, tileadj);
@@ -1472,14 +1290,9 @@ static int solver_spaces_oneposs_cb(game_state *state, space *tile, void *ctx)
      * the same dot, we must also associate with dot. */
     eset = 0; dotx = -1; doty = -1;
     for (n = 0; n < 4; n++) {
-        assert(edgeadj[n]);
-        assert(edgeadj[n]->type == s_edge);
         if (edgeadj[n]->flags & F_EDGE_SET) {
             eset++;
         } else {
-            assert(tileadj[n]);
-            assert(tileadj[n]->type == s_tile);
-
             /* If an adjacent tile is empty we can't make any deductions.*/
             if (!(tileadj[n]->flags & F_TILE_ASSOC))
                 return 0;
@@ -1496,16 +1309,11 @@ static int solver_spaces_oneposs_cb(game_state *state, space *tile, void *ctx)
         }
     }
     if (eset == 4) {
-        solvep(("%*simpossible: empty tile %d,%d has 4 edges\n",
-               solver_recurse_depth*4, "",
-               tile->x, tile->y));
         return -1;
     }
-    assert(dotx != -1 && doty != -1);
 
     ret = solver_add_assoc(state, tile, dotx, doty, "rest are edges");
     if (ret == -1) return -1;
-    assert(ret != 0); /* really should have done something. */
 
     return 1;
 }
@@ -1622,22 +1430,13 @@ static void solver_expand_fromdot(game_state *state, space *dot, solver_ctx *sct
         sctx->scratch[0] = &SPACE(state, dot->x-1, dot->y-1);
         sctx->scratch[1] = &SPACE(state, dot->x+1, dot->y+1);
     }
-    assert(sctx->scratch[0]->flags & F_TILE_ASSOC);
-    assert(sctx->scratch[1]->flags & F_TILE_ASSOC);
 
     sctx->scratch[0]->flags |= F_MARK;
     sctx->scratch[1]->flags |= F_MARK;
 
-    debug(("%*sexpand from dot %d,%d seeded with %d,%d and %d,%d.\n",
-           solver_recurse_depth*4, "", dot->x, dot->y,
-           sctx->scratch[0]->x, sctx->scratch[0]->y,
-           sctx->scratch[1]->x, sctx->scratch[1]->y));
-
     start = 0; end = 2; next = 2;
 
 expand:
-    debug(("%*sexpand: start %d, end %d, next %d\n",
-           solver_recurse_depth*4, "", start, end, next));
     for (i = start; i < end; i += 2) {
         space *t1 = sctx->scratch[i]/*, *t2 = sctx->scratch[i+1]*/;
         space *edges[4], *tileadj[4], *tileadj2;
@@ -1645,39 +1444,27 @@ expand:
         adjacencies(state, t1, edges, tileadj);
 
         for (j = 0; j < 4; j++) {
-            assert(edges[j]);
             if (edges[j]->flags & F_EDGE_SET) continue;
-            assert(tileadj[j]);
 
             if (tileadj[j]->flags & F_MARK) continue; /* seen before. */
 
             /* We have a tile adjacent to t1; find its opposite. */
             tileadj2 = space_opposite_dot(state, tileadj[j], dot);
             if (!tileadj2) {
-                debug(("%*sMarking %d,%d, no opposite.\n",
-                       solver_recurse_depth*4, "",
-                       tileadj[j]->x, tileadj[j]->y));
                 tileadj[j]->flags |= F_MARK;
                 continue; /* no opposite, so mark for next time. */
             }
             /* If the tile had an opposite we should have either seen both of
              * these, or neither of these, before. */
-            assert(!(tileadj2->flags & F_MARK));
 
             if (solver_expand_checkdot(tileadj[j], dot) &&
                 solver_expand_checkdot(tileadj2, dot)) {
                 /* Both tiles could associate with this dot; add them to
                  * our list. */
-                debug(("%*sAdding %d,%d and %d,%d to possibles list.\n",
-                       solver_recurse_depth*4, "",
-                       tileadj[j]->x, tileadj[j]->y, tileadj2->x, tileadj2->y));
                 sctx->scratch[next++] = tileadj[j];
                 sctx->scratch[next++] = tileadj2;
             }
             /* Either way, we've seen these tiles already so mark them. */
-            debug(("%*sMarking %d,%d and %d,%d.\n",
-                   solver_recurse_depth*4, "",
-                       tileadj[j]->x, tileadj[j]->y, tileadj2->x, tileadj2->y));
             tileadj[j]->flags |= F_MARK;
             tileadj2->flags |= F_MARK;
         }
@@ -1695,32 +1482,21 @@ expand:
         if (sctx->scratch[i]->flags & F_REACHABLE) {
             /* This is (at least) the second dot this tile could
              * associate with. */
-            debug(("%*sempty tile %d,%d could assoc. other dot %d,%d\n",
-                   solver_recurse_depth*4, "",
-                   sctx->scratch[i]->x, sctx->scratch[i]->y, dot->x, dot->y));
             sctx->scratch[i]->flags |= F_MULTIPLE;
         } else {
             /* This is the first (possibly only) dot. */
-            debug(("%*sempty tile %d,%d could assoc. 1st dot %d,%d\n",
-                   solver_recurse_depth*4, "",
-                   sctx->scratch[i]->x, sctx->scratch[i]->y, dot->x, dot->y));
             sctx->scratch[i]->flags |= F_REACHABLE;
             sctx->scratch[i]->dotx = dot->x;
             sctx->scratch[i]->doty = dot->y;
         }
     }
-    dbg_state(state);
 }
 
 static int solver_expand_postcb(game_state *state, space *tile, void *ctx)
 {
-    assert(tile->type == s_tile);
-
     if (tile->flags & F_TILE_ASSOC) return 0;
 
     if (!(tile->flags & F_REACHABLE)) {
-        solvep(("%*simpossible: space (%d,%d) can reach no dots.\n",
-                solver_recurse_depth*4, "", tile->x, tile->y));
         return -1;
     }
     if (tile->flags & F_MULTIPLE) return 0;
@@ -1752,7 +1528,6 @@ static int solver_recurse_cb(game_state *state, space *tile, void *ctx)
     struct recurse_ctx *rctx = (struct recurse_ctx *)ctx;
     int i, n = 0;
 
-    assert(tile->type == s_tile);
     if (tile->flags & F_TILE_ASSOC) return 0;
 
     /* We're unassociated: count up all the dots we could associate with. */
@@ -1776,7 +1551,6 @@ static int solver_recurse(game_state *state, int maxdiff)
     struct recurse_ctx rctx;
 
     if (solver_recurse_depth >= MAXRECURSE) {
-        solvep(("Limiting recursion to %d, returning.", MAXRECURSE));
         return DIFF_UNFINISHED;
     }
 
@@ -1787,12 +1561,7 @@ static int solver_recurse(game_state *state, int maxdiff)
     rctx.bestn = 0;
 
     foreach_tile(state, solver_recurse_cb, 0, &rctx);
-    if (rctx.bestn == 0) return DIFF_IMPOSSIBLE; /* or assert? */
-    assert(rctx.best);
-
-    solvep(("%*sRecursing around %d,%d, with %d possible dots.\n",
-           solver_recurse_depth*4, "",
-           rctx.best->x, rctx.best->y, rctx.bestn));
+    if (rctx.bestn == 0) return DIFF_IMPOSSIBLE;
 
     ingrid = snewn(gsz, space);
     memcpy(ingrid, state->grid, gsz * sizeof(space));
@@ -1811,13 +1580,11 @@ static int solver_recurse(game_state *state, int maxdiff)
 
         if (diff == DIFF_IMPOSSIBLE && ret != DIFF_IMPOSSIBLE) {
             /* we found our first solved grid; copy it away. */
-            assert(!outgrid);
             outgrid = snewn(gsz, space);
             memcpy(outgrid, state->grid, gsz * sizeof(space));
         }
         /* reset cell back to unassociated. */
         bestopp = tile_opposite(state, rctx.best);
-        assert(bestopp && bestopp->flags & F_TILE_ASSOC);
 
         remove_assoc(state, rctx.best);
         remove_assoc(state, bestopp);
@@ -1893,10 +1660,6 @@ cont:
 
 got_result:
     free_solver(sctx);
-#ifndef STANDALONE_SOLVER
-    debug(("solver_state ends, diff %s:\n", galaxies_diffnames[diff]));
-    dbg_state(state);
-#endif
 
     return diff;
 }
@@ -1912,7 +1675,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     tosolve = dup_game(currstate);
     diff = solver_state(tosolve, DIFF_UNREASONABLE);
     if (diff != DIFF_UNFINISHED && diff != DIFF_IMPOSSIBLE) {
-        debug(("solve_game solved with current state.\n"));
         goto solved;
     }
     free_game(tosolve);
@@ -1920,7 +1682,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     tosolve = dup_game(state);
     diff = solver_state(tosolve, DIFF_UNREASONABLE);
     if (diff != DIFF_UNFINISHED && diff != DIFF_IMPOSSIBLE) {
-        debug(("solve_game solved with original state.\n"));
         goto solved;
     }
     free_game(tosolve);
@@ -2264,7 +2025,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->doty = ui->srcy = ui->cur_y;
             return UI_UPDATE;
         } else if (sp->flags & F_TILE_ASSOC) {
-            assert(sp->type == s_tile);
             ui->dragging = true;
             ui->dx = SCOORD(ui->cur_x);
             ui->dy = SCOORD(ui->cur_y);
@@ -2414,7 +2174,6 @@ static bool check_complete(const game_state *state, int *dsf, int *colours)
                  */
                 int cx1 = (x-1) >> 1, cx2 = x >> 1;
                 int cy1 = (y-1) >> 1, cy2 = y >> 1;
-                assert((cx1==cx2) ^ (cy1==cy2));
                 i = dsf_canonify(dsf, cy1*w+cx1);
                 if (i == dsf_canonify(dsf, cy2*w+cx2))
                     sqdata[i].valid = false;
@@ -2468,8 +2227,6 @@ static game_state *execute_move(const game_state *state, const char *move)
     game_state *ret = dup_game(state);
     space *sp, *dot;
     bool currently_solving = false;
-
-    debug(("%s\n", move));
 
     while (*move) {
         char c = *move;
@@ -2577,15 +2334,8 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 {
     ds->tilesize = sz;
 
-    assert(TILE_SIZE > 0);
-
-    assert(!ds->bl);
     ds->bl = blitter_new(dr, TILE_SIZE, TILE_SIZE);
-
-    assert(!ds->blmirror);
     ds->blmirror = blitter_new(dr, TILE_SIZE, TILE_SIZE);
-
-    assert(!ds->cur_bl);
     ds->cur_bl = blitter_new(dr, TILE_SIZE, TILE_SIZE);
 }
 
@@ -2812,8 +2562,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y;
 
     if (ds->dragging) {
-        assert(ds->bl);
-        assert(ds->blmirror);
         blitter_load(dr, ds->blmirror, ds->oppx, ds->oppy);
         draw_update(dr, ds->oppx, ds->oppy, TILE_SIZE, TILE_SIZE);
         blitter_load(dr, ds->bl, ds->dragx, ds->dragy);
@@ -2821,7 +2569,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         ds->dragging = false;
     }
     if (ds->cur_visible) {
-        assert(ds->cur_bl);
         blitter_load(dr, ds->cur_bl, ds->cx, ds->cy);
         draw_update(dr, ds->cx, ds->cy, CURSOR_SIZE*2+1, CURSOR_SIZE*2+1);
         ds->cur_visible = false;
