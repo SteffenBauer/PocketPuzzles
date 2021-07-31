@@ -287,7 +287,7 @@ void gameMenuHandler(int index) {
         case 104:  /* How to Play */
             Dialog(0, "Rules", fe->currentgame->rules, "OK", NULL, NULL);
             break;
-        case 199:  /* Exit app */
+        case 105:  /* Exit app */
             exitApp();
             break;
         default:
@@ -364,7 +364,7 @@ static void gameBuildGameMenu() {
     gameMenu[i++].icon = &menu_exit;
 
     gameMenu[i].type = 0;
-    gameMenu[i].index = 199;
+    gameMenu[i].index = 0;
     gameMenu[i].text = NULL;
     gameMenu[i++].icon = NULL;
 }
