@@ -115,8 +115,9 @@
 - [ ] Slant: 'Hard' game difficulty (backtracking)
 - [ ] Sticks: Implement dragging
 - [ ] Twiddle: Re-activate basic animation (?)
-- [ ] Walls: Dashed line error, errors on circular path, errors on unconnected cells, better presets (7/8, no 12/12)
-- [ ] Walls: Expand solver / difficulty levels (implement area parity criteria)
+- [ ] Walls: Expand error display
+- [ ] Walls: Add dragging
+- [ ] Walls: Expand solver / difficulty levels (area parity criteria)
 
 #### One-click symbol fill
 
