@@ -36,6 +36,11 @@ static char const walls_diffchars[] = DIFFLIST(ENCODE);
 #define EDGE_ERROR      (0x08)
 #define EDGE_DRAG       (0x10)
 
+#define EDGE_LEFT       (0x00010000)
+#define EDGE_RIGHT      (0x00020000)
+#define EDGE_UP         (0x00040000)
+#define EDGE_DOWN       (0x00080000)
+
 char DIRECTIONS[4] = {L, R, U, D};
 
 enum {
@@ -52,7 +57,8 @@ enum {
     COL_FIXED,
     COL_WALL_A,
     COL_WALL_B,
-    COL_PATH,
+    COL_PATH_A,
+    COL_PATH_B,
     COL_DRAGON,
     COL_DRAGOFF,
     COL_ERROR,
@@ -945,7 +951,7 @@ static game_ui *new_ui(const game_state *state) {
     int h = state->h;
     game_ui *ui = snew(game_ui);
 
-    ui->dragcoords = snewn((8*w+7)*(8*h+7), int);
+    ui->dragcoords = snewn((8*w+5)*(8*h+5), int);
     ui->ndragcoords = -1;
     ui->dragdir = BLANK;
     ui->cursor_active = false;
@@ -971,7 +977,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 
 #define PREFERRED_TILE_SIZE (8)
 #define TILESIZE (ds->tilesize)
-#define BORDER (9*TILESIZE/2)
+#define BORDER (5*TILESIZE/2)
 
 #define COORD(x) ( (x) * 8 * TILESIZE + BORDER )
 #define CENTERED_COORD(x) ( COORD(x) + 4*TILESIZE )
@@ -984,7 +990,7 @@ struct game_drawstate {
     int tilesize;
     int w, h;
     bool tainted;
-    unsigned short *cell;
+    unsigned long *cell;
 };
 
 static char *interpret_move(const game_state *state, game_ui *ui,
@@ -1094,8 +1100,8 @@ static void game_compute_size(const game_params *params, int tilesize,
     struct { int tilesize; } ads, *ds = &ads;
     ads.tilesize = tilesize;
 
-    *x = (8 * (params->w) + 7) * TILESIZE;
-    *y = (8 * (params->h) + 7) * TILESIZE;
+    *x = (8 * (params->w) + 5) * TILESIZE;
+    *y = (8 * (params->h) + 5) * TILESIZE;
 }
 
 static void game_set_size(drawing *dr, game_drawstate *ds,
@@ -1106,7 +1112,9 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 static float *game_colours(frontend *fe, int *ncolours) {
     float *ret = snewn(3 * NCOLOURS, float);
 
-    frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
+    ret[COL_BACKGROUND * 3 + 0] = 1.0F;
+    ret[COL_BACKGROUND * 3 + 1] = 1.0F;
+    ret[COL_BACKGROUND * 3 + 2] = 1.0F;
 
     ret[COL_GRID * 3 + 0] = 0.0F;
     ret[COL_GRID * 3 + 1] = 0.0F;
@@ -1132,17 +1140,21 @@ static float *game_colours(frontend *fe, int *ncolours) {
     ret[COL_WALL_B * 3 + 1] = 0.75F;
     ret[COL_WALL_B * 3 + 2] = 0.75F;
 
-    ret[COL_PATH * 3 + 0] = 0.0F;
-    ret[COL_PATH * 3 + 1] = 0.0F;
-    ret[COL_PATH * 3 + 2] = 0.0F;
+    ret[COL_PATH_A * 3 + 0] = 0.5F;
+    ret[COL_PATH_A * 3 + 1] = 0.5F;
+    ret[COL_PATH_A * 3 + 2] = 0.5F;
 
-    ret[COL_DRAGON * 3 + 0] = 0.0F;
-    ret[COL_DRAGON * 3 + 1] = 0.0F;
-    ret[COL_DRAGON * 3 + 2] = 1.0F;
+    ret[COL_PATH_B * 3 + 0] = 0.0F;
+    ret[COL_PATH_B * 3 + 1] = 0.0F;
+    ret[COL_PATH_B * 3 + 2] = 0.0F;
+
+    ret[COL_DRAGON * 3 + 0] = 0.25F;
+    ret[COL_DRAGON * 3 + 1] = 0.25F;
+    ret[COL_DRAGON * 3 + 2] = 0.25F;
 
     ret[COL_DRAGOFF * 3 + 0] = 0.5F;
     ret[COL_DRAGOFF * 3 + 1] = 0.5F;
-    ret[COL_DRAGOFF * 3 + 2] = 1.0F;
+    ret[COL_DRAGOFF * 3 + 2] = 0.5F;
 
     ret[COL_ERROR * 3 + 0] = 0.5F;
     ret[COL_ERROR * 3 + 1] = 0.5F;
@@ -1163,9 +1175,9 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state) 
     ds->w = w;
     ds->h = h;
     ds->tainted = true;
-    ds->cell   = snewn((8*w+7)*(8*h+7), unsigned short);
+    ds->cell   = snewn((8*w+5)*(8*h+5), unsigned long);
 
-    for (i=0;i<(8*w+7)*(8*h+7); i++) ds->cell[i] = 0x0000;
+    for (i=0;i<(8*w+5)*(8*h+5); i++) ds->cell[i] = 0x00000000;
 
     return ds;
 }
@@ -1179,22 +1191,67 @@ static void draw_cell(drawing *dr, game_drawstate *ds, int pos) {
     int i;
     int dx, dy, col;
     int w = ds->w;
-    int x = pos%(8*w+7);
-    int y = pos/(8*w+7);
+    int h = ds->h;
+    int x = pos%(8*w+5);
+    int y = pos/(8*w+5);
     int ox = x*ds->tilesize;
     int oy = y*ds->tilesize;
+    int cx = x-2;
+    int cy = y-2;
+    int ts = ds->tilesize;
     int ts2 = (ds->tilesize+1)/2;
+    int ts4 = (ds->tilesize+1)/4;
 
-    clip(dr, ox, oy, ds->tilesize, ds->tilesize);
+    clip(dr, ox, oy, ts, ts);
 
     if ((ds->cell[pos] & (EDGE_WALL | EDGE_FIXED)) == (EDGE_WALL|EDGE_FIXED)) {
-        draw_rect(dr, ox, oy, ds->tilesize, ds->tilesize, COL_FIXED);
+        draw_rect(dr, ox, oy, ts, ts, COL_FIXED);
     }
     else if ((ds->cell[pos] & EDGE_PATH) == EDGE_PATH) {
-        draw_rect(dr, ox, oy, ds->tilesize, ds->tilesize,
+        int cornercol = (ds->cell[pos] & EDGE_ERROR)>0 ? COL_PATH_A : COL_PATH_B;
+        draw_rect(dr, ox, oy, ts, ts,
             (ds->cell[pos] & EDGE_DRAG) >0 ? COL_DRAGOFF :
-            (ds->cell[pos] & EDGE_ERROR)>0 ? COL_ERROR :
-                                             COL_PATH);
+            (ds->cell[pos] & EDGE_ERROR)>0 ? COL_PATH_B :
+                                             COL_PATH_A);
+        if ((cx<0 || cx>(8*w) || (cy%8)==4) && (cx%8)!=4) {
+            draw_rect(dr, ox, oy, ts, ts4, cornercol);
+            draw_rect(dr, ox, oy+ts-ts4, ts, ts4, cornercol);
+        }
+        else if ((cy<0 || cy>(8*h) || (cx%8)==4) && (cy%8)!=4) {
+            draw_rect(dr, ox, oy, ts4, ts, cornercol);
+            draw_rect(dr, ox+ts-ts4, oy, ts4, ts, cornercol);
+        }
+        else if ((cx%8)==4 && (cy%8)==4) {
+            if ((ds->cell[pos] & EDGE_LEFT) > 0) {
+                draw_rect(dr, ox, oy,        ts4, ts4, cornercol);
+                draw_rect(dr, ox, oy+ts-ts4, ts4, ts4, cornercol);
+            }
+            else {
+                draw_rect(dr, ox, oy, ts4, ts, cornercol);
+            }
+            if ((ds->cell[pos] & EDGE_RIGHT) > 0) {
+                draw_rect(dr, ox+ts-ts4, oy,        ts4, ts4, cornercol);
+                draw_rect(dr, ox+ts-ts4, oy+ts-ts4, ts4, ts4, cornercol);
+            }
+            else {
+                draw_rect(dr, ox+ts-ts4, oy, ts4, ts, cornercol);
+            }
+            if ((ds->cell[pos] & EDGE_UP) > 0) {
+                draw_rect(dr, ox,        oy, ts4, ts4, cornercol);
+                draw_rect(dr, ox+ts-ts4, oy, ts4, ts4, cornercol);
+            }
+            else {
+                draw_rect(dr, ox, oy, ts, ts4, cornercol);
+            }
+            if ((ds->cell[pos] & EDGE_DOWN) > 0) {
+                draw_rect(dr, ox,        oy+ts-ts4, ts4, ts4, cornercol);
+                draw_rect(dr, ox+ts-ts4, oy+ts-ts4, ts4, ts4, cornercol);
+            }
+            else {
+                draw_rect(dr, ox, oy+ts-ts4, ts, ts4, cornercol);
+            }
+        }
+
     }
     else {
         for (i=0;i<4;i++) {
@@ -1216,22 +1273,22 @@ static void draw_cell(drawing *dr, game_drawstate *ds, int pos) {
             c[4] = ox+ts2; c[5] = oy;
             draw_polygon(dr, c, 3, COL_WALL_A, COL_WALL_A);
             c[0] = ox; c[1] = oy+ts2; 
-            c[2] = ox; c[3] = oy+ds->tilesize;
-            c[4] = ox+ds->tilesize; c[5] = oy; 
+            c[2] = ox; c[3] = oy+ts;
+            c[4] = ox+ts; c[5] = oy; 
             c[6] = ox+ts2; c[7] = oy;
             draw_polygon(dr, c, 4, COL_WALL_B, COL_WALL_B);
-            c[0] = ox; c[1] = oy+ds->tilesize; 
-            c[2] = ox+ts2; c[3] = oy+ds->tilesize;
-            c[4] = ox+ds->tilesize; c[5] = oy+ts2; 
-            c[6] = ox+ds->tilesize; c[7] = oy;
+            c[0] = ox; c[1] = oy+ts; 
+            c[2] = ox+ts2; c[3] = oy+ts;
+            c[4] = ox+ts; c[5] = oy+ts2; 
+            c[6] = ox+ts; c[7] = oy;
             draw_polygon(dr, c, 4, COL_WALL_A, COL_WALL_A);
-            c[0] = ox+ts2; c[1] = oy+ds->tilesize;
-            c[2] = ox+ds->tilesize; c[3] = oy+ds->tilesize;
-            c[4] = ox+ds->tilesize; c[5] = oy+ts2;
+            c[0] = ox+ts2; c[1] = oy+ts;
+            c[2] = ox+ts; c[3] = oy+ts;
+            c[4] = ox+ts; c[5] = oy+ts2;
             draw_polygon(dr, c, 3, COL_WALL_B, COL_WALL_B);
         }
     }
-    draw_update(dr, ox, oy, ds->tilesize, ds->tilesize);
+    draw_update(dr, ox, oy, ts, ts);
     unclip(dr);
 }
 
@@ -1240,18 +1297,18 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime) {
     int i,j,w,h,x,y,cx,cy;
-    unsigned short *newcell;
+    unsigned long *newcell;
 
     w = state->w; h = state->h;
-    newcell = snewn((8*w+7)*(8*h+7), unsigned short);
-    for (i=0;i<((8*w)+7)*((8*h)+7); i++) newcell[i] = 0x0000;
+    newcell = snewn((8*w+5)*(8*h+5), unsigned long);
+    for (i=0;i<((8*w)+5)*((8*h)+5); i++) newcell[i] = 0x00000000;
 
     if (ui->ndragcoords > 0)
         for (i=0;i<ui->ndragcoords;i++)
             newcell[ui->dragcoords[i]] |= EDGE_DRAG;
     
-    for (i=0;i<((8*w)+7)*((8*h)+7); i++) {
-        x = i%(8*w+7)-4; y = i/(8*w+7)-4;
+    for (i=0;i<((8*w)+5)*((8*h)+5); i++) {
+        x = i%(8*w+5)-2; y = i/(8*w+5)-2;
         cx = x/8; cy = y/8;
 
         /* Corner border cells. Unused. */
@@ -1321,9 +1378,15 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 newcell[i] |= (state->edge_v[cx+cy*(w+1)]     & (EDGE_PATH|EDGE_ERROR));
             if (y%8==4 && x%8>=4)
                 newcell[i] |= (state->edge_v[(cx+1)+cy*(w+1)] & (EDGE_PATH|EDGE_ERROR));
+            if (x%8==4 && y%8==4) {
+                if ((state->edge_h[cx+cy*w]         & EDGE_PATH) > 0) newcell[i] |= EDGE_UP;
+                if ((state->edge_h[cx+(cy+1)*w]     & EDGE_PATH) > 0) newcell[i] |= EDGE_DOWN;
+                if ((state->edge_v[cx+cy*(w+1)]     & EDGE_PATH) > 0) newcell[i] |= EDGE_LEFT;
+                if ((state->edge_v[(cx+1)+cy*(w+1)] & EDGE_PATH) > 0) newcell[i] |= EDGE_RIGHT;
+            }
         }
     }
-    for (i=0;i<((8*w)+7)*((8*h)+7); i++) {
+    for (i=0;i<((8*w)+5)*((8*h)+5); i++) {
         if (newcell[i] != ds->cell[i] || ds->tainted) {
             ds->cell[i] = newcell[i];
             draw_cell(dr, ds, i);
