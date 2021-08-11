@@ -12,6 +12,7 @@
 * *Galaxies*: Disallow placing an edge touching a dot (sync with upstream)
 * *Galaxies*: Remove debug code
 * *Guess*: Minor colour tweaks for better contrast
+* *Walls*: Complete rewrite. More advanced & faster generator; better UI
 
 ### Fixed
 * Horizontal center placement of chooser page indicator
