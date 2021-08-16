@@ -14,7 +14,8 @@
 #define DIFFLIST(A) \
     A(EASY,Easy,e) \
     A(NORMAL,Normal,n) \
-    A(TRICKY,Tricky,t)
+    A(TRICKY,Tricky,t) \
+    A(HARD,Hard,h)
 #define ENUM(upper,title,lower) DIFF_ ## upper,
 #define TITLE(upper,title,lower) #title,
 #define ENCODE(upper,title,lower) #lower
@@ -197,6 +198,8 @@ static game_params *custom_params(const config_item *cfg) {
 static const char *validate_params(const game_params *params, bool full) {
     if (params->w < 3) return "Width must be at least three";
     if (params->h < 3) return "Height must be at least three";
+    if (params->difficulty >= DIFF_HARD && (params->w > 8 || params->h > 9))
+        return "Hard puzzles should be size 8x9 maximum";
     if (params->difficulty < 0 || params->difficulty >= DIFFCOUNT)
         return "Unknown difficulty level";
     return NULL;
@@ -436,6 +439,8 @@ static int check_solution(game_state *state, bool full) {
 
 struct solver_scratch {
     int *loopdsf;
+    bool *done_islands;
+    int island_counter;
     int difficulty;
 };
 
@@ -633,19 +638,251 @@ static bool solve_partitions(game_state *state, struct solver_scratch *scratch) 
     return false;
 }
 
+static inline bool parity(int x, int y) {
+    return (x^y)&1;
+}
+
+static bool parity_check_block(game_state *state, struct solver_scratch *scratch,
+    int bx, int by, int bw, int bh) {
+    int i,j,n,x,y,f;
+    int h = state->h;
+    int w = state->w;
+    unsigned char *edges[4];
+    int *dsf;
+    bool found;
+    bool result = false;
+    int processed_count = 0;
+    int *processed_cells = snewn(w*h, int);
+    int *group_cells = snewn(w*h, int);
+
+    scratch->done_islands[scratch->island_counter] = true;
+
+    /* Build a dsf over the relevant area */
+    dsf = snewn(w*h,int);
+    dsf_init(dsf, w*h);
+    for (y=by;y<by+bh;y++)
+    for (x=bx;x<bx+bw;x++) {
+        i = x+y*w;
+        edges[0] = state->edge_h + y*w + x;
+        edges[1] = edges[0] + w;
+        edges[2] = state->edge_v + y*(w+1) + x;
+        edges[3] = edges[2] + 1;
+        if ((*edges[0] & FLAG_WALL) == 0x00 && y>by)        dsf_merge(dsf, i, i-w);
+        if ((*edges[1] & FLAG_WALL) == 0x00 && y<(by+bh)-1) dsf_merge(dsf, i, i+w);
+        if ((*edges[2] & FLAG_WALL) == 0x00 && x>bx)        dsf_merge(dsf, i, i-1);
+        if ((*edges[3] & FLAG_WALL) == 0x00 && x<(bx+bw)-1) dsf_merge(dsf, i, i+1);
+        for (j=0;j<4;j++)
+            if (*edges[j] == FLAG_NONE)
+                scratch->done_islands[scratch->island_counter] = false;
+    }
+
+    if (scratch->done_islands[scratch->island_counter]) {
+        goto finish;
+    }
+
+    /* Process each separate dsf group */
+    for (i=0;i<w*h;i++) processed_cells[i] = -1;
+    while(true) {
+        int count_black, count_white;
+        int avail_black, avail_white;
+        int paths_black, paths_white;
+        int walls_black, walls_white;
+        
+        int min_cells;
+        int extra_white, extra_black;
+        int min_white, min_black;
+        int max_white, max_black;
+        bool only_min_path_avail_white, only_min_path_avail_black;
+        bool black_used_max_paths, white_used_max_paths;
+        bool fill_paths_white, fill_paths_black;
+        bool fill_walls_white, fill_walls_black;
+        
+        int group_count = 0;
+
+        count_black = count_white = 0;
+        avail_black = avail_white = 0;
+        paths_black = paths_white = 0;
+        walls_black = walls_white = 0;
+
+        for (i=0;i<w*h;i++) {
+            found = false;
+            for (j=0;j<w*h;j++) {
+                if (processed_cells[j] == i) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) break;
+        }
+        if (i==w*h) break;
+
+        f = dsf_canonify(dsf, i);
+        for (n = 0; n < w*h; n++) {
+            if (dsf_canonify(dsf, n) == f) {
+                processed_cells[processed_count++] = n;
+                group_cells[group_count++] = n;
+                x = n%state->w; y=n/state->w;
+                parity(x,y) ? count_white++ : count_black++;
+            }
+        }
+        if (group_count == 1) continue;
+
+        for (n=0;n<group_count;n++) {
+            x = group_cells[n]%w; y=group_cells[n]/w;
+            edges[0] = state->edge_h + y*w + x;
+            edges[1] = edges[0] + w;
+            edges[2] = state->edge_v + y*(w+1) + x;
+            edges[3] = edges[2] + 1;
+            if (y == by || dsf_canonify(dsf, x+(y-1)*w) != f) {
+                if ((*edges[0] & FLAG_WALL) == 0)         parity(x,y) ? avail_white++ : avail_black++;
+                if ((*edges[0] & FLAG_PATH) == FLAG_PATH) parity(x,y) ? paths_white++ : paths_black++;
+                if ((*edges[0] & FLAG_WALL) == FLAG_WALL) parity(x,y) ? walls_white++ : walls_black++;
+            }
+            if (y == by+bh-1 || dsf_canonify(dsf, x+(y+1)*w) != f) {
+                if ((*edges[1] & FLAG_WALL) == 0)         parity(x,y) ? avail_white++ : avail_black++;
+                if ((*edges[1] & FLAG_PATH) == FLAG_PATH) parity(x,y) ? paths_white++ : paths_black++;
+                if ((*edges[1] & FLAG_WALL) == FLAG_WALL) parity(x,y) ? walls_white++ : walls_black++;
+            }
+            if (x == bx || dsf_canonify(dsf, (x-1)+y*w) != f) {
+                if ((*edges[2] & FLAG_WALL) == 0)         parity(x,y) ? avail_white++ : avail_black++;
+                if ((*edges[2] & FLAG_PATH) == FLAG_PATH) parity(x,y) ? paths_white++ : paths_black++;
+                if ((*edges[2] & FLAG_WALL) == FLAG_WALL) parity(x,y) ? walls_white++ : walls_black++;
+            }
+            if (x == bx+bw-1 || dsf_canonify(dsf, (x+1)+y*w) != f) {
+                if ((*edges[3] & FLAG_WALL) == 0)         parity(x,y) ? avail_white++ : avail_black++;
+                if ((*edges[3] & FLAG_PATH) == FLAG_PATH) parity(x,y) ? paths_white++ : paths_black++;
+                if ((*edges[3] & FLAG_WALL) == FLAG_WALL) parity(x,y) ? walls_white++ : walls_black++;
+            }
+        }
+
+        min_cells = min(count_white, count_black);
+
+        extra_white = count_white - min_cells;
+        extra_black = count_black - min_cells;
+
+        min_white = 1 + extra_white - extra_black;
+        min_black = 1 + extra_black - extra_white;
+
+        max_white = min(avail_white, avail_black+2*(extra_white-extra_black));
+        max_black = min(avail_black, avail_white+2*(extra_black-extra_white));
+
+        if (count_black + count_white == w*h) {
+            min_white = max_white = (count_black == count_white) ? 1 :
+                                    (count_black <  count_white) ? 2 : 0;
+            min_black = max_black = (count_black == count_white) ? 1 :
+                                    (count_black <  count_white) ? 0 : 2;
+        }
+
+        only_min_path_avail_white = (min_white == avail_white) && (paths_white < min_white);
+        only_min_path_avail_black = (min_black == avail_black) && (paths_black < min_black);
+
+        black_used_max_paths = (max_black == paths_black) && (avail_white == max_white) && (paths_white < max_white);
+        white_used_max_paths = (max_white == paths_white) && (avail_black == max_black) && (paths_black < max_black);
+
+        fill_paths_white = (only_min_path_avail_white || black_used_max_paths);
+        fill_paths_black = (only_min_path_avail_black || white_used_max_paths);
+
+        fill_walls_white = (paths_white == max_white) && (avail_white > max_white);
+        fill_walls_black = (paths_black == max_black) && (avail_black > max_black);
+
+        if (fill_paths_white || fill_paths_black || fill_walls_white || fill_walls_black) {
+            for (n=0;n<group_count;n++) {
+                x = group_cells[n]%w; y=group_cells[n]/w;
+                edges[0] = state->edge_h + y*w + x;
+                edges[1] = edges[0] + w;
+                edges[2] = state->edge_v + y*(w+1) + x;
+                edges[3] = edges[2] + 1;
+                if ((fill_paths_white && parity(x,y)) ||
+                    (fill_paths_black && !parity(x,y))) {
+                    if ((*edges[0] == FLAG_NONE) && 
+                        (y == by || dsf_canonify(dsf, x+(y-1)*w) != f)) {
+                        *edges[0] = FLAG_PATH;
+                    }
+                    if ((*edges[1] == FLAG_NONE) && 
+                        (y == by+bh-1 || dsf_canonify(dsf, x+(y+1)*w) != f)) {
+                        *edges[1] = FLAG_PATH;
+                    }
+                    if ((*edges[2] == FLAG_NONE) && 
+                        (x == bx || dsf_canonify(dsf, (x-1)+y*w) != f)) {
+                        *edges[2] = FLAG_PATH;
+                    }
+                    if ((*edges[3] == FLAG_NONE) && 
+                        (x == bx+bw-1 || dsf_canonify(dsf, (x+1)+y*w) != f)) {
+                        *edges[3] = FLAG_PATH;
+                    }
+                }
+                if ((fill_walls_white && parity(x,y)) ||
+                    (fill_walls_black && !parity(x,y))) {
+                    if ((*edges[0] == FLAG_NONE) && 
+                        (y == by || dsf_canonify(dsf, x+(y-1)*w) != f)) {
+                        *edges[0] = FLAG_WALL;
+                    }
+                    if ((*edges[1] == FLAG_NONE) && 
+                        (y == by+bh-1 || dsf_canonify(dsf, x+(y+1)*w) != f)) {
+                        *edges[1] = FLAG_WALL;
+                    }
+                    if ((*edges[2] == FLAG_NONE) && 
+                        (x == bx || dsf_canonify(dsf, (x-1)+y*w) != f)) {
+                        *edges[2] = FLAG_WALL;
+                    }
+                    if ((*edges[3] == FLAG_NONE) && 
+                        (x == bx+bw-1 || dsf_canonify(dsf, (x+1)+y*w) != f)) {
+                        *edges[3] = FLAG_WALL;
+                    }
+                }
+            }
+            result = true;
+            goto finish;
+        }
+    }
+    
+finish:
+    sfree(group_cells);
+    sfree(processed_cells);
+    sfree(dsf);
+    return result;
+}
+
+static bool solve_parity(game_state *state, struct solver_scratch *scratch) {
+    int w,h,x,y;
+    scratch->island_counter = 0;
+    for (h=state->h;h>=2;h--) 
+    for (w=state->w;w>=2;w--) {
+        for (y=0;y<=state->h-h;y++)
+        for (x=0;x<=state->w-w;x++) {
+            if (!scratch->done_islands[scratch->island_counter])
+                if (parity_check_block(state, scratch, x, y, w, h)) return true;
+            scratch->island_counter++;
+        }
+    }
+    return false;
+}
+
 static int walls_solve(game_state *state, int difficulty) {
+    int i;
+    int w = state->w;
+    int h = state->h;
+    int islands = (((w-1)*(w))*((h-1)*(h)))/4;
     struct solver_scratch *scratch = snew(struct solver_scratch);
-    scratch->loopdsf = snewn(state->w*state->h, int);
-    dsf_init(scratch->loopdsf, state->w*state->h);
+
+    scratch->loopdsf = snewn(w*h, int);
+    dsf_init(scratch->loopdsf, w*h);
+    scratch->done_islands = snewn(islands, bool);
     scratch->difficulty = difficulty;
+    for (i=0;i<islands;i++) scratch->done_islands[i] = false;
 
     while(true) {
         if (difficulty >= DIFF_EASY   && solve_single_cells(state, scratch)) continue;
+        if (check_solution(state, false) == SOLVED) break;
         if (difficulty >= DIFF_NORMAL && solve_loops(state, scratch)) continue;
+        if (check_solution(state, false) == SOLVED) break;
         if (difficulty >= DIFF_TRICKY && solve_partitions(state, scratch)) continue;
+        if (check_solution(state, false) == SOLVED) break;
+        if (difficulty >= DIFF_HARD && solve_parity(state, scratch)) continue;
         break;
     }
 
+    sfree(scratch->done_islands);
     sfree(scratch->loopdsf);
     sfree(scratch);
     return check_solution(state, false);
@@ -836,9 +1073,9 @@ static void count_edges(unsigned char edge, char **e, int *erun, int *wrun) {
         *wrun = *erun = 0;
     }
     else if ((edge & FLAG_WALL) && *erun > 0) {
-        while (*erun >= 26) {
+        while (*erun >= 25) {
             *(*e)++ = 'z';
-            *erun -= 26;
+            *erun -= 25;
         }
         if (*erun == 0) *wrun = 0;
         else {
@@ -953,6 +1190,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     for (x=0;x<w;x++)
         count_edges(new->edge_h[y*w+x], &e, &erun, &wrun);
     if(wrun > 0) e += sprintf(e, "%d", wrun);
+    while (erun >= 25) {*e++ = 'z'; erun -= 25; }
     if(erun > 0) *e++ = ('a' + erun - 1);
     *e++ = ',';
     erun = wrun = 0;
@@ -960,6 +1198,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     for (x=0;x<=w;x++) 
         count_edges(new->edge_v[y*(w+1)+x], &e, &erun, &wrun);
     if(wrun > 0) e += sprintf(e, "%d", wrun);
+    while (erun >= 25) {*e++ = 'z'; erun -= 25; }
     if(erun > 0) *e++ = ('a' + erun - 1);
     *e++ = '\0';
 
@@ -991,13 +1230,21 @@ static game_state *new_game(midend *me, const game_params *params,
             }
             while (*desc && isdigit((unsigned char)*desc)) desc++;
         }
-        else if(*desc >= 'a' && *desc <= 'z') {
+        else if(*desc == 'z') {
+            for (c=25;c>0;c--) {
+                if (fh) state->edge_h[i] = FLAG_NONE;
+                else    state->edge_v[i] = FLAG_NONE;
+                i++;
+            }
+            desc++;
+        }
+        else if(*desc >= 'a' && *desc < 'z') {
             for (c = *desc - 'a' + 1; c > 0; c--) {
                 if (fh) state->edge_h[i] = FLAG_NONE;
                 else    state->edge_v[i] = FLAG_NONE;
                 i++;
             }
-            if (*desc < 'z' && i < (fh ? w*(h+1) : (w+1)*h)) {
+            if (i < (fh ? w*(h+1) : (w+1)*h)) {
                 if (fh) state->edge_h[i] = FLAG_WALL | FLAG_FIXED;
                 else    state->edge_v[i] = FLAG_WALL | FLAG_FIXED;
                 i++;
@@ -1030,7 +1277,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     int voff = w*(h+1);
     
     game_state *solve_state = dup_game(state);
-    walls_solve(solve_state, DIFF_TRICKY);
+    walls_solve(solve_state, DIFF_HARD);
     p += sprintf(p, "S");
     for (i = 0; i < w*(h+1); i++) {
         if (solve_state->edge_h[i] == FLAG_WALL)
