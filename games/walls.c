@@ -86,11 +86,14 @@ struct game_state {
 #define DEFAULT_PRESET 1
 static const struct game_params walls_presets[] = {
     {4, 4,  DIFF_EASY},
-    {4, 4,  DIFF_NORMAL},
-    {6, 6,  DIFF_NORMAL},
-    {8, 8,  DIFF_NORMAL},
-    {10, 10, DIFF_NORMAL},
-    {10, 10, DIFF_TRICKY}
+    {4, 5,  DIFF_NORMAL},
+    {4, 5,  DIFF_TRICKY},
+    {6, 7,  DIFF_NORMAL},
+    {6, 7,  DIFF_TRICKY},
+    {6, 7,  DIFF_HARD},
+    {7, 8, DIFF_NORMAL},
+    {7, 8, DIFF_TRICKY},
+    {7, 8, DIFF_HARD}
 };
 
 static game_params *default_params(void) {
@@ -198,8 +201,10 @@ static game_params *custom_params(const config_item *cfg) {
 static const char *validate_params(const game_params *params, bool full) {
     if (params->w < 3) return "Width must be at least three";
     if (params->h < 3) return "Height must be at least three";
-    if (params->difficulty >= DIFF_HARD && (params->w > 8 || params->h > 9))
-        return "Hard puzzles should be size 8x9 maximum";
+    if (params->difficulty >= DIFF_HARD && (params->w < 4 || params->h < 4))
+        return "Hard puzzles should be at least size 4x4";
+    if (params->difficulty >= DIFF_HARD && (params->w > 7 || params->h > 8))
+        return "Hard puzzles should be maximum size 7x8";
     if (params->difficulty < 0 || params->difficulty >= DIFFCOUNT)
         return "Unknown difficulty level";
     return NULL;
@@ -441,6 +446,7 @@ struct solver_scratch {
     int *loopdsf;
     bool *done_islands;
     int island_counter;
+    bool exits_found;
     int difficulty;
 };
 
@@ -494,7 +500,7 @@ static bool solve_single_cells(game_state *state, struct solver_scratch *scratch
     return changed;
 }
 
-static bool solve_loops(game_state *state, struct solver_scratch *scratch) {
+static bool solve_loop_ladders(game_state *state, struct solver_scratch *scratch) {
     int i,x,y,p,idx;
     unsigned char *edges[4];
     unsigned char wall_count, free_count;
@@ -677,7 +683,7 @@ static bool parity_check_block(game_state *state, struct solver_scratch *scratch
     }
 
     if (scratch->done_islands[scratch->island_counter]) {
-        goto finish;
+        goto finish_parity;
     }
 
     /* Process each separate dsf group */
@@ -832,11 +838,11 @@ static bool parity_check_block(game_state *state, struct solver_scratch *scratch
                 }
             }
             result = true;
-            goto finish;
+            goto finish_parity;
         }
     }
     
-finish:
+finish_parity:
     sfree(group_cells);
     sfree(processed_cells);
     sfree(dsf);
@@ -858,6 +864,238 @@ static bool solve_parity(game_state *state, struct solver_scratch *scratch) {
     return false;
 }
 
+static bool solve_early_exits(game_state *state, struct solver_scratch *scratch) {
+    int i;
+    int w = state->w;
+    int h = state->h;
+    int exit_count;
+
+    if (scratch->exits_found) return false;
+
+    exit_count = 0;
+    for (i=0;i<w;i++)
+        if ((state->edge_h[i] & FLAG_PATH) > 0x00) exit_count++;
+    for (i=w*h;i<w*(h+1);i++)
+        if ((state->edge_h[i] & FLAG_PATH) > 0x00) exit_count++;
+    for (i=0;i<(w+1)*h;i+=(w+1))
+        if ((state->edge_v[i] & FLAG_PATH) > 0x00) exit_count++;
+    for (i=w;i<(w+1)*h;i+=(w+1))
+        if ((state->edge_v[i] & FLAG_PATH) > 0x00) exit_count++;
+
+    if (exit_count == 2) {
+        for (i=0;i<w;i++) {
+            if (state->edge_h[i] == FLAG_NONE) state->edge_h[i] = FLAG_WALL;
+        }
+        for (i=w*h;i<w*(h+1);i++) {
+            if (state->edge_h[i] == FLAG_NONE) state->edge_h[i] = FLAG_WALL;
+        }
+        for (i=0;i<(w+1)*h;i+=(w+1)) {
+            if (state->edge_v[i] == FLAG_NONE) state->edge_v[i] = FLAG_WALL;
+        }
+        for (i=w;i<(w+1)*h;i+=(w+1)) {
+            if (state->edge_v[i] == FLAG_NONE) state->edge_v[i] = FLAG_WALL;
+        }
+        scratch->exits_found = true;
+        return true;
+    }
+    return false;
+}
+
+static bool check_for_loops(game_state *state) {
+    int i,x,y;
+    int w = state->w;
+    int h = state->h;
+    bool result = false;
+    unsigned char *edges[4];
+
+    gridstate *grid;
+    struct findloopstate *fls;
+    struct neighbour_ctx ctx;
+
+    grid = snew(gridstate);
+    grid->faces = snewn(w*h, unsigned char);
+    grid->w = w; grid->h = h;
+
+    for (y=0;y<h;y++)
+    for (x=0;x<w;x++) {
+        i = x+y*w;
+        edges[0] = state->edge_h + y*w + x;
+        edges[1] = edges[0] + w;
+        edges[2] = state->edge_v + y*(w+1) + x;
+        edges[3] = edges[2] + 1;
+        grid->faces[i] = BLANK;
+        if ((*edges[0] & FLAG_PATH) > 0x00) grid->faces[i] |= U;
+        if ((*edges[1] & FLAG_PATH) > 0x00) grid->faces[i] |= D;
+        if ((*edges[2] & FLAG_PATH) > 0x00) grid->faces[i] |= L;
+        if ((*edges[3] & FLAG_PATH) > 0x00) grid->faces[i] |= R;
+    }
+    fls = findloop_new_state(w*h);
+    ctx.grid = grid;
+    if (findloop_run(fls, w*h, neighbour, &ctx)) {
+        for (x = 0; x < w; x++) {
+            for (y = 0; y < h; y++) {
+                int u, v;
+                u = y*w + x;
+                for (v = neighbour(u, &ctx); v >= 0; v = neighbour(-1, &ctx)) {
+                    if (findloop_is_loop_edge(fls, u, v)) {
+                        result = true;
+                        goto finish_loopcheck;
+                    }
+                }
+            }
+        }
+    }
+
+finish_loopcheck:
+
+    findloop_free_state(fls);
+    sfree(grid->faces);
+    sfree(grid);
+    return result;
+}
+
+static bool solve_loops(game_state *state, struct solver_scratch *scratch) {
+    int i;
+    int w = state->w;
+    int h = state->h;
+
+    for (i=0;i<w*(h+1);i++) {
+        if (state->edge_h[i] == FLAG_NONE) {
+            state->edge_h[i] = FLAG_PATH;
+            if (check_for_loops(state)) {
+                state->edge_h[i] = FLAG_WALL;
+                return true;
+            }
+            state->edge_h[i] = FLAG_NONE;
+        }
+    }
+    for (i=0;i<(w+1)*h;i++) {
+        if (state->edge_v[i] == FLAG_NONE) {
+            state->edge_v[i] = FLAG_PATH;
+            if (check_for_loops(state)) {
+                state->edge_v[i] = FLAG_WALL;
+                return true;
+            }
+            state->edge_v[i] = FLAG_NONE;
+        }
+    }
+
+    return false;
+}
+
+static bool solve_exit_parity(game_state *state, struct solver_scratch *scratch) {
+    int i,x,y;
+    int w = state->w;
+    int h = state->h;
+    int avail_white, avail_black;
+    int paths_white, paths_black;
+    int needed_white, needed_black;
+    bool only_min_path_avail_white, only_min_path_avail_black;
+    bool black_used_max_paths, white_used_max_paths;
+    bool fill_paths_white, fill_paths_black;
+    bool fill_walls_white, fill_walls_black;
+
+    avail_white = avail_black = 0;
+    paths_white = paths_black = 0;
+
+    for (i=0;i<w;i++) {
+        x = i; y = 0;
+        if ((state->edge_h[i] & FLAG_WALL) == 0)         parity(x,y) ? avail_white++ : avail_black++;
+        if ((state->edge_h[i] & FLAG_PATH) == FLAG_PATH) parity(x,y) ? paths_white++ : paths_black++;
+    }
+    for (i=w*h;i<w*(h+1);i++) {
+        x = i-w*h; y = h-1;
+        if ((state->edge_h[i] & FLAG_WALL) == 0)         parity(x,y) ? avail_white++ : avail_black++;
+        if ((state->edge_h[i] & FLAG_PATH) == FLAG_PATH) parity(x,y) ? paths_white++ : paths_black++;
+    }
+    for (i=0;i<(w+1)*h;i+=(w+1)) {
+        x = 0; y = i/(w+1);
+        if ((state->edge_v[i] & FLAG_WALL) == 0)         parity(x,y) ? avail_white++ : avail_black++;
+        if ((state->edge_v[i] & FLAG_PATH) == FLAG_PATH) parity(x,y) ? paths_white++ : paths_black++;
+    }
+    for (i=w;i<(w+1)*h;i+=(w+1)) {
+        x = w-1; y = i/(w+1);
+        if ((state->edge_v[i] & FLAG_WALL) == 0)         parity(x,y) ? avail_white++ : avail_black++;
+        if ((state->edge_v[i] & FLAG_PATH) == FLAG_PATH) parity(x,y) ? paths_white++ : paths_black++;
+    }
+
+    needed_white = (w*h) % 2 == 0 ? 1 : 0;
+    needed_black = (w*h) % 2 == 0 ? 1 : 2;
+
+    only_min_path_avail_white = (needed_white == avail_white) && (paths_white < needed_white);
+    only_min_path_avail_black = (needed_black == avail_black) && (paths_black < needed_black);
+
+    black_used_max_paths = (needed_black == paths_black) && 
+                           (avail_white == needed_white) && 
+                           (paths_white < needed_white);
+    white_used_max_paths = (needed_white == paths_white) && 
+                           (avail_black == needed_black) &&
+                           (paths_black < needed_black);
+
+    fill_paths_white = (only_min_path_avail_white || black_used_max_paths);
+    fill_paths_black = (only_min_path_avail_black || white_used_max_paths);
+
+    fill_walls_white = (paths_white == needed_white) && (avail_white > needed_white);
+    fill_walls_black = (paths_black == needed_black) && (avail_black > needed_black);
+
+    if (fill_paths_white || fill_paths_black || fill_walls_white || fill_walls_black) {
+        for (i=0;i<w;i++) {
+            x = i; y = 0;
+            if ( (state->edge_h[i] == FLAG_NONE) && 
+               ( (fill_paths_white && parity(x,y)) ||
+                 (fill_paths_black && !parity(x,y)) )) { 
+                    state->edge_h[i] = FLAG_PATH;
+            }
+            if ( (state->edge_h[i] == FLAG_NONE) && 
+               ( (fill_walls_white && parity(x,y)) ||
+                 (fill_walls_black && !parity(x,y)) )) { 
+                    state->edge_h[i] = FLAG_WALL;
+            }
+        }
+        for (i=w*h;i<w*(h+1);i++) {
+            x = i-w*h; y = h-1;
+            if ( (state->edge_h[i] == FLAG_NONE) && 
+               ( (fill_paths_white && parity(x,y)) ||
+                 (fill_paths_black && !parity(x,y)) )) { 
+                    state->edge_h[i] = FLAG_PATH;
+            }
+            if ( (state->edge_h[i] == FLAG_NONE) && 
+               ( (fill_walls_white && parity(x,y)) ||
+                 (fill_walls_black && !parity(x,y)) )) { 
+                    state->edge_h[i] = FLAG_WALL;
+            }
+        }
+        for (i=0;i<(w+1)*h;i+=(w+1)) {
+            x = 0; y = i/(w+1);
+            if ( (state->edge_v[i] == FLAG_NONE) && 
+               ( (fill_paths_white && parity(x,y)) ||
+                 (fill_paths_black && !parity(x,y)) )) { 
+                    state->edge_v[i] = FLAG_PATH;
+            }
+            if ( (state->edge_v[i] == FLAG_NONE) && 
+               ( (fill_walls_white && parity(x,y)) ||
+                 (fill_walls_black && !parity(x,y)) )) { 
+                    state->edge_v[i] = FLAG_WALL;
+            }
+        }
+        for (i=w;i<(w+1)*h;i+=(w+1)) {
+            x = w-1; y = (i-w)/(w+1);
+            if ( (state->edge_v[i] == FLAG_NONE) && 
+               ( (fill_paths_white && parity(x,y)) ||
+                 (fill_paths_black && !parity(x,y)) )) { 
+                    state->edge_v[i] = FLAG_PATH;
+            }
+            if ( (state->edge_v[i] == FLAG_NONE) && 
+               ( (fill_walls_white && parity(x,y)) ||
+                 (fill_walls_black && !parity(x,y)) )) { 
+                    state->edge_v[i] = FLAG_WALL;
+            }
+        }
+        return true;
+    }
+
+    return false;
+}
 static int walls_solve(game_state *state, int difficulty) {
     int i;
     int w = state->w;
@@ -868,17 +1106,21 @@ static int walls_solve(game_state *state, int difficulty) {
     scratch->loopdsf = snewn(w*h, int);
     dsf_init(scratch->loopdsf, w*h);
     scratch->done_islands = snewn(islands, bool);
+    scratch->exits_found = false;
     scratch->difficulty = difficulty;
     for (i=0;i<islands;i++) scratch->done_islands[i] = false;
 
     while(true) {
         if (difficulty >= DIFF_EASY   && solve_single_cells(state, scratch)) continue;
+        if (difficulty >= DIFF_EASY   && solve_early_exits(state, scratch)) continue;
         if (check_solution(state, false) == SOLVED) break;
+        if (difficulty >= DIFF_NORMAL && solve_loop_ladders(state, scratch)) continue;
         if (difficulty >= DIFF_NORMAL && solve_loops(state, scratch)) continue;
         if (check_solution(state, false) == SOLVED) break;
         if (difficulty >= DIFF_TRICKY && solve_partitions(state, scratch)) continue;
+        if (difficulty >= DIFF_TRICKY && solve_exit_parity(state, scratch)) continue;
         if (check_solution(state, false) == SOLVED) break;
-        if (difficulty >= DIFF_HARD && solve_parity(state, scratch)) continue;
+        if (difficulty >= DIFF_HARD   && solve_parity(state, scratch)) continue;
         break;
     }
 
