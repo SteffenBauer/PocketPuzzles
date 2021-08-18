@@ -203,8 +203,8 @@ static const char *validate_params(const game_params *params, bool full) {
     if (params->h < 3) return "Height must be at least three";
     if (params->difficulty >= DIFF_HARD && (params->w < 4 || params->h < 4))
         return "Hard puzzles should be at least size 4x4";
-    if (params->difficulty >= DIFF_HARD && (params->w > 7 || params->h > 8))
-        return "Hard puzzles should be maximum size 7x8";
+    if (params->difficulty >= DIFF_HARD && (params->w > 8 || params->h > 9))
+        return "Hard puzzles should be maximum size 8x9";
     if (params->difficulty < 0 || params->difficulty >= DIFFCOUNT)
         return "Unknown difficulty level";
     return NULL;
