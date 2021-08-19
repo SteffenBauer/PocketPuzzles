@@ -85,7 +85,7 @@ struct game_state {
 
 #define DEFAULT_PRESET 1
 static const struct game_params walls_presets[] = {
-    {4, 4,  DIFF_EASY},
+    {4, 5,  DIFF_EASY},
     {4, 5,  DIFF_NORMAL},
     {4, 5,  DIFF_TRICKY},
     {6, 7,  DIFF_NORMAL},
@@ -1114,10 +1114,10 @@ static int walls_solve(game_state *state, int difficulty) {
         if (difficulty >= DIFF_EASY   && solve_single_cells(state, scratch)) continue;
         if (difficulty >= DIFF_EASY   && solve_early_exits(state, scratch)) continue;
         if (check_solution(state, false) == SOLVED) break;
-        if (difficulty >= DIFF_NORMAL && solve_loop_ladders(state, scratch)) continue;
         if (difficulty >= DIFF_NORMAL && solve_loops(state, scratch)) continue;
+        if (difficulty >= DIFF_NORMAL && solve_partitions(state, scratch)) continue;
         if (check_solution(state, false) == SOLVED) break;
-        if (difficulty >= DIFF_TRICKY && solve_partitions(state, scratch)) continue;
+        if (difficulty >= DIFF_TRICKY && solve_loop_ladders(state, scratch)) continue;
         if (difficulty >= DIFF_TRICKY && solve_exit_parity(state, scratch)) continue;
         if (check_solution(state, false) == SOLVED) break;
         if (difficulty >= DIFF_HARD   && solve_parity(state, scratch)) continue;
@@ -1338,6 +1338,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     int erun, wrun;
     int w = params->w;
     int h = params->h;
+    int difficulty = params->difficulty;
     int x,y;
 
     int i;
@@ -1349,10 +1350,12 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     int *wallidx;
     int result;
 
-    borderreduce = 2*w+2*h;
     wallidx = snewn(ws, int);
     
     while (true) {
+        borderreduce = difficulty == DIFF_EASY   ? random_upto(rs, 4) :
+                       difficulty == DIFF_NORMAL ? random_upto(rs, 8) :
+                                                   2*w+2*h;
         wallnum = bordernum = 0;
         new = new_state(params);
         generate_hamiltonian_path(new, rs);
@@ -1404,7 +1407,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
             else       tmp->edge_v[wi-vo] = FLAG_NONE;
             
             /* It is, remove this wall permanently */
-            if (walls_solve(tmp, params->difficulty) == SOLVED) {
+            if (walls_solve(tmp, difficulty) == SOLVED) {
                 if (wi<vo) new->edge_h[wi]    = FLAG_NONE;
                 else       new->edge_v[wi-vo] = FLAG_NONE;
                 if (wi<vo && (wi/w == 0 || wi/w == h)) bordernum++;
@@ -1413,12 +1416,13 @@ static char *new_game_desc(const game_params *params, random_state *rs,
             free_state(tmp);
         }
 
-        if (params->difficulty == DIFF_EASY) break;
+        if (difficulty == DIFF_EASY) break;
         tmp = dup_state(new);
-        result = walls_solve(tmp, params->difficulty-1);
+        result = walls_solve(tmp, difficulty-1);
         free_state(tmp);
         if (result == SOLVED) {
             free_state(new);
+            if (difficulty == DIFF_HARD && (w>7 || h>8)) difficulty--;
             continue;
         }
         break;
