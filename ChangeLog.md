@@ -5,6 +5,7 @@
 ### Added
 * *Filling*: One-click fill
 * *Filling*: Undo of cell highlighting during dragging
+* *Solo*: Manual mode; for transferring puzzles from newspapers to play them on the app
 
 ### Changed
 * Increase space between menu buttons

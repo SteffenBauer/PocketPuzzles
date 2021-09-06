@@ -124,6 +124,7 @@ enum {
     COL_USER,
     COL_HIGHLIGHT,
     COL_NUMHIGHLIGHT,
+    COL_FILLHIGHLIGHT,
     COL_BGERROR,
     COL_ERROR,
     COL_PENCIL,
@@ -207,6 +208,7 @@ struct game_params {
     int c, r, symm, diff, kdiff;
     bool xtype;                /* require all digits in X-diagonals */
     bool killer;
+    bool manual;
 };
 
 struct block_structure {
@@ -245,12 +247,14 @@ struct game_state {
     int cr;
     struct block_structure *blocks;
     struct block_structure *kblocks;   /* Blocks for killer puzzles.  */
-    bool xtype, killer;
+    bool xtype, killer, manual;
     digit *grid, *kgrid;
     bool *pencil;                      /* c*r*c*r elements */
     bool *immutable;                   /* marks which digits are clues */
-    bool completed, cheated;
+    bool completed, cheated, fixed;
 };
+
+static midend *current_midend;
 
 static game_params *default_params(void)
 {
@@ -259,6 +263,7 @@ static game_params *default_params(void)
     ret->c = ret->r = 3;
     ret->xtype = false;
     ret->killer = false;
+    ret->manual = false;
     ret->symm = SYMM_NONE;           /* a plausible default */
     ret->diff = DIFF_INTERSECT;           /* so is this */
     ret->kdiff = DIFF_KINTERSECT;      /* so is this */
@@ -284,17 +289,18 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
         const char *title;
         game_params params;
     } const presets[] = {
-        { "3x3 Basic", { 3, 3, SYMM_NONE, DIFF_SIMPLE, DIFF_KINTERSECT, false, false } },
-        { "3x3 Intermediate", { 3, 3, SYMM_NONE, DIFF_INTERSECT, DIFF_KINTERSECT, false, false } },
-        { "3x3 Advanced", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, false } },
-        { "3x3 Extreme", { 3, 3, SYMM_NONE, DIFF_EXTREME, DIFF_KINTERSECT, false, false } },
-        { "3x3 Advanced X", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, true, false } },
-        { "2x3 Advanced Killer", { 2, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, true } },
-        { "6 Jigsaw Intermediate", { 6, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KINTERSECT, false, false } },
-        { "6 Jigsaw Advanced", { 6, 1, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, false } },
-        { "9 Jigsaw Intermediate", { 9, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KINTERSECT, false, false } },
-        { "9 Jigsaw Advanced", { 9, 1, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, false } },
-        { "9 Jigsaw Extreme", { 9, 1, SYMM_NONE, DIFF_EXTREME, DIFF_KINTERSECT, false, false } },
+        { "3x3 Manual", { 3, 3, SYMM_NONE, DIFF_BLOCK, DIFF_KMINMAX, false, false, true } },
+        { "3x3 Basic", { 3, 3, SYMM_NONE, DIFF_SIMPLE, DIFF_KINTERSECT, false, false, false } },
+        { "3x3 Intermediate", { 3, 3, SYMM_NONE, DIFF_INTERSECT, DIFF_KINTERSECT, false, false, false } },
+        { "3x3 Advanced", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, false, false } },
+        { "3x3 Extreme", { 3, 3, SYMM_NONE, DIFF_EXTREME, DIFF_KINTERSECT, false, false, false } },
+        { "3x3 Advanced X", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, true, false, false } },
+        { "2x3 Advanced Killer", { 2, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, true, false } },
+        { "6 Jigsaw Intermediate", { 6, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KINTERSECT, false, false, false } },
+        { "6 Jigsaw Advanced", { 6, 1, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, false, false } },
+        { "9 Jigsaw Intermediate", { 9, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KINTERSECT, false, false, false } },
+        { "9 Jigsaw Advanced", { 9, 1, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, false, false } },
+        { "9 Jigsaw Extreme", { 9, 1, SYMM_NONE, DIFF_EXTREME, DIFF_KINTERSECT, false, false, false } },
     };
 
     if (i < 0 || i >= lenof(presets))
@@ -317,23 +323,25 @@ static void decode_params(game_params *ret, char const *string)
     if (*string == 'x') {
         string++;
         ret->r = atoi(string);
-    seen_r = true;
-    while (*string && isdigit((unsigned char)*string)) string++;
+        seen_r = true;
+        while (*string && isdigit((unsigned char)*string)) string++;
     }
     while (*string) {
         if (*string == 'j') {
-        string++;
-        if (seen_r)
-        ret->c *= ret->r;
-        ret->r = 1;
-    } else if (*string == 'x') {
-        string++;
-        ret->xtype = true;
-    } else if (*string == 'k') {
-        string++;
-        ret->killer = true;
-        ret->kdiff = DIFF_KINTERSECT;
-    } else if (*string == 'r' || *string == 'm' || *string == 'a') {
+            string++;
+            if (seen_r) ret->c *= ret->r;
+            ret->r = 1;
+        } else if (*string == 'x') {
+            string++;
+            ret->xtype = true;
+        } else if (*string == 'k') {
+            string++;
+            ret->killer = true;
+            ret->kdiff = DIFF_KINTERSECT;
+        } else if (*string == 'y') {
+            string++;
+            ret->manual = true;
+        } else if (*string == 'r' || *string == 'm' || *string == 'a') {
             int sn, sc;
             bool sd;
             sc = *string++;
@@ -381,13 +389,15 @@ static char *encode_params(const game_params *params, bool full)
     char str[80];
 
     if (params->r > 1)
-    sprintf(str, "%dx%d", params->c, params->r);
+        sprintf(str, "%dx%d", params->c, params->r);
     else
-    sprintf(str, "%dj", params->c);
+        sprintf(str, "%dj", params->c);
     if (params->xtype)
-    strcat(str, "x");
+        strcat(str, "x");
     if (params->killer)
-    strcat(str, "k");
+        strcat(str, "k");
+    if (params->manual)
+        strcat(str, "y");
 
     if (full) {
         switch (params->symm) {
@@ -417,7 +427,7 @@ static config_item *game_configure(const game_params *params)
     config_item *ret;
     char buf[80];
 
-    ret = snewn(8, config_item);
+    ret = snewn(9, config_item);
 
     ret[0].name = "Columns of sub-blocks";
     ret[0].type = C_STRING;
@@ -441,20 +451,24 @@ static config_item *game_configure(const game_params *params)
     ret[4].type = C_BOOLEAN;
     ret[4].u.boolean.bval = params->killer;
 
-    ret[5].name = "Symmetry";
-    ret[5].type = C_CHOICES;
-    ret[5].u.choices.choicenames = ":None:2-way rot:4-way rot:2-way mirror:"
+    ret[5].name = "Manual mode";
+    ret[5].type = C_BOOLEAN;
+    ret[5].u.boolean.bval = params->manual;
+
+    ret[6].name = "Symmetry";
+    ret[6].type = C_CHOICES;
+    ret[6].u.choices.choicenames = ":None:2-way rot:4-way rot:2-way mirror:"
         "2-way diag mirror:4-way mirror:4-way diag mirror:"
         "8-way mirror";
-    ret[5].u.choices.selected = params->symm;
+    ret[6].u.choices.selected = params->symm;
 
-    ret[6].name = "Difficulty";
-    ret[6].type = C_CHOICES;
-    ret[6].u.choices.choicenames = ":Trivial:Basic:Intermediate:Advanced:Extreme:Unreasonable";
-    ret[6].u.choices.selected = params->diff;
+    ret[7].name = "Difficulty";
+    ret[7].type = C_CHOICES;
+    ret[7].u.choices.choicenames = ":Trivial:Basic:Intermediate:Advanced:Extreme:Unreasonable";
+    ret[7].u.choices.selected = params->diff;
 
-    ret[7].name = NULL;
-    ret[7].type = C_END;
+    ret[8].name = NULL;
+    ret[8].type = C_END;
 
     return ret;
 }
@@ -471,8 +485,9 @@ static game_params *custom_params(const config_item *cfg)
     ret->r = 1;
     }
     ret->killer = cfg[4].u.boolean.bval;
-    ret->symm = cfg[5].u.choices.selected;
-    ret->diff = cfg[6].u.choices.selected;
+    ret->manual = cfg[5].u.boolean.bval;
+    ret->symm = cfg[6].u.choices.selected;
+    ret->diff = cfg[7].u.choices.selected;
     ret->kdiff = DIFF_KINTERSECT;
 
     return ret;
@@ -480,6 +495,8 @@ static game_params *custom_params(const config_item *cfg)
 
 static const char *validate_params(const game_params *params, bool full)
 {
+    if (params->manual && (params->c != 3 || params->r != 3 || params->xtype || params->killer))
+        return "Manual mode only for regular 3x3 grids";
     if (params->c < 2)
         return "Both dimensions must be at least 2";
     if (params->c > ORDER_MAX || params->r > ORDER_MAX)
@@ -3269,32 +3286,37 @@ static char *new_game_desc(const game_params *params, random_state *rs,
          * Generate a random solved state, starting by
          * constructing the block structure.
          */
-    if (r == 1) {               /* jigsaw mode */
-        int *dsf = divvy_rectangle(cr, cr, cr, rs);
+        if (r == 1) {               /* jigsaw mode */
+            int *dsf = divvy_rectangle(cr, cr, cr, rs);
 
-        dsf_to_blocks (dsf, blocks, cr, cr);
+            dsf_to_blocks (dsf, blocks, cr, cr);
 
-        sfree(dsf);
-    } else {               /* basic Sudoku mode */
-        for (y = 0; y < cr; y++)
-        for (x = 0; x < cr; x++)
-            blocks->whichblock[y*cr+x] = (y/c) * c + (x/r);
-    }
-    make_blocks_from_whichblock(blocks);
+            sfree(dsf);
+        } else {               /* basic Sudoku mode */
+            for (y = 0; y < cr; y++)
+            for (x = 0; x < cr; x++)
+                blocks->whichblock[y*cr+x] = (y/c) * c + (x/r);
+        }
+        make_blocks_from_whichblock(blocks);
 
-    if (params->killer) {
+        if (params->manual) {
+            memset(grid, 0, cr*cr);
+            break;
+        }
+
+        if (params->killer) {
             if (kblocks) free_block_structure(kblocks);
-        kblocks = gen_killer_cages(cr, rs, params->kdiff > DIFF_KSINGLE);
-    }
+            kblocks = gen_killer_cages(cr, rs, params->kdiff > DIFF_KSINGLE);
+        }
 
         if (!gridgen(cr, blocks, kblocks, params->xtype, grid, rs, area*area))
-        continue;
+            continue;
         assert(check_valid(cr, blocks, kblocks, NULL, params->xtype, grid));
 
-    /*
-     * Save the solved grid in aux.
-     */
-    {
+        /*
+         * Save the solved grid in aux.
+         */
+        {
         /*
          * We might already have written *aux the last time we
          * went round this loop, in which case we should free
@@ -3722,6 +3744,9 @@ static game_state *new_game(midend *me, const game_params *params,
     state->cr = cr;
     state->xtype = params->xtype;
     state->killer = params->killer;
+    state->manual = params->manual;
+    state->fixed = !(state->manual && strcmp(desc, "zzzc") == 0);
+    current_midend = me;
 
     state->grid = snewn(area, digit);
     state->pencil = snewn(area * cr, bool);
@@ -3732,51 +3757,51 @@ static game_state *new_game(midend *me, const game_params *params,
     state->blocks = alloc_block_structure (c, r, area, cr, cr);
 
     if (params->killer) {
-    state->kblocks = alloc_block_structure (c, r, area, cr, area);
-    state->kgrid = snewn(area, digit);
+        state->kblocks = alloc_block_structure (c, r, area, cr, area);
+        state->kgrid = snewn(area, digit);
     } else {
-    state->kblocks = NULL;
-    state->kgrid = NULL;
+        state->kblocks = NULL;
+        state->kgrid = NULL;
     }
     state->completed = state->cheated = false;
 
     desc = spec_to_grid(desc, state->grid, area);
     for (i = 0; i < area; i++)
-    if (state->grid[i] != 0)
-        state->immutable[i] = true;
+        if (state->grid[i] != 0)
+            state->immutable[i] = true;
 
     if (r == 1) {
-    const char *err;
-    int *dsf;
-    assert(*desc == ',');
-    desc++;
-    err = spec_to_dsf(&desc, &dsf, cr, area);
-    assert(err == NULL);
-    dsf_to_blocks(dsf, state->blocks, cr, cr);
-    sfree(dsf);
+        const char *err;
+        int *dsf;
+        assert(*desc == ',');
+        desc++;
+        err = spec_to_dsf(&desc, &dsf, cr, area);
+        assert(err == NULL);
+        dsf_to_blocks(dsf, state->blocks, cr, cr);
+        sfree(dsf);
     } else {
-    int x, y;
+        int x, y;
 
-    for (y = 0; y < cr; y++)
-        for (x = 0; x < cr; x++)
-        state->blocks->whichblock[y*cr+x] = (y/c) * c + (x/r);
+        for (y = 0; y < cr; y++)
+            for (x = 0; x < cr; x++)
+                state->blocks->whichblock[y*cr+x] = (y/c) * c + (x/r);
     }
     make_blocks_from_whichblock(state->blocks);
 
     if (params->killer) {
-    const char *err;
-    int *dsf;
-    assert(*desc == ',');
-    desc++;
-    err = spec_to_dsf(&desc, &dsf, cr, area);
-    assert(err == NULL);
-    dsf_to_blocks(dsf, state->kblocks, cr, area);
-    sfree(dsf);
-    make_blocks_from_whichblock(state->kblocks);
+        const char *err;
+        int *dsf;
+        assert(*desc == ',');
+        desc++;
+        err = spec_to_dsf(&desc, &dsf, cr, area);
+        assert(err == NULL);
+        dsf_to_blocks(dsf, state->kblocks, cr, area);
+        sfree(dsf);
+        make_blocks_from_whichblock(state->kblocks);
 
-    assert(*desc == ',');
-    desc++;
-    desc = spec_to_grid(desc, state->kgrid, area);
+        assert(*desc == ',');
+        desc++;
+        desc = spec_to_grid(desc, state->kgrid, area);
     }
     assert(!*desc);
 
@@ -3791,22 +3816,23 @@ static game_state *dup_game(const game_state *state)
     ret->cr = state->cr;
     ret->xtype = state->xtype;
     ret->killer = state->killer;
+    ret->manual = state->manual;
 
     ret->blocks = state->blocks;
     ret->blocks->refcount++;
 
     ret->kblocks = state->kblocks;
     if (ret->kblocks)
-    ret->kblocks->refcount++;
+        ret->kblocks->refcount++;
 
     ret->grid = snewn(area, digit);
     memcpy(ret->grid, state->grid, area);
 
     if (state->killer) {
-    ret->kgrid = snewn(area, digit);
-    memcpy(ret->kgrid, state->kgrid, area);
+        ret->kgrid = snewn(area, digit);
+        memcpy(ret->kgrid, state->kgrid, area);
     } else
-    ret->kgrid = NULL;
+        ret->kgrid = NULL;
 
     ret->pencil = snewn(area * cr, bool);
     memcpy(ret->pencil, state->pencil, area * cr * sizeof(bool));
@@ -3816,7 +3842,7 @@ static game_state *dup_game(const game_state *state)
 
     ret->completed = state->completed;
     ret->cheated = state->cheated;
-
+    ret->fixed = state->fixed;
     return ret;
 }
 
@@ -3848,10 +3874,23 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     if (ai)
         return dupstr(ai);
 
+    if (state->manual && !currstate->fixed) {
+        *error = "Cannot solve while still in manual entry mode";
+        return NULL;
+    }
+
     grid = snewn(cr*cr, digit);
     memcpy(grid, state->grid, cr*cr);
     dlev.maxdiff = DIFF_RECURSIVE;
     dlev.maxkdiff = DIFF_KINTERSECT;
+
+    if (state->manual) {
+        int i;
+        memcpy(grid, currstate->grid, cr*cr);
+        for (i=0;i<cr*cr;i++)
+            if (!currstate->immutable[i]) grid[i] = 0;
+    }
+
     solver(cr, state->blocks, state->kblocks, state->xtype, grid,
        state->kgrid, &dlev);
 
@@ -3974,21 +4013,32 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     int cr = state->cr;
     int tx, ty;
     char buf[80];
+    bool fixed_entry = state->manual && !state->fixed;
 
     button &= ~MOD_MASK;
 
     tx = (x + TILE_SIZE - BORDER) / TILE_SIZE - 1;
     ty = (y + TILE_SIZE - BORDER) / TILE_SIZE - 1;
 
+    if ((tx < 0 || tx >= cr || ty < 0 || ty >= cr) &&
+        ((button == LEFT_RELEASE && !swapped) || 
+         (button == LEFT_BUTTON && swapped))) {
+        if (fixed_entry) {
+            ui->hshow = false;
+            sprintf(buf, "Y");
+            return dupstr(buf);
+        }
+    }
+
     if (tx >= 0 && tx < cr && ty >= 0 && ty < cr) {
         if (((button == LEFT_RELEASE && !swapped) || 
              (button == LEFT_BUTTON && swapped)) &&
              (!ui->hdrag && ui->hhint >= 0)) {
-            sprintf(buf, "R%d,%d,%d", tx, ty, ui->hhint);
+            sprintf(buf, "%c%d,%d,%d", fixed_entry ? 'F' : 'R', tx, ty, ui->hhint);
             return dupstr(buf);
         }
         else if (button == LEFT_BUTTON) {
-            if (state->immutable[ty*cr+tx]) {
+            if (state->immutable[ty*cr+tx] && !fixed_entry) {
                 ui->hshow = false;
                 ui->hhint = -1;
             } else if (ui->hhint >= 0) {
@@ -4006,6 +4056,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return UI_UPDATE;
         }
         else if (button == RIGHT_BUTTON) {
+            if (fixed_entry) return NULL;
             /*
              * Pencil-mode highlighting for non filled squares.
              */
@@ -4042,8 +4093,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return UI_UPDATE;
     }
 
-    if (button == '+') { sprintf(buf,"+"); return dupstr(buf); }
-    if (button == '-') { sprintf(buf,"-"); return dupstr(buf); }
+    if (!fixed_entry && button == '+') { sprintf(buf,"+"); return dupstr(buf); }
+    if (!fixed_entry && button == '-') { sprintf(buf,"-"); return dupstr(buf); }
 
     if (ui->hshow &&
     ((button >= '0' && button <= '9' && button - '0' <= cr) || button == '\b')) {
@@ -4055,7 +4106,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
          * Can't overwrite this square. This can only happen here
          * if we're using the cursor keys.
          */
-        if (state->immutable[ui->hy*cr+ui->hx])
+        if (state->immutable[ui->hy*cr+ui->hx] && !fixed_entry)
             return NULL;
 
         /*
@@ -4066,7 +4117,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return NULL;
 
         sprintf(buf, "%c%d,%d,%d",
-            (char)(ui->hpencil && n > 0 ? 'P' : 'R'), ui->hx, ui->hy, n);
+            (char)(fixed_entry ? 'F' : ui->hpencil && n > 0 ? 'P' : 'R'), ui->hx, ui->hy, n);
 
         if (!ui->hpencil) ui->hshow = false;
 
@@ -4147,6 +4198,22 @@ static game_state *execute_move(const game_state *from, const char *move)
             }
         return ret;
     }
+    else if (move[0] == 'Y') {
+        char *desc;
+        game_params *params = default_params();
+        params->r = params->c = 3;
+        params->manual = true;
+
+        desc = encode_puzzle_desc(params, from->grid, from->blocks, from->kgrid, from->kblocks);
+        if (current_midend)
+            midend_supersede_game_desc(current_midend, desc, NULL);
+        sfree(desc);
+        sfree(params);
+
+        ret = dup_game(from);
+        ret->fixed = true;
+        return ret;
+    }
     else if (move[0] == 'S') {
         const char *p;
 
@@ -4167,7 +4234,7 @@ static game_state *execute_move(const game_state *from, const char *move)
         }
 
         return ret;
-    } else if ((move[0] == 'P' || move[0] == 'R') &&
+    } else if ((move[0] == 'P' || move[0] == 'R' || move[0] == 'F') &&
         sscanf(move+1, "%d,%d,%d", &x, &y, &n) == 3 &&
         x >= 0 && x < cr && y >= 0 && y < cr && n >= 0 && n <= cr) {
 
@@ -4179,7 +4246,8 @@ static game_state *execute_move(const game_state *from, const char *move)
             ret->pencil[index] = !ret->pencil[index];
         } else {
             ret->grid[y*cr+x] = ret->grid[y*cr+x] == n ? 0 : n;
-
+            if (ret->manual && !ret->fixed)
+                ret->immutable[y*cr+x] = ((ret->grid[y*cr+x] > 0) && (move[0] == 'F'));
             /*
              * We've made a real change to the grid. Check to see
              * if the game has been completed.
@@ -4243,17 +4311,18 @@ static float *game_colours(frontend *fe, int *ncolours)
 
     frontend_default_colour(fe, &ret[COL_BACKGROUND * 3]);
     for (i=0;i<3;i++) {
-        ret[COL_BACKGROUND   * 3 + i] = 1.0F;
-        ret[COL_XDIAGONALS   * 3 + i] = 0.5F;
-        ret[COL_GRID         * 3 + i] = 0.0F;
-        ret[COL_CLUE         * 3 + i] = 0.0F;
-        ret[COL_USER         * 3 + i] = 0.0F;
-        ret[COL_HIGHLIGHT    * 3 + i] = 0.75F;
-        ret[COL_NUMHIGHLIGHT * 3 + i] = 0.75F;
-        ret[COL_BGERROR      * 3 + i] = 0.25F;
-        ret[COL_ERROR        * 3 + i] = 1.0F;
-        ret[COL_PENCIL       * 3 + i] = 0.0F;
-        ret[COL_KILLER       * 3 + i] = 0.0F;
+        ret[COL_BACKGROUND    * 3 + i] = 1.0F;
+        ret[COL_XDIAGONALS    * 3 + i] = 0.5F;
+        ret[COL_GRID          * 3 + i] = 0.0F;
+        ret[COL_CLUE          * 3 + i] = 0.0F;
+        ret[COL_USER          * 3 + i] = 0.0F;
+        ret[COL_HIGHLIGHT     * 3 + i] = 0.75F;
+        ret[COL_NUMHIGHLIGHT  * 3 + i] = 0.75F;
+        ret[COL_FILLHIGHLIGHT * 3 + i] = 0.9F;
+        ret[COL_BGERROR       * 3 + i] = 0.25F;
+        ret[COL_ERROR         * 3 + i] = 1.0F;
+        ret[COL_PENCIL        * 3 + i] = 0.0F;
+        ret[COL_KILLER        * 3 + i] = 0.0F;
     }
 
     *ncolours = NCOLOURS;
@@ -4329,11 +4398,13 @@ static void draw_number(drawing *dr, game_drawstate *ds,
 
     /* background needs erasing */
     draw_rect(dr, cx, cy, cw, ch,
-        ( (hl & 15) == 4          ? COL_NUMHIGHLIGHT :
-        ( (hl & 15) == 1          ? COL_HIGHLIGHT :
-        (((hl & 16) || (hl & 32)) ? COL_BGERROR:
-        (ds->xtype && (ondiag0(y*cr+x) || ondiag1(y*cr+x))) ? COL_XDIAGONALS :
-                                    COL_BACKGROUND))));
+        ( (hl & 15) == 4                 ? COL_NUMHIGHLIGHT :
+        ( (hl & 15) == 1                 ? COL_HIGHLIGHT :
+        (((hl & 16) || (hl & 32))        ? COL_BGERROR:
+        (state->manual && !state->fixed) ? COL_FILLHIGHLIGHT :
+        (ds->xtype && 
+         (ondiag0(y*cr+x) || ondiag1(y*cr+x))) ? COL_XDIAGONALS :
+                                                 COL_BACKGROUND))));
 
     /*
      * Draw the corners of thick lines in corner-adjacent squares,
@@ -4460,7 +4531,7 @@ static void draw_number(drawing *dr, game_drawstate *ds,
         str[0] = state->grid[y*cr+x] + '0';
         if (str[0] > '9') str[0] += 'a' - ('9'+1);
         draw_text(dr, tx + TILE_SIZE/2 - 3, ty + TILE_SIZE/2, FONT_VARIABLE, 
-          state->immutable[y*cr+x] ? TILE_SIZE/2 : TILE_SIZE/2, ALIGN_VCENTRE | ALIGN_HCENTRE,
+          state->immutable[y*cr+x] ? 5*TILE_SIZE/8 : TILE_SIZE/2, ALIGN_VCENTRE | ALIGN_HCENTRE,
           ((hl & 16) || (hl & 32)) ? COL_ERROR : state->immutable[y*cr+x] ? COL_CLUE : COL_USER, str);
     } else {
         int i, j, npencil;
@@ -4650,7 +4721,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 highlight = ui->hpencil ? 2 : 1;
 
             /* Highlight hint number color */
-            if (!ui->hshow && ui->hhint > 0) {
+            if (!ui->hshow && ui->hhint > 0 && state->fixed) {
                 digit p = state->pencil[(y*cr+x) * cr + (ui->hhint -1)];
                 if (((p != 0) && (d == 0)) || (d == ui->hhint))
                     highlight = 4;
@@ -4678,6 +4749,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                     highlight |= 32;
         }
 
+        /* Highlight entry state in manual mode */
+        if (state->manual && !state->fixed)
+            highlight |= 64;
+
         draw_number(dr, ds, state, x, y, highlight);
     }
     }
@@ -4686,8 +4761,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * Update the _entire_ grid if necessary.
      */
     if (!ds->started) {
-    draw_update(dr, 0, 0, SIZE(cr), SIZE(cr));
-    ds->started = true;
+        draw_update(dr, 0, 0, SIZE(cr), SIZE(cr));
+        ds->started = true;
     }
 }
 
@@ -4719,14 +4794,12 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #define thegame solo
 #endif
 
-static const char rules[] = "Each square must be filled in with a digit from 1 to the size of the grid, in such a way that:\n\n"
-"- Every row contains only one occurrence of each digit\n"
-"- Every column contains only one occurrence of each digit\n"
-"- Every block contains only one occurrence of each digit.\n\n"
+static const char rules[] = "In this game, generally known as ’Sudoku’, each square must be filled with a digit from 1 to the size of the grid, such that every row, column, and block must each contain only one occurrence of each digit.\n\n"
 "You are given some of the numbers as clues; your aim is to place the rest of the numbers correctly. This puzzle contains some additional special modes:\n\n"
 "- 'X': Each of the square's two main diagonals contains only one occurrence of each digit.\n"
 "- 'Jigsaw': The sub-blocks are arbitrary shapes.\n"
-"- 'Killer': The grid is divided into ‘cages’ by coloured lines, and for each cage the the sum of all the digits in that cage must be the given number. No digit may appear more than once within a cage, even if the cage crosses the boundaries of existing regions.\n\n\n"
+"- 'Killer': The grid is divided into ‘cages’, and for each cage the the sum of all the digits in that cage must be the given number. No digit may appear more than once within a cage, even if the cage crosses the boundaries of existing regions.\n"
+"- 'Manual': The game starts with an empty grid, where you can enter numbers taken from newspaper sudokus or other sources. When finished, click the border outside the grid to fix the numbers in place, then the puzzle is ready to play.\n\n"
 "This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
