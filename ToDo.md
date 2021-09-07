@@ -104,6 +104,8 @@
 - [X] Bridges: Change Path button to indicator
 - [X] Tracks: Rework UI (cell versus border clicks)
 - [X] Creek: Separate from Slant as standalone game
+- [X] Walls: Expand error display
+- [X] Walls: Expand solver / difficulty levels (area parity criteria)
 - [ ] Galaxies: Rework right-drag / arrow handling
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 - [ ] Mathrax: Deactivate useless 'recursive' game difficulty
@@ -115,9 +117,7 @@
 - [ ] Slant: 'Hard' game difficulty (backtracking)
 - [ ] Sticks: Implement dragging
 - [ ] Twiddle: Re-activate basic animation (?)
-- [ ] Walls: Expand error display
 - [ ] Walls: Add dragging
-- [ ] Walls: Expand solver / difficulty levels (area parity criteria)
 
 #### One-click symbol fill
 

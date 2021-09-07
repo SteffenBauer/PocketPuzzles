@@ -51,10 +51,6 @@
 
 #include "puzzles.h"
 
-#ifdef STANDALONE_SOLVER
-bool solver_verbose = false;
-#endif
-
 enum {
     COL_BACKGROUND,
     COL_GRID,
@@ -83,6 +79,7 @@ struct game_params {
 #define DIFFLIST(A)                             \
     A(EASY,Easy, e)                             \
     A(NORMAL,Normal, n)                         \
+    A(TRICKY,Tricky, t)                         \
 
 #define ENUM(upper,title,lower) DIFF_ ## upper,
 #define TITLE(upper,title,lower) #title,
@@ -95,14 +92,15 @@ static char const unruly_diffchars[] = DIFFLIST(ENCODE);
 #define DIFFCONFIG DIFFLIST(CONFIG)
 
 static const struct game_params unruly_presets[] = {
-    { 6,  6, true, DIFF_EASY},
-    { 6,  6, true, DIFF_NORMAL},
-    { 8,  8, true, DIFF_NORMAL},
-    {10, 10, true, DIFF_NORMAL},
-    {12, 12, true, DIFF_NORMAL}
+    { 6,  6, false, DIFF_EASY},
+    { 6,  6, false, DIFF_NORMAL},
+    { 6,  6, true, DIFF_TRICKY},
+    { 8,  8, true, DIFF_TRICKY},
+    {10, 10, true, DIFF_TRICKY},
+    {12, 12, true, DIFF_TRICKY}
 };
 
-#define DEFAULT_PRESET 2
+#define DEFAULT_PRESET 3
 
 enum {
     EMPTY,
@@ -128,8 +126,6 @@ enum {
 #define FF_ZERO           0x0100
 #define FF_CURSOR         0x0200
 
-#define FF_FLASH1         0x0400
-#define FF_FLASH2         0x0800
 #define FF_IMMUTABLE      0x1000
 
 typedef struct unruly_common {
@@ -314,6 +310,8 @@ static const char *validate_params(const game_params *params, bool full)
             params->w2 > A177790[params->h2/2]) {
             return "Puzzle is too long for unique-rows mode";
         }
+        if (params->diff == DIFF_EASY)
+            return "Unique rows aren't used for easy puzzles";
     }
     if (params->diff >= DIFFCOUNT)
         return "Unknown difficulty rating";
@@ -521,14 +519,6 @@ static int unruly_solver_check_threes(game_state *state, int *rowcount,
             if (state->grid[i1] == check && state->grid[i2] == check
                 && state->grid[i3] == EMPTY) {
                 ret++;
-#ifdef STANDALONE_SOLVER
-                if (solver_verbose) {
-                    printf("Solver: %i,%i and %i,%i confirm %c at %i,%i\n",
-                           i1 % w2, i1 / w2, i2 % w2, i2 / w2,
-                           (block == N_ONE ? '1' : '0'), i3 % w2,
-                           i3 / w2);
-                }
-#endif
                 state->grid[i3] = block;
                 rowcount[i3 / w2]++;
                 colcount[i3 % w2]++;
@@ -536,14 +526,6 @@ static int unruly_solver_check_threes(game_state *state, int *rowcount,
             if (state->grid[i1] == check && state->grid[i2] == EMPTY
                 && state->grid[i3] == check) {
                 ret++;
-#ifdef STANDALONE_SOLVER
-                if (solver_verbose) {
-                    printf("Solver: %i,%i and %i,%i confirm %c at %i,%i\n",
-                           i1 % w2, i1 / w2, i3 % w2, i3 / w2,
-                           (block == N_ONE ? '1' : '0'), i2 % w2,
-                           i2 / w2);
-                }
-#endif
                 state->grid[i2] = block;
                 rowcount[i2 / w2]++;
                 colcount[i2 % w2]++;
@@ -551,14 +533,6 @@ static int unruly_solver_check_threes(game_state *state, int *rowcount,
             if (state->grid[i1] == EMPTY && state->grid[i2] == check
                 && state->grid[i3] == check) {
                 ret++;
-#ifdef STANDALONE_SOLVER
-                if (solver_verbose) {
-                    printf("Solver: %i,%i and %i,%i confirm %c at %i,%i\n",
-                           i2 % w2, i2 / w2, i3 % w2, i3 / w2,
-                           (block == N_ONE ? '1' : '0'), i1 % w2,
-                           i1 / w2);
-                }
-#endif
                 state->grid[i1] = block;
                 rowcount[i1 / w2]++;
                 colcount[i1 % w2]++;
@@ -633,14 +607,6 @@ static int unruly_solver_check_uniques(game_state *state, int *rowcount,
                 if (state->grid[i1] == block)
                     continue;
                 assert(state->grid[i1] == EMPTY);
-#ifdef STANDALONE_SOLVER
-                if (solver_verbose) {
-                    printf("Solver: matching %s %i, %i gives %c at %i,%i\n",
-                           horizontal ? "rows" : "cols",
-                           r, r2, (block == N_ONE ? '1' : '0'), i1 % w2,
-                           i1 / w2);
-                }
-#endif
                 state->grid[i1] = block;
                 if (block == N_ONE) {
                     scratch->ones_rows[i1 / w2]++;
@@ -680,24 +646,11 @@ static int unruly_solver_fill_row(game_state *state, int i, bool horizontal,
     int w2 = state->w2, h2 = state->h2;
     int j;
 
-#ifdef STANDALONE_SOLVER
-    if (solver_verbose) {
-        printf("Solver: Filling %s %i with %c:",
-               (horizontal ? "Row" : "Col"), i,
-               (fill == N_ZERO ? '0' : '1'));
-    }
-#endif
     /* Place a number in every empty square in a row/column */
     for (j = 0; j < (horizontal ? w2 : h2); j++) {
         int p = (horizontal ? i * w2 + j : j * w2 + i);
 
         if (state->grid[p] == EMPTY) {
-#ifdef STANDALONE_SOLVER
-            if (solver_verbose) {
-                printf(" (%i,%i)", (horizontal ? j : i),
-                       (horizontal ? i : j));
-            }
-#endif
             ret++;
             state->grid[p] = fill;
             rowcount[(horizontal ? i : j)]++;
@@ -705,11 +658,54 @@ static int unruly_solver_fill_row(game_state *state, int i, bool horizontal,
         }
     }
 
-#ifdef STANDALONE_SOLVER
-    if (solver_verbose) {
-        printf("\n");
+    return ret;
+}
+
+static int unruly_solver_check_single_gap(game_state *state,
+                                          int *complete, bool horizontal,
+                                          int *rowcount, int *colcount,
+                                          char fill)
+{
+    int w2 = state->w2, h2 = state->h2;
+    int count = (horizontal ? h2 : w2); /* number of rows to check */
+    int target = (horizontal ? w2 : h2) / 2; /* target number of 0s/1s */
+    int *other = (horizontal ? rowcount : colcount);
+
+    int ret = 0;
+
+    int i;
+    /* Check for completed rows/cols for one number, then fill in the rest */
+    for (i = 0; i < count; i++) {
+        if (complete[i] == target && other[i] == target - 1) {
+            ret += unruly_solver_fill_row(state, i, horizontal, rowcount,
+                                          colcount, fill);
+        }
     }
-#endif
+
+    return ret;
+}
+
+static int unruly_solver_check_all_single_gap(game_state *state,
+                                              struct unruly_scratch *scratch)
+{
+    int ret = 0;
+
+    ret +=
+        unruly_solver_check_single_gap(state, scratch->ones_rows, true,
+                                       scratch->zeros_rows,
+                                       scratch->zeros_cols, N_ZERO);
+    ret +=
+        unruly_solver_check_single_gap(state, scratch->ones_cols, false,
+                                       scratch->zeros_rows,
+                                       scratch->zeros_cols, N_ZERO);
+    ret +=
+        unruly_solver_check_single_gap(state, scratch->zeros_rows, true,
+                                       scratch->ones_rows,
+                                       scratch->ones_cols, N_ONE);
+    ret +=
+        unruly_solver_check_single_gap(state, scratch->zeros_cols, false,
+                                       scratch->ones_rows,
+                                       scratch->ones_cols, N_ONE);
 
     return ret;
 }
@@ -730,12 +726,6 @@ static int unruly_solver_check_complete_nums(game_state *state,
     /* Check for completed rows/cols for one number, then fill in the rest */
     for (i = 0; i < count; i++) {
         if (complete[i] == target && other[i] < target) {
-#ifdef STANDALONE_SOLVER
-            if (solver_verbose) {
-                printf("Solver: Row %i satisfied for %c\n", i,
-                       (fill != N_ZERO ? '0' : '1'));
-            }
-#endif
             ret += unruly_solver_fill_row(state, i, horizontal, rowcount,
                                           colcount, fill);
         }
@@ -826,12 +816,6 @@ static int unruly_solver_check_near_complete(game_state *state,
                 state->grid[i2] = BOGUS;
                 state->grid[i3] = BOGUS;
 
-#ifdef STANDALONE_SOLVER
-                if (solver_verbose) {
-                    printf("Solver: Row %i nearly satisfied for %c\n", i,
-                           (fill != N_ZERO ? '0' : '1'));
-                }
-#endif
                 ret +=
                     unruly_solver_fill_row(state, i, horizontal, rowcount,
                                          colcount, fill);
@@ -845,12 +829,6 @@ static int unruly_solver_check_near_complete(game_state *state,
                 state->grid[i1] = BOGUS;
                 state->grid[i3] = BOGUS;
 
-#ifdef STANDALONE_SOLVER
-                if (solver_verbose) {
-                    printf("Solver: Row %i nearly satisfied for %c\n", i,
-                           (fill != N_ZERO ? '0' : '1'));
-                }
-#endif
                 ret +=
                     unruly_solver_fill_row(state, i, horizontal, rowcount,
                                          colcount, fill);
@@ -864,12 +842,6 @@ static int unruly_solver_check_near_complete(game_state *state,
                 state->grid[i1] = BOGUS;
                 state->grid[i2] = BOGUS;
 
-#ifdef STANDALONE_SOLVER
-                if (solver_verbose) {
-                    printf("Solver: Row %i nearly satisfied for %c\n", i,
-                           (fill != N_ZERO ? '0' : '1'));
-                }
-#endif
                 ret +=
                     unruly_solver_fill_row(state, i, horizontal, rowcount,
                                          colcount, fill);
@@ -884,12 +856,6 @@ static int unruly_solver_check_near_complete(game_state *state,
                 state->grid[i2] = BOGUS;
                 state->grid[i3] = BOGUS;
 
-#ifdef STANDALONE_SOLVER
-                if (solver_verbose) {
-                    printf("Solver: Row %i nearly satisfied for %c\n", i,
-                           (fill != N_ZERO ? '0' : '1'));
-                }
-#endif
                 ret +=
                     unruly_solver_fill_row(state, i, horizontal, rowcount,
                                          colcount, fill);
@@ -1116,12 +1082,25 @@ static int unruly_solve_game(game_state *state,
             continue;
         }
 
-        /* Check for completed rows */
-        done += unruly_solver_check_all_complete_nums(state, scratch);
+        /* Check for rows with only one unfilled square */
+        done += unruly_solver_check_all_single_gap(state, scratch);
 
         if (done) {
             if (maxdiff < DIFF_EASY)
                 maxdiff = DIFF_EASY;
+            continue;
+        }
+
+        /* Normal techniques */
+        if (diff < DIFF_NORMAL)
+            break;
+
+        /* Check for completed rows */
+        done += unruly_solver_check_all_complete_nums(state, scratch);
+
+        if (done) {
+            if (maxdiff < DIFF_NORMAL)
+                maxdiff = DIFF_NORMAL;
             continue;
         }
 
@@ -1131,22 +1110,22 @@ static int unruly_solve_game(game_state *state,
             done += unruly_solver_check_all_uniques(state, scratch);
 
             if (done) {
-                if (maxdiff < DIFF_EASY)
-                    maxdiff = DIFF_EASY;
+                if (maxdiff < DIFF_NORMAL)
+                    maxdiff = DIFF_NORMAL;
                 continue;
             }
         }
 
-        /* Normal techniques */
-        if (diff < DIFF_NORMAL)
+        /* Tricky techniques */
+        if (diff < DIFF_TRICKY)
             break;
 
         /* Check for nearly completed rows */
         done += unruly_solver_check_all_near_complete(state, scratch);
 
         if (done) {
-            if (maxdiff < DIFF_NORMAL)
-                maxdiff = DIFF_NORMAL;
+            if (maxdiff < DIFF_TRICKY)
+                maxdiff = DIFF_TRICKY;
             continue;
         }
 
@@ -1206,12 +1185,6 @@ static bool unruly_fill_game(game_state *state, struct unruly_scratch *scratch,
     int i, j;
     int *spaces;
 
-#ifdef STANDALONE_SOLVER
-    if (solver_verbose) {
-        printf("Generator: Attempt to fill grid\n");
-    }
-#endif
-
     /* Generate random array of spaces */
     spaces = snewn(s, int);
     for (i = 0; i < s; i++)
@@ -1253,11 +1226,6 @@ static bool unruly_fill_game(game_state *state, struct unruly_scratch *scratch,
 static char *new_game_desc(const game_params *params, random_state *rs,
                            char **aux, bool interactive)
 {
-#ifdef STANDALONE_SOLVER
-    char *debug;
-    bool temp_verbose = false;
-#endif
-
     int w2 = params->w2, h2 = params->h2;
     int s = w2 * h2;
     int *spaces;
@@ -1643,11 +1611,6 @@ static void unruly_draw_tile(drawing *dr, int x, int y, int tilesize, int tile)
     {
         int val = (tile & FF_ZERO ? 0 : tile & FF_ONE ? 2 : 1);
         val = (val == 0 ? COL_0 : val == 2 ? COL_1 : COL_EMPTY);
-
-        if ((tile & (FF_FLASH1 | FF_FLASH2)) &&
-             (val == COL_0 || val == COL_1)) {
-            val += (tile & FF_FLASH1 ? 1 : 2);
-        }
 
         draw_rect(dr, x, y, tilesize-1, tilesize-1, val);
 
