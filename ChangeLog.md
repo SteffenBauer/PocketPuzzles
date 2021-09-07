@@ -6,6 +6,7 @@
 * *Filling*: One-click fill
 * *Filling*: Undo of cell highlighting during dragging
 * *Solo*: Manual mode; for transferring puzzles from newspapers to play them on the app
+* *Unruly*: Add additional difficulty level (sync with upstream)
 
 ### Changed
 * Increase space between menu buttons
