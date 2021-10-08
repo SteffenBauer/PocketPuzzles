@@ -14,6 +14,7 @@
 * *Galaxies*: Disallow placing an edge touching a dot (sync with upstream)
 * *Galaxies*: Remove debug code
 * *Guess*: Minor colour tweaks for better contrast
+* *Solo*: Paint fixed numbers in bigger fontsize
 * *Walls*: Complete rewrite. More advanced & faster generator; better UI
 
 ### Fixed
