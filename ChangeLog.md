@@ -7,6 +7,7 @@
 * *Filling*: Undo of cell highlighting during dragging
 * *Solo*: Manual mode; for transferring puzzles from newspapers to play them on the app
 * *Unruly*: Add additional difficulty level (sync with upstream)
+* *Unruly*: Show option "unique rows/columns" in preset strings
 
 ### Changed
 * Increase space between menu buttons
@@ -14,7 +15,8 @@
 * *Galaxies*: Disallow placing an edge touching a dot (sync with upstream)
 * *Galaxies*: Remove debug code
 * *Guess*: Minor colour tweaks for better contrast
-* *Solo*: Paint fixed numbers in bigger fontsize
+* *Ascent*, *Filling*, *Mathrax*, *Salad*, *Solo*, *Towers*, *Unequal*: Paint fixed numbers in bold font; user input numbers in normal font
+* *Ascent*, *Filling*, *Mathrax*, *Salad*, *Solo*, *Towers*, *Unequal*: Errors in stronger contrast
 * *Walls*: Complete rewrite. More advanced & faster generator; better UI
 
 ### Fixed

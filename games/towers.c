@@ -1517,10 +1517,10 @@ static float *game_colours(frontend *fe, int *ncolours)
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
         ret[COL_GRID       * 3 + i] = 0.0F;
-        ret[COL_USER       * 3 + i] = 0.25F;
+        ret[COL_USER       * 3 + i] = 0.0F;
         ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
-        ret[COL_ERROR      * 3 + i] = 0.25F;
-        ret[COL_ERROR_NUM  * 3 + i] = 0.75F;
+        ret[COL_ERROR      * 3 + i] = 0.0F;
+        ret[COL_ERROR_NUM  * 3 + i] = 1.0F;
         ret[COL_PENCIL     * 3 + i] = 0.25F;
         ret[COL_DONE       * 3 + i] = 0.75F;
     }
@@ -1635,24 +1635,25 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
     /* new number needs drawing? */
     if (tile & DF_DIGIT_MASK) {
         int color;
-
-    str[1] = '\0';
-    str[0] = (tile & DF_DIGIT_MASK) + '0';
+        bool is_border_num = (x < 0 || y < 0 || x >= w || y >= w);
+        str[1] = '\0';
+        str[0] = (tile & DF_DIGIT_MASK) + '0';
 
         if (tile & DF_CLUE_DONE)
             color = COL_DONE;
+        else if (tile & DF_ERROR)
+            color = COL_ERROR_NUM;
         else if (tile & DF_IMMUTABLE)
             color = COL_GRID;
         else if (tile & DF_HIGHLIGHT)
             color = COL_USER;
-        else if (tile & DF_ERROR)
-            color = COL_ERROR_NUM;
-        else if (x < 0 || y < 0 || x >= w || y >= w)
+        else if (is_border_num)
             color = COL_GRID;
         else
             color = COL_USER;
 
-    draw_text(dr, tx + TILESIZE/2, ty + TILESIZE/2, FONT_VARIABLE,
+        draw_text(dr, tx + TILESIZE/2, ty + TILESIZE/2, 
+          (tile & DF_IMMUTABLE || is_border_num) ? FONT_VARIABLE : FONT_VARIABLE_NORMAL,
           (tile & DF_PLAYAREA ? TILESIZE/2 : TILESIZE*2/5),
                   ALIGN_VCENTRE | ALIGN_HCENTRE, color, str);
     } else {

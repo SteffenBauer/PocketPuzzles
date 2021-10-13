@@ -4530,8 +4530,8 @@ static void draw_number(drawing *dr, game_drawstate *ds,
         str[1] = '\0';
         str[0] = state->grid[y*cr+x] + '0';
         if (str[0] > '9') str[0] += 'a' - ('9'+1);
-        draw_text(dr, tx + TILE_SIZE/2 - 3, ty + TILE_SIZE/2, FONT_VARIABLE, 
-          state->immutable[y*cr+x] ? 5*TILE_SIZE/8 : TILE_SIZE/2, ALIGN_VCENTRE | ALIGN_HCENTRE,
+        draw_text(dr, tx + TILE_SIZE/2 - 3, ty + TILE_SIZE/2, state->immutable[y*cr+x] ? FONT_VARIABLE : FONT_VARIABLE_NORMAL, 
+          5*TILE_SIZE/8, ALIGN_VCENTRE | ALIGN_HCENTRE,
           ((hl & 16) || (hl & 32)) ? COL_ERROR : state->immutable[y*cr+x] ? COL_CLUE : COL_USER, str);
     } else {
         int i, j, npencil;

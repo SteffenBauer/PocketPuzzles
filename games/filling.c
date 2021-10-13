@@ -1547,7 +1547,7 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_CLUEHIGH   * 3 + i] = 0.75F;
         ret[COL_CORRECT    * 3 + i] = 0.9F;
         ret[COL_ERROR      * 3 + i] = 0.5F;
-        ret[COL_USER       * 3 + i] = 0.25F;
+        ret[COL_USER       * 3 + i] = 0.0F;
     }
 
     *ncolours = NCOLOURS;
@@ -1636,7 +1636,7 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
         draw_text(dr,
                   (x + 1) * TILE_SIZE,
                   (y + 1) * TILE_SIZE,
-                  FONT_VARIABLE,
+                  flags & USER_COL ? FONT_VARIABLE_NORMAL : FONT_VARIABLE,
                   TILE_SIZE / 2,
                   ALIGN_VCENTRE | ALIGN_HCENTRE,
                   flags & ERROR_BG ? COL_ERROR :
