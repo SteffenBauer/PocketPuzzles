@@ -107,8 +107,8 @@ struct game_state {
 #define DIFFLIST(A)               \
     A(LATIN,Trivial,NULL,t)       \
     A(EASY,Easy,solver_easy, e)   \
-    A(SET,Tricky,solver_set, k)   \
-    A(EXTREME,Extreme,NULL,x)     \
+    A(NORMAL,Normal,solver_normal, k)   \
+    A(HARD,Hard,NULL,x)     \
     A(RECURSIVE,Recursive,NULL,r)
 
 #define ENUM(upper,title,func,lower) DIFF_ ## upper,
@@ -120,18 +120,18 @@ static char const *const unequal_diffnames[] = { DIFFLIST(TITLE) };
 static char const unequal_diffchars[] = DIFFLIST(ENCODE);
 #define DIFFCONFIG DIFFLIST(CONFIG)
 
-#define DEFAULT_PRESET 0
+#define DEFAULT_PRESET 3
 
 static const struct game_params unequal_presets[] = {
-    {  5, DIFF_SET,     0 },
-    {  5, DIFF_SET,     1 },
-    {  5, DIFF_SET,     2 },
-    {  5, DIFF_EXTREME, 0 },
-    {  5, DIFF_EXTREME, 1 },
-    {  5, DIFF_EXTREME, 2 },
-    {  6, DIFF_EXTREME, 0 },
-    {  6, DIFF_EXTREME, 1 },
-    {  6, DIFF_EXTREME, 2 },
+    {  4, DIFF_EASY,   0 },
+    {  4, DIFF_EASY,   1 },
+    {  4, DIFF_EASY,   2 },
+    {  5, DIFF_NORMAL, 0 },
+    {  5, DIFF_NORMAL, 1 },
+    {  5, DIFF_NORMAL, 2 },
+    {  6, DIFF_HARD,   0 },
+    {  6, DIFF_HARD,   1 },
+    {  6, DIFF_HARD,   2 },
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -269,9 +269,9 @@ static const char *validate_params(const game_params *params, bool full)
         return "Order must be between 3 and 9";
     if (params->diff >= DIFFCOUNT)
         return "Unknown difficulty rating";
-    if (params->order < 5 && params->mode == MODE_ADJACENT &&
-        params->diff >= DIFF_SET)
-        return "Order must be at least 5 for Adjacent puzzles of this difficulty.";
+    if (params->order < 5 && params->mode >= MODE_ADJACENT &&
+        params->diff >= DIFF_NORMAL)
+        return "Order must be at least 5 for puzzles of this type and difficulty.";
     return NULL;
 }
 
@@ -739,7 +739,7 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
     return solver_links(solver, vctx);
 }
 
-static int solver_set(struct latin_solver *solver, void *vctx)
+static int solver_normal(struct latin_solver *solver, void *vctx)
 {
     struct solver_ctx *ctx = (struct solver_ctx *)vctx;
     if (ctx->state->mode >= MODE_ADJACENT)
@@ -807,8 +807,8 @@ static int solver_state(game_state *state, int maxdiff)
     latin_solver_alloc(&solver, state->nums, state->order);
 
     diff = latin_solver_main(&solver, maxdiff,
-                 DIFF_LATIN, DIFF_SET, DIFF_EXTREME,
-                 DIFF_EXTREME, DIFF_RECURSIVE,
+                 DIFF_LATIN, DIFF_NORMAL, DIFF_HARD,
+                 DIFF_HARD, DIFF_RECURSIVE,
                  unequal_solvers, unequal_valid, ctx,
                              clone_ctx, free_ctx);
 
@@ -1608,7 +1608,7 @@ static float *game_colours(frontend *fe, int *ncolours)
     for (i = 0; i < 3; i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0;
         ret[COL_HIGHLIGHT  * 3 + i] = 0.75;
-        ret[COL_LOWLIGHT   * 3 + i] = 0.25;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.0;
         ret[COL_TEXT       * 3 + i] = 0.0F;
         ret[COL_GUESS      * 3 + i] = 0.0F;
         ret[COL_ERROR      * 3 + i] = 0.5F;
@@ -1674,28 +1674,28 @@ static void draw_gts(drawing *dr, game_drawstate *ds, int ox, int oy,
     if (f & F_ADJ_UP) {
         if (bg >= 0) draw_rect(dr, ox, oy - g, TILE_SIZE, g, bg);
         sx = ox+g2; sy = oy-g4;
-        if (f & F_ERROR_UP) draw_rect(dr, sx-g6, sy-g2-g6, 2*(g2+g6), g2+2*g6, COL_ERROR);
+        if (f & F_ERROR_UP) draw_rect(dr, sx-g6, sy-g2-g6, 2*(g2+g6), g2+2*g6, COL_BLACK);
         draw_gt(dr, sx, sy, g2, -g2, g2, g2, (f & F_ERROR_UP) ? COL_BACKGROUND : fg);
         draw_update(dr, ox, oy-g, TILE_SIZE, g);
     }
     if (f & F_ADJ_RIGHT) {
         if (bg >= 0) draw_rect(dr, ox + TILE_SIZE, oy, g, TILE_SIZE, bg);
         sx = ox+TILE_SIZE+g4; sy = oy+g2;
-        if (f & F_ERROR_RIGHT) draw_rect(dr, sx-g6, sy-g6, g2+2*g6, 2*g2+2*g6, COL_ERROR);
+        if (f & F_ERROR_RIGHT) draw_rect(dr, sx-g6, sy-g6, g2+2*g6, 2*g2+2*g6, COL_BLACK);
         draw_gt(dr, sx, sy, g2, g2, -g2, g2, (f & F_ERROR_RIGHT) ? COL_BACKGROUND : fg);
         draw_update(dr, ox+TILE_SIZE, oy, g, TILE_SIZE);
     }
     if (f & F_ADJ_DOWN) {
         if (bg >= 0) draw_rect(dr, ox, oy + TILE_SIZE, TILE_SIZE, g, bg);
         sx = ox+g2; sy = oy+TILE_SIZE+g4;
-        if (f & F_ERROR_DOWN) draw_rect(dr, sx-g6, sy-g6, 2*(g2+g6), g2+2*g6, COL_ERROR);
+        if (f & F_ERROR_DOWN) draw_rect(dr, sx-g6, sy-g6, 2*(g2+g6), g2+2*g6, COL_BLACK);
         draw_gt(dr, sx, sy, g2, g2, g2, -g2, (f & F_ERROR_DOWN) ? COL_BACKGROUND : fg);
         draw_update(dr, ox, oy+TILE_SIZE, TILE_SIZE, g);
     }
     if (f & F_ADJ_LEFT) {
         if (bg >= 0) draw_rect(dr, ox - g, oy, g, TILE_SIZE, bg);
         sx = ox-g4; sy = oy+g2;
-        if (f & F_ERROR_LEFT) draw_rect(dr, sx-g2-g6, sy-g6, g2+2*g6, 2*g2+2*g6, COL_ERROR);
+        if (f & F_ERROR_LEFT) draw_rect(dr, sx-g2-g6, sy-g6, g2+2*g6, 2*g2+2*g6, COL_BLACK);
         draw_gt(dr, sx, sy, -g2, g2, g2, g2, (f & F_ERROR_LEFT) ? COL_BACKGROUND : fg);
         draw_update(dr, ox-g, oy, g, TILE_SIZE);
     }
@@ -1716,15 +1716,17 @@ static void draw_adjs(drawing *dr, game_drawstate *ds, int ox, int oy,
     if (f & (F_ADJ_RIGHT|F_ERROR_RIGHT)) {
         if ((f & F_ADJ_RIGHT) && (f & F_ERROR_RIGHT)) {
             draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, bg);
-            draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE/5, COL_ERROR);
-            draw_rect(dr, ox+TILE_SIZE+g38, oy+2*TILE_SIZE/5, g4, TILE_SIZE/5, COL_ERROR);
-            draw_rect(dr, ox+TILE_SIZE+g38, oy+4*TILE_SIZE/5, g4, TILE_SIZE/5, COL_ERROR);
+            draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE/9, COL_BLACK);
+            draw_rect(dr, ox+TILE_SIZE+g38, oy+2*TILE_SIZE/9, g4, TILE_SIZE/9, COL_BLACK);
+            draw_rect(dr, ox+TILE_SIZE+g38, oy+4*TILE_SIZE/9, g4, TILE_SIZE/9, COL_BLACK);
+            draw_rect(dr, ox+TILE_SIZE+g38, oy+6*TILE_SIZE/9, g4, TILE_SIZE/9, COL_BLACK);
+            draw_rect(dr, ox+TILE_SIZE+g38, oy+8*TILE_SIZE/9, g4, TILE_SIZE/9, COL_BLACK);
         } 
         else if (f & F_ADJ_RIGHT) {
             draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, COL_TEXT);
         }
         else {
-            draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, COL_ERROR);
+            draw_rect(dr, ox+TILE_SIZE+g38, oy, g4, TILE_SIZE, COL_BLACK);
             draw_rect(dr, ox+TILE_SIZE+g38+g10, oy+g10, g4-2*g10, TILE_SIZE-2*g10, COL_BACKGROUND);
         }
     } else if (bg >= 0) {
@@ -1735,14 +1737,16 @@ static void draw_adjs(drawing *dr, game_drawstate *ds, int ox, int oy,
     if (f & (F_ADJ_DOWN|F_ERROR_DOWN)) {
         if ((f & F_ADJ_DOWN) && (f & F_ERROR_DOWN)) {
             draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, bg);
-            draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE/5, g4, COL_ERROR);
-            draw_rect(dr, ox+2*TILE_SIZE/5, oy+TILE_SIZE+g38, TILE_SIZE/5, g4, COL_ERROR);
-            draw_rect(dr, ox+4*TILE_SIZE/5, oy+TILE_SIZE+g38, TILE_SIZE/5, g4, COL_ERROR);
+            draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE/9, g4, COL_BLACK);
+            draw_rect(dr, ox+2*TILE_SIZE/9, oy+TILE_SIZE+g38, TILE_SIZE/9, g4, COL_BLACK);
+            draw_rect(dr, ox+4*TILE_SIZE/9, oy+TILE_SIZE+g38, TILE_SIZE/9, g4, COL_BLACK);
+            draw_rect(dr, ox+6*TILE_SIZE/9, oy+TILE_SIZE+g38, TILE_SIZE/9, g4, COL_BLACK);
+            draw_rect(dr, ox+8*TILE_SIZE/9, oy+TILE_SIZE+g38, TILE_SIZE/9, g4, COL_BLACK);
         }
         else if (f & F_ADJ_DOWN) {
             draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, COL_TEXT);
         } else {
-            draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, COL_ERROR);
+            draw_rect(dr, ox, oy+TILE_SIZE+g38, TILE_SIZE, g4, COL_BLACK);
             draw_rect(dr, ox+g10, oy+TILE_SIZE+g38+g10, TILE_SIZE-2*g10, g4-2*g10, COL_BACKGROUND);
         }
     } else if (bg >= 0) {
@@ -1760,7 +1764,7 @@ static void draw_krps(drawing *dr, game_drawstate *ds, int ox, int oy,
         draw_rect(dr, ox+TILE_SIZE, oy, g, TILE_SIZE, bg);
     }
     if (f & F_ERROR_RIGHT) {
-        draw_rect(dr, ox+TILE_SIZE+g4-g6, oy+TILE_SIZE/2-g4-g6, g2+2*g6, g2+2*g6, COL_ERROR);
+        draw_rect(dr, ox+TILE_SIZE+g4-g6, oy, g2+2*g6, TILE_SIZE, COL_ERROR);
     }
     if (f & F_ADJ_RIGHT) {
         draw_circle(dr, ox+TILE_SIZE+g2, oy+TILE_SIZE/2, g4, COL_TEXT, COL_TEXT);
@@ -1775,7 +1779,7 @@ static void draw_krps(drawing *dr, game_drawstate *ds, int ox, int oy,
         draw_rect(dr, ox, oy+TILE_SIZE, TILE_SIZE, g, bg);
     }
     if (f & F_ERROR_DOWN) {
-        draw_rect(dr, ox+TILE_SIZE/2-g4-g6, oy+TILE_SIZE+g4-g6, g2+2*g6, g2+2*g6, COL_ERROR);
+        draw_rect(dr, ox, oy+TILE_SIZE+g4-g6, TILE_SIZE, g2+2*g6, COL_ERROR);
     }
     if (f & F_ADJ_DOWN) {
         draw_circle(dr, ox+TILE_SIZE/2, oy+TILE_SIZE+g2, g4, COL_TEXT, COL_TEXT);
@@ -1795,7 +1799,7 @@ static void draw_furniture(drawing *dr, game_drawstate *ds,
     bool hon;
     unsigned long f = GRID(state, flags, x, y);
 
-    bg = (!(f & F_IMMUTABLE) && (f & F_ERROR)) ? COL_LOWLIGHT : COL_BACKGROUND;
+    bg = ((f & F_ERROR)) ? COL_LOWLIGHT : COL_BACKGROUND;
 
     hon = (ui->hshow && x == ui->hx && y == ui->hy);
 
@@ -1843,10 +1847,11 @@ static void draw_num(drawing *dr, game_drawstate *ds, const game_ui *ui, int x, 
     str[0] = n2c(GRID(ds, nums, x, y), ds->order);
     str[1] = '\0';
     draw_text(dr, ox + TILE_SIZE/2, oy + TILE_SIZE/2,
-              FONT_VARIABLE, 2*TILE_SIZE/3, ALIGN_VCENTRE | ALIGN_HCENTRE,
+              (f & F_IMMUTABLE) ? FONT_VARIABLE : FONT_VARIABLE_NORMAL, 
+              2*TILE_SIZE/3, ALIGN_VCENTRE | ALIGN_HCENTRE,
+              (f & F_ERROR) ? COL_WHITE : 
               (f & F_IMMUTABLE) ? COL_TEXT : 
               (hon && !ui->hpencil) ? COL_GUESS :
-              (f & F_ERROR) ? COL_HIGHLIGHT : 
               COL_GUESS, str);
 }
 

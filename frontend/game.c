@@ -51,19 +51,34 @@ bool dottedColor(int colindex) {
 void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
                int align, int colour, const char *text) {
   ifont *tempfont;
-  int sw, sh;
-  tempfont = OpenFont(fonttype == FONT_FIXED ? "LiberationMono-Bold" : "LiberationSans-Bold",
-                      fontsize, 0);
+  int sw, sh, flags;
+  bool is_bold = (fonttype == FONT_FIXED) || (fonttype == FONT_VARIABLE);
+  bool is_mono = (fonttype == FONT_FIXED) || (fonttype == FONT_FIXED_NORMAL);
+
+  tempfont = OpenFont( is_mono && is_bold ? "LiberationMono-Bold" : 
+                       is_bold            ? "LiberationSans-Bold" :
+                       is_mono            ? "LiberationMono" :
+                                            "LiberationSans",
+                       fontsize, 0);
+
+  flags = 0x000;
+  if (align & ALIGN_VNORMAL) flags |= VALIGN_TOP;
+  if (align & ALIGN_VCENTRE) flags |= VALIGN_MIDDLE;
+  if (align & ALIGN_HLEFT)   flags |= ALIGN_LEFT;
+  if (align & ALIGN_HCENTRE) flags |= ALIGN_CENTER;
+  if (align & ALIGN_HRIGHT)  flags |= ALIGN_RIGHT;
 
   SetFont(tempfont, convertColor(colour));
-  sw=StringWidth(text);
-  sh=TextRectHeight(sw, text, 0);
-  if (align & ALIGN_VNORMAL) y -= sh;
+  sw = StringWidth(text);
+  sh = TextRectHeight(sw, text, flags);
+  if      (align & ALIGN_VNORMAL) y -= sh;
   else if (align & ALIGN_VCENTRE) y -= sh/2;
-  if (align & ALIGN_HCENTRE) x -= sw/2;
-  else if (align & ALIGN_HRIGHT) x -= sw;
+  if      (align & ALIGN_HCENTRE) x -= sw/2;
+  else if (align & ALIGN_HRIGHT)  x -= sw;
+  if (!is_bold) y -= fontsize/12; /* Bad hack to fix strange vertical misalign between bold and normal fonts */
 
   DrawString(fe->xoffset + x, fe->yoffset + y, text);
+
   CloseFont(tempfont);
 }
 

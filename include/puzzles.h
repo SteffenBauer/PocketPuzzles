@@ -117,6 +117,8 @@ typedef struct psdata psdata;
 
 #define FONT_FIXED    0
 #define FONT_VARIABLE 1
+#define FONT_FIXED_NORMAL 2
+#define FONT_VARIABLE_NORMAL 3
 
 /* For printing colours */
 #define HATCH_SLASH     1
