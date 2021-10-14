@@ -75,7 +75,8 @@ void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
   else if (align & ALIGN_VCENTRE) y -= sh/2;
   if      (align & ALIGN_HCENTRE) x -= sw/2;
   else if (align & ALIGN_HRIGHT)  x -= sw;
-  if (!is_bold) y -= fontsize/12; /* Bad hack to fix strange vertical misalign between bold and normal fonts */
+  /* Bad hack to fix strange vertical misalign between bold and normal fonts */
+  if (!is_bold) y -= fontsize/12;
 
   DrawString(fe->xoffset + x, fe->yoffset + y, text);
 
@@ -84,7 +85,8 @@ void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
 
 void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour) {
     int i;
-    for (i=0;i<h;i++) DrawLine(fe->xoffset+x,fe->yoffset+y+i,fe->xoffset+x+w-1,fe->yoffset+y+i,convertColor(colour));
+    for (i=0;i<h;i++) DrawLine(fe->xoffset+x,fe->yoffset+y+i,
+                        fe->xoffset+x+w-1,fe->yoffset+y+i,convertColor(colour));
 }
 void ink_draw_rect_outline(void *handle, int x, int y, int w, int h, int colour) {
     DrawRect(fe->xoffset+x, fe->yoffset+y, w, h, convertColor(colour));
@@ -122,7 +124,7 @@ static void extendrow(int y, int x1, int y1, int x2, int y2, int *minxptr, int *
   if (*maxxptr < x) *maxxptr = x;
 }
 
-void ink_draw_polygon(void *handle, int *icoords, int npoints,
+void ink_draw_polygon(void *handle, const int *icoords, int npoints,
                   int fillcolour, int outlinecolour) {
   MWPOINT *coords = (MWPOINT *)icoords;
 
