@@ -162,7 +162,8 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
     ret = snew(game_params);
     *ret = unruly_presets[i];     /* structure copy */
 
-    sprintf(buf, "%dx%d %s", ret->w2, ret->h2, unruly_diffnames[ret->diff]);
+    sprintf(buf, "%dx%d %s%s", ret->w2, ret->h2, 
+        unruly_diffnames[ret->diff], ret->unique ? ", uniq" : "");
 
     *name = dupstr(buf);
     *params = ret;
@@ -1773,7 +1774,7 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 static const char rules[] = "You are given a grid of squares, which you must colour either black or white. Some squares are provided as clues; the rest are left for you to fill in, such that:\n\n"
 "- Each row and column must contain the same number of black and white squares.\n"
 "- No row or column may contain three consecutive squares of the same colour.\n"
-"- No two rows may have the same arrangement of colors (same for columns)\n\n\n"
+"- Optional: No two rows may have the same arrangement of colors (same for columns)\n\n\n"
 "This puzzle was contributed by Lennard Sprong.";
 
 const struct game thegame = {

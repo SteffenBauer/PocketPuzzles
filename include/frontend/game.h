@@ -157,7 +157,7 @@ void ink_draw_rect(void *handle, int x, int y, int w, int h, int colour);
 void ink_draw_rect_outline(void *handle, int x, int y, int w, int h, int colour);
 void ink_draw_line(void *handle, int x1, int y1, int x2, int y2, int colour);
 static void extendrow(int y, int x1, int y1, int x2, int y2, int *minxptr, int *maxxptr);
-void ink_draw_polygon(void *handle, int *icoords, int npoints,
+void ink_draw_polygon(void *handle, const int *icoords, int npoints,
                   int fillcolour, int outlinecolour);
 void ink_draw_circle(void *handle, int cx, int cy, int radius, int fillcolour, int outlinecolour);
 void ink_clip(void *handle, int x, int y, int w, int h);
