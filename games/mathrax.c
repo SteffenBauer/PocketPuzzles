@@ -1398,8 +1398,8 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_BORDER     * 3 + i] = 0.0F;
         ret[COL_GUESS      * 3 + i] = 0.0F;
         ret[COL_PENCIL     * 3 + i] = 0.0F;
-        ret[COL_ERROR      * 3 + i] = 0.75F;
-        ret[COL_ERRORBG    * 3 + i] = 0.25F;
+        ret[COL_ERROR      * 3 + i] = 1.0F;
+        ret[COL_ERRORBG    * 3 + i] = 0.0F;
     }
     
     *ncolours = NCOLOURS;
@@ -1557,10 +1557,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             buf[1] = '\0';
 
             draw_text(dr, tx + (tilesize/2), ty + (tilesize/2),
-                FONT_VARIABLE, (fs & F_IMMUTABLE) ? tilesize/2 : tilesize/2-5, ALIGN_HCENTRE|ALIGN_VCENTRE,
-                (fs & F_IMMUTABLE) ? COL_BORDER : 
-                (fs & FD_CURSOR) ? COL_GUESS : 
+                (fs & F_IMMUTABLE) ? FONT_VARIABLE : FONT_VARIABLE_NORMAL, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
                 (fs & FE_COUNT) ? COL_ERROR : 
+                (fs & FD_CURSOR) ? COL_GUESS : 
+                (fs & F_IMMUTABLE) ? COL_BORDER : 
                                   COL_GUESS,
                 buf);
         }

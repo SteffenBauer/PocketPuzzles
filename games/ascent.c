@@ -3565,9 +3565,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             sprintf(buf, "%d", n+1);
             
             draw_text(dr, tx1, ty1,
-                    FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
-                    GET_BIT(state->immutable, i) ? COL_IMMUTABLE : 
+                    GET_BIT(state->immutable, i) ? FONT_VARIABLE : FONT_VARIABLE_NORMAL, 
+                    tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
                     n <= state->last && positions[n] == CELL_MULTIPLE && ui->typing_cell != i ? COL_ERROR :
+                    GET_BIT(state->immutable, i) ? COL_IMMUTABLE : 
                     state->grid[i] == NUMBER_EMPTY && ui->typing_cell != i ? COL_LOWLIGHT :
                     COL_BORDER, buf);
             
@@ -3597,14 +3598,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             {
                 sprintf(buf, "%d", ui->prevhints[i] + 1);
                 draw_text(dr, tx1 - (tilesize / 4), ty1 - (tilesize / 4),
-                    FONT_VARIABLE, tilesize / 3, ALIGN_HCENTRE | ALIGN_VCENTRE,
+                    FONT_VARIABLE_NORMAL, tilesize / 3, ALIGN_HCENTRE | ALIGN_VCENTRE,
                     COL_BORDER, buf);
             }
             if (ui->nexthints[i] >= 0)
             {
                 sprintf(buf, "%d", ui->nexthints[i] + 1);
                 draw_text(dr, tx1 + (tilesize / 4), ty1 + (tilesize / 4),
-                    FONT_VARIABLE, tilesize / 3, ALIGN_HCENTRE | ALIGN_VCENTRE,
+                    FONT_VARIABLE_NORMAL, tilesize / 3, ALIGN_HCENTRE | ALIGN_VCENTRE,
                     COL_BORDER, buf);
             }
         }
