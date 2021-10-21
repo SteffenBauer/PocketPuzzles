@@ -50,6 +50,22 @@ Run: `make`, or `make -j4` to compile parallel using 4 processor cores (adjust a
 
 When everything compiles successfully, you find `build/SGTPuzzles.app`. Copy this to the folder `/applications` on your device. Reboot if necessary after transfer.
 
+### Manual build using Docker
+
+Install Docker from https://docs.docker.com and start it.
+
+Then run
+
+```bash
+docker run --rm -it \
+	--mount type=bind,source="$(pwd)",target=/project \
+	5keeve/pocketbook-sdk:6.3.0-b288-v1
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+
 ### Development history
 
 **Changelog after Beta release** see [ChangeLog.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/ChangeLog.md)
