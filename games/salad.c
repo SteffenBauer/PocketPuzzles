@@ -61,7 +61,7 @@ enum {
 
 #define DIFFLIST(A) \
     A(EASY,Normal,salad_solver_easy, e) \
-    A(HARD,Extreme,NULL,x)
+    A(TRICKY,Tricky,NULL,x)
         
 #define ENUM(upper,title,func,lower) DIFF_ ## upper,
 #define TITLE(upper,title,func,lower) #title,
@@ -101,16 +101,18 @@ struct game_state {
 #define DEFAULT_PRESET 0
 
 static const struct game_params salad_presets[] = {
-    {5, 3, GAMEMODE_LETTERS, DIFF_HARD},
-    {5, 4, GAMEMODE_LETTERS, DIFF_HARD},
-    {6, 4, GAMEMODE_LETTERS, DIFF_HARD},
-    {7, 4, GAMEMODE_LETTERS, DIFF_HARD},
-    {8, 5, GAMEMODE_LETTERS, DIFF_HARD},
-    {5, 3, GAMEMODE_NUMBERS, DIFF_HARD},
-    {6, 3, GAMEMODE_NUMBERS, DIFF_HARD},
-    {6, 4, GAMEMODE_NUMBERS, DIFF_HARD},
-    {7, 4, GAMEMODE_NUMBERS, DIFF_HARD},
-    {8, 5, GAMEMODE_NUMBERS, DIFF_HARD},
+    {5, 3, GAMEMODE_LETTERS, DIFF_EASY},
+    {5, 3, GAMEMODE_NUMBERS, DIFF_EASY},
+    {5, 3, GAMEMODE_LETTERS, DIFF_TRICKY},
+    {5, 3, GAMEMODE_NUMBERS, DIFF_TRICKY},
+    {5, 4, GAMEMODE_LETTERS, DIFF_TRICKY},
+    {5, 4, GAMEMODE_NUMBERS, DIFF_TRICKY},
+    {6, 4, GAMEMODE_LETTERS, DIFF_TRICKY},
+    {6, 4, GAMEMODE_NUMBERS, DIFF_TRICKY},
+    {7, 4, GAMEMODE_LETTERS, DIFF_TRICKY},
+    {7, 4, GAMEMODE_NUMBERS, DIFF_TRICKY},
+    {8, 5, GAMEMODE_LETTERS, DIFF_TRICKY},
+    {8, 5, GAMEMODE_NUMBERS, DIFF_TRICKY},
 };
 
 static game_params *default_params(void)
@@ -135,9 +137,9 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
     *params = ret;
     
     if(ret->mode == GAMEMODE_LETTERS)
-        sprintf(buf, "Letters: %dx%d A~%c %s", ret->order, ret->order, ret->nums + 'A' - 1, ret->diff == 0 ? "Easy" : "Hard");
+        sprintf(buf, "Letters: %dx%d A~%c %s", ret->order, ret->order, ret->nums + 'A' - 1, ret->diff == 0 ? "Easy" : "Tricky");
     else
-        sprintf(buf, "Numbers: %dx%d 1~%c %s", ret->order, ret->order, ret->nums + '0', ret->diff == 0 ? "Easy" : "Hard");
+        sprintf(buf, "Numbers: %dx%d 1~%c %s", ret->order, ret->order, ret->nums + '0', ret->diff == 0 ? "Easy" : "Tricky");
     *name = dupstr(buf);
     
     return true;
@@ -906,8 +908,8 @@ static int salad_solve(game_state *state, int maxdiff)
     if(maxdiff != DIFF_HOLESONLY)
     {
         latin_solver_main(solver, maxdiff,
-            DIFF_EASY, DIFF_HARD, DIFF_HARD,
-            DIFF_HARD, DIFF_IMPOSSIBLE,
+            DIFF_EASY, DIFF_TRICKY, DIFF_TRICKY,
+            DIFF_TRICKY, DIFF_IMPOSSIBLE,
             salad_solvers, salad_valid, ctx, clone_ctx, free_ctx);
         
         diff = latinholes_check(state);
@@ -1034,7 +1036,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     char *ret = NULL;
     int result;
     
-    result = salad_solve(solved, DIFF_HARD);
+    result = salad_solve(solved, DIFF_TRICKY);
     
     if(result)
     {
@@ -1688,10 +1690,10 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_G_HOLE       * 3 + i] = 0.0F;
         ret[COL_G_BALL       * 3 + i] = 0.0F;
         ret[COL_G_BALLBG     * 3 + i] = 0.9F;
-        ret[COL_E_BG         * 3 + i] = 0.25F;
-        ret[COL_E_BORDERCLUE * 3 + i] = 0.25F;
-        ret[COL_E_NUM        * 3 + i] = 0.75F;
-        ret[COL_E_BALL       * 3 + i] = 0.75F;
+        ret[COL_E_BG         * 3 + i] = 0.0F;
+        ret[COL_E_BORDERCLUE * 3 + i] = 0.0F;
+        ret[COL_E_NUM        * 3 + i] = 1.0F;
+        ret[COL_E_BALL       * 3 + i] = 1.0F;
         ret[COL_E_HOLE       * 3 + i] = 0.5F;
     }
     *ncolours = NCOLOURS;
@@ -1923,9 +1925,9 @@ static void salad_draw_balls(drawing *dr, game_drawstate *ds, int x, int y, cons
         bgcolor = (ds->gridfs[i] & FD_CURSOR ? COL_LOWLIGHT : 
                    ds->gridfs[i] & FD_ERROR  ? COL_E_BG :
                                                COL_BACKGROUND);
-    color = (state->gridclues[i]       ? COL_I_BALL :
-             ds->gridfs[i] & FD_CURSOR ? COL_G_BALL :
+    color = (ds->gridfs[i] & FD_CURSOR ? COL_G_BALL :
              ds->gridfs[i] & FD_ERROR  ? COL_E_BALL :
+             state->gridclues[i]       ? COL_I_BALL :
                                          COL_G_BALL);
     
     draw_circle(dr, tx, ty, TILE_SIZE*0.4, color, color);
@@ -1942,9 +1944,9 @@ static void salad_draw_cross(drawing *dr, game_drawstate *ds, int x, int y, doub
     tx = (x+1)*TILE_SIZE;
     ty = (y+1)*TILE_SIZE;
     
-    color = (state->gridclues[i]       ? COL_I_HOLE : 
+    color = (ds->gridfs[i] & FD_ERROR  ? COL_E_NUM : 
              ds->gridfs[i] & FD_CURSOR ? COL_G_NUM :
-             ds->gridfs[i] & FD_ERROR  ? COL_E_NUM : 
+             state->gridclues[i]       ? COL_I_HOLE : 
                                          COL_G_HOLE);
     draw_thick_line(dr, thick,
         tx + (TILE_SIZE*0.2), ty + (TILE_SIZE*0.2),
@@ -2043,14 +2045,17 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             /* Draw number/letter */
             else if(state->grid[i] != 0)
             {
-                color = (state->gridclues[i] > 0 && state->gridclues[i] <= o ? COL_I_NUM :
-                    ds->gridfs[i] & FD_CURSOR ? COL_G_NUM : 
-                    ds->gridfs[i] & FD_ERROR ? COL_E_NUM : COL_G_NUM);
+                color = (
+                    ds->gridfs[i] & FD_ERROR ?                            COL_E_NUM : 
+                    ds->gridfs[i] & FD_CURSOR ?                           COL_G_NUM : 
+                    state->gridclues[i] > 0 && state->gridclues[i] <= o ? COL_I_NUM :
+                                                                          COL_G_NUM);
                 buf[0] = state->grid[i] + base;
                 
                 draw_text(dr, tx + TILE_SIZE/2, ty + TILE_SIZE/2,
-                    FONT_VARIABLE, TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, color,
-                    buf);
+                    state->gridclues[i]>0 && state->gridclues[i] <= o ? 
+                        FONT_VARIABLE : FONT_VARIABLE_NORMAL, 
+                    TILE_SIZE/2, ALIGN_HCENTRE|ALIGN_VCENTRE, color, buf);
             }
         }
     
