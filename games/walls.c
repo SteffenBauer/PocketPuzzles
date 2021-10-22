@@ -1811,6 +1811,7 @@ static void draw_cell(drawing *dr, game_drawstate *ds, int pos) {
     int ts2 = (ds->tilesize+1)/2;
     int ts3 = (ds->tilesize+1)/3;
     int ts4 = (ds->tilesize+1)/4;
+    int ts34 = 3*(ds->tilesize+1)/4;
 
     clip(dr, ox, oy, ts, ts);
 
@@ -1880,22 +1881,22 @@ static void draw_cell(drawing *dr, game_drawstate *ds, int pos) {
         if ((ds->cell[pos] & FLAG_WALL) == FLAG_WALL) {
             int c[8];
             c[0] = ox; c[1] = oy;
-            c[2] = ox; c[3] = oy+ts2;
-            c[4] = ox+ts2; c[5] = oy;
+            c[2] = ox; c[3] = oy+ts34;
+            c[4] = ox+ts34; c[5] = oy;
             draw_polygon(dr, c, 3, COL_WALL_A, COL_WALL_A);
-            c[0] = ox; c[1] = oy+ts2; 
+            c[0] = ox; c[1] = oy+ts34; 
             c[2] = ox; c[3] = oy+ts;
             c[4] = ox+ts; c[5] = oy; 
-            c[6] = ox+ts2; c[7] = oy;
+            c[6] = ox+ts34; c[7] = oy;
             draw_polygon(dr, c, 4, COL_WALL_B, COL_WALL_B);
             c[0] = ox; c[1] = oy+ts; 
-            c[2] = ox+ts2; c[3] = oy+ts;
-            c[4] = ox+ts; c[5] = oy+ts2; 
+            c[2] = ox+ts34; c[3] = oy+ts;
+            c[4] = ox+ts; c[5] = oy+ts34; 
             c[6] = ox+ts; c[7] = oy;
             draw_polygon(dr, c, 4, COL_WALL_A, COL_WALL_A);
-            c[0] = ox+ts2; c[1] = oy+ts;
+            c[0] = ox+ts34; c[1] = oy+ts;
             c[2] = ox+ts; c[3] = oy+ts;
-            c[4] = ox+ts; c[5] = oy+ts2;
+            c[4] = ox+ts; c[5] = oy+ts34;
             draw_polygon(dr, c, 3, COL_WALL_B, COL_WALL_B);
         }
         else if ((ds->cell[pos] & FLAG_ERROR) >0) {

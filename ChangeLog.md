@@ -11,7 +11,7 @@
 * *Unruly*: Show option "unique rows/columns" in preset strings
 
 ### Changed
-* Sync with upstream (use 'aux' solver in *Galaxies*, fix tent placement in *Tents*, centralize initial canvas cleaning)
+* Sync with upstream (use 'aux' solver in *Galaxies*, fix tent placement in *Tents*)
 * Increase space between menu buttons
 * 'Show solution' menu entry only in games supporting solve operation
 * *Galaxies*: Disallow placing an edge touching a dot (sync with upstream)
