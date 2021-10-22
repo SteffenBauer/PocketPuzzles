@@ -128,6 +128,7 @@ static int solver_obvious_dot(game_state *state, space *dot);
 static space *space_opposite_dot(const game_state *state, const space *sp,
                                  const space *dot);
 static space *tile_opposite(const game_state *state, const space *sp);
+static game_state *execute_move(const game_state *state, const char *move);
 
 /* ----------------------------------------------------------
  * Game parameters and presets
@@ -1035,6 +1036,10 @@ generate:
 
     desc = encode_game(state);
 
+    game_state *blank = blank_game(params->w, params->h);
+    *aux = diff_game(blank, state, true);
+    free_game(blank);
+
     free_game(state);
     sfree(scratch);
 
@@ -1672,19 +1677,24 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     int i;
     int diff;
 
-    tosolve = dup_game(currstate);
-    diff = solver_state(tosolve, DIFF_UNREASONABLE);
-    if (diff != DIFF_UNFINISHED && diff != DIFF_IMPOSSIBLE) {
-        goto solved;
-    }
-    free_game(tosolve);
+    if (aux) {
+        tosolve = execute_move(state, aux);
+         goto solved;
+    } else {
+        tosolve = dup_game(currstate);
+        diff = solver_state(tosolve, DIFF_UNREASONABLE);
+        if (diff != DIFF_UNFINISHED && diff != DIFF_IMPOSSIBLE) {
+            goto solved;
+        }
+        free_game(tosolve);
 
-    tosolve = dup_game(state);
-    diff = solver_state(tosolve, DIFF_UNREASONABLE);
-    if (diff != DIFF_UNFINISHED && diff != DIFF_IMPOSSIBLE) {
-        goto solved;
+        tosolve = dup_game(state);
+        diff = solver_state(tosolve, DIFF_UNREASONABLE);
+        if (diff != DIFF_UNFINISHED && diff != DIFF_IMPOSSIBLE) {
+            goto solved;
+        }
+        free_game(tosolve);
     }
-    free_game(tosolve);
 
     return NULL;
 
