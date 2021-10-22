@@ -3,6 +3,7 @@
 ## 0.7.9 nightly
 
 ### Added
+* *Bricks* puzzle
 * *Filling*: One-click fill
 * *Filling*: Undo of cell highlighting during dragging
 * *Solo*: Manual mode; for transferring puzzles from newspapers to play them on the app
@@ -10,6 +11,7 @@
 * *Unruly*: Show option "unique rows/columns" in preset strings
 
 ### Changed
+* Sync with upstream (use 'aux' solver in *Galaxies*, fix tent placement in *Tents*, centralize initial canvas cleaning)
 * Increase space between menu buttons
 * 'Show solution' menu entry only in games supporting solve operation
 * *Galaxies*: Disallow placing an edge touching a dot (sync with upstream)
