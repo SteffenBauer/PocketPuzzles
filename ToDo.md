@@ -40,6 +40,7 @@
 - [ ] Check draw update efficiency in all games
 - [ ] Check all games for memory leaks
 - [ ] General settings (show/hide statusbar, orientation, chooser style, color/grey mode)
+- [ ] Configurable game specific UI settings (short/long click action, helper buttons, classic/one-click entry)
 - [ ] Information screen explaining game controls
 - [ ] Color mode
 - [ ] Screen orientation handling

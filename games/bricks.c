@@ -1065,7 +1065,7 @@ static game_state *execute_move(const game_state *state, const char *move)
             p++;
     }
 
-    if (bricks_validate(w, h, ret->grid, false) == STATUS_COMPLETE) ret->completed = true;
+    if (bricks_validate(w, h, ret->grid, true) == STATUS_COMPLETE) ret->completed = true;
     return ret;
 }
 
