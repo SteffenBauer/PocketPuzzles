@@ -16,7 +16,7 @@ void chooserResetDialogHandler(int button) {
 }
 
 void chooserMenuHandler(int index) {
-    char buf[256];
+    char buf[512];
 
     button_to_normal(&ca.chooserButton[ca.btnMenuIDX], true);
 
@@ -34,7 +34,7 @@ void chooserMenuHandler(int index) {
             Dialog(ICON_QUESTION, "Reset presets", "Reset savegame and game presets to defaults?", "OK", "Cancel", chooserResetDialogHandler);
             break;
         case 104:  /* About */
-            sprintf(buf, "Simon Tatham's Portable Puzzle Collection\n\nOriginal project by Simon Tatham\n\nPort to PocketBook by Steffen Bauer\n\nSee 'How to play' at each puzzle for individual contributors.\n\nVersion: %s\n\nReleased under the MIT license", VERSION);
+            sprintf(buf, "Simon Tatham's Portable Puzzle Collection\n\nOriginal project by Simon Tatham\n\nPort to PocketBook by Steffen Bauer\n\nSee 'How to play' at each puzzle for instructions and individual contributors.\n\nLong-click a game icon to star it as favourite. Long-click again to unstar.\n\n\nVersion: %s\n\nReleased under the MIT license", VERSION);
             Dialog(ICON_INFORMATION, "About", buf, "OK", NULL, NULL);
             break;
         default:

@@ -864,33 +864,13 @@ struct game_drawstate
     char *grid;
 };
 
-#define DRAG_DELTA (tilesize*0.4)
+#define DRAG_DELTA (tilesize*0.3)
 static char *interpret_move(const game_state *state, game_ui *ui,
     const game_drawstate *ds,
     int ox, int oy, int button, bool swapped) {
     int tilesize = ds->tilesize;
     int w = state->w, h = state->h;
-    int i;
     button &= ~MOD_MASK;
-
-    i = FROMCOORD(oy) * w + FROMCOORD(ox);
-    if (state->grid[i] & F_BLOCK)
-        return NULL;
-
-    if (button == LEFT_BUTTON) {
-        char buf[256];
-        sprintf(buf, "%c%d", state->grid[i] & F_VER ? 'A' :
-                             state->grid[i] & F_HOR ? 'C' : 'B', i);
-        return dupstr(buf);
-    }
-    else if (button == RIGHT_BUTTON) {
-        char buf[256];
-        sprintf(buf, "%c%d", state->grid[i] & F_HOR ? 'B' :
-                             state->grid[i] & F_VER ? 'C' : 'A', i);
-        return dupstr(buf);
-    }
-
-    return NULL;
 
     /* Begin normal drag */
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
@@ -954,20 +934,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         ui->dragmove[ui->ndrags] = dragmove;
         ui->drag[ui->ndrags++] = i;
-
-        return UI_UPDATE;
-    }
-
-    /* Begin clearing drag */
-    if (button == MIDDLE_BUTTON) {
-        int hx = FROMCOORD(ox), hy = FROMCOORD(oy), i = hy*w + hx;
-        ui->ndrags = 0;
-
-        ui->dragtype = DRAG_CLEAR;
-        if (state->grid[i] & (F_HOR | F_VER)) {
-            ui->dragmove[ui->ndrags] = 0;
-            ui->drag[ui->ndrags++] = i;
-        }
 
         return UI_UPDATE;
     }
