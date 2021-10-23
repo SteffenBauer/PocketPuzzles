@@ -40,6 +40,7 @@
 - [ ] Check draw update efficiency in all games
 - [ ] Check all games for memory leaks
 - [ ] General settings (show/hide statusbar, orientation, chooser style, color/grey mode)
+- [ ] Configurable game specific UI settings (short/long click action, helper buttons, classic/one-click entry)
 - [ ] Information screen explaining game controls
 - [ ] Color mode
 - [ ] Screen orientation handling
@@ -106,6 +107,7 @@
 - [X] Creek: Separate from Slant as standalone game
 - [X] Walls: Expand error display
 - [X] Walls: Expand solver / difficulty levels (area parity criteria)
+- [x] Sticks: Implement dragging
 - [ ] Galaxies: Rework right-drag / arrow handling
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 - [ ] Mathrax: Deactivate useless 'recursive' game difficulty
@@ -115,7 +117,6 @@
 - [ ] Pearl: Better error display for error line
 - [ ] Pearl: "No line" on right click instead of release
 - [ ] Slant: 'Hard' game difficulty (backtracking)
-- [ ] Sticks: Implement dragging
 - [ ] Twiddle: Re-activate basic animation (?)
 - [ ] Walls: Add dragging
 
@@ -143,6 +144,7 @@
 #### Grey-out of finished hints
 
 - [X] ABCD
+- [X] Bricks
 - [X] Boats
 - [ ] Pattern
 - [X] Range
@@ -152,10 +154,19 @@
 
 #### Game specific UI settings
 
+- [ ] Bricks: Short-click, black or white
+- [ ] Bridges: 'Show Grid' button
+- [ ] Clusters: Short-click, black or white
+- [ ] Creek: Short-click, black or white
 - [ ] Map: Pencil fill, all or possible only
 - [ ] Mines: Short-click, flag or reveal
+- [ ] Mosaic: Short-click, black or white
+- [ ] Pattern: Short-click, black or white
 - [ ] Range: Short-click, block or empty
 - [ ] Singles: Short-click, black or circle
-- [ ] Signpost: Right-click: Show incoming arrows or not
+- [ ] Signpost: Long-click: Show incoming arrows or not
+- [ ] Unruly: Short-click, black or white
 - [ ] Games with one-click: on/off
+- [ ] Games with 'Fill pencil marks' button
+- [ ] Games with Pencil mark indicator: Flip on swap button
 

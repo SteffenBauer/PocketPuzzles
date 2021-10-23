@@ -14,7 +14,7 @@ CFLAGS := -O2 -Wall -Werror -g -I./ -I../include/ `$(GTK_CONFIG) --cflags` \
 XLIBS = `$(GTK_CONFIG) --libs` -lm
 ULIBS = -lm
 
-all: abcd ascent blackbox boats bridges clusters creek cube dominosa fifteen \
+all: abcd ascent blackbox boats bricks bridges clusters creek cube dominosa fifteen \
 		filling flip flood galaxies guess inertia keen lightup loopy magnets \
 		map mathrax mines mosaic net palisade pattern pearl pegs range rect \
 		rome salad samegame signpost singles sixteen slant solo spokes sticks \
@@ -44,6 +44,13 @@ boats: boats.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
 	$(CC) -o $@ boats.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
 		midend.o misc.o printing.o ps.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
+
+bricks: bricks.o no-icon.o drawing.o  \
+		gtk.o malloc.o midend.o misc.o printing.o ps.o random.o \
+		version.o
+	$(CC) -o $@ bricks.o no-icon.o drawing.o \
+		gtk.o malloc.o midend.o misc.o printing.o ps.o random.o \
+		version.o  $(XLFLAGS) $(XLIBS)
 
 bridges: bridges.o no-icon.o drawing.o dsf.o findloop.o \
 		gtk.o malloc.o midend.o misc.o printing.o ps.o random.o \
@@ -345,6 +352,8 @@ blackbox.o: ../games/blackbox.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 boats.o: ../games/boats.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
+bricks.o: ../games/bricks.c ../include/puzzles.h
+	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 bridges.o: ../games/bridges.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 clusters.o: ../games/clusters.c ../include/puzzles.h
@@ -489,5 +498,5 @@ version.o: ../utils/version.c ../include/version.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o abcd ascent blackbox boats bridges clusters creek cube dominosa fifteen filling flip flood galaxies guess inertia keen lightup loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs range rect rome salad samegame signpost singles sixteen slant solo spokes sticks tents towers tracks twiddle undead unequal unruly untangle walls
+	rm -f *.o abcd ascent blackbox boats bricks bridges clusters creek cube dominosa fifteen filling flip flood galaxies guess inertia keen lightup loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs range rect rome salad samegame signpost singles sixteen slant solo spokes sticks tents towers tracks twiddle undead unequal unruly untangle walls
 
