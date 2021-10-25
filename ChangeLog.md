@@ -5,6 +5,7 @@
 ### Added
 * *Bricks* puzzle
 * *Filling*: One-click fill
+* *Filling*: Drag fixed number clue
 * *Filling*: Undo of cell highlighting during dragging
 * *Solo*: Manual mode; for transferring puzzles from newspapers to play them on the app
 * *Unruly*: Add additional difficulty level (sync with upstream)

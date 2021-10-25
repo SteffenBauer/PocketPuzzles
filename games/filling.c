@@ -1293,6 +1293,7 @@ struct game_ui {
     bool *sel; /* w*h highlighted squares, or NULL */
     int hhint; /* Selected button for auto-fill */
     int dx, dy; /* Last dragged coordinates */
+    int numhint; /* Drag started number from fixed clue */
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1302,6 +1303,7 @@ static game_ui *new_ui(const game_state *state)
     ui->sel = NULL;
     ui->hhint = -1;
     ui->dx = ui->dy = -1;
+    ui->numhint = -1;
 
     return ui;
 }
@@ -1372,20 +1374,25 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     button &= ~MOD_MASK;
 
     if (button == LEFT_BUTTON || button == LEFT_DRAG) {
+
         /* A left-click anywhere will clear the current selection. */
         if (button == LEFT_BUTTON && ui->sel) {
             sfree(ui->sel);
             ui->sel = NULL;
             ui->dx = ui->dy = -1;
+            ui->numhint = -1;
             return UI_UPDATE;
         }
         else if (tx >= 0 && tx < w && ty >= 0 && ty < h) {
             /* Start of selection. Highlight initial cell. */
             if (!ui->sel) {
+                int cclue = state->shared->clues[w*ty+tx];
                 ui->sel = snewn(w*h, bool);
                 memset(ui->sel, 0, w*h*sizeof(bool));
                 ui->dx = tx; ui->dy = ty;
                 ui->sel[w*ty+tx] = true;
+                /* Clicked on a clue number. */
+                if (button == LEFT_BUTTON && cclue > 0) ui->numhint = cclue;
                 return UI_UPDATE;
             }
             /* Dragged into next cell */
@@ -1406,7 +1413,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             }
         }
         else {
-            ui->dx = -1; ui->dy = -1;
+            ui->dx = -1; ui->dy = -1; ui->numhint = -1;
         }
         return NULL;
     }
@@ -1419,8 +1426,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return NULL;
     }
 
-    if (button == LEFT_RELEASE && ui->hhint >= 0 && ui->sel)
-        button = ui->hhint;
+    if (button == LEFT_RELEASE && (ui->numhint > 0 || ui->hhint >= 0) && ui->sel) {
+        button = ui->numhint > 0 ? ui->numhint : ui->hhint;
+        ui->numhint = -1;
+    }
 
     if (button < 0 || button > 9 || button > maxbutton) return NULL;
 
@@ -1449,6 +1458,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     sfree(ui->sel);
     ui->sel = NULL;
     ui->dx = ui->dy = -1;
+    ui->numhint = -1;
 
     /* Need to update UI at least, as we cleared the selection */
     return move ? move : UI_UPDATE;
@@ -1795,7 +1805,10 @@ static void draw_grid(
                 /* clear all background flags */
             } else if (ui && ui->sel && ui->sel[i]) {
                 flags |= HIGH_BG;
-                if (state->shared->clues[i] == 0 && ui->hhint >= 0) v = ui->hhint;
+                if (state->shared->clues[i] == 0) {
+                    if (ui->numhint > 0)     v = ui->numhint;
+                    else if (ui->hhint >= 0) v = ui->hhint;
+                }
             } else if (v) {
                 int size = dsf_size(ds->dsf_scratch, i);
                 if (size == v)
