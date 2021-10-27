@@ -1,6 +1,6 @@
 ## ChangeLog
 
-## 0.7.9 nightly
+## 0.7.9
 
 ### Added
 * *Bricks* puzzle
