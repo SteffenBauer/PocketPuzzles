@@ -1291,8 +1291,8 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
 struct game_ui {
     bool is_sel; /* Square selection in progress */
-    bool *sel; /* w*h highlighted squares, or NULL */
-    int hhint; /* Selected number for drag fill */
+    bool *sel;   /* w*h highlighted squares, or NULL */
+    int hhint;   /* Selected number for drag fill */
     int dx, dy; /* Last dragged coordinates */
 };
 
@@ -1360,6 +1360,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     char *move = NULL;
     int i;
+    bool pbutton = false;
 
     assert(ui);
     assert(ds);
@@ -1390,6 +1391,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 /* Drag from border or highlighted cell into clear cell. Highlight new cell. */
                 if ((ui->dx == -1 || ui->dy == -1 || ui->sel[w*ui->dy+ui->dx]) &&
                      !ui->sel[w*ty+tx]) {
+                    if ((ui->hhint < 0) || 
+                        (ui->hhint > 0 && (state->board[w*ty+tx] == 0 || 
+                                           state->board[w*ty+tx] == ui->hhint)))
                     ui->sel[w*ty+tx] = true;
                 }
                 /* Drag from highlighted cell into highlighted cell. Clear old cell. */
@@ -1408,8 +1412,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return NULL;
     }
 
-    if (button == '\b') button = '0';
-    if (button >= '0' && button <= '9') button -= '0';
+    if (button == '\b') { pbutton = true; button = '0'; }
+    if (button >= '0' && button <= '9') { pbutton = true; button -= '0'; }
 
     if (button == LEFT_RELEASE && ui->hhint > 0 && ui->is_sel) {
         button = ui->hhint;
@@ -1438,9 +1442,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         sprintf(buf, "_%d", button);
         move = srealloc(move, strlen(move)+strlen(buf)+1);
         strcat(move, buf);
-        
-        clear_selection(ui, w, h);
     }
+    if (move || pbutton) clear_selection(ui, w, h);
     return move ? move : UI_UPDATE;
 }
 
@@ -1504,10 +1507,9 @@ enum {
     COL_BACKGROUND,
     COL_GRID,
     COL_HIGHLIGHT,
-    COL_CLUEHIGH,
     COL_CORRECT,
     COL_ERROR,
-    COL_USER,
+    COL_NUM,
     NCOLOURS
 };
 
@@ -1534,10 +1536,9 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
         ret[COL_GRID       * 3 + i] = 0.0F;
         ret[COL_HIGHLIGHT  * 3 + i] = 0.5F;
-        ret[COL_CLUEHIGH   * 3 + i] = 0.75F;
-        ret[COL_CORRECT    * 3 + i] = 0.9F;
+        ret[COL_CORRECT    * 3 + i] = 0.75F;
         ret[COL_ERROR      * 3 + i] = 0.5F;
-        ret[COL_USER       * 3 + i] = 0.0F;
+        ret[COL_NUM        * 3 + i] = 0.0F;
     }
 
     *ncolours = NCOLOURS;
@@ -1604,8 +1605,8 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
               BORDER + y*TILE_SIZE,
               TILE_SIZE,
               TILE_SIZE,
-              (flags & HIGH_BG ? (flags & USER_COL ? COL_HIGHLIGHT : COL_CLUEHIGH) :
-               flags & ERROR_BG ? COL_USER :
+              (flags & HIGH_BG ? COL_HIGHLIGHT :
+               flags & ERROR_BG ? COL_GRID :
                flags & CORRECT_BG ? COL_CORRECT : COL_BACKGROUND));
 
     /*
@@ -1629,8 +1630,7 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
                   flags & USER_COL ? FONT_VARIABLE_NORMAL : FONT_VARIABLE,
                   TILE_SIZE / 2,
                   ALIGN_VCENTRE | ALIGN_HCENTRE,
-                  flags & ERROR_BG ? COL_ERROR :
-                  flags & USER_COL ? COL_USER : COL_CLUE,
+                  flags & ERROR_BG ? COL_ERROR : COL_NUM,
                   buf);
     }
 
@@ -1705,7 +1705,7 @@ static void draw_square(drawing *dr, game_drawstate *ds, int x, int y,
 
 static void draw_grid(
     drawing *dr, game_drawstate *ds, const game_state *state,
-    const game_ui *ui, bool borders, bool shading)
+    const game_ui *ui, bool borders)
 {
     const int w = state->shared->params.w;
     const int h = state->shared->params.h;
@@ -1781,11 +1781,10 @@ static void draw_grid(
             int i = y*w+x, v = state->board[i];
             int flags = 0;
 
-            if (!shading) {
-                /* clear all background flags */
-            } else if (ui && ui->is_sel && ui->sel[i]) {
-                flags |= HIGH_BG;
-                if (state->shared->clues[i] == 0 && ui->hhint >= 0)
+            if (ui && ui->is_sel && ui->sel[i]) {
+                if ((ui->hhint > 0 && state->board[i] == ui->hhint) || ui->hhint == -1)
+                    flags |= HIGH_BG;
+                else if (ui->hhint > 0 && state->board[i] == 0)
                     v = ui->hhint;
             } else if (v) {
                 int size = dsf_size(ds->dsf_scratch, i);
@@ -1883,7 +1882,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         ds->started = true;
     }
 
-    draw_grid(dr, ds, state, ui, true, true);
+    draw_grid(dr, ds, state, ui, true);
 }
 
 static float game_anim_length(const game_state *oldstate,
