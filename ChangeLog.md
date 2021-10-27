@@ -1,6 +1,6 @@
 ## ChangeLog
 
-## 0.7.9
+## 0.7.9 - 2021/10/26
 
 ### Added
 * *Bricks* puzzle
