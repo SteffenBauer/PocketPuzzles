@@ -108,6 +108,7 @@
 - [X] Walls: Expand error display
 - [X] Walls: Expand solver / difficulty levels (area parity criteria)
 - [x] Sticks: Implement dragging
+- [x] Filling: Drag already placed/fixed numbers
 - [ ] Galaxies: Rework right-drag / arrow handling
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 - [ ] Mathrax: Deactivate useless 'recursive' game difficulty
@@ -132,7 +133,6 @@
 - [X] Undead
 - [X] Unequal
 - [X] Group
-- [X] Filling
 
 #### Rework Border error highlighting
 

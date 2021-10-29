@@ -1,10 +1,10 @@
 ## ChangeLog
 
-## 0.7.9 nightly
+## 0.7.9 - 2021/10/26
 
 ### Added
 * *Bricks* puzzle
-* *Filling*: One-click fill
+* *Filling*: Drag already placed or fixed number to fill empty cells
 * *Filling*: Undo of cell highlighting during dragging
 * *Solo*: Manual mode; for transferring puzzles from newspapers to play them on the app
 * *Unruly*: Add additional difficulty level (sync with upstream)
