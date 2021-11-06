@@ -107,8 +107,9 @@
 - [X] Creek: Separate from Slant as standalone game
 - [X] Walls: Expand error display
 - [X] Walls: Expand solver / difficulty levels (area parity criteria)
-- [x] Sticks: Implement dragging
-- [x] Filling: Drag already placed/fixed numbers
+- [X] Sticks: Implement dragging
+- [X] Filling: Drag already placed/fixed numbers
+- [X] Walls: Add dragging
 - [ ] Galaxies: Rework right-drag / arrow handling
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 - [ ] Mathrax: Deactivate useless 'recursive' game difficulty
@@ -119,7 +120,6 @@
 - [ ] Pearl: "No line" on right click instead of release
 - [ ] Slant: 'Hard' game difficulty (backtracking)
 - [ ] Twiddle: Re-activate basic animation (?)
-- [ ] Walls: Add dragging
 
 #### One-click symbol fill
 
