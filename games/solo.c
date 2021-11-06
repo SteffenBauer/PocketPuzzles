@@ -297,10 +297,8 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
         { "3x3 Advanced X", { 3, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, true, false, false } },
         { "2x3 Advanced Killer", { 2, 3, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, true, false } },
         { "6 Jigsaw Intermediate", { 6, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KINTERSECT, false, false, false } },
-        { "6 Jigsaw Advanced", { 6, 1, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, false, false } },
         { "9 Jigsaw Intermediate", { 9, 1, SYMM_NONE, DIFF_INTERSECT, DIFF_KINTERSECT, false, false, false } },
         { "9 Jigsaw Advanced", { 9, 1, SYMM_NONE, DIFF_SET, DIFF_KINTERSECT, false, false, false } },
-        { "9 Jigsaw Extreme", { 9, 1, SYMM_NONE, DIFF_EXTREME, DIFF_KINTERSECT, false, false, false } },
     };
 
     if (i < 0 || i >= lenof(presets))
