@@ -3,11 +3,12 @@
 ## 0.7.10 nightly
 
 ### Added
-* *Walls*: Place paths / walls by dragging (swipe across cells for paths, alone edges for walls)
+* *Walls*: Place paths / walls by dragging (swipe across cells for paths, along edges for walls)
 
 ### Changed
 * *Solo*: Removed some presets, for better fit in the limited screen size
 * *Walls*: Better error display (diagonal stripes)
+* Cleaner screen layout by removing unnecessary 'force screen redraw' button from chooser and param screens
 
 ## 0.7.9 - 2021/10/26
 

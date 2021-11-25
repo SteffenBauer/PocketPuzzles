@@ -80,9 +80,6 @@ void paramRelease(int x, int y) {
                         paramFree();
                         switchToGameScreen();
                         return;
-                    case ACTION_DRAW:
-                        paramScreenShow();
-                        return;
                 }
             }
         }
@@ -183,7 +180,6 @@ static void paramDrawMenu() {
     FillArea(0, pa.paramlayout.menu.starty + pa.paramlayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
     button_to_normal(&pa.paramButton[pa.btnBackIDX], false);
-    button_to_normal(&pa.paramButton[pa.btnDrawIDX], false);
 
     SetFont(pa.paramfont, BLACK);
     DrawTextRect(0, (pa.paramlayout.menubtn_size/2)-(pa.pfontsize/2), ScreenWidth(), pa.pfontsize, pa.title, ALIGN_CENTER);
@@ -210,9 +206,6 @@ static void paramDrawParams() {
     for (i=0;i<pa.numParams;i++) {
         FillArea(0, pa.paramItem[i].y, ScreenWidth(), pa.paramlayout.menubtn_size+3, 0x00FFFFFF);
         FillArea(xn, pa.paramItem[i].y+pa.paramlayout.menubtn_size+1, ScreenWidth()-2*xn, 1, 0x00000000);
-        /*if (pa.paramItem[i].bitmap != NULL)
-            StretchBitmap(xn, pa.paramItem[i].y, pa.paramlayout.menubtn_size, 
-                          pa.paramlayout.menubtn_size, pa.paramItem[i].bitmap, 0); */
         SetFont(pa.paramfont, BLACK);
         y = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(pa.pfontsize/2);
         DrawTextRect(xn, y, ScreenWidth()-2*xn, pa.pfontsize, pa.cfg[i].name, ALIGN_LEFT);
@@ -379,19 +372,13 @@ void paramPrepare(midend *me) {
         }
     }
 
-    pa.numParamButtons = 2;
+    pa.numParamButtons = 1;
     pa.paramButton = smalloc(pa.numParamButtons*sizeof(BUTTON));
     pa.paramButton[pa.btnBackIDX = 0] = (BUTTON){ true,  BTN_MENU, 
         pa.paramlayout.menubtn_size/4,
         pa.paramlayout.menu.starty,
         pa.paramlayout.menubtn_size, 0, 
         ACTION_BACK, ' ', &icon_back, &icon_back_tap, NULL};
-
-    pa.paramButton[pa.btnDrawIDX = 1] = (BUTTON){ true,  BTN_MENU, 
-        ScreenWidth() - (10*pa.paramlayout.menubtn_size)/8,
-        pa.paramlayout.menu.starty,
-        pa.paramlayout.menubtn_size, 0,
-        ACTION_DRAW, ' ', &icon_redraw, &icon_redraw_tap, NULL};
 }
 
 void paramScreenShow() {
