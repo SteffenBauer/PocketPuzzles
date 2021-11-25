@@ -103,9 +103,6 @@ void chooserRelease(int x, int y) {
                     case ACTION_HOME:
                         exitApp();
                         break;
-                    case ACTION_DRAW:
-                        chooserScreenShow();
-                        break;
                     case ACTION_MENU:
                         OpenMenuEx(chooserMenu, 0, 
                             ScreenWidth()-10-ca.chooserlayout.menubtn_size ,
@@ -188,7 +185,6 @@ static void chooserDrawMenu() {
     FillArea(0, ca.chooserlayout.menu.starty + ca.chooserlayout.menu.height-2, ScreenWidth(), 1, 0x00000000);
 
     button_to_normal(&ca.chooserButton[ca.btnHomeIDX], false);
-    button_to_normal(&ca.chooserButton[ca.btnDrawIDX], false);
     button_to_normal(&ca.chooserButton[ca.btnMenuIDX], false);
 
     SetFont(ca.chooserfont, BLACK);
@@ -250,12 +246,6 @@ static void chooserSetupButtons() {
         ca.chooserlayout.menubtn_size, 0, 
         ACTION_HOME, ' ', &icon_home, &icon_home_tap, NULL};
 
-    ca.chooserButton[ca.btnDrawIDX = i++] = (BUTTON){ true,  BTN_MENU, 
-        ScreenWidth() - (19*ca.chooserlayout.menubtn_size)/8,
-        ca.chooserlayout.menu.starty,
-        ca.chooserlayout.menubtn_size, 0,
-        ACTION_DRAW, ' ', &icon_redraw, &icon_redraw_tap, NULL};
-
     ca.chooserButton[ca.btnMenuIDX = i++] = (BUTTON){ true,  BTN_MENU, 
         ScreenWidth() - (10*ca.chooserlayout.menubtn_size)/8,
         ca.chooserlayout.menu.starty,
@@ -299,7 +289,7 @@ void chooserScreenInit() {
     ca.current_chooserpage = 0;
     ca.chooser_lastpage = (ca.num_games-1) / (ca.chooser_cols * ca.chooser_rows);
 
-    ca.numChooserButtons = ca.num_games + 5;
+    ca.numChooserButtons = ca.num_games + 2;
     ca.chooserButton = smalloc(ca.numChooserButtons*sizeof(BUTTON));
 
     ca.numPageButtons = ca.chooser_lastpage + 1;
