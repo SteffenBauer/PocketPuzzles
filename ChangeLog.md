@@ -4,6 +4,7 @@
 
 ### Added
 * *Walls*: Place paths / walls by dragging (swipe across cells for paths, along edges for walls)
+* *Spokes*: Additional difficulty level
 
 ### Changed
 * *Solo*: Removed some presets, for better fit in the limited screen size
