@@ -11,6 +11,9 @@
 * *Walls*: Better error display (diagonal stripes)
 * Cleaner screen layout by removing unnecessary 'force screen redraw' button from chooser and param screens
 
+### Fixed
+* *Mosaic*: Fix preservation of 'aggressiveness' parameter
+
 ## 0.7.9 - 2021/10/26
 
 ### Added
