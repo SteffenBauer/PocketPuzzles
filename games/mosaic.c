@@ -22,6 +22,7 @@
 #include "puzzles.h"
 
 #define DEFAULT_SIZE 8
+#define DEFAULT_AGGRESSIVENESS true
 #define MAX_TILES 250
 #define MAX_TILES_ERROR "Maximum size is 250 tiles"
 #define DEFAULT_TILE_SIZE 32
@@ -131,7 +132,7 @@ static game_params *default_params(void)
 
     ret->width = DEFAULT_SIZE;
     ret->height = DEFAULT_SIZE;
-    ret->aggressive = true;
+    ret->aggressive = DEFAULT_AGGRESSIVENESS;
 
     return ret;
 }
@@ -190,7 +191,7 @@ static char *encode_params(const game_params *params, bool full)
     int pos = 0;
     pos += sprintf(encoded + pos, "%dx%d", params->width, params->height);
     if (full) {
-        if (params->aggressive)
+        if (params->aggressive != DEFAULT_AGGRESSIVENESS)
             pos += sprintf(encoded + pos, "h%d", params->aggressive);
     }
     return dupstr(encoded);
