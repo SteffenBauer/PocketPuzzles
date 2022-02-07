@@ -14,11 +14,12 @@ CFLAGS := -O2 -Wall -Werror -g -I./ -I../include/ `$(GTK_CONFIG) --cflags` \
 XLIBS = `$(GTK_CONFIG) --libs` -lm
 ULIBS = -lm
 
-all: abcd ascent blackbox boats bricks bridges clusters creek cube dominosa fifteen \
-		filling flip flood galaxies guess inertia keen lightup loopy magnets \
-		map mathrax mines mosaic net palisade pattern pearl pegs range rect \
-		rome salad samegame signpost singles sixteen slant solo spokes sticks \
-		tents towers tracks twiddle undead unequal unruly untangle walls
+all: abcd ascent blackbox boats bricks bridges clusters creek crossnum cube \
+		dominosa fifteen filling flip flood galaxies guess inertia keen lightup \
+		loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs \
+		range rect rome salad samegame signpost singles sixteen slant solo \
+		spokes sticks tents towers tracks twiddle undead unequal unruly \
+		untangle walls
 
 abcd: abcd.o drawing.o gtk.o malloc.o midend.o \
 		misc.o no-icon.o printing.o ps.o random.o version.o
@@ -68,6 +69,12 @@ clusters: clusters.o no-icon.o drawing.o gtk.o malloc.o \
 creek: creek.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
 		midend.o misc.o printing.o ps.o random.o version.o
 	$(CC) -o $@ creek.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
+		midend.o misc.o printing.o ps.o random.o version.o  \
+		$(XLFLAGS) $(XLIBS)
+
+crossnum: drawing.o gtk.o crossnum.o no-icon.o malloc.o \
+		midend.o misc.o printing.o ps.o random.o version.o
+	$(CC) -o $@ drawing.o gtk.o crossnum.o no-icon.o malloc.o \
 		midend.o misc.o printing.o ps.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
@@ -360,6 +367,8 @@ clusters.o: ../games/clusters.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 creek.o: ../games/creek.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
+crossnum.o: ../games/crossnum.c ../include/puzzles.h
+	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 cube.o: ../games/cube.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 dominosa.o: ../games/dominosa.c ../include/puzzles.h
@@ -498,5 +507,5 @@ version.o: ../utils/version.c ../include/version.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o abcd ascent blackbox boats bricks bridges clusters creek cube dominosa fifteen filling flip flood galaxies guess inertia keen lightup loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs range rect rome salad samegame signpost singles sixteen slant solo spokes sticks tents towers tracks twiddle undead unequal unruly untangle walls
+	rm -f *.o abcd ascent blackbox boats bricks bridges clusters creek crossnum cube dominosa fifteen filling flip flood galaxies guess inertia keen lightup loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs range rect rome salad samegame signpost singles sixteen slant solo spokes sticks tents towers tracks twiddle undead unequal unruly untangle walls
 

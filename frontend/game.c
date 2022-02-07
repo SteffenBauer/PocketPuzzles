@@ -557,7 +557,7 @@ void gameRelease(int x, int y) {
                         switchToChooserScreen();
                         return;
                     case ACTION_DRAW:
-                        gameScreenShow();
+                        FullUpdate();
                         return;
                     case ACTION_GAME:
                         OpenMenuEx(gameMenu, gameMenu_selectedIndex, 
@@ -752,16 +752,17 @@ static void gamePrepareFrontend() {
 
 static BUTTON gameGetButton(const char *gameName, char key) {
     if      (key == '\b') return btn_backspace;
-    else if (key == '+' && strcmp(gameName, "Map") == 0)     return btn_fill_map;
-    else if (key == '+' && strcmp(gameName, "Rome") == 0)    return btn_fill_rome;
-    else if (key == '+' && strcmp(gameName, "Undead") == 0)  return btn_fill_marks;
-    else if (key == '+' && strcmp(gameName, "ABCD") == 0)    return btn_fill_marks;
-    else if (key == '+' && strcmp(gameName, "Group") == 0)   return btn_fill_marks;
-    else if (key == '+' && strcmp(gameName, "Salad") == 0)   return btn_fill_marks;
-    else if (key == '+' && strcmp(gameName, "Keen") == 0)    return btn_fill_nums;
-    else if (key == '+' && strcmp(gameName, "Mathrax") == 0) return btn_fill_nums;
-    else if (key == '+' && strcmp(gameName, "Towers") == 0)  return btn_fill_nums;
-    else if (key == '+' && strcmp(gameName, "Unequal") == 0) return btn_fill_nums;
+    else if (key == '+' && strcmp(gameName, "Map") == 0)      return btn_fill_map;
+    else if (key == '+' && strcmp(gameName, "Rome") == 0)     return btn_fill_rome;
+    else if (key == '+' && strcmp(gameName, "Undead") == 0)   return btn_fill_marks;
+    else if (key == '+' && strcmp(gameName, "ABCD") == 0)     return btn_fill_marks;
+    else if (key == '+' && strcmp(gameName, "Group") == 0)    return btn_fill_marks;
+    else if (key == '+' && strcmp(gameName, "Salad") == 0)    return btn_fill_marks;
+    else if (key == '+' && strcmp(gameName, "CrossNum") == 0) return btn_fill_nums;
+    else if (key == '+' && strcmp(gameName, "Keen") == 0)     return btn_fill_nums;
+    else if (key == '+' && strcmp(gameName, "Mathrax") == 0)  return btn_fill_nums;
+    else if (key == '+' && strcmp(gameName, "Towers") == 0)   return btn_fill_nums;
+    else if (key == '+' && strcmp(gameName, "Unequal") == 0)  return btn_fill_nums;
 
     else if (key == '+')  return btn_add;
     else if (key == '-')  return btn_remove;
@@ -800,6 +801,7 @@ static LAYOUTTYPE gameGetLayout() {
     if (strcmp(fe->currentgame->name, "ABCD")==0)     fe->with_twoctrllines = true;
     if (strcmp(fe->currentgame->name, "Dominosa")==0) fe->with_twoctrllines = true;
     if (strcmp(fe->currentgame->name, "Group")==0)    fe->with_twoctrllines = true;
+    if (strcmp(fe->currentgame->name, "CrossNum")==0) fe->with_twoctrllines = true;
     if (strcmp(fe->currentgame->name, "Keen")==0)     fe->with_twoctrllines = true;
     if (strcmp(fe->currentgame->name, "Mathrax")==0)  fe->with_twoctrllines = true;
     if (strcmp(fe->currentgame->name, "Rome")==0)     fe->with_twoctrllines = true;
@@ -926,7 +928,7 @@ void gameScreenShow() {
     midend_force_redraw(me);
     gameDrawControlButtons();
     gameDrawStatusBar();
-    FullUpdate();
+    SoftUpdate();
 }
 
 void gameScreenInit() {
