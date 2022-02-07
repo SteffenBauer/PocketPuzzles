@@ -5,11 +5,13 @@
 ### Added
 * *Walls*: Place paths / walls by dragging (swipe across cells for paths, along edges for walls)
 * *Spokes*: Additional difficulty level
+* *CrossNum* puzzle
 
 ### Changed
 * *Solo*: Removed some presets, for better fit in the limited screen size
 * *Walls*: Better error display (diagonal stripes)
 * Cleaner screen layout by removing unnecessary 'force screen redraw' button from chooser and param screens
+* Optimized initial screen draw on game launch
 
 ### Fixed
 * *Mosaic*: Fix preservation of 'aggressiveness' parameter
