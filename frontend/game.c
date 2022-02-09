@@ -38,12 +38,6 @@ int convertColor(int colindex) {
     return col;
 }
 
-/*
-bool dottedColor(int colindex) {
-    return (fe->colours[3*colindex+0] != fe->colours[3*colindex+1]);
-}
-*/
-
 /* ----------------------------
    Drawing callbacks
    ---------------------------- */
@@ -197,11 +191,12 @@ void ink_start_draw(void *handle) {
 }
 
 void ink_draw_update(void *handle, int x, int y, int w, int h) {
-    /* No updates while redraw is in progress. Update will be done in ink_end_draw */
+    /* No updates while redraw is in progress.
+       Update trigger will be flagged in ink_end_draw */
 }
 
 void ink_end_draw(void *handle) {
-    SoftUpdate();
+    fe->do_update = true;
 }
 
 blitter *ink_blitter_new(void *handle, int w, int h) {
@@ -477,24 +472,25 @@ void gameTap(int x, int y) {
             fe->current_pointer = (fe->swapped ? RIGHT_BUTTON : LEFT_BUTTON);
         else {
             fe->current_pointer = LEFT_BUTTON;
+            fe->do_update = false;
             midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), LEFT_BUTTON, fe->swapped);
             gameDrawFurniture();
-            SoftUpdate();
         }
     }
 }
 
 void gameLongTap(int x, int y) {
     if (coord_in_gamecanvas(x, y) && fe->with_rightpointer) {
+        fe->do_update = false;
         midend_process_key(me, x-(fe->xoffset), y-(fe->yoffset), 
                            (fe->swapped ? LEFT_BUTTON : RIGHT_BUTTON), fe->swapped);
         fe->current_pointer = (fe->swapped ? LEFT_BUTTON : RIGHT_BUTTON);
         gameDrawFurniture();
-        SoftUpdate();
     }
 }
 
 void gameDrag(int x, int y) {
+    fe->do_update = false;
     if (coord_in_gamecanvas(x, y)) {
         if (fe->current_pointer == LEFT_BUTTON) {
             if (fe->with_rightpointer && !fe->swapped)
@@ -519,12 +515,11 @@ void gameDrag(int x, int y) {
         }
     }
     gameDrawFurniture();
-    SoftUpdate();
 }
 
 void gameRelease(int x, int y) {
     int i;
-
+    fe->do_update = false;
     if (coord_in_gamecanvas(init_tap_x, init_tap_y)) {
         if (fe->current_pointer == LEFT_BUTTON) {
             if (fe->with_rightpointer && !fe->swapped)
@@ -586,20 +581,19 @@ void gameRelease(int x, int y) {
         }
     }
     gameDrawFurniture();
-    SoftUpdate();
     checkGameEnd();
 }
 
 void gamePrev() {
+    fe->do_update = false;
     if (midend_can_undo(me)) midend_process_key(me, 0, 0 , UI_UNDO, fe->swapped);
     gameDrawFurniture();
-    SoftUpdate();
 }
 
 void gameNext() {
+    fe->do_update = false;
     if (midend_can_redo(me)) midend_process_key(me, 0, 0, UI_REDO, fe->swapped);
     gameDrawFurniture();
-    SoftUpdate();
 }
 
 static void gameDrawStatusBar() {
@@ -844,25 +838,29 @@ static LAYOUTTYPE gameGetLayout() {
 }
 
 static void gameDrawFurniture() {
-    gameCheckButtonState();
-    gameDrawStatusBar();
+    if (fe->do_update) {
+        gameCheckButtonState();
+        gameDrawStatusBar();
+        SoftUpdate();
+    }
+    fe->do_update = false;
 }
 
 static void gameRestartGame() {
+    fe->do_update = true;
     fe->statustext = NULL;
     midend_restart_game(me);
     fe->finished = false;
     gameDrawFurniture();
-    SoftUpdate();
 }
 
 static void gameSolveGame() {
     const char *errorMsg;
+    fe->do_update = true;
     errorMsg = midend_solve(me);
     if (errorMsg) Message(ICON_WARNING, "", errorMsg, 3000);
     else fe->finished = true;
     gameDrawFurniture();
-    SoftUpdate();
 }
 
 static void gameSwitchPreset(int index) {
@@ -928,7 +926,7 @@ void gameScreenShow() {
     midend_force_redraw(me);
     gameDrawControlButtons();
     gameDrawStatusBar();
-    SoftUpdate();
+    FullUpdate();
 }
 
 void gameScreenInit() {
@@ -938,6 +936,7 @@ void gameScreenInit() {
     fe->gamefont = OpenFont("LiberationSans-Bold", fe->gfontsize, 0);
     fe->gameButton = NULL;
     fe->statustext = NULL;
+    fe->do_update = false;
     fe->isTimer = false;
     gameMenu = NULL;
     typeMenu = NULL;

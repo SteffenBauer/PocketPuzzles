@@ -43,6 +43,7 @@ struct frontend {
   irect cliprect;           /* Initial screen clip rectangle upon game init */
 
   char *statustext;   /* Currently shown status text (needed for screen redraw) */
+  bool do_update;     /* Update the screen flag */
 
   struct timeval last_time;
   int time_int;

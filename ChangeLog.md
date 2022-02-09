@@ -11,7 +11,7 @@
 * *Solo*: Removed some presets, for better fit in the limited screen size
 * *Walls*: Better error display (diagonal stripes)
 * Cleaner screen layout by removing unnecessary 'force screen redraw' button from chooser and param screens
-* Optimized initial screen draw on game launch
+* Optimized screen update in game screen
 
 ### Fixed
 * *Mosaic*: Fix preservation of 'aggressiveness' parameter
