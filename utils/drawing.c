@@ -33,7 +33,7 @@
 
 struct print_colour {
     int hatch;
-    int hatch_when;		       /* 0=never 1=only-in-b&w 2=always */
+    int hatch_when;            /* 0=never 1=only-in-b&w 2=always */
     float r, g, b;
     float grey;
 };
@@ -73,8 +73,7 @@ void drawing_free(drawing *dr)
 void draw_text(drawing *dr, int x, int y, int fonttype, int fontsize,
                int align, int colour, const char *text)
 {
-    dr->api->draw_text(dr->handle, x, y, fonttype, fontsize, align,
-		       colour, text);
+    dr->api->draw_text(dr->handle, x, y, fonttype, fontsize, align, colour, text);
 }
 
 void draw_rect(drawing *dr, int x, int y, int w, int h, int colour)
@@ -88,53 +87,50 @@ void draw_line(drawing *dr, int x1, int y1, int x2, int y2, int colour)
 }
 
 void draw_thick_line(drawing *dr, float thickness,
-		     float x1, float y1, float x2, float y2, int colour)
+                     float x1, float y1, float x2, float y2, int colour)
 {
     if (thickness < 1.0)
         thickness = 1.0;
     if (dr->api->draw_thick_line) {
-	dr->api->draw_thick_line(dr->handle, thickness,
-				 x1, y1, x2, y2, colour);
+        dr->api->draw_thick_line(dr->handle, thickness, x1, y1, x2, y2, colour);
     } else {
-	/* We'll fake it up with a filled polygon.  The tweak to the
-	 * thickness empirically compensates for rounding errors, because
-	 * polygon rendering uses integer coordinates.
-	 */
-	float len = sqrt((x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1));
-	float tvhatx = (x2 - x1)/len * (thickness/2 - 0.2);
-	float tvhaty = (y2 - y1)/len * (thickness/2 - 0.2);
-	int p[8];
+        /* We'll fake it up with a filled polygon.  The tweak to the
+         * thickness empirically compensates for rounding errors, because
+         * polygon rendering uses integer coordinates.
+         */
+        float len = sqrt((x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1));
+        float tvhatx = (x2 - x1)/len * (thickness/2 - 0.2);
+        float tvhaty = (y2 - y1)/len * (thickness/2 - 0.2);
+        int p[8];
 
-	p[0] = x1 - tvhaty;
-	p[1] = y1 + tvhatx;
-	p[2] = x2 - tvhaty;
-	p[3] = y2 + tvhatx;
-	p[4] = x2 + tvhaty;
-	p[5] = y2 - tvhatx;
-	p[6] = x1 + tvhaty;
-	p[7] = y1 - tvhatx;
-	dr->api->draw_polygon(dr->handle, p, 4, colour, colour);
+        p[0] = x1 - tvhaty;
+        p[1] = y1 + tvhatx;
+        p[2] = x2 - tvhaty;
+        p[3] = y2 + tvhatx;
+        p[4] = x2 + tvhaty;
+        p[5] = y2 - tvhatx;
+        p[6] = x1 + tvhaty;
+        p[7] = y1 - tvhatx;
+        dr->api->draw_polygon(dr->handle, p, 4, colour, colour);
     }
 }
 
 void draw_polygon(drawing *dr, const int *coords, int npoints,
                   int fillcolour, int outlinecolour)
 {
-    dr->api->draw_polygon(dr->handle, coords, npoints, fillcolour,
-			  outlinecolour);
+    dr->api->draw_polygon(dr->handle, coords, npoints, fillcolour, outlinecolour);
 }
 
 void draw_circle(drawing *dr, int cx, int cy, int radius,
                  int fillcolour, int outlinecolour)
 {
-    dr->api->draw_circle(dr->handle, cx, cy, radius, fillcolour,
-			 outlinecolour);
+    dr->api->draw_circle(dr->handle, cx, cy, radius, fillcolour, outlinecolour);
 }
 
 void draw_update(drawing *dr, int x, int y, int w, int h)
 {
     if (dr->api->draw_update)
-	dr->api->draw_update(dr->handle, x, y, w, h);
+        dr->api->draw_update(dr->handle, x, y, w, h);
 }
 
 void clip(drawing *dr, int x, int y, int w, int h)
@@ -165,7 +161,7 @@ char *text_fallback(drawing *dr, const char *const *strings, int nstrings)
      * If the drawing implementation provides one of these, use it.
      */
     if (dr && dr->api->text_fallback)
-	return dr->api->text_fallback(dr->handle, strings, nstrings);
+        return dr->api->text_fallback(dr->handle, strings, nstrings);
 
     /*
      * Otherwise, do the simple thing and just pick the first string
@@ -173,13 +169,13 @@ char *text_fallback(drawing *dr, const char *const *strings, int nstrings)
      * out of UTF-8.
      */
     for (i = 0; i < nstrings; i++) {
-	const char *p;
+        const char *p;
 
-	for (p = strings[i]; *p; p++)
-	    if (*p & 0x80)
-		break;
-	if (!*p)
-	    return dupstr(strings[i]);
+        for (p = strings[i]; *p; p++)
+            if (*p & 0x80)
+                break;
+        if (!*p)
+            return dupstr(strings[i]);
     }
 
     /*
@@ -187,7 +183,7 @@ char *text_fallback(drawing *dr, const char *const *strings, int nstrings)
      * the list was in plain ASCII.
      */
     assert(!"Should never get here");
-    return NULL;		       /* placate optimiser */
+    return NULL;               /* placate optimiser */
 }
 
 void status_bar(drawing *dr, const char *text)
@@ -195,18 +191,22 @@ void status_bar(drawing *dr, const char *text)
     char *rewritten;
 
     if (!dr->api->status_bar)
-	return;
+        return;
 
     assert(dr->me);
 
     rewritten = midend_rewrite_statusbar(dr->me, text);
     if (!dr->laststatus || strcmp(rewritten, dr->laststatus)) {
-	dr->api->status_bar(dr->handle, rewritten);
-	sfree(dr->laststatus);
-	dr->laststatus = rewritten;
+        dr->api->status_bar(dr->handle, rewritten);
+        sfree(dr->laststatus);
+        dr->laststatus = rewritten;
     } else {
-	sfree(rewritten);
+        sfree(rewritten);
     }
+}
+
+char *get_statustext(drawing *dr) {
+    return dr->laststatus;
 }
 
 blitter *blitter_new(drawing *dr, int w, int h)
@@ -240,8 +240,8 @@ void print_begin_page(drawing *dr, int number)
 }
 
 void print_begin_puzzle(drawing *dr, float xm, float xc,
-			float ym, float yc, int pw, int ph, float wmm,
-			float scale)
+                        float ym, float yc, int pw, int ph, float wmm,
+                        float scale)
 {
     dr->scale = scale;
     dr->ncolours = 0;
@@ -265,31 +265,30 @@ void print_end_doc(drawing *dr)
 }
 
 void print_get_colour(drawing *dr, int colour, bool printing_in_colour,
-		      int *hatch, float *r, float *g, float *b)
+                      int *hatch, float *r, float *g, float *b)
 {
     assert(colour >= 0 && colour < dr->ncolours);
     if (dr->colours[colour].hatch_when == 2 ||
-	(dr->colours[colour].hatch_when == 1 && !printing_in_colour)) {
-	*hatch = dr->colours[colour].hatch;
+        (dr->colours[colour].hatch_when == 1 && !printing_in_colour)) {
+        *hatch = dr->colours[colour].hatch;
     } else {
-	*hatch = -1;
-	if (printing_in_colour) {
-	    *r = dr->colours[colour].r;
-	    *g = dr->colours[colour].g;
-	    *b = dr->colours[colour].b;
-	} else {
-	    *r = *g = *b = dr->colours[colour].grey;
-	}
+        *hatch = -1;
+        if (printing_in_colour) {
+            *r = dr->colours[colour].r;
+            *g = dr->colours[colour].g;
+            *b = dr->colours[colour].b;
+        } else {
+            *r = *g = *b = dr->colours[colour].grey;
+        }
     }
 }
 
 static int print_generic_colour(drawing *dr, float r, float g, float b,
-				float grey, int hatch, int hatch_when)
+                                float grey, int hatch, int hatch_when)
 {
     if (dr->ncolours >= dr->coloursize) {
-	dr->coloursize = dr->ncolours + 16;
-	dr->colours = sresize(dr->colours, dr->coloursize,
-			      struct print_colour);
+        dr->coloursize = dr->ncolours + 16;
+        dr->colours = sresize(dr->colours, dr->coloursize, struct print_colour);
     }
     dr->colours[dr->ncolours].hatch = hatch;
     dr->colours[dr->ncolours].hatch_when = hatch_when;
