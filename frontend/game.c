@@ -221,9 +221,14 @@ void ink_blitter_load(void *handle, blitter *bl, int x, int y) {
 }
 
 void ink_status_bar(void *handle, const char *text) {
-  /* fe->statustext = text; */
+    if (!fe->gamelayout.with_statusbar) return;
+    if (text != NULL) {
+        FillArea(0, fe->gamelayout.statusbar.starty+1, ScreenWidth(), fe->gamelayout.statusbar.height-1, 0x00FFFFFF);
+        SetFont(fe->gamefont, BLACK);
+        DrawString(10, fe->gamelayout.statusbar.starty+12, text);
+        fe->do_update = true;
+    }
 }
-
 
 /* ----------------------------
    Midend -> Frontend callbacks
@@ -256,6 +261,8 @@ void tproc() {
 }
 
 void activate_timer(frontend *fe) {
+    /* Timed puzzles don't work really well on eInk,
+       so timers are deactivated so far */
   return;
   fe->isTimer=true;
   gettimeofday(&fe->last_time, NULL);
@@ -596,19 +603,6 @@ void gameNext() {
     gameDrawFurniture();
 }
 
-static void gameDrawStatusBar() {
-    char buf[256];
-    char *me_status = midend_get_statustext(me);
-    if (!fe->gamelayout.with_statusbar) return;
-    if (me_status != NULL && fe->statustext != NULL && strcmp(me_status, fe->statustext) == 0) return;
-    gameSetupStatusBar();
-    sfree(fe->statustext);
-    fe->statustext = dupstr(me_status);
-    sprintf(buf, "%s                               ", fe->statustext ? fe->statustext : "");
-    SetFont(fe->gamefont, BLACK);
-    DrawString(10, fe->gamelayout.statusbar.starty+12, buf);
-}
-
 static void gameDrawControlButtons() {
     int i;
     FillArea(0, fe->gamelayout.buttonpanel.starty, ScreenWidth(), fe->gamelayout.buttonpanel.height, 0x00FFFFFF);
@@ -634,9 +628,9 @@ static void gameDrawMenu() {
     button_to_normal(&fe->gameButton[fe->btnGameIDX], false);
     button_to_normal(&fe->gameButton[fe->btnTypeIDX], false);
 }
-static void gameSetupStatusBar() {
+static void gameDrawStatusBar() {
     if (!fe->gamelayout.with_statusbar) return;
-    FillArea(0, fe->gamelayout.statusbar.starty, ScreenWidth(), fe->gamelayout.statusbar.height, 0x00FFFFFF);
+    FillArea(0, fe->gamelayout.statusbar.starty+1, ScreenWidth(), fe->gamelayout.statusbar.height-1, 0x00FFFFFF);
     FillArea(0, fe->gamelayout.statusbar.starty, ScreenWidth(), 1, 0x00000000);
 }
 
@@ -730,7 +724,6 @@ static void gamePrepareFrontend() {
 
     gameSetupMenuButtons();
     gameSetupControlButtons();
-    gameSetupStatusBar();
     gameBuildGameMenu();
     gameBuildTypeMenu();
 
@@ -840,7 +833,6 @@ static LAYOUTTYPE gameGetLayout() {
 static void gameDrawFurniture() {
     if (fe->do_update) {
         gameCheckButtonState();
-        gameDrawStatusBar();
         SoftUpdate();
     }
     fe->do_update = false;
@@ -848,7 +840,6 @@ static void gameDrawFurniture() {
 
 static void gameRestartGame() {
     fe->do_update = true;
-    fe->statustext = NULL;
     midend_restart_game(me);
     fe->finished = false;
     gameDrawFurniture();
@@ -870,7 +861,6 @@ static void gameSwitchPreset(int index) {
 
 void gameStartNewGame() {
     ShowPureHourglassForce();
-    fe->statustext = NULL;
     midend_new_game(me);
     HideHourglass();
     gamePrepareFrontend();
@@ -891,7 +881,6 @@ bool gameResumeGame() {
                 }
                 else {
                     ShowPureHourglassForce();
-                    fe->statustext = NULL;
                     midend_new_game(me);
                     HideHourglass();
                 }
@@ -911,7 +900,6 @@ bool gameResumeGame() {
 
 void gameSetGame(const struct game *thegame) {
     fe->currentgame = thegame;
-    fe->statustext = NULL;
     if (me != NULL) midend_free(me);
     me = midend_new(fe, thegame, &ink_drawing, fe);
     stateLoadParams(me, thegame);
@@ -922,10 +910,10 @@ void gameScreenShow() {
     ClearScreen();
     DrawPanel(NULL, "", "", 0);
     gameDrawMenu();
-    fe->statustext = NULL;
     midend_force_redraw(me);
     gameDrawControlButtons();
     gameDrawStatusBar();
+    ink_status_bar(NULL, midend_get_statustext(me));
     FullUpdate();
 }
 
@@ -935,7 +923,6 @@ void gameScreenInit() {
     fe->gfontsize = (int)(ScreenWidth()/30);
     fe->gamefont = OpenFont("LiberationSans-Bold", fe->gfontsize, 0);
     fe->gameButton = NULL;
-    fe->statustext = NULL;
     fe->do_update = false;
     fe->isTimer = false;
     gameMenu = NULL;
@@ -956,7 +943,6 @@ void gameScreenFree() {
         CloseFont(fe->gamefont);
         SetClipRect(&fe->cliprect);
         deactivate_timer(fe);
-        sfree(fe->statustext);
         sfree(fe->gameButton);
         sfree(fe);
         sfree(gameMenu);

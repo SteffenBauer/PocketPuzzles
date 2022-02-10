@@ -271,6 +271,7 @@ void draw_update(drawing *dr, int x, int y, int w, int h);
 void end_draw(drawing *dr);
 char *text_fallback(drawing *dr, const char *const *strings, int nstrings);
 void status_bar(drawing *dr, const char *text);
+char *get_statustext(drawing *dr);
 blitter *blitter_new(drawing *dr, int w, int h);
 void blitter_free(drawing *dr, blitter *bl);
 /* save puts the portion of the current display with top-left corner
