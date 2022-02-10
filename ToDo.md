@@ -46,6 +46,10 @@
 - [ ] Screen orientation handling
 - [ ] Generate separate documentation eBook
 
+### Current bugs
+
+- [ ] Undo button still activated after change of game parameters (bug in upstream)
+
 ## ToDo for individual games
 
 - [X] Ascent: Add number keys; better error display, allow number erase by backspace
