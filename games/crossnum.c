@@ -2055,6 +2055,11 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             }
             return UI_UPDATE;
         }
+    } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
+        ui->hshow = 0;
+        ui->hpencil = 0;
+        ui->hhint = 0;
+        return UI_UPDATE;
     }
 
     if (ui->hshow &&
@@ -2350,7 +2355,7 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
         ret[COL_ERROR      * 3 + i] = 0.25F;
         ret[COL_ERROR_USER * 3 + i] = 0.75F;
-        ret[COL_PENCIL     * 3 + i] = 0.25F;
+        ret[COL_PENCIL     * 3 + i] = 0.0F;
         ret[COL_EVENBG     * 3 + i] = 0.9F;
         ret[COL_ODDBG      * 3 + i] = 1.0F;
     }
@@ -2462,8 +2467,8 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_params *par,
 
         sprintf(hcbuf, "%d", hclue);
         sprintf(vcbuf, "%d", vclue);
-        hfs = ch/4;
-        vfs = ch/4;
+        hfs = 9*ch/24;
+        vfs = 9*ch/24;
         if (hclue < 0 && vclue < 0) {
             /* unplayable square without clue - crosshatch it */
             for (i=1;i<=11;i+=2) {
@@ -2482,12 +2487,12 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_params *par,
             }
         } else if (x == 0 && hclue >= 0) {
             /* left edge horizontal clue, center it */
-            draw_text(dr, cx+cw/2, cy+ch/2, FONT_VARIABLE, hfs,
+            draw_text(dr, cx+cw/2, cy+ch/2, FONT_FIXED, hfs,
                       ALIGN_VCENTRE | ALIGN_HCENTRE,
                       (tile & DF_ERR_HCLUE ? COL_ERROR_USER : COL_GRID), hcbuf);
         } else if (y == 0 && vclue >= 0) {
             /* top edge vertical clue, center it */
-            draw_text(dr, cx+cw/2, cy+ch/2, FONT_VARIABLE, vfs,
+            draw_text(dr, cx+cw/2, cy+ch/2, FONT_FIXED, vfs,
                       ALIGN_VCENTRE | ALIGN_HCENTRE,
                       (tile & DF_ERR_VCLUE ? COL_ERROR_USER : COL_GRID), vcbuf);
         } else {
@@ -2500,9 +2505,8 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_params *par,
             c[10] = cx;       c[11] = cy+fh2;
             draw_polygon(dr, c, 6, COL_GRID, COL_GRID);
 
-          /* draw_line(dr, cx, cy, cx+cw, cy+ch, COL_GRID); */
           if (hclue >= 0) {
-            draw_text(dr, cx+(cw+hfs)/2, cy+hfs, FONT_VARIABLE, hfs,
+            draw_text(dr, cx+3*cw/4-GRIDEXTRA, cy+ch/4, FONT_FIXED, hfs,
                       ALIGN_VCENTRE | ALIGN_HCENTRE,
                       (tile & DF_ERR_HCLUE ? COL_ERROR_USER : COL_GRID), hcbuf);
           } else {
@@ -2522,7 +2526,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_params *par,
             }
           }
           if (vclue >= 0) {
-            draw_text(dr, cx+(cw-vfs)/2, cy+ch-vfs, FONT_VARIABLE, vfs,
+            draw_text(dr, cx+cw/4+GRIDEXTRA, cy+3*ch/4, FONT_FIXED, vfs,
                       ALIGN_VCENTRE | ALIGN_HCENTRE,
                       (tile & DF_ERR_VCLUE ? COL_ERROR_USER : COL_GRID), vcbuf);
           } else {
