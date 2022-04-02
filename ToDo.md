@@ -159,15 +159,15 @@
 
 #### Fixed grid arrangement of pencil marks
 
-- [ ] ABCD
-- [ ] CrossNum
-- [ ] Keen
-- [ ] Mathrax
-- [ ] Salad
-- [ ] Solo
-- [ ] Towers
-- [ ] Undead
-- [ ] Unequal
+- [X] ABCD
+- [X] CrossNum
+- [X] Keen
+- [X] Mathrax
+- [X] Salad
+- [X] Solo
+- [X] Towers
+- [X] Undead
+- [X] Unequal
 
 #### Game specific UI settings
 

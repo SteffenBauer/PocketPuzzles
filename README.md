@@ -6,7 +6,7 @@ Port of [Simon Tatham's Portable Puzzle Collection](http://www.chiark.greenend.o
 
 [More screenshots](https://github.com/SteffenBauer/PocketPuzzles/blob/master/screenshots/screenshots.md)
 
-[Download the app here](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/README.md)
+[**Download the app here**](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/README.md)
 
 Inspired by and building on the work of [Port to Android by Chris Boyle](https://github.com/chrisboyle/sgtpuzzles) and [Puzzles for pocketbook by mnk](https://github.com/svn2github/pocketbook-free/tree/master/puzzles)
 

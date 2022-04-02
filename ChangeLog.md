@@ -1,6 +1,6 @@
 ## ChangeLog
 
-## 0.7.10 nightly
+## 0.7.10 - 2022/04/02
 
 ### Added
 * *Walls*: Place paths / walls by dragging (swipe across cells for paths, along edges for walls)
@@ -12,9 +12,11 @@
 * *Walls*: Better error display (diagonal stripes)
 * Cleaner screen layout by removing unnecessary 'force screen redraw' button from chooser and param screens
 * Optimized screen update in game screen
+* Games with pencil marks now arrange them in numerically fixed position.
 
 ### Fixed
 * *Mosaic*: Fix preservation of 'aggressiveness' parameter
+* *Solo*: Disallow certain corner-case parameters to avoid hang on game generation
 
 ## 0.7.9 - 2021/10/26
 

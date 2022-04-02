@@ -2019,10 +2019,12 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
     int pw, ph, minph, pbest, fontsize;
 
         /* Count the pencil marks required. */
-        for (i = 1, npencil = 0; i <= w; i++)
+        /* for (i = 1, npencil = 0; i <= w; i++)
             if (tile & (1L << (i + DF_PENCIL_SHIFT)))
-        npencil++;
-    if (npencil) {
+                npencil++; */
+        npencil = w;
+
+        if (npencil) {
 
         minph = 2;
 
@@ -2098,7 +2100,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
          */
         for (i = 1, j = 0; i <= w; i++)
         if (tile & (1L << (i + DF_PENCIL_SHIFT))) {
-            int dx = j % pw, dy = j / pw;
+            int dx = (i-1) % pw, dy = (i-1) / pw;
 
             str[1] = '\0';
             str[0] = i + '0';
