@@ -2260,7 +2260,7 @@ static game_state *execute_move(const game_state *from0, const char *move)
         for (i = 0; i < a; i++) {
             if (!from->clues->playable[i])
                 continue;
-            if (move[i+1] < '0' || move[i+1] > '0'+MAXNUM) {
+            if (move[i+1] < '0' || move[i+1] > '0'+9) {
                 free_game(ret);
                 return from;
             }
@@ -2276,7 +2276,7 @@ static game_state *execute_move(const game_state *from0, const char *move)
         return ret;
     } else if ((move[0] == 'P' || move[0] == 'R') &&
         sscanf(move+1, "%d,%d,%d", &x, &y, &n) == 3 &&
-        x >= 0 && x < sz && y >= 0 && y < sz && n >= -1 && n <= MAXNUM) {
+        x >= 0 && x < sz && y >= 0 && y < sz && n >= -1 && n <= 9) {
         if (!from->clues->playable[y*sz+x])
             return from;
 
@@ -2308,7 +2308,7 @@ static game_state *execute_move(const game_state *from0, const char *move)
                 if (ret->grid[y*sz+x] == -1)
                     ret->pencil[y*sz+x] = (
                         ((from->clues->oddeven == 2 ? 0 : 1) + x + y)%2 ?
-                             oddmask : evenmask);
+                             evenmask : oddmask);
             }
         } else {
             long mask = (2L<<from->par->max) - 2;
@@ -2352,11 +2352,11 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_BACKGROUND * 3 + i] = 1.0F;
         ret[COL_GRID       * 3 + i] = 0.0F;
         ret[COL_USER       * 3 + i] = 0.0F;
-        ret[COL_HIGHLIGHT  * 3 + i] = 0.75F;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.5F;
         ret[COL_ERROR      * 3 + i] = 0.25F;
         ret[COL_ERROR_USER * 3 + i] = 0.75F;
-        ret[COL_PENCIL     * 3 + i] = 0.0F;
-        ret[COL_EVENBG     * 3 + i] = 0.9F;
+        ret[COL_PENCIL     * 3 + i] = 0.25F;
+        ret[COL_EVENBG     * 3 + i] = 0.75F;
         ret[COL_ODDBG      * 3 + i] = 1.0F;
     }
 
@@ -2561,12 +2561,12 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_params *par,
                       (tile & DF_HIGHLIGHT ? COL_ERROR : 
                                              COL_ERROR_USER) : 
                                              COL_USER), str);
-        } else if ((tile & DF_DIGIT_MASK) && !(tile & DF_HIGHLIGHT_PENCIL)) {
+        } /* else if ((tile & DF_DIGIT_MASK) && !(tile & DF_HIGHLIGHT_PENCIL)) {
             sprintf(str, "%d_", (int)(tile & DF_DIGIT_MASK));
             draw_text(dr, tx + cw/2, ty + ch/2,
                       FONT_VARIABLE, TILESIZE/2, ALIGN_VCENTRE | ALIGN_HCENTRE,
                       COL_USER, str);
-        } else {
+        } */ else {
             long rev;
             int i, j, npencil;
             int pl, pr, pt, pb;
@@ -2578,11 +2578,12 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_params *par,
                 rev = 1L << ((tile & DF_DIGIT_MASK) + DF_PENCIL_SHIFT);
             } else
                 rev = 0;
-            for (i = 1, npencil = 0; i <= MAXNUM; i++)
+            /* for (i = 1, npencil = 0; i <= MAXNUM; i++)
                 if ((tile ^ rev) & (1L << (i + DF_PENCIL_SHIFT)))
                     npencil++;
             if (tile & DF_DIGIT_MASK)
-                npencil++;
+                npencil++; */
+            npencil = 9;
             if (npencil) {
 
                 minph = 2;
@@ -2623,9 +2624,9 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_params *par,
                 /*
                  * Now actually draw the pencil marks.
                  */
-                for (i = 1, j = 0; i <= MAXNUM; i++)
+                for (i = 1, j = 0; i <= 9; i++)
                     if ((tile ^ rev) & (1L << (i + DF_PENCIL_SHIFT))) {
-                        int dx = j % pw, dy = j / pw;
+                        int dx = (i-1) % pw, dy = (i-1) / pw;
                         sprintf(str, "%d", i);
                         draw_text(dr, pl + pgsizex * (2*dx+1) / 2,
                                   pt + pgsizey * (2*dy+1) / 2,
@@ -2634,7 +2635,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_params *par,
                                   str);
                         j++;
                     }
-                if (tile & DF_DIGIT_MASK) {
+                /* if (tile & DF_DIGIT_MASK) {
                   int dx = j % pw, dy = j / pw;
                   sprintf(str, "%d_", (int)(tile & DF_DIGIT_MASK));
                   draw_text(dr, pl + pgsizex * (2*dx+1) / 2,
@@ -2642,7 +2643,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_params *par,
                             FONT_VARIABLE, fontsize,
                             ALIGN_VCENTRE | ALIGN_HCENTRE, COL_PENCIL,
                             str);
-                }
+                } */
             }
         }
     }
@@ -2732,11 +2733,11 @@ static bool game_timing_state(const game_state *state, game_ui *ui)
 #ifdef COMBINED
 #define thegame crossnum
 #endif
-static const char rules[] = "Fill the grid with numbers like a crossword puzzle. The sum of each line must match the given horizontal / vertical clues. The same number cannot occur more than once in each sum.\n\n"
-"These variations are available:\n"
+static const char rules[] = "Fill the grid with numbers like a crossword puzzle. The sum of each line must match the given horizontal / vertical clues. The same number cannot occur more than once in each sum.\n\n\n"
+"These variations are available:\n\n"
 "- Odd/Even: White cells can only have an odd number, grey cells only an even number.\n"
 "- Unique: No two sums can contain the same numbers.\n"
-"\n\n\nThis puzzle was implemented by Anders Holst.";
+"\n\nThis puzzle was implemented by Anders Holst.";
 
 const struct game thegame = {
     "CrossNum", "games.crossnum", "crossnum", rules,

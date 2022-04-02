@@ -1755,10 +1755,10 @@ static void salad_draw_pencil(drawing *dr, const game_state *state, int x, int y
 
     /* Draw hints; steal ingenious algorithm (basically)
     * from solo.c:draw_number() */
-    for (i = nhints = 0; i < mmx; i++) {
+    /*for (i = nhints = 0; i < mmx; i++) {
         if (state->marks[y*o+x] & (1<<i)) nhints++;
-    }
-
+    } */
+    nhints = mmx;
     for (hw = 1; hw * hw < nhints; hw++);
     
     if (hw < 3) hw = 3;
@@ -1771,7 +1771,7 @@ static void salad_draw_pencil(drawing *dr, const game_state *state, int x, int y
     {
         if (state->marks[y*o+x] & (1<<i))
         {
-            int hx = j % hw, hy = j / hw;
+            int hx = i % hw, hy = i / hw;
 
             str[0] = base+i+1;
             if(i == mmx - 1)

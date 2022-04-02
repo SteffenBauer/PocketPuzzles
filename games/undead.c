@@ -2881,6 +2881,7 @@ static void draw_big_monster(drawing *dr, game_drawstate *ds,
     return;
 }
 
+/*
 static void draw_pencils(drawing *dr, game_drawstate *ds,
                          const game_state *state, int x, int y, int pencil)
 {
@@ -2905,6 +2906,25 @@ static void draw_pencils(drawing *dr, game_drawstate *ds,
     draw_update(dr,dx-(TILESIZE/4)+2,dy-(TILESIZE/4)+2,
                 (TILESIZE/2)-3,(TILESIZE/2)-3);
 
+    return;
+}
+*/
+static void draw_pencils(drawing *dr, game_drawstate *ds,
+                         const game_state *state, int x, int y, int pencil)
+{
+    int dx, dy;
+    dx = BORDER+(x* ds->tilesize)+(TILESIZE/4);
+    dy = BORDER+(y* ds->tilesize)+(TILESIZE/4)+TILESIZE;
+
+    if (pencil & 1)
+        draw_monster(dr, ds, dx,              dy,              TILESIZE/2, 1);
+    if (pencil & 2)
+        draw_monster(dr, ds, dx + TILESIZE/2, dy,              TILESIZE/2, 2);
+    if (pencil & 4)
+        draw_monster(dr, ds, dx,              dy + TILESIZE/2, TILESIZE/2, 4);
+
+    draw_update(dr,dx-(TILESIZE/4)+2,dy-(TILESIZE/4)+2,
+                (TILESIZE/2)-3,(TILESIZE/2)-3);
     return;
 }
 

@@ -505,6 +505,10 @@ static const char *validate_params(const game_params *params, bool full)
         return "Killer puzzle dimensions must be smaller than 10";
     if (params->xtype && params->c * params->r < 4)
         return "X-type puzzle dimensions must be larger than 3";
+    if (params->diff >= DIFF_SIMPLE && params->c == 3 && params->r == 1)
+        return "Too small for a Jigsaw puzzle of this difficulty";
+    if (params->diff >= DIFF_INTERSECT && params->c == 4 && params->r == 1)
+        return "Too small for a Jigsaw puzzle of this difficulty";
     return NULL;
 }
 
@@ -4538,9 +4542,10 @@ static void draw_number(drawing *dr, game_drawstate *ds,
         int pw, ph, minph, pbest, fontsize;
 
         /* Count the pencil marks required. */
-        for (i = npencil = 0; i < cr; i++)
+        /* for (i = npencil = 0; i < cr; i++)
             if (state->pencil[(y*cr+x)*cr+i])
-                npencil++;
+                npencil++; */
+        npencil = cr;
         if (npencil) {
             minph = 2;
 
@@ -4625,7 +4630,7 @@ static void draw_number(drawing *dr, game_drawstate *ds,
          */
             for (i = j = 0; i < cr; i++)
             if (state->pencil[(y*cr+x)*cr+i]) {
-                int dx = j % pw, dy = j / pw;
+                int dx = i % pw, dy = i / pw;
 
                 str[1] = '\0';
                 str[0] = i + '1';

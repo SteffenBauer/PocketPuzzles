@@ -1865,10 +1865,10 @@ static void draw_hints(drawing *dr, game_drawstate *ds, int x, int y)
 
     /* Draw hints; steal ingenious algorithm (basically)
      * from solo.c:draw_number() */
-    for (i = nhints = 0; i < ds->order; i++) {
+    /* for (i = nhints = 0; i < ds->order; i++) {
         if (HINT(ds, x, y, i)) nhints++;
-    }
-
+    } */
+    nhints = ds->order;
     for (hw = 1; hw * hw < nhints; hw++);
     if (hw < 3) hw = 3;
     hh = (nhints + hw - 1) / hw;
@@ -1878,7 +1878,7 @@ static void draw_hints(drawing *dr, game_drawstate *ds, int x, int y)
 
     for (i = j = 0; i < ds->order; i++) {
         if (HINT(ds,x,y,i)) {
-            int hx = j % hw, hy = j / hw;
+            int hx = i % hw, hy = i / hw;
 
             str[0] = n2c(i+1, ds->order);
             str[1] = '\0';

@@ -1567,13 +1567,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         else if(state->marks[y*o+x]) /* Draw pencil marks */
         {
             int nhints, i, j, hw, hh, hmax, fontsz;
-            for (i = nhints = 0; i < 9; i++) {
+            /* for (i = nhints = 0; i < o; i++) {
                 if (state->marks[y*o+x] & (1<<i)) nhints++;
-            }
-
+            } */
+            nhints = o;
             for (hw = 1; hw * hw < nhints; hw++);
             
-            if (hw < 3) hw = 3;            
+            if (hw < 3) hw = 3;
             hh = (nhints + hw - 1) / hw;
             if (hh < 2) hh = 2;
             hmax = max(hw, hh);
@@ -1583,7 +1583,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             {
                 if (state->marks[y*o+x] & (1<<i))
                 {
-                    int hx = j % hw, hy = j / hw;
+                    int hx = i % hw, hy = i / hw;
 
                     buf[0] = i+'1';
                     buf[1] = '\0';
