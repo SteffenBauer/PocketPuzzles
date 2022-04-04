@@ -19,10 +19,6 @@
 
 #include "puzzles.h"
 
-#ifdef STANDALONE_SOLVER
-bool solver_debug = false;
-#endif
-
 enum {
     COL_BACKGROUND,
     COL_BORDER,
@@ -43,6 +39,7 @@ enum {
 #define DIFFLIST(A)                             \
     A(EASY,Easy, e)                             \
     A(TRICKY,Tricky, t)                         \
+    A(HARD, Hard, h)                            \
 
 #define ENUM(upper,title,lower) DIFF_ ## upper,
 #define TITLE(upper,title,lower) #title,
@@ -51,6 +48,8 @@ enum {
 enum { DIFFLIST(ENUM) DIFFCOUNT };
 static char const *const spokes_diffnames[] = { DIFFLIST(TITLE) };
 
+#define DIFF_LIMITED (DIFF_EASY - 1)
+
 static char const spokes_diffchars[] = DIFFLIST(ENCODE);
 #define DIFFCONFIG DIFFLIST(CONFIG)
 
@@ -58,14 +57,17 @@ struct game_params {
     int w, h, diff;
 };
 
-#define DEFAULT_PRESET 2
+#define DEFAULT_PRESET 3
 const struct game_params spokes_presets[] = {
     {4, 4, DIFF_EASY},
     {4, 4, DIFF_TRICKY},
+    {4, 4, DIFF_HARD},
+    {5, 5, DIFF_EASY},
+    {5, 5, DIFF_TRICKY},
+    {5, 5, DIFF_HARD},
     {6, 6, DIFF_EASY},
     {6, 6, DIFF_TRICKY},
-    {7, 7, DIFF_EASY},
-    {7, 7, DIFF_TRICKY},
+    {6, 6, DIFF_HARD},
 };
 
 /* A hub consists of eight spokes, each two bits in size */
@@ -247,7 +249,8 @@ static const char *validate_params(const game_params *params, bool full)
         return "Width must be at most 8";
     if(params->h > 8)
         return "Height must be at most 8";
-    
+    if (params->diff == DIFF_HARD && ((params->w < 4) || (params->h < 4)))
+        return "Hard puzzles should be at least size 4x4";
     return NULL;
 }
 
@@ -454,6 +457,7 @@ struct spokes_scratch {
     int *marked;
     
     int *dsf;
+    int *open;
 };
 
 static void spokes_solver_recount(const game_state *state, struct spokes_scratch *solver, bool full)
@@ -542,21 +546,29 @@ static int spokes_solver_full(game_state *state, struct spokes_scratch *solver)
     
     for(i = 0; i < s; i++)
     {
+        bool changed = false;
         /* All lines on a hub should be filled */
         if(solver->nodes[i] - solver->marked[i] == state->numbers[i])
         {
-            for(j = 0; j < 8; j++)
-                if(GET_SPOKE(state->spokes[i], j) == SPOKE_EMPTY)
-                    ret += spokes_place(state, i, j, SPOKE_LINE);
+            for(j = 0; j < 8; j++) {
+                if(GET_SPOKE(state->spokes[i], j) == SPOKE_EMPTY) {
+                    spokes_place(state, i, j, SPOKE_LINE);
+                    changed = true;
+                }
+            }
         }
         
         if(solver->lines[i] == state->numbers[i])
         {
             /* No more lines can be placed here, mark the rest of the spokes */
-            for(j = 0; j < 8; j++)
-                if(GET_SPOKE(state->spokes[i], j) == SPOKE_EMPTY)
-                    ret += spokes_place(state, i, j, SPOKE_MARKED);
+            for(j = 0; j < 8; j++) {
+                if(GET_SPOKE(state->spokes[i], j) == SPOKE_EMPTY) {
+                    spokes_place(state, i, j, SPOKE_MARKED);
+                    changed = true;
+                }
+            }
         }
+        if(changed) ret++;
     }
     
     return ret;
@@ -582,7 +594,7 @@ static int spokes_solver_diagonal(game_state *state)
             ret += spokes_place(state, y*w+x, DIR_BOTRIGHT, SPOKE_MARKED);
     }
     
-    return ret;
+    return ret ? 1 : 0;
 }
 
 static int spokes_solver_ones(game_state *state)
@@ -627,17 +639,12 @@ static int spokes_solver_ones(game_state *state)
 }
 
 enum { STATUS_INVALID, STATUS_INCOMPLETE, STATUS_VALID };
-static int spokes_solve(game_state *state, int diff);
+static int spokes_solve(game_state *state, struct spokes_scratch *solver, int diff);
 
-static int spokes_solver_attempt(game_state *state, int diff)
+static int spokes_solver_attempt(game_state *state, game_state *copy, struct spokes_scratch *solver, int diff)
 {
     int ret = 0;
     int i, dir, l, w = state->w, h = state->h;
-    game_state *copy = dup_game(state);
-#ifdef STANDALONE_SOLVER
-    bool temp_debug = solver_debug;
-    solver_debug = false;
-#endif
     for(i = 0; i < w*h; i++)
     {
         for(dir = 0; dir < 8; dir++)
@@ -650,16 +657,12 @@ static int spokes_solver_attempt(game_state *state, int diff)
                 duplicate_game(state, copy);
                 
                 spokes_place(copy, i, dir, l ? SPOKE_LINE : SPOKE_MARKED);
-                if(spokes_solve(copy, diff) == STATUS_INVALID)
+                if(spokes_solve(copy, solver, diff) == STATUS_INVALID)
                     ret += spokes_place(state, i, dir, l ? SPOKE_MARKED : SPOKE_LINE);
             }
         }
     }
-    free_game(copy);
-#ifdef STANDALONE_SOLVER
-    solver_debug = temp_debug;
-#endif
-    
+
     return ret;
 }
 
@@ -673,7 +676,8 @@ static struct spokes_scratch *spokes_new_scratch(const game_state *state)
     solver->lines = snewn(w*h, int);
     solver->marked = snewn(w*h, int);
     solver->dsf = snewn(w*h, int);
-    
+    solver->open = snewn(w*h, int);
+
     return solver;
 }
 
@@ -683,21 +687,22 @@ static void spokes_free_scratch(struct spokes_scratch *solver)
     sfree(solver->lines);
     sfree(solver->marked);
     sfree(solver->dsf);
+    sfree(solver->open);
     sfree(solver);
 }
 
-static void spokes_find_isolated(const game_state *state, struct spokes_scratch *solver, int *open)
+static void spokes_find_isolated(const game_state *state, struct spokes_scratch *solver)
 {
     /* For each set, count the possible lines that can be drawn
      * from this set to other hubs.
      */
     int i, w = state->w, h = state->h;
     
-    memset(open, 0, w*h*sizeof(int));
+    memset(solver->open, 0, w*h*sizeof(int));
     
     for(i = 0; i < w*h; i++)
     {
-        open[dsf_canonify(solver->dsf, i)] += state->numbers[i] - solver->lines[i];
+        solver->open[dsf_canonify(solver->dsf, i)] += state->numbers[i] - solver->lines[i];
     }
 }
 
@@ -734,17 +739,14 @@ static int spokes_validate(game_state *state, struct spokes_scratch *solver)
     
     if(ret != STATUS_INVALID)
     {
-        int *counts = snewn(w*h, int);
-        spokes_find_isolated(state, solver, counts);
+        spokes_find_isolated(state, solver);
         
         /* Check if there is a set with no possibility for more lines */
         for(i = 0; i < w*h && ret != STATUS_INVALID; i++)
         {
-            if(counts[i] == 0 && dsf_canonify(solver->dsf, i) == i && dsf_size(solver->dsf, i) < w*h)
+            if(solver->open[i] == 0 && dsf_canonify(solver->dsf, i) == i && dsf_size(solver->dsf, i) < w*h)
                 ret = STATUS_INVALID;
         }
-        
-        sfree(counts);
     }
     
     if(!hassolver)
@@ -753,35 +755,59 @@ static int spokes_validate(game_state *state, struct spokes_scratch *solver)
     return ret;
 }
 
-static int spokes_solve(game_state *state, int diff)
+#define ACTION_LIMIT 4
+
+static int spokes_solve(game_state *state, struct spokes_scratch *solver, int diff)
 {
-    struct spokes_scratch *solver = spokes_new_scratch(state);
-    int ret;
-    
+    game_state *copy = NULL;
+    bool hassolver = solver != NULL;
+    if(!hassolver)
+        solver = spokes_new_scratch(state);
+    int ret, action, total = 0;
+
     spokes_solver_ones(state);
+
+    if(diff >= DIFF_TRICKY)
+        copy = dup_game(state);
     
     while(true)
     {
         if(spokes_validate(state, solver) != STATUS_INCOMPLETE)
             break;
-        
-        if(spokes_solver_full(state, solver))
+        if(diff == DIFF_LIMITED && total >= ACTION_LIMIT)
+            break;
+
+        if((action = spokes_solver_full(state, solver))) {
+            total += action;
             continue;
-        if(spokes_solver_diagonal(state))
+        }
+
+        if((action = spokes_solver_diagonal(state))) {
+            total += action;
             continue;
-        
+        }
+
         if(diff < DIFF_TRICKY)
             break;
-        
-        if(spokes_solver_attempt(state, DIFF_EASY))
+
+        if(diff == DIFF_TRICKY && spokes_solver_attempt(state, copy, solver, DIFF_LIMITED))
+        continue;
+
+        if(diff < DIFF_HARD)
+        break;
+
+        if(spokes_solver_attempt(state, copy, solver, DIFF_EASY))
             continue;
-        
+
         break;
     }
-    
+
     ret = spokes_validate(state, solver);
-    
-    spokes_free_scratch(solver);
+
+    if(!hassolver)
+        spokes_free_scratch(solver);
+    if(copy)
+        free_game(copy);
 
     return ret;
 }
@@ -796,7 +822,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     
     game_state *solved = dup_game(state);
     
-    spokes_solve(solved, DIFFCOUNT);
+    spokes_solve(solved, NULL, DIFFCOUNT);
     
     buf = snewn(3+(w*h*80), char);
     p = buf;
@@ -820,7 +846,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     return ret;
 }
 
-static int spokes_generate_hubs(const game_params *params, game_state *state, int *scratch, random_state *rs)
+static int spokes_generate_hubs(const game_params *params, game_state *state, int *temp, random_state *rs)
 {
     /*
      * Fill up the grid with every possible horizontal and vertical line,
@@ -834,14 +860,14 @@ static int spokes_generate_hubs(const game_params *params, game_state *state, in
         for (x = 0; x < w - 1; x++)
         {
             spokes_place(state, y*w + x, DIR_RIGHT, SPOKE_LINE);
-            scratch[ret++] = ((y*w + x) << 3) | DIR_RIGHT;
+            temp[ret++] = ((y*w + x) << 3) | DIR_RIGHT;
         }
 
     for (y = 0; y < h - 1; y++)
         for (x = 0; x < w; x++)
         {
             spokes_place(state, y*w + x, DIR_BOT, SPOKE_LINE);
-            scratch[ret++] = ((y*w + x) << 3) | DIR_BOT;
+            temp[ret++] = ((y*w + x) << 3) | DIR_BOT;
         }
 
     for (y = 0; y < h - 1; y++)
@@ -850,12 +876,12 @@ static int spokes_generate_hubs(const game_params *params, game_state *state, in
             if (random_upto(rs, 2))
             {
                 spokes_place(state, y*w + x, DIR_BOTRIGHT, SPOKE_LINE);
-                scratch[ret++] = ((y*w + x) << 3) | DIR_BOTRIGHT;
+                temp[ret++] = ((y*w + x) << 3) | DIR_BOTRIGHT;
             }
             else
             {
                 spokes_place(state, y*w + x + 1, DIR_BOTLEFT, SPOKE_LINE);
-                scratch[ret++] = ((y*w + x + 1) << 3) | DIR_BOTLEFT;
+                temp[ret++] = ((y*w + x + 1) << 3) | DIR_BOTLEFT;
             }
         }
 
@@ -897,23 +923,23 @@ static int spokes_generate_clear(game_state *state)
     return ret;
 }
 
-static int spokes_generate(const game_params *params, game_state *generated, game_state *state, int *scratch, random_state *rs)
+static bool spokes_generate(const game_params *params, game_state *generated, game_state *state, struct spokes_scratch *solver, int *temp, random_state *rs)
 {
     int w = params->w, h = params->h;
     int i, i2, j, k, d, count;
 
     blank_game(params, generated);
-    count = spokes_generate_hubs(params, generated, scratch, rs);
+    count = spokes_generate_hubs(params, generated, temp, rs);
 
-    shuffle(scratch, count, sizeof(int), rs);
+    shuffle(temp, count, sizeof(int), rs);
 
     /*
      * Try removing each line and see if the puzzle remains solvable.
      */
     for (j = 0; j < count; j++)
     {
-        i = scratch[j] >> 3;
-        d = scratch[j] & 7;
+        i = temp[j] >> 3;
+        d = temp[j] & 7;
         i2 = i + (spoke_dirs[d].dy*w) + spoke_dirs[d].dx;
 
         for (k = 0; k < w*h; k++)
@@ -932,13 +958,13 @@ static int spokes_generate(const game_params *params, game_state *generated, gam
         
         spokes_generate_clear(state);
 
-        if(spokes_solve(state, params->diff) != STATUS_VALID)
+        if(spokes_solve(state, solver, params->diff) != STATUS_VALID)
             spokes_place(generated, i, d, SPOKE_LINE);
     }
 
     for (k = 0; k < w*h; k++)
         state->numbers[k] = spokes_count(generated->spokes[k], SPOKE_LINE);
-    return true;
+    return params->diff == DIFF_EASY || spokes_solve(state, solver, params->diff - 1) != STATUS_VALID;
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
@@ -949,19 +975,13 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     int i;
     game_state *state = blank_game(params, NULL);
     game_state *generated = blank_game(params, NULL);
-    int *scratch = snewn(w*h * 3, int);
+    int *temp = snewn(w*h * 3, int);
+    struct spokes_scratch *solver = spokes_new_scratch(state);
 
     int attempts = 0;
     
-    while(!spokes_generate(params, generated, state, scratch, rs)) { attempts++; };
+    while(!spokes_generate(params, generated, state, solver, temp, rs)) { attempts++; };
 
-#ifdef STANDALONE_SOLVER
-    if(solver_debug)
-    {
-        printf("Generated puzzle in %d attempts\n", attempts);
-    }
-#endif
-    
     ret = snewn(w*h + 1, char);
     for(i = 0; i < w*h; i++)
     {
@@ -971,7 +991,8 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     
     free_game(state);
     free_game(generated);
-    sfree(scratch);
+    spokes_free_scratch(solver);
+    sfree(temp);
     
     return ret;
 }
@@ -1021,7 +1042,6 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 
 struct game_drawstate {
     int tilesize;
-    int *isolated;
     struct spokes_scratch *scratch;
     
     hub_t *spokes;
@@ -1240,7 +1260,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     int w = state->w, h = state->h;
     
     ds->tilesize = 0;
-    ds->isolated = snewn(w*h, int);
     ds->scratch = spokes_new_scratch(state);
 
     ds->spokes = snewn(w*h, hub_t);
@@ -1256,8 +1275,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
 
 static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 {
-    sfree(ds->isolated);
-    sfree(ds->scratch);
+    spokes_free_scratch(ds->scratch);
     sfree(ds->spokes);
     sfree(ds->colors);
     sfree(ds->corners);
@@ -1308,7 +1326,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     float radius = tilesize/3.5F;
     
     spokes_solver_recount(state, ds->scratch, true);
-    spokes_find_isolated(state, ds->scratch, ds->isolated);
+    spokes_find_isolated(state, ds->scratch);
     
     connected = dsf_size(ds->scratch->dsf, 0) == w*h;
     
@@ -1322,7 +1340,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             ty = TOCOORD(y);
             lines = ds->scratch->lines[i];
             
-            error_disconnected = !connected && !ds->isolated[dsf_canonify(ds->scratch->dsf, i)];
+            error_disconnected = !connected && !ds->scratch->open[dsf_canonify(ds->scratch->dsf, i)];
             error_number = lines > state->numbers[i] || ds->scratch->marked[i] > ds->scratch->nodes[i] - state->numbers[i];
             is_done = lines == state->numbers[i];
             is_holding = i == ui->drag_start && ui->highlight;

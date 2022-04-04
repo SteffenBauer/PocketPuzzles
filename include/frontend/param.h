@@ -43,7 +43,6 @@ struct paramparams {
     config_item *cfg;
 
     int btnBackIDX;
-    int btnDrawIDX;
 
     ifont *paramfont;
     int pfontsize;
@@ -53,8 +52,7 @@ struct paramparams {
 } pa;
 
 extern ibitmap cfg_yes, cfg_no, cfg_incr, cfg_incr_tap, cfg_decr, cfg_decr_tap,
-               icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,
-               cfg_difficulty;
+               icon_back, icon_back_tap, cfg_difficulty;
 
 static bool coord_in_choice(int x, int y, int i);
 static void choice_to_normal(int i);

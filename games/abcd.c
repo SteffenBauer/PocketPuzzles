@@ -1594,10 +1594,10 @@ static void abcd_draw_pencil(drawing *dr, game_drawstate *ds, const game_state *
 
     /* Draw hints; steal ingenious algorithm (basically)
     * from solo.c:draw_number() */
-    for (i = nhints = 0; i < n; i++) {
+    /* for (i = nhints = 0; i < n; i++) {
         if (state->clues[CUBOID(x, y, i)]) nhints++;
-    }
-
+    } */
+    nhints = n;
     for (hw = 1; hw * hw < nhints; hw++);
     
     if (hw < 3) hw = 3;
@@ -1610,7 +1610,7 @@ static void abcd_draw_pencil(drawing *dr, game_drawstate *ds, const game_state *
     {
         if (state->clues[CUBOID(x, y, i)])
         {
-            int hx = j % hw, hy = j / hw;
+            int hx = i % hw, hy = i / hw;
 
             str[0] = 'A'+i;
             str[1] = '\0';

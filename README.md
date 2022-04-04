@@ -6,11 +6,11 @@ Port of [Simon Tatham's Portable Puzzle Collection](http://www.chiark.greenend.o
 
 [More screenshots](https://github.com/SteffenBauer/PocketPuzzles/blob/master/screenshots/screenshots.md)
 
-[Download the app here](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/README.md)
+[**Download the app here**](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/README.md)
 
 Inspired by and building on the work of [Port to Android by Chris Boyle](https://github.com/chrisboyle/sgtpuzzles) and [Puzzles for pocketbook by mnk](https://github.com/svn2github/pocketbook-free/tree/master/puzzles)
 
-To get a mostly complete collection for all puzzles ever written for the SGT puzzles, I'm planning to also include unofficial puzzles and puzzle variations from [puzzles-unreleased](https://github.com/x-sheep/puzzles-unreleased) and [sgtpuzzles-extended](https://github.com/SteffenBauer/sgtpuzzles-extended).
+To get a mostly complete collection for all puzzles ever written for the SGT puzzles, I'm planning to also include unofficial puzzles and puzzle variations from [puzzles-unreleased](https://github.com/x-sheep/puzzles-unreleased), [sgt-puzzles-aho-extensions](https://github.com/Anders-Holst/sgt-puzzles-aho-extensions), and [sgtpuzzles-extended](https://github.com/SteffenBauer/sgtpuzzles-extended).
 
 The unfinished puzzles from the official collection (*Group*, *Slide*, *Sokoban*) will not be included.
 
@@ -86,7 +86,7 @@ See [ToDo.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/ToDo.md)
 
 See [LICENSE](https://github.com/SteffenBauer/PocketPuzzles/blob/master/LICENSE)
 
-This project is using work released unter a MIT license by Simon Tatham, Chris Boyle, Richard Boulton, James Harvey, Mike Pinna, Jonas Kölker, Dariusz Olszewski, Michael Schierl, Lambros Lambrou, Bernd Schmidt, Steffen Bauer, Lennard Sprong, Rogier Goossens, Michael Quevillon, Phil Tunstall, and Didi Kohen.
+This project is using work released unter a MIT license by Simon Tatham, Chris Boyle, Richard Boulton, James Harvey, Mike Pinna, Jonas Kölker, Dariusz Olszewski, Michael Schierl, Lambros Lambrou, Bernd Schmidt, Steffen Bauer, Lennard Sprong, Rogier Goossens, Michael Quevillon, Phil Tunstall, Asher Gordon, Didi Kohen, and Anders Holst.
 
 ### Important Note!
 

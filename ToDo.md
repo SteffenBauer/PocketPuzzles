@@ -46,6 +46,10 @@
 - [ ] Screen orientation handling
 - [ ] Generate separate documentation eBook
 
+### Current bugs
+
+- [ ] Undo button still activated after change of game parameters (bug in upstream)
+
 ## ToDo for individual games
 
 - [X] Ascent: Add number keys; better error display, allow number erase by backspace
@@ -107,8 +111,10 @@
 - [X] Creek: Separate from Slant as standalone game
 - [X] Walls: Expand error display
 - [X] Walls: Expand solver / difficulty levels (area parity criteria)
-- [x] Sticks: Implement dragging
-- [x] Filling: Drag already placed/fixed numbers
+- [X] Sticks: Implement dragging
+- [X] Filling: Drag already placed/fixed numbers
+- [X] Walls: Add dragging
+- [ ] Rome: Dragging
 - [ ] Galaxies: Rework right-drag / arrow handling
 - [ ] Loopy: Fix polygon error fill in Penrose grids
 - [ ] Mathrax: Deactivate useless 'recursive' game difficulty
@@ -119,7 +125,6 @@
 - [ ] Pearl: "No line" on right click instead of release
 - [ ] Slant: 'Hard' game difficulty (backtracking)
 - [ ] Twiddle: Re-activate basic animation (?)
-- [ ] Walls: Add dragging
 
 #### One-click symbol fill
 
@@ -152,6 +157,18 @@
 - [X] Tents
 - [X] Tracks
 
+#### Fixed grid arrangement of pencil marks
+
+- [X] ABCD
+- [X] CrossNum
+- [X] Keen
+- [X] Mathrax
+- [X] Salad
+- [X] Solo
+- [X] Towers
+- [X] Undead
+- [X] Unequal
+
 #### Game specific UI settings
 
 - [ ] Bricks: Short-click, black or white
@@ -164,9 +181,11 @@
 - [ ] Pattern: Short-click, black or white
 - [ ] Range: Short-click, block or empty
 - [ ] Singles: Short-click, black or circle
-- [ ] Signpost: Long-click: Show incoming arrows or not
+- [ ] Signpost: Long-click, Show incoming arrows or not
+- [ ] Slant: Short-click, left-upper or right-upper line
 - [ ] Unruly: Short-click, black or white
 - [ ] Games with one-click: on/off
-- [ ] Games with 'Fill pencil marks' button
+- [ ] Games with 'Fill pencil marks' button: visible/hidden
 - [ ] Games with Pencil mark indicator: Flip on swap button
+- [ ] Games with pencil marks: Fixed / Floating arrangement
 

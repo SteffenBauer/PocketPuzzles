@@ -42,7 +42,7 @@ struct frontend {
   bool finished;            /* Whether game was finished (for showing finish message) */
   irect cliprect;           /* Initial screen clip rectangle upon game init */
 
-  char *statustext;   /* Currently shown status text (needed for screen redraw) */
+  bool do_update;     /* Update the screen flag */
 
   struct timeval last_time;
   int time_int;
@@ -112,7 +112,6 @@ static void gameBuildTypeMenu();
 
 static void gameSetupMenuButtons();
 static void gameSetupControlButtons();
-static void gameSetupStatusBar();
 
 static void gameDrawMenu();
 static void gameDrawControlButtons();

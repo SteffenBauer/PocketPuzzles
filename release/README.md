@@ -4,8 +4,8 @@ You can find pre-compiled binaries ready for installation here.
 
 Choose between one of these build stages:
 
-* [Stable release (0.7.9)](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/stable/SGTPuzzles.app) Compiled in sync with the latest tagged release. Recommended.
-* [Previous release (0.7.8)](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/previous/SGTPuzzles.app) The app release tag just before the current stable one. Install this when you have problems with the stable release.
+* [Stable release (0.7.10)](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/stable/SGTPuzzles.app) Compiled in sync with the latest tagged release. Recommended.
+* [Previous release (0.7.9)](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/previous/SGTPuzzles.app) The app release tag just before the current stable one. Install this when you have problems with the stable release.
 * [Nightly build](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/nightly/SGTPuzzles.app) This binary is kept in sync with the current master branch. Can contain untested code, so install only when you want the newest features.
 
 ### Installation

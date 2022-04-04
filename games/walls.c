@@ -60,11 +60,13 @@ enum {
     COL_FIXED,
     COL_WALL_A,
     COL_WALL_B,
-    COL_PATH_A,
-    COL_PATH_B,
+    COL_PATH_CENTER,
+    COL_PATH_CORNER,
     COL_DRAGON,
     COL_DRAGOFF,
-    COL_ERROR,
+    COL_ERROR_CELL,
+    COL_ERROR_PATH,
+    COL_ERROR_CORNER,
     NCOLOURS
 };
 
@@ -1548,30 +1550,51 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     return move;
 }
 
-struct game_ui {
-    int *dragcoords;       /* list of (y*w+x) coords in drag so far */
-    int ndragcoords;       /* number of entries in dragcoords. */
-    unsigned char dragdir; /* Current direction of drag */
 
-    bool show_grid;        /* true if checkerboard grid is shown */
+#define DRAG_NONE       (0x00)
+#define DRAG_LAYPATH    (0x01)
+#define DRAG_LAYWALL    (0x02)
+#define DRAG_DELPATH    (0x03)
+#define DRAG_DELWALL    (0x04)
+
+#define EDGE_NONE       (-1)
+#define EDGE_CORNER     (-2)
+#define EDGE_MIDDLE     (-3)
+
+struct game_ui {
+    int *rawcoords;
+    int nrawcoords;
+    int *dragcoords;          /* list of (y*w+x) edge coords in drag so far */
+    int ndragcoords;          /* number of entries in dragcoords. */
+    int pending;              /* Cell coordinate to be confirmed by subsequent drag */
+    int lx, ly;               /* Previous cell drag coordinates */
+    unsigned char dragmode;   /* Drag mode */
+    bool show_grid;           /* true if checkerboard grid is shown */
 };
 
+static void clear_drag(game_ui *ui, int w, int h) {
+    ui->nrawcoords = 0;
+    ui->ndragcoords = 0;
+    ui->dragmode = DRAG_NONE;
+    ui->lx = ui->ly = -1;
+    ui->pending = -1;
+}
 
 static game_ui *new_ui(const game_state *state) {
     int w = state->w;
     int h = state->h;
     game_ui *ui = snew(game_ui);
-
-    ui->dragcoords = snewn((8*w+5)*(8*h+5), int);
-    ui->ndragcoords = -1;
-    ui->dragdir = BLANK;
-
+    ui->rawcoords = snewn((2*w+3)*(2*h+3), int);
+    ui->dragcoords = snewn(w*(h+1)+(w+1)*h, int);
+    clear_drag(ui, w, h);
     ui->show_grid = true;
+
     return ui;
 }
 
 static void free_ui(game_ui *ui) {
     sfree(ui->dragcoords);
+    sfree(ui->rawcoords);
     sfree(ui);
 }
 
@@ -1588,68 +1611,215 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 
 #define PREFERRED_TILE_SIZE (8)
 #define TILESIZE (ds->tilesize)
-#define BORDER (5*TILESIZE/2)
+#define BORDER (7*TILESIZE/2)
 
 #define COORD(x) ( (x) * 8 * TILESIZE + BORDER )
 #define CENTERED_COORD(x) ( COORD(x) + 4*TILESIZE )
 #define FROMCOORD(x) ( ((x) < BORDER) ? -1 : ( ((x) - BORDER) / (8 * TILESIZE) ) )
 
-#define CELLCOORD(x) ( (x) * TILESIZE )
-#define FROMCELLCOORD(x) ( (x) / TILESIZE )
+#define CELLCOORD(x) ( (x) * TILESIZE  + BORDER)
+#define FROMCELLCOORD(x) ( (x - BORDER) / TILESIZE )
+#define FROMDRAGCOORD(x) ( ( ( (x + 2*TILESIZE) / (4 * TILESIZE) ) ) )
 
 struct game_drawstate {
     int tilesize;
     int w, h;
     bool tainted;
+    unsigned char dragmode;
     unsigned long *cell;
 };
+
+/* 
+static void debug_draglist(game_ui *ui) {
+    int i;
+    printf("Mode %i, Edges in draglist %i, Pending %i Dragcoords [", ui->dragmode, ui->ndragcoords, ui->pending);
+    for (i=0;i<ui->ndragcoords;i++)
+        printf("%i ",ui->dragcoords[i]);
+    printf("]\n");
+}
+*/
+static int get_edge(const game_state *state, int coord) {
+        int vcoff = (2*state->w+3)*(2*state->h+3);
+        int x = coord % vcoff;
+        int y = coord / vcoff;
+        if ((x<0) || (y<0) || (x>=(2*state->w+3)) || (y>=(2*state->h+3)))
+            return EDGE_NONE;
+        if (((x==0 || x==2*state->w+2) && (y%2 == 1)) ||
+            ((y==0 || y==2*state->h+2) && (x%2 == 1)))
+            return EDGE_NONE;
+        if ((x%2 == 0) && (y%2 == 0))
+            return EDGE_MIDDLE;
+        if (!((x%2 == 0) || (y%2 == 0)))
+            return EDGE_CORNER;
+        if ((x%2 == 0) && (y%2 == 1))
+            return (x/2)-1 + ((y-1)/2)*state->w;
+        return ((x-1)/2) + ((y/2)-1)*(state->w+1) + state->w*(state->h+1);
+}
+
+static int get_edgetype(const game_state *state, int edge) {
+    if (edge < 0) return edge;
+    if (edge < state->w*(state->h+1)) return state->edge_h[edge] & ~FLAG_ERROR;
+    return state->edge_v[edge-(state->w*(state->h+1))] & ~FLAG_ERROR;
+}
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int x, int y, int button, bool swapped) {
 
-    char buf[80];
+    int i;
     int w = state->w;
     int h = state->h;
-    int fx = FROMCOORD(x);
-    int fy = FROMCOORD(y); 
-    int cx = CENTERED_COORD(fx);
-    int cy = CENTERED_COORD(fy);
+    int vcoff = (2*w+3)*(2*h+3);
 
-    if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
-        int direction, edge;
-        if (ui->ndragcoords > 0 ) {
-            ui->ndragcoords = -1;
-            return UI_UPDATE;
+    if (IS_MOUSE_DOWN(button) || IS_MOUSE_DRAG(button)) {
+        int coord, edge, edgetype;
+        int cx,cy;
+        cx = FROMDRAGCOORD(x);
+        cy = FROMDRAGCOORD(y);
+        coord = cx+cy*vcoff;
+        edge = get_edge(state, coord);
+        edgetype = get_edgetype(state, edge);
+        if (IS_MOUSE_DOWN(button)) clear_drag(ui, w, h);
+
+        /* Only accept moves to orthogonal cells */
+        if (IS_MOUSE_DRAG(button))
+            if (ui->lx >=0 && ui->ly >= 0 && (abs(cx-ui->lx) + abs(cy-ui->ly)) != 1)
+                return NULL;
+        /* Reject all moves to cells incompatible with current dragmode */
+        if (edgetype == EDGE_NONE) return NULL;
+        if (edgetype == (FLAG_WALL | FLAG_FIXED)) return NULL;
+        if (ui->dragmode == DRAG_LAYPATH && !(edgetype == EDGE_MIDDLE || edgetype == FLAG_NONE)) return NULL;
+        if (ui->dragmode == DRAG_LAYWALL && !(edgetype == EDGE_CORNER || edgetype == FLAG_NONE)) return NULL;
+        if (ui->dragmode == DRAG_DELPATH && !(edgetype == EDGE_MIDDLE || edgetype == FLAG_PATH)) return NULL;
+        if (ui->dragmode == DRAG_DELWALL && !(edgetype == EDGE_CORNER || edgetype == FLAG_WALL)) return NULL;
+
+        /* printf("Coord %i Edge %i Edgetype %i\n", coord, edge, edgetype); */
+        ui->lx = cx; ui->ly = cy;
+        
+        /* Initial click/confirmation phase */
+        if (ui->dragmode == DRAG_NONE) {
+            /* Immediately lay element on initial long-click */
+            if ((edgetype >= 0) && ((!swapped && (button == RIGHT_BUTTON)) || (swapped && (button == LEFT_BUTTON)))) {
+                switch (edgetype) { 
+                    case FLAG_NONE: ui->dragmode = button == LEFT_BUTTON ? DRAG_LAYPATH : DRAG_LAYWALL; break;
+                    case FLAG_PATH: ui->dragmode = DRAG_DELPATH; break;
+                    case FLAG_WALL: ui->dragmode = DRAG_DELWALL; break;
+                }
+                if ((edgetype & FLAG_FIXED) == 0x00)
+                    ui->rawcoords[ui->nrawcoords++] = coord;
+            }
+            /* Confirm initial click and determine dragmode */
+            else if (ui->pending >= 0) {
+                int pendingedge = get_edge(state, ui->pending);
+                int pendingedgetype = get_edgetype(state, pendingedge);
+                if ((pendingedge == EDGE_MIDDLE) && (edge >= 0))
+                    ui->dragmode = edgetype == FLAG_NONE ? DRAG_LAYPATH :
+                                   edgetype == FLAG_PATH ? DRAG_DELPATH :
+                                                           DRAG_NONE;
+                else if ((pendingedge >= 0) && (edge == EDGE_MIDDLE))
+                    ui->dragmode = pendingedgetype == FLAG_NONE ? DRAG_LAYPATH :
+                                   pendingedgetype == FLAG_PATH ? DRAG_DELPATH :
+                                                                  DRAG_NONE;
+                else if ((pendingedge == EDGE_CORNER) && (edge >= 0))
+                    ui->dragmode = edgetype == FLAG_NONE ? DRAG_LAYWALL :
+                                   edgetype == FLAG_WALL ? DRAG_DELWALL :
+                                                           DRAG_NONE;
+                else if ((pendingedge >= 0) && (edge == EDGE_CORNER))
+                    ui->dragmode = pendingedgetype == FLAG_NONE ? DRAG_LAYWALL :
+                                   pendingedgetype == FLAG_PATH ? DRAG_DELWALL :
+                                                                  DRAG_NONE;
+                if (ui->dragmode != DRAG_NONE) {
+                    ui->rawcoords[ui->nrawcoords++] = ui->pending;
+                    ui->rawcoords[ui->nrawcoords++] = coord;
+                    ui->pending = -1;
+                }
+            }
+            /* Save initial click for confirmation */
+            else {
+                ui->pending = coord;
+            }
         }
+        /* Drag in progress */
         else {
-            ui->ndragcoords = -1;
-            if ((fx<0 && fy<0) || (fx>=w && fy<0) || (fx<0 && fy>=h) || (fx>=w && fy>=h)) return NULL;
-            if      (fx<0 && x > cx)  direction = R;
-            else if (fx>=w && x < cx) direction = L;
-            else if (fy<0 && y > cy)  direction = D;
-            else if (fy>=h && y < cy) direction = U;
-            else if (fx<0 || fx>=w || fy<0 || fy >=h) return NULL;
-            else {
-                if (abs(x-cx) < abs(y-cy)) direction = (y < cy) ? U : D;
-                else                       direction = (x < cx) ? L : R;
+            /* Handle dragging back to already dragged position */
+            bool found = false;
+            for (i=0;i<ui->nrawcoords;i++) {
+                if (ui->rawcoords[i] == coord) {
+                    ui->pending = ui->rawcoords[i];
+                    ui->nrawcoords = i;
+                    found = true;
+                    break;
+                }
             }
-            if (direction == U || direction == D) {
-                edge = direction == U ? fx+fy*w : fx+(fy+1)*w;
-                if ((state->edge_h[edge] & FLAG_FIXED) > 0x00) return NULL;
-                if ((state->edge_h[edge] & FLAG_PATH) > 0x00 || 
-                    (state->edge_h[edge] & FLAG_WALL) > 0x00) sprintf(buf,"C%d",edge);
-                else sprintf(buf,"%c%d",(button == LEFT_BUTTON) ? 'P' : 'W', edge);
+            /* Add new dragging if on an edge */
+            if (!found) {
+                if (ui->pending >= 0) {
+                    ui->rawcoords[ui->nrawcoords++] = ui->pending;
+                    ui->pending = -1;
+                }
+                ui->rawcoords[ui->nrawcoords++] = coord;
             }
-            else {
-                edge = direction == L ? fx+fy*(w+1) : (fx+1)+fy*(w+1);
-                if ((state->edge_v[edge] & FLAG_FIXED) > 0x00) return NULL;
-                if ((state->edge_v[edge] & FLAG_PATH) > 0x00 || 
-                    (state->edge_v[edge] & FLAG_WALL) > 0x00) sprintf(buf,"C%d",edge+w*(h+1));
-                else sprintf(buf,"%c%d",(button == LEFT_BUTTON) ? 'P' : 'W', edge+w*(h+1));
-            }
-            return dupstr(buf);
         }
+        ui->ndragcoords = 0;
+        for (i=0;i<ui->nrawcoords;i++) {
+            int dragedge = get_edge(state, ui->rawcoords[i]);
+            if (dragedge >= 0) ui->dragcoords[ui->ndragcoords++] = dragedge;
+        }
+        /* debug_draglist(ui); */
+        return UI_UPDATE;
+    }
+   /* Drag or click finished */
+    else if (IS_MOUSE_RELEASE(button)) {
+        /* Unconfirmed initial click is pending */
+        int edge = get_edge(state, ui->pending);
+        if ((ui->dragmode == DRAG_NONE) && (edge >= 0)) {
+            int edgetype = get_edgetype(state, edge);
+            /* printf("Pending edge %i, edgetype %i ", edge, edgetype); */
+            switch (edgetype) {
+                case FLAG_NONE:
+                    ui->dragmode = ((!swapped && (button == LEFT_RELEASE)) || 
+                                    (swapped && button == RIGHT_RELEASE)) ? DRAG_LAYPATH :
+                                                                            DRAG_LAYWALL;
+                    break;
+                case FLAG_PATH:
+                    ui->dragmode = DRAG_DELPATH;
+                    break;
+                case FLAG_WALL:
+                    ui->dragmode = DRAG_DELWALL;
+                    break;
+            }
+            if (ui->dragmode != DRAG_NONE)
+                ui->dragcoords[ui->ndragcoords++] = edge;
+        }
+
+        /* debug_draglist(ui); */
+        
+        /* There is something to do after drag */
+        if (ui->dragmode != DRAG_NONE && ui->ndragcoords > 0) {
+            char tmpbuf[80];
+            char *buf = NULL;
+            char mode;
+            int buflen = 0, bufsize = 256, tmplen;
+
+            buf = snewn(bufsize, char);
+            mode = ui->dragmode == DRAG_LAYPATH ? 'P' :
+                   ui->dragmode == DRAG_LAYWALL ? 'W' :
+                                                  'C';
+            for (i=0;i<ui->ndragcoords;i++) {
+                tmplen = sprintf(tmpbuf, "%c%d;", mode, ui->dragcoords[i]);
+                if (buflen + tmplen >= bufsize) {
+                        bufsize = (buflen + tmplen) * 5 / 4 + 256;
+                        buf = sresize(buf, bufsize, char);
+                }
+                strcpy(buf + buflen, tmpbuf);
+                buflen += tmplen;
+            }
+            clear_drag(ui, w, h);
+            return buf ? buf : UI_UPDATE;
+        }
+
+        clear_drag(ui, w, h);
+        return UI_UPDATE;
     }
 
     if (button == 'G' || button == 'g') {
@@ -1657,6 +1827,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return UI_UPDATE;
     }
     return NULL;
+
 }
 
 static game_state *execute_move(const game_state *state, const char *move) {
@@ -1709,8 +1880,8 @@ static void game_compute_size(const game_params *params, int tilesize,
     struct { int tilesize; } ads, *ds = &ads;
     ads.tilesize = tilesize;
 
-    *x = (8 * (params->w) + 5) * TILESIZE;
-    *y = (8 * (params->h) + 5) * TILESIZE;
+    *x = (8 * (params->w) + 7) * TILESIZE;
+    *y = (8 * (params->h) + 7) * TILESIZE;
 }
 
 static void game_set_size(drawing *dr, game_drawstate *ds,
@@ -1719,56 +1890,25 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 }
 
 static float *game_colours(frontend *fe, int *ncolours) {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
-    ret[COL_BACKGROUND * 3 + 0] = 1.0F;
-    ret[COL_BACKGROUND * 3 + 1] = 1.0F;
-    ret[COL_BACKGROUND * 3 + 2] = 1.0F;
-
-    ret[COL_GRID * 3 + 0] = 0.0F;
-    ret[COL_GRID * 3 + 1] = 0.0F;
-    ret[COL_GRID * 3 + 2] = 0.0F;
-
-    ret[COL_FLOOR_A * 3 + 0] = 1.0F;
-    ret[COL_FLOOR_A * 3 + 1] = 1.0F;
-    ret[COL_FLOOR_A * 3 + 2] = 1.0F;
-
-    ret[COL_FLOOR_B * 3 + 0] = 0.75F;
-    ret[COL_FLOOR_B * 3 + 1] = 0.75F;
-    ret[COL_FLOOR_B * 3 + 2] = 0.75F;
-
-    ret[COL_FIXED * 3 + 0] = 0.0F;
-    ret[COL_FIXED * 3 + 1] = 0.0F;
-    ret[COL_FIXED * 3 + 2] = 0.0F;
-
-    ret[COL_WALL_A * 3 + 0] = 0.0F;
-    ret[COL_WALL_A * 3 + 1] = 0.0F;
-    ret[COL_WALL_A * 3 + 2] = 0.0F;
-
-    ret[COL_WALL_B * 3 + 0] = 1.0F;
-    ret[COL_WALL_B * 3 + 1] = 1.0F;
-    ret[COL_WALL_B * 3 + 2] = 1.0F;
-
-    ret[COL_PATH_A * 3 + 0] = 0.75F;
-    ret[COL_PATH_A * 3 + 1] = 0.75F;
-    ret[COL_PATH_A * 3 + 2] = 0.75F;
-
-    ret[COL_PATH_B * 3 + 0] = 0.0F;
-    ret[COL_PATH_B * 3 + 1] = 0.0F;
-    ret[COL_PATH_B * 3 + 2] = 0.0F;
-
-    ret[COL_DRAGON * 3 + 0] = 0.25F;
-    ret[COL_DRAGON * 3 + 1] = 0.25F;
-    ret[COL_DRAGON * 3 + 2] = 0.25F;
-
-    ret[COL_DRAGOFF * 3 + 0] = 0.5F;
-    ret[COL_DRAGOFF * 3 + 1] = 0.5F;
-    ret[COL_DRAGOFF * 3 + 2] = 0.5F;
-
-    ret[COL_ERROR * 3 + 0] = 0.5F;
-    ret[COL_ERROR * 3 + 1] = 0.5F;
-    ret[COL_ERROR * 3 + 2] = 0.5F;
-
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND   * 3 + i] = 1.0F;
+        ret[COL_GRID         * 3 + i] = 0.0F;
+        ret[COL_FLOOR_A      * 3 + i] = 1.0F;
+        ret[COL_FLOOR_B      * 3 + i] = 0.75F;
+        ret[COL_FIXED        * 3 + i] = 0.0F;
+        ret[COL_WALL_A       * 3 + i] = 0.0F;
+        ret[COL_WALL_B       * 3 + i] = 1.0F;
+        ret[COL_PATH_CENTER  * 3 + i] = 0.75F;
+        ret[COL_PATH_CORNER  * 3 + i] = 0.0F;
+        ret[COL_DRAGON       * 3 + i] = 0.0F;
+        ret[COL_DRAGOFF      * 3 + i] = 0.9F;
+        ret[COL_ERROR_CELL   * 3 + i] = 0.0F;
+        ret[COL_ERROR_PATH   * 3 + i] = 0.0F;
+        ret[COL_ERROR_CORNER * 3 + i] = 0.8F;
+    }
     *ncolours = NCOLOURS;
     return ret;
 }
@@ -1784,9 +1924,10 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state) 
     ds->w = w;
     ds->h = h;
     ds->tainted = true;
-    ds->cell   = snewn((8*w+5)*(8*h+5), unsigned long);
+    ds->dragmode = DRAG_NONE;
+    ds->cell   = snewn((8*w+7)*(8*h+7), unsigned long);
 
-    for (i=0;i<(8*w+5)*(8*h+5); i++) ds->cell[i] = 0x00000000;
+    for (i=0;i<(8*w+7)*(8*h+7); i++) ds->cell[i] = 0x00000000;
 
     return ds;
 }
@@ -1796,112 +1937,182 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds) {
     sfree(ds);
 }
 
-static void draw_cell(drawing *dr, game_drawstate *ds, int pos) {
+static void draw_pathcell(drawing *dr, unsigned long cell, int x, int y, 
+                          int w, int h, int ts, unsigned char dragmode) {
+    int ox = x*ts;
+    int oy = y*ts;
+    int cx = x-3;
+    int cy = y-3;
+    int cwidth = (ts+1)/4; /* (cell & FLAG_ERROR)>0 ? 3*(ts+1)/8:(ts+1)/4; */
+
+    int cornercol = COL_PATH_CORNER; /* (cell & FLAG_ERROR)>0 ? COL_ERROR_CORNER : COL_PATH_CORNER; */
+    if (cell & FLAG_ERROR) {
+        int c[8];
+        int ewidth = (ts+2)/2;
+        c[0] = ox+ewidth; c[1] = oy;
+        c[2] = ox+ts; c[3] = oy;
+        c[4] = ox+ts; c[5] = oy+ewidth;
+        draw_polygon(dr, c, 3, COL_PATH_CENTER, COL_PATH_CENTER);
+        c[0] = ox; c[1] = oy; 
+        c[2] = ox+ewidth; c[3] = oy;
+        c[4] = ox+ts; c[5] = oy+ewidth; 
+        c[6] = ox+ts; c[7] = oy+ts;
+        draw_polygon(dr, c, 4, COL_ERROR_PATH, COL_ERROR_PATH);
+        c[0] = ox; c[1] = oy; 
+        c[2] = ox+ts; c[3] = oy+ts;
+        c[4] = ox+ewidth; c[5] = oy+ts; 
+        c[6] = ox; c[7] = oy+ewidth;
+        draw_polygon(dr, c, 4, COL_PATH_CENTER, COL_PATH_CENTER);
+        c[0] = ox; c[1] = oy+ewidth;
+        c[2] = ox+ewidth; c[3] = oy+ts;
+        c[4] = ox; c[5] = oy+ts;
+        draw_polygon(dr, c, 3, COL_ERROR_PATH, COL_ERROR_PATH);
+    }
+    else {
+        draw_rect(dr, ox, oy, ts, ts,
+            (cell & FLAG_DRAG)>0  ? (dragmode == DRAG_DELPATH ? COL_DRAGOFF : COL_DRAGON) :
+                                    COL_PATH_CENTER);
+    }
+
+    if ((cell & (FLAG_DRAG)) > 0) return;
+
+    if ((cx<0 || cx>(8*w) || (cy%8)==4) && (cx%8)!=4) {
+        draw_rect(dr, ox, oy, ts, cwidth, cornercol);
+        draw_rect(dr, ox, oy+ts-cwidth, ts, cwidth, cornercol);
+    }
+    else if ((cy<0 || cy>(8*h) || (cx%8)==4) && (cy%8)!=4) {
+        draw_rect(dr, ox, oy, cwidth, ts, cornercol);
+        draw_rect(dr, ox+ts-cwidth, oy, cwidth, ts, cornercol);
+    }
+    else if ((cx%8)==4 && (cy%8)==4) {
+        if ((cell & FLAG_LEFT) > 0) {
+            draw_rect(dr, ox, oy,          cwidth, cwidth, cornercol);
+            draw_rect(dr, ox, oy+ts-cwidth, cwidth, cwidth, cornercol);
+        }
+        else {
+            draw_rect(dr, ox, oy, cwidth, ts, cornercol);
+        }
+        if ((cell & FLAG_RIGHT) > 0) {
+            draw_rect(dr, ox+ts-cwidth, oy,          cwidth, cwidth, cornercol);
+            draw_rect(dr, ox+ts-cwidth, oy+ts-cwidth, cwidth, cwidth, cornercol);
+        }
+        else {
+            draw_rect(dr, ox+ts-cwidth, oy, cwidth, ts, cornercol);
+        }
+        if ((cell & FLAG_UP) > 0) {
+            draw_rect(dr, ox,          oy, cwidth, cwidth, cornercol);
+            draw_rect(dr, ox+ts-cwidth, oy, cwidth, cwidth, cornercol);
+        }
+        else {
+            draw_rect(dr, ox, oy, ts, cwidth, cornercol);
+        }
+        if ((cell & FLAG_DOWN) > 0) {
+            draw_rect(dr, ox,          oy+ts-cwidth, cwidth, cwidth, cornercol);
+            draw_rect(dr, ox+ts-cwidth, oy+ts-cwidth, cwidth, cwidth, cornercol);
+        }
+        else {
+            draw_rect(dr, ox, oy+ts-cwidth, ts, cwidth, cornercol);
+        }
+    }
+
+}
+static void draw_wallcell(drawing *dr, unsigned long cell, int x, int y, 
+                          int ts, unsigned char dragmode) {
+    int c[8];
+    int ox = x*ts;
+    int oy = y*ts;
+    int ts14 = 1*(ts+1)/4;
+    int ts34 = 3*(ts+1)/4;
+    int col1, col2, width;
+
+    width = ts34;
+    col1 = COL_WALL_A;
+    col2 = COL_WALL_B;
+    if (dragmode == DRAG_LAYWALL) {
+        width = ts14;
+    }
+    if (dragmode == DRAG_DELWALL) {
+        col1 = COL_DRAGOFF;
+    }
+
+    c[0] = ox; c[1] = oy;
+    c[2] = ox; c[3] = oy+width;
+    c[4] = ox+width; c[5] = oy;
+    draw_polygon(dr, c, 3, col1, col1);
+    c[0] = ox; c[1] = oy+width; 
+    c[2] = ox; c[3] = oy+ts;
+    c[4] = ox+ts; c[5] = oy; 
+    c[6] = ox+width; c[7] = oy;
+    draw_polygon(dr, c, 4, col2, col2);
+    c[0] = ox; c[1] = oy+ts; 
+    c[2] = ox+width; c[3] = oy+ts;
+    c[4] = ox+ts; c[5] = oy+width; 
+    c[6] = ox+ts; c[7] = oy;
+    draw_polygon(dr, c, 4, col1, col1);
+    c[0] = ox+width; c[1] = oy+ts;
+    c[2] = ox+ts; c[3] = oy+ts;
+    c[4] = ox+ts; c[5] = oy+width;
+    draw_polygon(dr, c, 3, col2, col2);
+}
+static void draw_floorcell(drawing *dr, unsigned long cell, int x, int y, int ts) {
     int i;
     int dx, dy, col;
+
+    int ox = x*ts;
+    int oy = y*ts;
+    int ts2 = (ts+1)/2;
+
+    for (i=0;i<4;i++) {
+        unsigned char bg = (cell >> (8+(2*i))) & 0x03;
+        if      (i==0) { dx = ox;     dy = oy; }
+        else if (i==1) { dx = ox;     dy = oy+ts2; }
+        else if (i==2) { dx = ox+ts2; dy = oy; }
+        else           { dx = ox+ts2; dy = oy+ts2; }
+        col = (bg==0x00) ? COL_BACKGROUND :
+              (bg==0x01) ? COL_FLOOR_A :
+                           COL_FLOOR_B;
+        draw_rect(dr, dx, dy, ts2, ts2, col);
+    }
+}
+
+static void draw_cell(drawing *dr, game_drawstate *ds, int pos) {
     int w = ds->w;
     int h = ds->h;
-    int x = pos%(8*w+5);
-    int y = pos/(8*w+5);
+    int x = pos%(8*w+7);
+    int y = pos/(8*w+7);
     int ox = x*ds->tilesize;
     int oy = y*ds->tilesize;
-    int cx = x-2;
-    int cy = y-2;
     int ts = ds->tilesize;
-    int ts2 = (ds->tilesize+1)/2;
-    int ts3 = (ds->tilesize+1)/3;
-    int ts4 = (ds->tilesize+1)/4;
-    int ts34 = 3*(ds->tilesize+1)/4;
 
     clip(dr, ox, oy, ts, ts);
 
     if ((ds->cell[pos] & (FLAG_WALL | FLAG_FIXED)) == (FLAG_WALL|FLAG_FIXED)) {
         draw_rect(dr, ox, oy, ts, ts, COL_FIXED);
     }
+    else if ((ds->cell[pos] & FLAG_DRAG) > 0) {
+        switch (ds->dragmode) {
+            case DRAG_LAYPATH: 
+            case DRAG_DELPATH:
+                draw_pathcell(dr, ds->cell[pos], x, y, w, h, ts, ds->dragmode);
+                break;
+            case DRAG_LAYWALL:
+            case DRAG_DELWALL:
+                draw_wallcell(dr, ds->cell[pos], x, y, ts, ds->dragmode);
+                break;
+            default: break;
+        }
+    }
     else if ((ds->cell[pos] & FLAG_PATH) == FLAG_PATH) {
-        int cornercol = (ds->cell[pos] & FLAG_ERROR)>0 ? COL_ERROR : COL_PATH_B;
-        int width = (ds->cell[pos] & FLAG_ERROR)>0 ? ts3:ts4;
-        draw_rect(dr, ox, oy, ts, ts,
-            (ds->cell[pos] & FLAG_DRAG) >0 ? COL_DRAGOFF :
-            (ds->cell[pos] & FLAG_ERROR)>0 ? COL_ERROR :
-                                             COL_PATH_A);
-        if ((cx<0 || cx>(8*w) || (cy%8)==4) && (cx%8)!=4) {
-            draw_rect(dr, ox, oy, ts, width, cornercol);
-            draw_rect(dr, ox, oy+ts-width, ts, width, cornercol);
-        }
-        else if ((cy<0 || cy>(8*h) || (cx%8)==4) && (cy%8)!=4) {
-            draw_rect(dr, ox, oy, width, ts, cornercol);
-            draw_rect(dr, ox+ts-width, oy, width, ts, cornercol);
-        }
-        else if ((cx%8)==4 && (cy%8)==4) {
-            if ((ds->cell[pos] & FLAG_LEFT) > 0) {
-                draw_rect(dr, ox, oy,          width, width, cornercol);
-                draw_rect(dr, ox, oy+ts-width, width, width, cornercol);
-            }
-            else {
-                draw_rect(dr, ox, oy, width, ts, cornercol);
-            }
-            if ((ds->cell[pos] & FLAG_RIGHT) > 0) {
-                draw_rect(dr, ox+ts-width, oy,          width, width, cornercol);
-                draw_rect(dr, ox+ts-width, oy+ts-width, width, width, cornercol);
-            }
-            else {
-                draw_rect(dr, ox+ts-width, oy, width, ts, cornercol);
-            }
-            if ((ds->cell[pos] & FLAG_UP) > 0) {
-                draw_rect(dr, ox,          oy, width, width, cornercol);
-                draw_rect(dr, ox+ts-width, oy, width, width, cornercol);
-            }
-            else {
-                draw_rect(dr, ox, oy, ts, width, cornercol);
-            }
-            if ((ds->cell[pos] & FLAG_DOWN) > 0) {
-                draw_rect(dr, ox,          oy+ts-width, width, width, cornercol);
-                draw_rect(dr, ox+ts-width, oy+ts-width, width, width, cornercol);
-            }
-            else {
-                draw_rect(dr, ox, oy+ts-width, ts, width, cornercol);
-            }
-        }
-
+        draw_pathcell(dr, ds->cell[pos], x, y, w, h, ts, DRAG_NONE);
+    }
+    else if ((ds->cell[pos] & FLAG_WALL) == FLAG_WALL) {
+        draw_wallcell(dr, ds->cell[pos], x, y, ts, DRAG_NONE);
+    }
+    else if ((ds->cell[pos] & FLAG_ERROR) >0) {
+        draw_rect(dr, ox, oy, ts, ts, COL_ERROR_CELL);
     }
     else {
-        for (i=0;i<4;i++) {
-            unsigned char bg = (ds->cell[pos] >> (8+(2*i))) & 0x03;
-            if      (i==0) { dx = ox;     dy = oy; }
-            else if (i==1) { dx = ox;     dy = oy+ts2; }
-            else if (i==2) { dx = ox+ts2; dy = oy; }
-            else           { dx = ox+ts2; dy = oy+ts2; }
-            col = (ds->cell[pos] & FLAG_DRAG) >0 ? COL_DRAGON :
-                  (bg==0x00) ? COL_BACKGROUND :
-                  (bg==0x01) ? COL_FLOOR_A :
-                               COL_FLOOR_B;
-            draw_rect(dr, dx, dy, ts2, ts2, col);
-        }
-        if ((ds->cell[pos] & FLAG_WALL) == FLAG_WALL) {
-            int c[8];
-            c[0] = ox; c[1] = oy;
-            c[2] = ox; c[3] = oy+ts34;
-            c[4] = ox+ts34; c[5] = oy;
-            draw_polygon(dr, c, 3, COL_WALL_A, COL_WALL_A);
-            c[0] = ox; c[1] = oy+ts34; 
-            c[2] = ox; c[3] = oy+ts;
-            c[4] = ox+ts; c[5] = oy; 
-            c[6] = ox+ts34; c[7] = oy;
-            draw_polygon(dr, c, 4, COL_WALL_B, COL_WALL_B);
-            c[0] = ox; c[1] = oy+ts; 
-            c[2] = ox+ts34; c[3] = oy+ts;
-            c[4] = ox+ts; c[5] = oy+ts34; 
-            c[6] = ox+ts; c[7] = oy;
-            draw_polygon(dr, c, 4, COL_WALL_A, COL_WALL_A);
-            c[0] = ox+ts34; c[1] = oy+ts;
-            c[2] = ox+ts; c[3] = oy+ts;
-            c[4] = ox+ts; c[5] = oy+ts34;
-            draw_polygon(dr, c, 3, COL_WALL_B, COL_WALL_B);
-        }
-        else if ((ds->cell[pos] & FLAG_ERROR) >0) {
-            draw_rect(dr, ox, oy, ts, ts, COL_ERROR);
-        }
+        draw_floorcell(dr, ds->cell[pos], x, y, ts);
     }
     draw_update(dr, ox, oy, ts, ts);
     unclip(dr);
@@ -1914,17 +2125,69 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int i,j,w,h,x,y,cx,cy,csx,csy;
     unsigned long *newcell;
     unsigned char cellerror;
+    bool *drag_h, *drag_v;
 
     w = state->w; h = state->h;
-    newcell = snewn((8*w+5)*(8*h+5), unsigned long);
-    for (i=0;i<((8*w)+5)*((8*h)+5); i++) newcell[i] = 0x00000000;
+    newcell = snewn((8*w+7)*(8*h+7), unsigned long);
+    for (i=0;i<((8*w)+7)*((8*h)+7); i++) newcell[i] = 0x00000000;
 
-    if (ui->ndragcoords > 0)
-        for (i=0;i<ui->ndragcoords;i++)
-            newcell[ui->dragcoords[i]] |= FLAG_DRAG;
-    
-    for (i=0;i<((8*w)+5)*((8*h)+5); i++) {
-        x = i%(8*w+5)-2; y = i/(8*w+5)-2;
+    drag_h = snewn(w*(h + 1), bool);
+    drag_v = snewn((w + 1)*h, bool);
+    for (i=0;i<w*(h+1);i++) drag_h[i] = false;
+    for (i=0;i<(w+1)*h;i++) drag_v[i] = false;
+
+    if (ui->dragmode != DRAG_NONE)
+        for (i=0;i<ui->ndragcoords;i++) {
+            int coord = ui->dragcoords[i];
+            if (coord < w*(h+1)) drag_h[coord] = true;
+            else drag_v[coord-(w*(h+1))] = true;
+        }
+    ds->dragmode = ui->dragmode;
+
+    if (ds->dragmode == DRAG_LAYPATH || ds->dragmode == DRAG_DELPATH) {
+        for (i=0;i<((8*w)+7)*((8*h)+7); i++) {
+            x = i%(8*w+7)-3; y = i/(8*w+7)-3;
+            cx = x/8; cy = y/8;
+
+            if ((x<0 && y<0) || (x<0 && y>8*h) || (x>8*w && y<0) || (x>8*w && y>8*h)) {}
+            else if (x<0 || x>8*w) {
+                if (y%8==4 && (x==-1 || x==-2)       && drag_v[cy*(w+1)])   newcell[i] |= FLAG_DRAG;
+                if (y%8==4 && (x==8*w+1 || x==8*w+2) && drag_v[w+cy*(w+1)]) newcell[i] |= FLAG_DRAG;
+            }
+            else if (y<0 || y>8*h) {
+                if (x%8==4 && (y==-1 || y==-2)       && drag_h[cx])     newcell[i] |= FLAG_DRAG;
+                if (x%8==4 && (y==8*h+1 || y==8*h+2) && drag_h[cx+h*w]) newcell[i] |= FLAG_DRAG;
+            }
+            else if ((y%8==0) && (x%8==4) && drag_h[cx+cy*w])     newcell[i] |= FLAG_DRAG;
+            else if ((x%8==0) && (y%8==4) && drag_v[cx+cy*(w+1)]) newcell[i] |= FLAG_DRAG;
+            else {
+                if (x%8==4 && y%8<=4 && drag_h[cx+cy*w])         newcell[i] |= FLAG_DRAG;
+                if (x%8==4 && y%8>=4 && drag_h[cx+(cy+1)*w])     newcell[i] |= FLAG_DRAG;
+                if (y%8==4 && x%8<=4 && drag_v[cx+cy*(w+1)])     newcell[i] |= FLAG_DRAG;
+                if (y%8==4 && x%8>=4 && drag_v[(cx+1)+cy*(w+1)]) newcell[i] |= FLAG_DRAG;
+            }
+        }
+    }
+    if (ds->dragmode == DRAG_LAYWALL || ds->dragmode == DRAG_DELWALL) {
+        for (i=0;i<((8*w)+7)*((8*h)+7); i++) {
+            x = i%(8*w+7)-3; y = i/(8*w+7)-3;
+            cx = x/8; cy = y/8;
+
+            if (x<0 || x>8*w || y<0 || y>8*h) {}
+            else if ((x%8 == 0) && (y%8 == 0)) {
+                if ((cx > 0) && drag_h[(cx-1)+cy*w])     newcell[i] |= FLAG_DRAG;
+                if ((cx < w) && drag_h[cx+cy*w])         newcell[i] |= FLAG_DRAG;
+                if ((cy > 0) && drag_v[cx+(cy-1)*(w+1)]) newcell[i] |= FLAG_DRAG;
+                if ((cy < h) && drag_v[cx+cy*(w+1)])     newcell[i] |= FLAG_DRAG;
+            }
+
+            else if ((y%8 == 0) && drag_h[cx+cy*w])     newcell[i] |= FLAG_DRAG;
+            else if ((x%8 == 0) && drag_v[cx+cy*(w+1)]) newcell[i] |= FLAG_DRAG;
+        }
+    }
+
+    for (i=0;i<((8*w)+7)*((8*h)+7); i++) {
+        x = i%(8*w+7)-3; y = i/(8*w+7)-3;
         cx = x/8; cy = y/8;
         csx = (x<0) ? 0 : cx+1; csy = (y<0) ? 0 : cy+1;
 
@@ -1935,17 +2198,17 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         /* Left / Right border cells */
         else if (x<0 || x>8*w) {
-            if (y%8==4 && x==-1)
+            if (y%8==4 && (x==-1 || x==-2))
                 newcell[i] |= (state->edge_v[cy*(w+1)]   & (FLAG_PATH|cellerror));
-            if (y%8==4 && x==8*w+1)
+            if (y%8==4 && (x==8*w+1 || x==8*w+2))
                 newcell[i] |= (state->edge_v[w+cy*(w+1)] & (FLAG_PATH|cellerror));
         }
 
         /* Top / Bottom border cells */
         else if (y<0 || y>8*h) {
-            if (x%8==4 && y==-1)
+            if (x%8==4 && (y==-1 || y==-2)) 
                 newcell[i] |= (state->edge_h[cx]         & (FLAG_PATH|cellerror));
-            if (x%8==4 && y==8*h+1)
+            if (x%8==4 && (y==8*h+1 || y==8*h+2))
                 newcell[i] |= (state->edge_h[cx+h*w]     & (FLAG_PATH|cellerror));
         }
 
@@ -2011,13 +2274,15 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             if ((x%8==4 || y%8==4) && (newcell[i] & FLAG_PATH)>0) newcell[i] |= cellerror;
         }
     }
-    for (i=0;i<((8*w)+5)*((8*h)+5); i++) {
+    for (i=0;i<((8*w)+7)*((8*h)+7); i++) {
         if (newcell[i] != ds->cell[i] || ds->tainted) {
             ds->cell[i] = newcell[i];
             draw_cell(dr, ds, i);
         }
     }
     ds->tainted = false;
+    sfree(drag_v);
+    sfree(drag_h);
     sfree(newcell);
 }
 

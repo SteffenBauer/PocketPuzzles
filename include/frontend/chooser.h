@@ -29,11 +29,10 @@ struct chooserAttributes {
     int chooser_rows;
 
     int btnHomeIDX;
-    int btnDrawIDX;
     int btnMenuIDX;
 } ca;
 
-extern ibitmap icon_home, icon_home_tap, icon_redraw, icon_redraw_tap,
+extern ibitmap icon_home, icon_home_tap,
                bt_west, bt_east, ic_star, bt_page, bt_page_select,
                icon_menu, icon_menu_tap,
                menu_new, menu_star,

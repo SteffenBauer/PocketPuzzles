@@ -64,14 +64,12 @@ void button_to_cleared(BUTTON *button, bool update) {
 }
 void activate_button(BUTTON *button) {
     button->active = true;
-    button_to_normal(button, true);
+    StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
 }
 void deactivate_button(BUTTON *button) {
     button->active = false;
     StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap_disabled, 0);
-    PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
-
 
 struct layout getLayout(LAYOUTTYPE screenlayout) {
     int bottomy = ScreenHeight()-PanelHeight();
