@@ -1,5 +1,10 @@
 ## ChangeLog
 
+## 0.7.11 nightly
+
+### Changed
+* Deactivate redundant victory message box for games with status bar
+
 ## 0.7.10 - 2022/04/02
 
 ### Added

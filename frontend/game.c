@@ -588,7 +588,7 @@ void gameRelease(int x, int y) {
         }
     }
     gameDrawFurniture();
-    checkGameEnd();
+    if (!fe->with_statusbar) checkGameEnd();
 }
 
 void gamePrev() {
