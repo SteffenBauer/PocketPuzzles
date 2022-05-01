@@ -114,6 +114,7 @@
 - [X] Sticks: Implement dragging
 - [X] Filling: Drag already placed/fixed numbers
 - [X] Walls: Add dragging
+- [X] Net: Add "Lock" button
 - [ ] Rome: Dragging
 - [ ] Galaxies: Rework right-drag / arrow handling
 - [ ] Loopy: Fix polygon error fill in Penrose grids
@@ -125,7 +126,6 @@
 - [ ] Pearl: "No line" on right click instead of release
 - [ ] Slant: 'Hard' game difficulty (backtracking)
 - [ ] Twiddle: Re-activate basic animation (?)
-- [ ] Net: Add "Lock" button
 
 #### One-click symbol fill
 
