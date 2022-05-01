@@ -40,14 +40,10 @@
 #define DRAG_THRESHOLD (CIRCLE_RADIUS * 3)
 #define PREFERRED_TILESIZE 64
 
-#define SHOW_CROSSINGS true
-
 enum {
     COL_BACKGROUND,
     COL_LINE,
-#ifdef SHOW_CROSSINGS
     COL_CROSSEDLINE,
-#endif
     COL_OUTLINE,
     COL_POINT,
     COL_DRAGPOINT,
@@ -86,9 +82,8 @@ struct game_state {
     game_params params;
     int w, h;                   /* extent of coordinate system only */
     point *pts;
-#ifdef SHOW_CROSSINGS
     int *crosses;               /* mark edges which are crossed */
-#endif
+    int ncrosses;               /* number of crossed edges */
     struct graph *graph;
     bool completed, cheated, just_solved;
 };
@@ -760,11 +755,8 @@ static void mark_crossings(game_state *state)
     int i, j;
     edge *e, *e2;
 
-#ifdef SHOW_CROSSINGS
     for (i = 0; (e = index234(state->graph->edges, i)) != NULL; i++)
-    state->crosses[i] = false;
-#endif
-
+        state->crosses[i] = false;
     /*
      * Check correctness: for every pair of edges, see whether they
      * cross.
@@ -772,29 +764,23 @@ static void mark_crossings(game_state *state)
     for (i = 0; (e = index234(state->graph->edges, i)) != NULL; i++) {
     for (j = i+1; (e2 = index234(state->graph->edges, j)) != NULL; j++) {
         if (e2->a == e->a || e2->a == e->b ||
-        e2->b == e->a || e2->b == e->b)
-        continue;
+            e2->b == e->a || e2->b == e->b)
+            continue;
         if (cross(state->pts[e2->a], state->pts[e2->b],
               state->pts[e->a], state->pts[e->b])) {
-        ok = false;
-#ifdef SHOW_CROSSINGS
-        state->crosses[i] = state->crosses[j] = true;
-#else
-        goto done;           /* multi-level break - sorry */
-#endif
+            ok = false;
+            state->crosses[i] = state->crosses[j] = true;
         }
     }
     }
-
+    state->ncrosses = 0;
+    for (i=0; (e = index234(state->graph->edges, i)) != NULL; i++)
+        if (state->crosses[i]) state->ncrosses++;
     /*
      * e == NULL if we've gone through all the edge pairs
      * without finding a crossing.
      */
-#ifndef SHOW_CROSSINGS
-    done:
-#endif
-    if (ok)
-    state->completed = true;
+    state->completed = ok;
 }
 
 static game_state *new_game(midend *me, const game_params *params,
@@ -829,10 +815,8 @@ static game_state *new_game(midend *me, const game_params *params,
     addedge(state->graph->edges, a, b);
     }
 
-#ifdef SHOW_CROSSINGS
     state->crosses = snewn(count234(state->graph->edges), int);
     mark_crossings(state);           /* sets up `crosses' and `completed' */
-#endif
 
     return state;
 }
@@ -852,11 +836,8 @@ static game_state *dup_game(const game_state *state)
     ret->completed = state->completed;
     ret->cheated = state->cheated;
     ret->just_solved = state->just_solved;
-#ifdef SHOW_CROSSINGS
     ret->crosses = snewn(count234(ret->graph->edges), int);
-    memcpy(ret->crosses, state->crosses,
-       count234(ret->graph->edges) * sizeof(int));
-#endif
+    memcpy(ret->crosses, state->crosses, count234(ret->graph->edges) * sizeof(int));
 
     return ret;
 }
@@ -1144,27 +1125,27 @@ static game_state *execute_move(const game_state *state, const char *move)
     long x, y, d;
     game_state *ret = dup_game(state);
 
-    ret->just_solved = false;
+    ret->cheated = ret->just_solved = false;
 
     while (*move) {
-    if (*move == 'S') {
-        move++;
-        if (*move == ';') move++;
-        ret->cheated = ret->just_solved = true;
-    }
-    if (*move == 'P' &&
-        sscanf(move+1, "%d:%ld,%ld/%ld%n", &p, &x, &y, &d, &k) == 4 &&
-        p >= 0 && p < n && d > 0) {
-        ret->pts[p].x = x;
-        ret->pts[p].y = y;
-        ret->pts[p].d = d;
+        if (*move == 'S') {
+            move++;
+            if (*move == ';') move++;
+            ret->cheated = ret->just_solved = true;
+        }
+        if (*move == 'P' &&
+            sscanf(move+1, "%d:%ld,%ld/%ld%n", &p, &x, &y, &d, &k) == 4 &&
+            p >= 0 && p < n && d > 0) {
+            ret->pts[p].x = x;
+            ret->pts[p].y = y;
+            ret->pts[p].d = d;
 
-        move += k+1;
-        if (*move == ';') move++;
-    } else {
-        free_game(ret);
-        return NULL;
-    }
+            move += k+1;
+            if (*move == ';') move++;
+        } else {
+            free_game(ret);
+            return NULL;
+        }
     }
 
     mark_crossings(ret);
@@ -1196,9 +1177,7 @@ static float *game_colours(frontend *fe, int *ncolours)
     for (i=0;i<3;i++) {
         ret[COL_BACKGROUND  * 3 + i] = 1.0F;
         ret[COL_LINE        * 3 + i] = 0.0F;
-#ifdef SHOW_CROSSINGS
         ret[COL_CROSSEDLINE * 3 + i] = 0.5F;
-#endif
         ret[COL_OUTLINE     * 3 + i] = 0.0F;
         ret[COL_POINT       * 3 + i] = 0.0F;
         ret[COL_DRAGPOINT   * 3 + i] = 0.5F;
@@ -1254,6 +1233,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int bg;
     bool points_moved;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "Crossed lines: %d%s",
+            state->ncrosses,
+            state->cheated   ? "    Auto-solved." :
+            state->completed ? "    COMPLETED!" : "");
+    status_bar(dr, buf);
+
     /*
      * There's no terribly sensible way to do partial redraws of
      * this game, so I'm going to have to resort to redrawing the
@@ -1308,14 +1295,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      */
 
     for (i = 0; (e = index234(state->graph->edges, i)) != NULL; i++) {
-#ifdef SHOW_CROSSINGS
         if ((oldstate?oldstate:state)->crosses[i]) 
             draw_thick_line(dr, 3.0, ds->x[e->a], ds->y[e->a], ds->x[e->b], ds->y[e->b], COL_CROSSEDLINE);
         else
             draw_thick_line(dr, 5.0, ds->x[e->a], ds->y[e->a], ds->x[e->b], ds->y[e->b], COL_LINE);
-#else
-        draw_thick_line(dr, 5.0, ds->x[e->a], ds->y[e->a], ds->x[e->b], ds->y[e->b], COL_LINE);
-#endif
     }
 
     /*
@@ -1338,21 +1321,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             }
 
             if (c == thisc) {
-#ifdef VERTEX_NUMBERS
-            draw_circle(dr, ds->x[i], ds->y[i], DRAG_THRESHOLD, bg, bg);
-            {
-                char buf[80];
-                sprintf(buf, "%d", i);
-                draw_text(dr, ds->x[i], ds->y[i], FONT_VARIABLE,
-                                  DRAG_THRESHOLD*3/2,
-                      ALIGN_VCENTRE|ALIGN_HCENTRE, c, buf);
-            }
-#else
-            draw_circle(dr, ds->x[i], ds->y[i], CIRCLE_RADIUS,
+                draw_circle(dr, ds->x[i], ds->y[i], CIRCLE_RADIUS,
                                 COL_OUTLINE, COL_OUTLINE);
-            draw_circle(dr, ds->x[i], ds->y[i], 3*CIRCLE_RADIUS/4,
+                draw_circle(dr, ds->x[i], ds->y[i], 3*CIRCLE_RADIUS/4,
                                 c, COL_OUTLINE);
-#endif
             }
         }
     }
@@ -1426,7 +1398,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     0,               /* flags */
 };

@@ -1838,6 +1838,7 @@ static game_state *execute_move(const game_state *state, const char *move) {
     int h = state->h;
     game_state *ret = dup_game(state);
 
+    ret->used_solve = false;
     while (*move) {
         c = *move;
         if (c == 'S') {
@@ -1865,7 +1866,7 @@ static game_state *execute_move(const game_state *state, const char *move) {
         }
     }
 
-    if (check_solution(ret, true) == SOLVED) ret->completed = true;
+    ret->completed = (check_solution(ret, true) == SOLVED);
 
     return ret;
 }
@@ -2126,6 +2127,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     unsigned long *newcell;
     unsigned char cellerror;
     bool *drag_h, *drag_v;
+    char buf[48];
+
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     w = state->w; h = state->h;
     newcell = snewn((8*w+7)*(8*h+7), unsigned long);
@@ -2351,7 +2359,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                 /* wants_statusbar */
+    true,                 /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,       /* flags */
 };

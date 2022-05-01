@@ -2190,6 +2190,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     unsigned f;
     game_state *ret = dup_game(state);
 
+    ret->used_solve = false;
     /* this is breaking the bank on GTK, which vsprintf's into a fixed-size buffer
      * which is 4096 bytes long. vsnprintf needs a feature-test macro to use, faff. */
     /*debug(("move: %s\n", move));*/
@@ -2597,6 +2598,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     bool force = false;
     game_state *drag_state = NULL;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     if (!ds->started) {
         draw_loop_ends(dr, ds, state, COL_CLUE);
 
@@ -2711,7 +2719,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,                       /* flags */
 };

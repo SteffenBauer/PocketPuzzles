@@ -829,6 +829,7 @@ static game_state *execute_move(const game_state *state, const char *move)
 
     game_state *ret = dup_game(state);
     const char *p = move;
+    ret->cheated = ret->completed = false;
 
     while (*p)
     {
@@ -875,7 +876,7 @@ static game_state *execute_move(const game_state *state, const char *move)
             p++;
     }
 
-    if (clusters_validate(ret) == STATUS_COMPLETE) ret->completed = true;
+    ret->completed = clusters_validate(ret) == STATUS_COMPLETE;
     return ret;
 }
 
@@ -955,9 +956,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int h = state->h;
     int x, y, d;
     int tilesize = ds->tilesize;
+    char buf[48];
 
-    if(ds->grid[0] == ~0)
-    {
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
+    if(ds->grid[0] == ~0) {
         draw_rect(dr, COORD(0) - tilesize / 10, COORD(0) - tilesize / 10,
             tilesize*w + 2 * (tilesize / 10) - 1,
             tilesize*h + 2 * (tilesize / 10) - 1, COL_GRID);
@@ -1077,7 +1083,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false, /* wants_statusbar */
+    true, /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };

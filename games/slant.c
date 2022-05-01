@@ -1658,6 +1658,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     char c;
     int x, y, n;
     game_state *ret = dup_game(state);
+    ret->used_solve = false;
 
     while (*move) {
         c = *move;
@@ -1685,12 +1686,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         }
     }
 
-    /*
-     * We never clear the `completed' flag, but we must always
-     * re-run the completion check because it also highlights
-     * errors in the grid.
-     */
-    ret->completed = check_completion(ret) || ret->completed;
+    ret->completed = check_completion(ret);
 
     return ret;
 }
@@ -1872,6 +1868,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int w = state->p.w, h = state->p.h, W = w+1, H = h+1;
     int x, y;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     /*
      * Loop over the grid and work out where all the slashes are.
      * We need to do this because a slash in one square affects the
@@ -1999,7 +2002,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,                       /* flags */
 };

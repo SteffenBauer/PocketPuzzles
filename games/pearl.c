@@ -2181,8 +2181,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     int x, y, l, n;
     game_state *ret = dup_game(state);
 
-    debug(("move: %s\n", move));
-
+    ret->used_solve = ret->completed = false;
     while (*move) {
         c = *move;
         if (c == 'S') {
@@ -2430,6 +2429,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int w = state->shared->w, h = state->shared->h, sz = state->shared->sz;
     int x, y;
     bool force = false;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (!ds->started) {
         if (get_gui_style() == GUI_MASYU) {
@@ -2554,7 +2559,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,                       /* flags */
 };

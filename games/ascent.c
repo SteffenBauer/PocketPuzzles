@@ -2909,6 +2909,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     number n = -1;
     const char *p = move;
     game_state *ret = dup_game(state);
+    ret->cheated = ret->completed = false;
 
     while (*p)
     {
@@ -2974,6 +2975,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         }
         else if (*p == 'S')
         {
+            ret->cheated = true;
             p++;
             for (i = 0; i < w*h; i++)
             {
@@ -3025,8 +3027,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         sfree(positions);
     }
     
-    if (check_completion(ret->grid, w, h, ret->mode))
-        ret->completed = true;
+    ret->completed = check_completion(ret->grid, w, h, ret->mode);
 
     return ret;
 }
@@ -3278,11 +3279,16 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int tx, ty, tx1, ty1, tx2, ty2;
     cell i, i2;
     number n, fn;
-    char buf[20];
+    char buf[48];
     const cell *positions = ui->positions;
     int colour;
     int margin = tilesize*ERROR_MARGIN;
     const ascent_movement *movement = ascent_movement_for_mode(state->mode);
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (ds->bl_on)
     {
@@ -3697,7 +3703,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false, /* wants_statusbar */
+    true, /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };

@@ -1020,12 +1020,9 @@ static game_state *execute_move(const game_state *state, const char *move)
     game_state *ret = dup_game(state);
     const char *p = move;
 
-    while (*p)
-    {
-        if (*p == 'S')
-        {
-            for (i = 0; i < s; i++)
-            {
+    while (*p) {
+        if (*p == 'S') {
+            for (i = 0; i < s; i++){
                 p++;
 
                 if (!*p || !(*p == '1' || *p == '0' || *p == '-')) {
@@ -1043,18 +1040,15 @@ static game_state *execute_move(const game_state *state, const char *move)
                 else
                     ret->grid[i] = 0;
             }
-
             cheated = true;
         }
         else if (sscanf(p, "%c%d", &c, &i) == 2 && i >= 0
             && i < w*h && (c == 'A' || c == 'B'
-                || c == 'C'))
-        {
+                || c == 'C')) {
             if (!(state->grid[i] & F_BLOCK))
                 ret->grid[i] = (c == 'A' ? F_HOR : c == 'B' ? F_VER : 0);
         }
-        else
-        {
+        else {
             free_game(ret);
             return NULL;
         }
@@ -1065,8 +1059,8 @@ static game_state *execute_move(const game_state *state, const char *move)
             p++;
     }
 
-    if (sticks_validate(ret, NULL, NULL) == STATUS_COMPLETE) ret->completed = true;
-    if(cheated) ret->cheated = ret->completed;
+    ret->completed = sticks_validate(ret, NULL, NULL) == STATUS_COMPLETE;
+    ret->cheated = cheated;
     return ret;
 }
 
@@ -1133,10 +1127,15 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int h = state->h;
     int x, y, d;
     int tilesize = ds->tilesize;
-    char buf[8];
-    
-    if (ds->grid[0] == ~0)
-    {
+    char buf[48];
+
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
+    if (ds->grid[0] == ~0) {
         draw_rect(dr, COORD(0) - tilesize / 10, COORD(0) - tilesize / 10,
             tilesize*w + 2 * (tilesize / 10) - 1,
             tilesize*h + 2 * (tilesize / 10) - 1, COL_GRID);
@@ -1147,21 +1146,19 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         for (x = 0; x < w; x++) {
             int tile = state->grid[y*w + x];
 
-            if (!(tile & F_BLOCK))
-            {
+            if (!(tile & F_BLOCK)) {
                 for (d = 0; d < ui->ndrags; d++)
                 {
                     if (ui->drag[d] == y*w + x)
                         tile = ui->dragmove[d];
                 }
             }
-            
 
             if(ds->grid[y*w + x] == tile)
                 continue;
-            
+
             ds->grid[y*w + x] = tile;
-            
+
             draw_rect(dr, COORD(x), COORD(y), tilesize, tilesize, COL_GRID);
             if ((tile & F_BLOCK) && (tile & F_ERROR)) {
                 int t = tilesize/10;
@@ -1257,7 +1254,7 @@ const struct game thegame = {
     NULL, /* is_key_highlighted */
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,                       /* flags */
 };

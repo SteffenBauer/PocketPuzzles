@@ -941,10 +941,9 @@ static game_state *execute_move(const game_state *state, const char *move)
 
     if (*move) return NULL; /* leaks `ret', then we die */
 
-    if (!ret->completed)
-        ret->completed = is_solved(&ret->shared->params, ret->shared->clues,
-                                   ret->borders);
-
+    ret->completed = is_solved(&ret->shared->params, ret->shared->clues,
+                               ret->borders);
+    ret->cheated = false;
     return ret;
 }
 
@@ -1012,7 +1011,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
 
     ds->tilesize = 0;
     ds->grid = NULL;
-
     return ds;
 }
 
@@ -1095,9 +1093,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int r, c, i;
     int *black_border_dsf = snew_dsf(wh), *yellow_border_dsf = snew_dsf(wh);
     int k = state->shared->params.k;
+    char buf[48];
 
     if (!ds->grid) {
-        char buf[40];
         int bgw = (w+1) * ds->tilesize, bgh = (h+1) * ds->tilesize;
 
         for (r = 0; r <= h; ++r)
@@ -1108,10 +1106,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         snewa(ds->grid, wh);
         setmem(ds->grid, ~0, wh);
-
-        sprintf(buf, "Region size: %d", state->shared->params.k);
-        status_bar(dr, buf);
     }
+
+    /* Draw status bar */
+    sprintf(buf, "Region size: %d%s",
+            state->shared->params.k,
+            state->cheated   ? "    Auto-solved." :
+            state->completed ? "    COMPLETED!" : "");
+    status_bar(dr, buf);
 
     for (i = 0; i < wh; ++i) {
         if (black_border_dsf[i] == UNVISITED)

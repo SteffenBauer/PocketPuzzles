@@ -1309,72 +1309,70 @@ static game_state *execute_move(const game_state *from, const char *move)
     int x1, x2, y1, y2, xx, yy;
     int val;
 
-    if (move[0] == 'S' &&
-        strlen(move) == from->common->w * from->common->h + 1) {
-    int i;
+    if (move[0] == 'S' && strlen(move) == from->common->w * from->common->h + 1) {
+        int i;
 
-    ret = dup_game(from);
+        ret = dup_game(from);
 
-    for (i = 0; i < ret->common->w * ret->common->h; i++)
-        ret->grid[i] = (move[i+1] == '1' ? GRID_FULL : GRID_EMPTY);
+        for (i = 0; i < ret->common->w * ret->common->h; i++)
+            ret->grid[i] = (move[i+1] == '1' ? GRID_FULL : GRID_EMPTY);
 
-    ret->completed = ret->cheated = true;
+        ret->completed = ret->cheated = true;
 
-    return ret;
+        return ret;
     } else if ((move[0] == 'F' || move[0] == 'E' || move[0] == 'U') &&
-    sscanf(move+1, "%d,%d,%d,%d", &x1, &y1, &x2, &y2) == 4 &&
-    x1 >= 0 && x2 >= 0 && x1+x2 <= from->common->w &&
-    y1 >= 0 && y2 >= 0 && y1+y2 <= from->common->h) {
+          sscanf(move+1, "%d,%d,%d,%d", &x1, &y1, &x2, &y2) == 4 &&
+           x1 >= 0 && x2 >= 0 && x1+x2 <= from->common->w &&
+            y1 >= 0 && y2 >= 0 && y1+y2 <= from->common->h) {
 
-    x2 += x1;
-    y2 += y1;
-    val = (move[0] == 'F' ? GRID_FULL :
-         move[0] == 'E' ? GRID_EMPTY : GRID_UNKNOWN);
+        x2 += x1;
+        y2 += y1;
+        val = (move[0] == 'F' ? GRID_FULL :
+             move[0] == 'E' ? GRID_EMPTY : GRID_UNKNOWN);
 
-    ret = dup_game(from);
-    for (yy = y1; yy < y2; yy++)
-        for (xx = x1; xx < x2; xx++)
-                if (!ret->common->immutable[yy * ret->common->w + xx])
-                    ret->grid[yy * ret->common->w + xx] = val;
+        ret = dup_game(from);
+        for (yy = y1; yy < y2; yy++)
+            for (xx = x1; xx < x2; xx++)
+                    if (!ret->common->immutable[yy * ret->common->w + xx])
+                        ret->grid[yy * ret->common->w + xx] = val;
 
-    /*
-     * An actual change, so check to see if we've completed the
-     * game.
-     */
-    if (!ret->completed) {
-        int *rowdata = snewn(ret->common->rowsize, int);
-        int i, len;
+        /*
+         * An actual change, so check to see if we've completed the
+         * game.
+         */
+        ret->completed = ret->cheated = false;
+        if (!ret->completed) {
+            int *rowdata = snewn(ret->common->rowsize, int);
+            int i, len;
 
-        ret->completed = true;
+            ret->completed = true;
 
-        for (i=0; i<ret->common->w; i++) {
-        len = compute_rowdata(rowdata, ret->grid+i,
-                                      ret->common->h, ret->common->w);
-        if (len != ret->common->rowlen[i] ||
-            memcmp(ret->common->rowdata+i*ret->common->rowsize,
-                           rowdata, len * sizeof(int))) {
-            ret->completed = false;
-            break;
+            for (i=0; i<ret->common->w; i++) {
+                len = compute_rowdata(rowdata, ret->grid+i,
+                                              ret->common->h, ret->common->w);
+                if (len != ret->common->rowlen[i] ||
+                    memcmp(ret->common->rowdata+i*ret->common->rowsize,
+                                   rowdata, len * sizeof(int))) {
+                    ret->completed = false;
+                    break;
+                }
+            }
+            for (i=0; i<ret->common->h; i++) {
+                len = compute_rowdata(rowdata, ret->grid+i*ret->common->w,
+                                              ret->common->w, 1);
+                if (len != ret->common->rowlen[i+ret->common->w] ||
+                    memcmp(ret->common->rowdata +
+                                   (i+ret->common->w)*ret->common->rowsize,
+                                   rowdata, len * sizeof(int))) {
+                    ret->completed = false;
+                    break;
+                }
+            }
+            sfree(rowdata);
         }
-        }
-        for (i=0; i<ret->common->h; i++) {
-        len = compute_rowdata(rowdata, ret->grid+i*ret->common->w,
-                                      ret->common->w, 1);
-        if (len != ret->common->rowlen[i+ret->common->w] ||
-            memcmp(ret->common->rowdata +
-                           (i+ret->common->w)*ret->common->rowsize,
-                           rowdata, len * sizeof(int))) {
-            ret->completed = false;
-            break;
-        }
-        }
-
-        sfree(rowdata);
-    }
-
-    return ret;
+        return ret;
     } else
-    return NULL;
+        return NULL;
 }
 
 /* ----------------------------------------------------------------------
@@ -1719,6 +1717,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x1, x2, y1, y2;
     int cx, cy;
     bool cmoved;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (!ds->started) {
         /*
@@ -1864,7 +1868,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,               /* flags */
 };

@@ -685,29 +685,29 @@ static game_state *execute_move(const game_state *from, const char *move)
     int x, y, dir;
 
     if (!strcmp(move, "S")) {
-    int i;
-    ret = dup_game(from);
+        int i;
+        ret = dup_game(from);
 
-    /*
-     * Simply replace the grid with a solved one. For this game,
-     * this isn't a useful operation for actually telling the user
-     * what they should have done, but it is useful for
-     * conveniently being able to get hold of a clean state from
-     * which to practise manoeuvres.
-     */
-    qsort(ret->grid, ret->w*ret->h, sizeof(int), compare_int);
-    for (i = 0; i < ret->w*ret->h; i++)
-        ret->grid[i] &= ~3;
-    ret->used_solve = true;
-    ret->completed = ret->movecount = 1;
+        /*
+         * Simply replace the grid with a solved one. For this game,
+         * this isn't a useful operation for actually telling the user
+         * what they should have done, but it is useful for
+         * conveniently being able to get hold of a clean state from
+         * which to practise manoeuvres.
+         */
+        qsort(ret->grid, ret->w*ret->h, sizeof(int), compare_int);
+        for (i = 0; i < ret->w*ret->h; i++)
+            ret->grid[i] &= ~3;
+        ret->used_solve = true;
+        ret->completed = ret->movecount = 1;
 
-    return ret;
+        return ret;
     }
 
     if (move[0] != 'M' ||
-    sscanf(move+1, "%d,%d,%d", &x, &y, &dir) != 3 ||
-    x < 0 || y < 0 || x > from->w - n || y > from->h - n)
-    return NULL;               /* can't parse this move string */
+        sscanf(move+1, "%d,%d,%d", &x, &y, &dir) != 3 ||
+        x < 0 || y < 0 || x > from->w - n || y > from->h - n)
+        return NULL;               /* can't parse this move string */
 
     ret = dup_game(from);
     ret->movecount++;

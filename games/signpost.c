@@ -1359,7 +1359,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         if (!isvalidmove(state, false, sx, sy, ex, ey)) return NULL;
 
         ret = dup_game(state);
-
+        ret->used_solve = false;
         si = sy*w+sx; ei = ey*w+ex;
         makelink(ret, si, ei);
     } else if (sscanf(move, "%c%d,%d", &c, &sx, &sy) == 3) {
@@ -1372,7 +1372,7 @@ static game_state *execute_move(const game_state *state, const char *move)
             return NULL;
 
         ret = dup_game(state);
-
+        ret->used_solve = false;
         sset = state->nums[si] / (state->n+1);
         if (c == 'C' || (c == 'X' && sset == 0)) {
             /* Unlink the single cell we dragged from the board. */
@@ -1396,7 +1396,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     }
     if (ret) {
         update_numbers(ret);
-        if (check_completion(ret, true)) ret->completed = true;
+        ret->completed = check_completion(ret, true);
     }
 
     return ret;
@@ -1682,6 +1682,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     bool force = false;
     unsigned int f;
     game_state *postdrop = NULL;
+    char buf[48];
+
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+    
     xd = FROMCOORD(ui->dx); yd = FROMCOORD(ui->dy);
 
     /* If an in-progress drag would make a valid move if finished, we
@@ -1822,7 +1830,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                 /* wants_statusbar */
+    true,                 /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,       /* flags */
 };

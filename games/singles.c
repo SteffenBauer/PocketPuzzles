@@ -1498,8 +1498,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     game_state *ret = dup_game(state);
     int x, y, i, n;
 
-    debug(("move: %s\n", move));
-
+    ret->used_solve = false;
     while (*move) {
         char c = *move;
         if (c == 'B' || c == 'C' || c == 'E') {
@@ -1526,7 +1525,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         else if (*move)
             goto badmove;
     }
-    if (check_complete(ret, CC_MARK_ERRORS)) ret->completed = true;
+    ret->completed = check_complete(ret, CC_MARK_ERRORS);
     return ret;
 
 badmove:
@@ -1656,6 +1655,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y, i;
     unsigned int f;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+        state->used_solve ? "Auto-solved." :
+        state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     if (!ds->started) {
         int wsz = TILE_SIZE * state->w + 2 * BORDER;
         int hsz = TILE_SIZE * state->h + 2 * BORDER;
@@ -1759,7 +1765,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,			       /* wants_statusbar */
+    true,			       /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,		       /* flags */
 };

@@ -3033,7 +3033,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     int h = state->h;
     char from, to;
     game_state *ret;
-    
+
     if(move[0] == 'P' && sscanf(move+1, "%d,%d,%d,%d,%c,%c", &sx, &sy, &ex, &ey, &from, &to) == 6) {
         ret = dup_game(state);
         
@@ -3053,9 +3053,8 @@ static game_state *execute_move(const game_state *state, const char *move)
         }
         
         boats_adjust_ships(ret);
-        if(boats_validate_state(ret) == STATUS_COMPLETE)
-            ret->completed = true;
-        
+        ret->completed = boats_validate_state(ret) == STATUS_COMPLETE;
+        ret->cheated = false;
         return ret;
     }
     
@@ -3075,18 +3074,13 @@ static game_state *execute_move(const game_state *state, const char *move)
             ret->grid[i] = (*p == 'B' ? SHIP_VAGUE : *p == 'W' ? WATER : EMPTY);
             p++;
         }
-        
         boats_adjust_ships(ret);
-        
-        if(boats_validate_state(ret) == STATUS_COMPLETE)
-            ret->completed = true;
-        
+        ret->completed = boats_validate_state(ret) == STATUS_COMPLETE;
         /* 
          * If the solve move did not actually finish the grid,
          * do not set the cheated flag.
          */
         ret->cheated = ret->completed;
-        
         return ret;
     }
     else if (move[0] == 'D' && sscanf(move+1, "%d", &pos) == 1) {
@@ -3390,6 +3384,11 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     char ship;
     bool redraw = ds->redraw;
 
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     boats_count_ships(state, NULL, NULL, ds->border);
     boats_check_fleet(state, ds->fleetcount, ds->gridfs);
     
@@ -3641,7 +3640,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };

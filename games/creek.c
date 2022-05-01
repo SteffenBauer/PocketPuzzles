@@ -1221,6 +1221,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     char c;
     int x, y, n;
     game_state *ret = dup_game(state);
+    ret->used_solve = ret->completed = false;
     while (*move) {
         c = *move;
         if (c == 'S') {
@@ -1247,12 +1248,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         }
     }
 
-    /*
-     * We never clear the `completed' flag, but we must always
-     * re-run the completion check because it also highlights
-     * errors in the grid.
-     */
-    ret->completed = check_completed_creek(w, h, ret->clues->clues, ret->soln, ret->errors, ret->clues->tmpdsf) || ret->completed;
+    ret->completed = check_completed_creek(w, h, ret->clues->clues, ret->soln, ret->errors, ret->clues->tmpdsf);
     return ret;
 }
 
@@ -1398,6 +1394,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int w = state->p.w, h = state->p.h, W = w+1, H = h+1;
     int x, y;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     for (y = -1; y <= h; y++) {
         for (x = -1; x <= w; x++) {
@@ -1522,7 +1524,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                             /* wants_statusbar */
+    true,                             /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,                                 /* flags */
 };

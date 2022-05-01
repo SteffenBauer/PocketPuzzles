@@ -125,6 +125,7 @@
 - [ ] Pearl: "No line" on right click instead of release
 - [ ] Slant: 'Hard' game difficulty (backtracking)
 - [ ] Twiddle: Re-activate basic animation (?)
+- [ ] Net: Add "Lock" button
 
 #### One-click symbol fill
 

@@ -315,7 +315,8 @@ static game_state *dup_game(const game_state *state)
     memcpy(ret->nums, state->nums, o2 * sizeof(digit));
     memcpy(ret->hints, state->hints, o3);
     memcpy(ret->flags, state->flags, o2 * sizeof(unsigned long));
-
+    ret->completed = state->completed;
+    ret->cheated = state->cheated;
     return ret;
 }
 
@@ -1527,10 +1528,8 @@ static game_state *execute_move(const game_state *state, const char *move)
             HINT(ret, x, y, n-1) = !HINT(ret, x, y, n-1);
         else {
             GRID(ret, nums, x, y) = GRID(ret, nums, x, y) == n ? 0 : n;
-
-            /* real change to grid; check for completion */
-            if (!ret->completed && check_complete(ret->nums, ret, true) > 0)
-                ret->completed = true;
+            ret->completed = check_complete(ret->nums, ret, true) > 0;
+            ret->cheated = false;
         }
         return ret;
     } else if (move[0] == 'S') {
@@ -1900,6 +1899,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y, i;
     bool hchanged = false, stale;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     if (ds->hx != ui->hx || ds->hy != ui->hy ||
         ds->hshow != ui->hshow || ds->hpencil != ui->hpencil)
         hchanged = true;
@@ -2017,7 +2023,7 @@ const struct game thegame = {
     is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,  /* flags */
 };

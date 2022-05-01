@@ -2487,8 +2487,8 @@ static game_state *execute_move(const game_state *state, const char *move)
         if (!(ret->guess[i] == 1 || ret->guess[i] == 2 ||
               ret->guess[i] == 4)) correct = false;
 
-    if (correct && !solver) ret->solved = true;
-    if (solver) ret->cheated = true;
+    ret->solved = correct;
+    ret->cheated = solver;
 
     return ret;
 }
@@ -2955,6 +2955,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int xi, c;
     bool stale, hchanged;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->cheated ? "Auto-solved." :
+            state->solved  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     /* Draw static grid components at startup */
     if (!ds->started) {
         draw_rect(dr, BORDER+TILESIZE-1, BORDER+2*TILESIZE-1,
@@ -3127,7 +3134,7 @@ const struct game thegame = {
     is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
-    false,                 /* wants_statusbar */
+    true,                 /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,                     /* flags */
 };

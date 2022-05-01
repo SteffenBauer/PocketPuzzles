@@ -709,7 +709,7 @@ static game_state *execute_move(const game_state *from, const char *move)
 
     if (!strcmp(move, "S")) {
         ret = dup_game(from);
-        ret->solved = -1;
+        ret->solved = -2;
         return ret;
     } 
     else if (move[0] == 'G') {
@@ -869,6 +869,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     invalidate_pegrow(ds->colours);
 
     ds->hintw = (state->params.npegs+1)/2; /* must round up */
+    ds->solved = 0;
 
     return ds;
 }
@@ -1059,6 +1060,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int i;
     bool new_move;
+    char buf[48];
 
     new_move = (state->next_go != ds->next_go) || !ds->started;
 
@@ -1066,6 +1068,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         draw_rect(dr, SOLN_OX, SOLN_OY - ds->gapsz - 1, SOLN_W, 2, COL_FRAME);
         draw_update(dr, 0, 0, ds->w, ds->h);
     }
+
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->solved == 1 ? "SOLVED!" :
+            state->solved == -1 ? "FAILED!" :
+            state->solved == -2 ? "Auto-solved." : "");
+    status_bar(dr, buf);
 
     /* draw the colours */
     for (i = 0; i < state->params.ncolours+1; i++) {
@@ -1201,7 +1210,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     0,                       /* flags */
 };

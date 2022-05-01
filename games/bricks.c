@@ -1017,7 +1017,7 @@ static game_state *execute_move(const game_state *state, const char *move)
 
     game_state *ret = dup_game(state);
     const char *p = move;
-
+    ret->cheated = ret->completed = false;
     while (*p)
     {
         if (*p == 'S')
@@ -1065,7 +1065,7 @@ static game_state *execute_move(const game_state *state, const char *move)
             p++;
     }
 
-    if (bricks_validate(w, h, ret->grid, true) == STATUS_COMPLETE) ret->completed = true;
+    ret->completed = bricks_validate(w, h, ret->grid, true) == STATUS_COMPLETE;
     return ret;
 }
 
@@ -1195,8 +1195,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int tx, ty, tx1, ty1, clipw;
     int i;
     cell n;
-    char buf[20];
+    char buf[48];
     int colour;
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if(ds->prevdrags >= ui->ndrags)
         memcpy(ds->grid, state->grid, w*h*sizeof(cell));
@@ -1375,7 +1380,7 @@ const struct game thegame = {
     NULL, /*    is_key_highlighted */
     game_status,
     false, false, NULL, NULL,
-    false, /* wants_statusbar */
+    true, /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };

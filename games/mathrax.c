@@ -1319,9 +1319,8 @@ static game_state *execute_move(const game_state *oldstate, const char *move)
             if(c == '-') state->marks[y*o+x] = 0;
             else         state->marks[y*o+x] ^= 1<<(c - '1');
         }
-        
-        if(mathrax_validate_game(state, NULL, false) == STATUS_COMPLETE)
-            state->completed = true;
+        state->completed = mathrax_validate_game(state, NULL, false) == STATUS_COMPLETE;
+        state->cheated = false;
         return state;
     }
     
@@ -1491,10 +1490,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int co = o-1;
     int x, y, tx, ty, fs;
     int tilesize = ds->tilesize;
-    char buf[8];
-    
-    if(ds->redraw)
-    {
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
+    if(ds->redraw) {
         draw_rect(dr, (tilesize/2), (tilesize/2)-1, o*tilesize+1, o*tilesize+1, COL_BORDER);
         draw_update(dr, 0, 0, (o+1)*tilesize, (o+1)*tilesize);
     }
@@ -1682,7 +1685,7 @@ const struct game thegame = {
     is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };

@@ -3,7 +3,7 @@
 ## 0.7.11 nightly
 
 ### Changed
-* Deactivate redundant victory message box for games with status bar
+* All games: Use status bar to show game completion instead of pushy message box
 
 ## 0.7.10 - 2022/04/02
 

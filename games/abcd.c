@@ -1329,9 +1329,8 @@ static game_state *execute_move(const game_state *state, const char *move)
                 ret->grid[y*w+x] = ret->grid[y*w+x] == i ? EMPTY : i;
             
             /* Check if the puzzle has been completed */
-            if (!ret->completed && abcd_validate_puzzle(ret) == 0)
-                ret->completed = true;
-            
+            ret->completed = abcd_validate_puzzle(ret) == 0;
+            ret->cheated = false;
             return ret;
         }
     }
@@ -1665,7 +1664,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     int tx, ty, fs, bgcol;
     char buf[80];
     bool dirty;
-    
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     if (!ds->initial)
     {
         int rx = (w+n) * TILE_SIZE + (TILE_SIZE*3/4);
@@ -1879,7 +1883,7 @@ const struct game thegame = {
     is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
-    false, /* wants_statusbar */
+    true, /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };

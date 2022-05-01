@@ -293,7 +293,6 @@ static game_params *custom_params(const config_item *cfg)
     ret->wrapping = cfg[2].u.boolean.bval;
     ret->barrier_probability = (float)cfg[3].u.choices.selected/10.0;
     ret->unique = cfg[4].u.boolean.bval;
-    printf("Barrier prob %f\n", ret->barrier_probability);
     return ret;
 }
 
@@ -709,10 +708,6 @@ static int net_solver(int w, int h, unsigned char *tiles,
 
         if (valid)
             tilestate[(y*w+x) * 4 + j++] = val;
-#ifdef SOLVER_DIAGNOSTICS
-        else
-            printf("ruling out orientation %x at %d,%d\n", val, x, y);
-#endif
         }
 
         if (j == 0) {
@@ -751,9 +746,6 @@ static int net_solver(int w, int h, unsigned char *tiles,
             d2 = F(d);
             if (a & d) {
                 /* This edge is open in all orientations. */
-#ifdef SOLVER_DIAGNOSTICS
-                printf("marking edge %d,%d:%d open\n", x, y, d);
-#endif
                 edgestate[(y*w+x) * 5 + d] = 1;
                 edgestate[(y2*w+x2) * 5 + d2] = 1;
                 dsf_merge(equivalence, y*w+x, y2*w+x2);
@@ -761,9 +753,6 @@ static int net_solver(int w, int h, unsigned char *tiles,
                 todo_add(todo, y2*w+x2);
             } else if (!(o & d)) {
                 /* This edge is closed in all orientations. */
-#ifdef SOLVER_DIAGNOSTICS
-                printf("marking edge %d,%d:%d closed\n", x, y, d);
-#endif
                 edgestate[(y*w+x) * 5 + d] = 2;
                 edgestate[(y2*w+x2) * 5 + d2] = 2;
                 done_something = true;
@@ -778,19 +767,15 @@ static int net_solver(int w, int h, unsigned char *tiles,
          * them has lowered from the real ones.
          */
         for (d = 1; d <= 8; d += d) {
-        int x2, y2, d2;
-        OFFSETWH(x2, y2, x, y, d, w, h);
-        d2 = F(d);
-        if (deadendmax[d] > 0 &&
-            deadends[(y2*w+x2) * 5 + d2] > deadendmax[d]) {
-#ifdef SOLVER_DIAGNOSTICS
-            printf("setting dead end value %d,%d:%d to %d\n",
-               x2, y2, d2, deadendmax[d]);
-#endif
-            deadends[(y2*w+x2) * 5 + d2] = deadendmax[d];
-            done_something = true;
-            todo_add(todo, y2*w+x2);
-        }
+            int x2, y2, d2;
+            OFFSETWH(x2, y2, x, y, d, w, h);
+            d2 = F(d);
+            if (deadendmax[d] > 0 &&
+                deadends[(y2*w+x2) * 5 + d2] > deadendmax[d]) {
+                deadends[(y2*w+x2) * 5 + d2] = deadendmax[d];
+                done_something = true;
+                todo_add(todo, y2*w+x2);
+            }
         }
 
     }
@@ -2211,10 +2196,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 #endif /* USE_DRAGGING */
 
     } else if (button == 'j' || button == 'J') {
-    /* XXX should we have some mouse control for this? */
-    action = JUMBLE;
+        /* XXX should we have some mouse control for this? */
+        action = JUMBLE;
     } else
-    return nullret;
+        return nullret;
 
     /*
      * The middle button locks or unlocks a tile. (A locked tile
@@ -2227,12 +2212,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
      * unlocks it.)
      */
     if (action == TOGGLE_LOCK) {
-    char buf[80];
-    sprintf(buf, "L%d,%d", tx, ty);
-    return dupstr(buf);
+        char buf[80];
+        sprintf(buf, "L%d,%d", tx, ty);
+        return dupstr(buf);
     } else if (action == ROTATE_LEFT || action == ROTATE_RIGHT ||
                action == ROTATE_180) {
-    char buf[80];
+        char buf[80];
 
         /*
          * The left and right buttons have no effect if clicked on a
@@ -2245,42 +2230,42 @@ static char *interpret_move(const game_state *state, game_ui *ui,
          * Otherwise, turn the tile one way or the other. Left button
          * turns anticlockwise; right button turns clockwise.
          */
-    sprintf(buf, "%c%d,%d", (int)(action == ROTATE_LEFT ? 'A' :
+        sprintf(buf, "%c%d,%d", (int)(action == ROTATE_LEFT ? 'A' :
                                       action == ROTATE_RIGHT ? 'C' : 'F'), tx, ty);
-    return dupstr(buf);
+        return dupstr(buf);
     } else if (action == JUMBLE) {
         /*
          * Jumble all unlocked tiles to random orientations.
          */
 
         int jx, jy, maxlen;
-    char *ret, *p;
+        char *ret, *p;
 
-    /*
-     * Maximum string length assumes no int can be converted to
-     * decimal and take more than 11 digits!
-     */
-    maxlen = state->width * state->height * 25 + 3;
+        /*
+         * Maximum string length assumes no int can be converted to
+         * decimal and take more than 11 digits!
+         */
+        maxlen = state->width * state->height * 25 + 3;
 
-    ret = snewn(maxlen, char);
-    p = ret;
-    *p++ = 'J';
+        ret = snewn(maxlen, char);
+        p = ret;
+        *p++ = 'J';
 
         for (jy = 0; jy < state->height; jy++) {
             for (jx = 0; jx < state->width; jx++) {
                 if (!(tile(state, jx, jy) & LOCKED)) {
                     int rot = random_upto(ui->rs, 4);
-            if (rot) {
-            p += sprintf(p, ";%c%d,%d", "AFC"[rot-1], jx, jy);
-            }
+                    if (rot) {
+                        p += sprintf(p, ";%c%d,%d", "AFC"[rot-1], jx, jy);
+                    }
                 }
             }
         }
-    *p++ = '\0';
-    assert(p - ret < maxlen);
-    ret = sresize(ret, p - ret, char);
+        *p++ = '\0';
+        assert(p - ret < maxlen);
+        ret = sresize(ret, p - ret, char);
 
-    return ret;
+        return ret;
     } else if (action == MOVE_ORIGIN || action == MOVE_SOURCE ||
                action == MOVE_ORIGIN_AND_SOURCE || action == MOVE_CURSOR) {
         assert(dir != 0);
@@ -2298,7 +2283,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
         return UI_UPDATE;
     } else {
-    return NULL;
+        return NULL;
     }
 }
 
@@ -2309,55 +2294,53 @@ static game_state *execute_move(const game_state *from, const char *move)
     bool noanim;
 
     ret = dup_game(from);
+    ret->used_solve = ret->completed = false;
 
     if (move[0] == 'J' || move[0] == 'S') {
-    if (move[0] == 'S')
-        ret->used_solve = true;
-
-    move++;
-    if (*move == ';')
-        move++;
-    noanim = true;
-    } else
-    noanim = false;
+        if (move[0] == 'S')
+            ret->used_solve = true;
+            move++;
+            if (*move == ';') move++;
+            noanim = true;
+    } else noanim = false;
 
     ret->last_rotate_dir = 0;           /* suppress animation */
     ret->last_rotate_x = ret->last_rotate_y = 0;
 
     while (*move) {
-    if ((move[0] == 'A' || move[0] == 'C' ||
-         move[0] == 'F' || move[0] == 'L') &&
-        sscanf(move+1, "%d,%d%n", &tx, &ty, &n) >= 2 &&
-        tx >= 0 && tx < from->width && ty >= 0 && ty < from->height) {
-        orig = tile(ret, tx, ty);
-        if (move[0] == 'A') {
-        tile(ret, tx, ty) = A(orig);
-        if (!noanim)
-            ret->last_rotate_dir = +1;
-        } else if (move[0] == 'F') {
-        tile(ret, tx, ty) = F(orig);
-        if (!noanim)
+        if ((move[0] == 'A' || move[0] == 'C' ||
+             move[0] == 'F' || move[0] == 'L') &&
+            sscanf(move+1, "%d,%d%n", &tx, &ty, &n) >= 2 &&
+            tx >= 0 && tx < from->width && ty >= 0 && ty < from->height) {
+            orig = tile(ret, tx, ty);
+            if (move[0] == 'A') {
+                tile(ret, tx, ty) = A(orig);
+                if (!noanim)
+                    ret->last_rotate_dir = +1;
+            } else if (move[0] == 'F') {
+                tile(ret, tx, ty) = F(orig);
+                if (!noanim)
                     ret->last_rotate_dir = +2; /* + for sake of argument */
-        } else if (move[0] == 'C') {
-        tile(ret, tx, ty) = C(orig);
-        if (!noanim)
-            ret->last_rotate_dir = -1;
-        } else {
-        assert(move[0] == 'L');
-        tile(ret, tx, ty) ^= LOCKED;
-        }
+            } else if (move[0] == 'C') {
+                tile(ret, tx, ty) = C(orig);
+                if (!noanim)
+                    ret->last_rotate_dir = -1;
+            } else {
+                assert(move[0] == 'L');
+                tile(ret, tx, ty) ^= LOCKED;
+            }
 
-        move += 1 + n;
-        if (*move == ';') move++;
-    } else {
-        free_game(ret);
-        return NULL;
-    }
+            move += 1 + n;
+            if (*move == ';') move++;
+        } else {
+            free_game(ret);
+            return NULL;
+        }
     }
     if (!noanim) {
         if (tx == -1 || ty == -1) { free_game(ret); return NULL; }
-    ret->last_rotate_x = tx;
-    ret->last_rotate_y = ty;
+        ret->last_rotate_x = tx;
+        ret->last_rotate_y = ty;
     }
 
     /*
@@ -2371,23 +2354,22 @@ static game_state *execute_move(const game_state *from, const char *move)
     {
     unsigned char *active;
     int pos;
-        bool complete = true;
+    bool complete = true;
 
     for (pos = 0; pos < ret->width * ret->height; pos++)
-            if (ret->tiles[pos] & 0xF)
+        if (ret->tiles[pos] & 0xF)
+            break;
+
+    if (pos < ret->width * ret->height) {
+        active = compute_active(ret, pos % ret->width, pos / ret->width);
+
+        for (pos = 0; pos < ret->width * ret->height; pos++)
+            if ((ret->tiles[pos] & 0xF) && !active[pos]) {
+                complete = false;
                 break;
-
-        if (pos < ret->width * ret->height) {
-            active = compute_active(ret, pos % ret->width, pos / ret->width);
-
-            for (pos = 0; pos < ret->width * ret->height; pos++)
-                if ((ret->tiles[pos] & 0xF) && !active[pos]) {
-            complete = false;
-                    break;
-                }
-
-            sfree(active);
-        }
+            }
+        sfree(active);
+    }
 
     if (complete)
         ret->completed = true;

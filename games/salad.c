@@ -1630,9 +1630,8 @@ static game_state *execute_move(const game_state *state, const char *move)
         }
         
         /* Check for completion */
-        if(latinholes_check(ret) && salad_checkborders(ret))
-            ret->completed = true;
-        
+        ret->completed = (latinholes_check(ret) && salad_checkborders(ret));
+        ret->cheated = false;
         return ret;
     }
     /*
@@ -1970,6 +1969,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     bool hshow = ui->hshow;
     double thick = (TILE_SIZE <= 21 ? 1 : 2.5);
 
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     salad_set_drawflags(ds, ui, state, hshow);
 
     buf[1] = '\0';
@@ -2198,7 +2203,7 @@ const struct game thegame = {
     is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };

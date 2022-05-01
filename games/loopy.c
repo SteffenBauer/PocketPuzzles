@@ -2837,6 +2837,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     int i;
     game_state *newstate = dup_game(state);
 
+    newstate->cheated = newstate->solved = false;
     if (move[0] == 'S') {
         move++;
         newstate->cheated = true;
@@ -2848,25 +2849,24 @@ static game_state *execute_move(const game_state *state, const char *move)
             goto fail;
         move += strspn(move, "1234567890");
         switch (*(move++)) {
-      case 'y':
-        newstate->lines[i] = LINE_YES;
-        break;
-      case 'n':
-        newstate->lines[i] = LINE_NO;
-        break;
-      case 'u':
-        newstate->lines[i] = LINE_UNKNOWN;
-        break;
-      default:
-        goto fail;
+          case 'y':
+            newstate->lines[i] = LINE_YES;
+            break;
+          case 'n':
+            newstate->lines[i] = LINE_NO;
+            break;
+          case 'u':
+            newstate->lines[i] = LINE_UNKNOWN;
+            break;
+          default:
+            goto fail;
         }
     }
 
     /*
      * Check for completion.
      */
-    if (check_completion(newstate))
-        newstate->solved = true;
+    newstate->solved = check_completion(newstate);
 
     return newstate;
 
@@ -3175,6 +3175,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int edges[REDRAW_OBJECTS_LIMIT], nedges = 0;
     int faces[REDRAW_OBJECTS_LIMIT], nfaces = 0;
 
+    char buf[48];
+
     /* Redrawing is somewhat involved.
      *
      * An update can theoretically affect an arbitrary number of edges
@@ -3200,8 +3202,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * what needs doing, and the second actually does it.
      */
 
+    sprintf(buf, "%s",
+            state->cheated ? "Auto-solved." :
+            state->solved  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
+
     if (!ds->started) {
-    redraw_everything = true;
+        redraw_everything = true;
         /*
          * But we must still go through the upcoming loops, so that we
          * set up stuff in ds correctly for the initial redraw.
@@ -3373,7 +3381,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false /* wants_statusbar */,
+    true, /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,                                       /* mouse_priorities */
 };
