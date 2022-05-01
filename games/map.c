@@ -2342,6 +2342,8 @@ static game_state *execute_move(const game_state *state, const char *move)
         return ret;
     }
 
+    ret->cheated = ret->completed = false;
+
     while (*move) {
         bool pencil = false;
 
@@ -2773,6 +2775,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int w = state->p.w, h = state->p.h, wh = w*h, n = state->p.n;
     int x, y, i;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     ds->drag_visible = false;
 
     if (!ds->started) {
@@ -2939,7 +2948,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,                       /* flags */
 };

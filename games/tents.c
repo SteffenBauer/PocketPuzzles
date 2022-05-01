@@ -1594,6 +1594,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     int x, y, m, n, i, j, pos;
     game_state *ret = dup_game(state);
 
+    ret->used_solve = false;
     while (*move) {
         c = *move;
         if (c == 'S') {
@@ -1643,11 +1644,10 @@ static game_state *execute_move(const game_state *state, const char *move)
     /*
      * Check for completion.
      */
+    ret->completed = false;
     for (i = n = m = 0; i < w*h; i++) {
-        if (ret->grid[i] == TENT)
-            n++;
-        else if (ret->grid[i] == TREE)
-            m++;
+        if (ret->grid[i] == TENT)       n++;
+        else if (ret->grid[i] == TREE)  m++;
     }
     if (n == m) {
         int *gridids, *adjdata, **adjlists, *adjsizes, *adjptr;
@@ -1657,22 +1657,22 @@ static game_state *execute_move(const game_state *state, const char *move)
          * precondition for the game being complete. Now check that
          * the numbers add up.
          */
-    for (i = 0; i < w; i++) {
-        n = 0;
-        for (j = 0; j < h; j++)
-        if (ret->grid[j*w+i] == TENT)
-            n++;
-        if (ret->numbers->numbers[i] != n)
-                goto completion_check_done;
-    }
-    for (i = 0; i < h; i++) {
+        for (i = 0; i < w; i++) {
             n = 0;
-        for (j = 0; j < w; j++)
-        if (ret->grid[i*w+j] == TENT)
-            n++;
-        if (ret->numbers->numbers[w+i] != n)
-                goto completion_check_done;
-    }
+            for (j = 0; j < h; j++)
+                if (ret->grid[j*w+i] == TENT)
+                    n++;
+                if (ret->numbers->numbers[i] != n)
+                    goto completion_check_done;
+        }
+        for (i = 0; i < h; i++) {
+            n = 0;
+            for (j = 0; j < w; j++)
+                if (ret->grid[i*w+j] == TENT)
+                    n++;
+                if (ret->numbers->numbers[w+i] != n)
+                    goto completion_check_done;
+        }
         /*
          * Also, check that no two tents are adjacent.
          */
@@ -1738,9 +1738,9 @@ static game_state *execute_move(const game_state *state, const char *move)
                      * neighbours of any square in numerically
                      * increasing order.
                      */
-            for (d = 1; d < MAXDIR; d++) {
-            int x2 = x + dx(d), y2 = y + dy(d);
-            if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h &&
+                    for (d = 1; d < MAXDIR; d++) {
+                        int x2 = x + dx(d), y2 = y + dy(d);
+                        if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h &&
                             ret->grid[y2*w+x2] == TENT) {
                             *adjptr++ = gridids[y2*w+x2];
                         }
@@ -1748,7 +1748,7 @@ static game_state *execute_move(const game_state *state, const char *move)
                     adjsizes[treeid] = adjptr - adjlists[treeid];
                 }
 
-    n = matching(m, m, adjlists, adjsizes, NULL, NULL, NULL);
+        n = matching(m, m, adjlists, adjsizes, NULL, NULL, NULL);
 
         sfree(gridids);
         sfree(adjdata);
@@ -2288,8 +2288,8 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
     int *errors;
 
     if (ui) {
-      if (ui->cdisp) { cx = ui->cx; cy = ui->cy; }
-      if (cx != ds->cx || cy != ds->cy) cmoved = true;
+        if (ui->cdisp) { cx = ui->cx; cy = ui->cy; }
+        if (cx != ds->cx || cy != ds->cy) cmoved = true;
     }
 
     if (!ds->started) {
@@ -2398,6 +2398,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime)
 {
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     int_redraw(dr, ds, oldstate, state, dir, ui, animtime);
 }
 
@@ -2470,7 +2477,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,               /* flags */
 };

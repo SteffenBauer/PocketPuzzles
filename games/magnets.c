@@ -1764,6 +1764,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     char c;
 
     if (!*move) goto badmove;
+    ret->solved = ret->completed = false;
     while (*move) {
         c = *move++;
         if (c == 'S') {
@@ -1806,8 +1807,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         if (*move == ';') move++;
         else if (*move) goto badmove;
     }
-    if (check_completion(ret) == 1)
-        ret->completed = true;
+    ret->completed = check_completion(ret) == 1;
 
     return ret;
 
@@ -2077,6 +2077,11 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         float animtime, float flashtime)
 {
     int x, y, w = state->w, h = state->h, which, i, j;
+    char buf[48];
+    sprintf(buf, "%s",
+            state->solved    ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (!ds->started) {
         /* draw background, corner +-. */
@@ -2208,7 +2213,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,               /* flags */
 };

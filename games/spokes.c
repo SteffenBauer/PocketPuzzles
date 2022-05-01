@@ -1166,49 +1166,38 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 static game_state *execute_move(const game_state *state, const char *move)
 {
     const char *p = move;
-    game_state *ret = NULL;
     int i, j, d, s;
     bool cheated = false;
-    
-    while(*p)
-    {
-        if(*p == 'S')
-        {
-            if(!ret) ret = dup_game(state);
-            
-            for(i = 0; i < (ret->w * ret->h); i++)
-            {
+    game_state *ret = dup_game(state);
+
+    while(*p) {
+        if(*p == 'S') {
+            for(i = 0; i < (ret->w * ret->h); i++) {
                 if(ret->spokes[i] == 0) continue;
-                for(j = 0; j < 4; j++)
-                {
+                for(j = 0; j < 4; j++) {
                     if(GET_SPOKE(ret->spokes[i], j) != SPOKE_HIDDEN)
                         spokes_place(ret, i, j, SPOKE_EMPTY);
                 }
             }
-            
             cheated = true;
         }
-        
-        else if(sscanf(p, "%d,%d,%d", &i, &d, &s) == 3)
-        {
+        else if(sscanf(p, "%d,%d,%d", &i, &d, &s) == 3) {
             if(d < 0 || d > 7 || s < 0 || s > 3) break;
-            
-            if(!ret) ret = dup_game(state);
-            
             if(GET_SPOKE(ret->spokes[i], d) != SPOKE_HIDDEN)
                 spokes_place(ret, i, d, s);
         }
-        while(*p && *p++ != ';');
+        else {
+            free_game(ret);
+            return NULL;
+        }
+
+        while (*p && *p != ';')  p++;
+        if (*p == ';') p++;
     }
     
-    if(ret && spokes_validate(ret, NULL) == STATUS_VALID)
-        ret->completed = true;
-    else
-        /* Don't mark a game as cheated if the solver didn't complete the grid */
-        cheated = false;
-    
-    if(cheated) ret->cheated = true;
-    
+    ret->completed = spokes_validate(ret, NULL) == STATUS_VALID;
+    ret->cheated = cheated;
+
     return ret;
 }
 
@@ -1318,13 +1307,20 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int tilesize = ds->tilesize;
     int i, x, y, d, tx, ty, tx2, ty2, connected, color;
     char buf[2];
+    char statusbuf[48];
     int fill, border, txt, lines;
     bool error_disconnected, error_number, is_holding, is_done;
     buf[1] = '\0';
 
     double thick = (tilesize <= 80 ? 2 : 4);
     float radius = tilesize/3.5F;
-    
+
+    /* Draw status bar */
+    sprintf(statusbuf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, statusbuf);
+
     spokes_solver_recount(state, ds->scratch, true);
     spokes_find_isolated(state, ds->scratch);
     
@@ -1527,7 +1523,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };

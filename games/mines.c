@@ -2338,7 +2338,7 @@ static char *encode_ui(const game_ui *ui)
      */
     sprintf(buf, "D%d", ui->deaths);
     if (ui->completed)
-    strcat(buf, "C");
+        strcat(buf, "C");
     return dupstr(buf);
 }
 

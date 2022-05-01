@@ -1679,9 +1679,8 @@ static game_state *execute_move(const game_state *oldstate, const char *move)
                     break;
             }
         }
-        
-        if(rome_validate_game(state, true, NULL, NULL) == STATUS_COMPLETE)
-            state->completed = true;
+        state->completed = rome_validate_game(state, true, NULL, NULL) == STATUS_COMPLETE;
+        state->cheated = false;
         return state;
     }
     
@@ -1712,7 +1711,6 @@ static game_state *execute_move(const game_state *oldstate, const char *move)
             p++;
             i++;
         }
-        
         state->completed = (rome_validate_game(state, true, NULL, NULL) == STATUS_COMPLETE);
         state->cheated = state->completed;
         return state;
@@ -1855,8 +1853,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     int color;
     cell c, p;
     bool stale, hchanged;
-    if(ds->redraw)
-    {
+    char buf[48];
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
+    if(ds->redraw) {
         draw_rect(dr, (0.5*tilesize) - (GRIDEXTRA*2), 
             (0.5*tilesize) - (GRIDEXTRA*2),
             (w*tilesize) + (GRIDEXTRA*2),
@@ -2014,7 +2017,7 @@ const struct game thegame = {
     is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };

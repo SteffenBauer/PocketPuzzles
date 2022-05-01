@@ -2386,27 +2386,27 @@ static game_state *execute_move(const game_state *from, const char *move)
     int x1, y1, x2, y2, mode;
 
     if (move[0] == 'S') {
-    const char *p = move+1;
-    int x, y;
+        const char *p = move+1;
+        int x, y;
 
-    ret = dup_game(from);
-    ret->cheated = true;
+        ret = dup_game(from);
+        ret->cheated = true;
 
-    for (y = 0; y < ret->h; y++)
-        for (x = 1; x < ret->w; x++) {
-        vedge(ret, x, y) = (*p == '1');
-        if (*p) p++;
-        }
-    for (y = 1; y < ret->h; y++)
-        for (x = 0; x < ret->w; x++) {
-        hedge(ret, x, y) = (*p == '1');
-        if (*p) p++;
-        }
+        for (y = 0; y < ret->h; y++)
+            for (x = 1; x < ret->w; x++) {
+                vedge(ret, x, y) = (*p == '1');
+                if (*p) p++;
+            }
+        for (y = 1; y < ret->h; y++)
+            for (x = 0; x < ret->w; x++) {
+                hedge(ret, x, y) = (*p == '1');
+                if (*p) p++;
+            }
 
-    sfree(ret->correct);
-    ret->correct = get_correct(ret);
+        sfree(ret->correct);
+        ret->correct = get_correct(ret);
 
-    return ret;
+        return ret;
 
     } else if ((move[0] == 'R' || move[0] == 'E') &&
            sscanf(move+1, "%d,%d,%d,%d", &x1, &y1, &x2, &y2) == 4 &&
@@ -2424,6 +2424,7 @@ static game_state *execute_move(const game_state *from, const char *move)
         return NULL;               /* can't parse move string */
 
     ret = dup_game(from);
+    ret->cheated = ret->completed = false;
 
     if (mode == 'R' || mode == 'E') {
         grid_draw_rect(ret, ret->hedge, ret->vedge, 1, true,
@@ -2593,6 +2594,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int x, y;
     unsigned char *hedge, *vedge, *corners;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (ui->dragged) {
         hedge = snewn(state->w*state->h, unsigned char);
@@ -2743,7 +2750,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     0,                       /* flags */
 };

@@ -828,30 +828,30 @@ static game_state *execute_move(const game_state *state, const char *move)
     game_state *ret;
 
     if (sscanf(move, "%d,%d-%d,%d", &sx, &sy, &tx, &ty) == 4) {
-    int mx, my, dx, dy;
+        int mx, my, dx, dy;
 
-    if (sx < 0 || sx >= w || sy < 0 || sy >= h)
-        return NULL;           /* source out of range */
-    if (tx < 0 || tx >= w || ty < 0 || ty >= h)
-        return NULL;           /* target out of range */
+        if (sx < 0 || sx >= w || sy < 0 || sy >= h)
+            return NULL;           /* source out of range */
+        if (tx < 0 || tx >= w || ty < 0 || ty >= h)
+            return NULL;           /* target out of range */
 
-    dx = tx - sx;
-    dy = ty - sy;
-    if (max(abs(dx),abs(dy)) != 2 || min(abs(dx),abs(dy)) != 0)
-        return NULL;           /* move length was wrong */
-    mx = sx + dx/2;
-    my = sy + dy/2;
+        dx = tx - sx;
+        dy = ty - sy;
+        if (max(abs(dx),abs(dy)) != 2 || min(abs(dx),abs(dy)) != 0)
+            return NULL;           /* move length was wrong */
+        mx = sx + dx/2;
+        my = sy + dy/2;
 
-    if (state->grid[sy*w+sx] != GRID_PEG ||
-        state->grid[my*w+mx] != GRID_PEG ||
-        state->grid[ty*w+tx] != GRID_HOLE)
-        return NULL;           /* grid contents were invalid */
+        if (state->grid[sy*w+sx] != GRID_PEG ||
+            state->grid[my*w+mx] != GRID_PEG ||
+            state->grid[ty*w+tx] != GRID_HOLE)
+            return NULL;           /* grid contents were invalid */
 
-    ret = dup_game(state);
-    ret->grid[sy*w+sx] = GRID_HOLE;
-    ret->grid[my*w+mx] = GRID_HOLE;
-    ret->grid[ty*w+tx] = GRID_PEG;
-
+        ret = dup_game(state);
+        ret->grid[sy*w+sx] = GRID_HOLE;
+        ret->grid[my*w+mx] = GRID_HOLE;
+        ret->grid[ty*w+tx] = GRID_PEG;
+        ret->completed = false;
         /*
          * Opinion varies on whether getting to a single peg counts as
          * completing the game, or whether that peg has to be at a
@@ -867,7 +867,7 @@ static game_state *execute_move(const game_state *state, const char *move)
                 ret->completed = true;
         }
 
-    return ret;
+        return ret;
     }
     return NULL;
 }
@@ -983,6 +983,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int w = state->w, h = state->h;
     int x, y;
     int bgcolour;
+    char buf[48];
+
+    sprintf(buf, "%s", state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     bgcolour = COL_BACKGROUND;
 
@@ -1176,7 +1180,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     0,                       /* flags */
 };

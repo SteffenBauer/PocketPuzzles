@@ -4228,7 +4228,7 @@ static game_state *execute_move(const game_state *from, const char *move)
 
             if (!*p || ret->grid[n] < 1 || ret->grid[n] > cr) {
                 free_game(ret);
-            return NULL;
+                return NULL;
             }
 
             while (*p && isdigit((unsigned char)*p)) p++;
@@ -4254,20 +4254,19 @@ static game_state *execute_move(const game_state *from, const char *move)
              * We've made a real change to the grid. Check to see
              * if the game has been completed.
              */
-            if (!ret->completed && check_valid(
+            ret->cheated = false;
+            ret->completed = check_valid(
                     cr, ret->blocks, ret->kblocks, ret->kgrid,
-                    ret->xtype, ret->grid)) {
-                ret->completed = true;
-            }
+                    ret->xtype, ret->grid);
         }
         return ret;
     } else if (move[0] == 'M') {
-    /*
-     * Fill in absolutely all pencil marks in unfilled squares,
-     * for those who like to play by the rigorous approach of
-     * starting off in that state and eliminating things.
-     */
-    ret = dup_game(from);
+        /*
+         * Fill in absolutely all pencil marks in unfilled squares,
+         * for those who like to play by the rigorous approach of
+         * starting off in that state and eliminating things.
+         */
+        ret = dup_game(from);
         for (y = 0; y < cr; y++) {
             for (x = 0; x < cr; x++) {
                 if (!ret->grid[y*cr+x]) {
@@ -4277,9 +4276,9 @@ static game_state *execute_move(const game_state *from, const char *move)
                 }
             }
         }
-    return ret;
+        return ret;
     } else
-    return NULL;               /* couldn't parse move string */
+        return NULL;               /* couldn't parse move string */
 }
 
 /* ----------------------------------------------------------------------
@@ -4662,6 +4661,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int cr = state->cr;
     int x, y;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->manual && !state->fixed ? "Enter numbers; click outside grid when finished" :
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     if (!ds->started) {
     /*
      * Draw the grid. We draw it as a big thick rectangle of
@@ -4841,7 +4848,7 @@ const struct game thegame = {
     is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,  /* flags */
 };

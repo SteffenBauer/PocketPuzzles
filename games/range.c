@@ -1381,6 +1381,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     assert (move);
 
     ret = dup_game(state);
+    ret->has_cheated = false;
 
     if (*move == 'S') {
         ++move;
@@ -1402,7 +1403,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         }
     }
 
-    if (!ret->was_solved)
+    if (!ret->has_cheated)
         ret->was_solved = !find_errors(ret, NULL);
 
     return ret;
@@ -1538,9 +1539,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int const w = state->params.w, h = state->params.h, n = w * h;
 
     int r, c, i;
-
+    char buf[48];
     bool *errors = snewn(n, bool);
     memset(errors, 0, n * sizeof (bool));
+    sprintf(buf, "%s",
+            state->has_cheated ? "Auto-solved." :
+            state->was_solved  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     find_errors(state, errors);
 
     assert (oldstate == NULL); /* only happens if animating moves */
@@ -1647,7 +1653,7 @@ struct game const thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false, /* wants_statusbar */
+    true, /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON, /* flags */
 };

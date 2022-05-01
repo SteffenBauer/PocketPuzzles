@@ -1679,7 +1679,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
     if (aux) {
         tosolve = execute_move(state, aux);
-         goto solved;
+        goto solved;
     } else {
         tosolve = dup_game(currstate);
         diff = solver_state(tosolve, DIFF_UNREASONABLE);
@@ -2226,7 +2226,7 @@ static bool check_complete(const game_state *state, int *dsf, int *colours)
 
     sfree(sqdata);
     if (free_dsf)
-	sfree(dsf);
+        sfree(dsf);
 
     return ret;
 }
@@ -2237,6 +2237,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     game_state *ret = dup_game(state);
     space *sp, *dot;
     bool currently_solving = false;
+    ret->used_solve = false;
 
     while (*move) {
         char c = *move;
@@ -2302,8 +2303,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         else if (*move)
             goto badmove;
     }
-    if (check_complete(ret, NULL, NULL))
-        ret->completed = true;
+    ret->completed = check_complete(ret, NULL, NULL);
     return ret;
 
 badmove:
@@ -2570,6 +2570,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int w = ds->w, h = ds->h;
     int x, y;
+    char buf[48];
 
     if (ds->dragging) {
         blitter_load(dr, ds->blmirror, ds->oppx, ds->oppy);
@@ -2591,6 +2592,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         draw_update(dr, 0, 0, DRAW_WIDTH, DRAW_HEIGHT);
         ds->started = true;
     }
+
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     check_complete(state, NULL, ds->colour_scratch);
 
@@ -2650,16 +2657,16 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
              * If this square is associated with a dot but it isn't
              * part of a valid region, draw an arrow in it pointing
              * in the direction of that dot.
-	     * 
-	     * Exception: if this is the source point of an active
-	     * drag, we don't draw the arrow.
+             * 
+             * Exception: if this is the source point of an active
+             * drag, we don't draw the arrow.
              */
             if ((sp->flags & F_TILE_ASSOC) && !ds->colour_scratch[y*w+x]) {
-		if (ui->dragging && ui->srcx == x*2+1 && ui->srcy == y*2+1) {
+                if (ui->dragging && ui->srcx == x*2+1 && ui->srcy == y*2+1) {
                     /* tile is the source, don't do it */
                 } else if (ui->dragging && opp && ui->srcx == opp->x && ui->srcy == opp->y) {
                     /* opposite tile is the source, don't do it */
-		} else if (sp->doty != y*2+1 || sp->dotx != x*2+1) {
+                } else if (sp->doty != y*2+1 || sp->dotx != x*2+1) {
                     flags |= DRAW_ARROW;
                     ddy = sp->doty - (y*2+1);
                     ddx = sp->dotx - (x*2+1);
@@ -2826,7 +2833,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                     /* wants_statusbar */
+    true,                     /* wants_statusbar */
     false, game_timing_state,
     0, /* REQUIRE_RBUTTON,            flags */
 };

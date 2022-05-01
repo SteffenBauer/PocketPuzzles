@@ -2289,11 +2289,8 @@ static game_state *execute_move(const game_state *from0, const char *move)
         } else {
             ret->grid[y*sz+x] = n;
         }
-        if (!from->completed && !from->cheated &&
-            !ret->cheated && !ret->completed &&
-            !check_errors(ret, NULL)) {
-            ret->completed = true;
-        }
+        ret->completed = !check_errors(ret, NULL);
+        ret->cheated = false;
         return ret;
     } else if (move[0] == 'M') {
     /*
@@ -2659,6 +2656,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
 {
     int sz = state->par->size + 1;
     int x, y;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (!ds->started) {
     /*
@@ -2776,7 +2779,7 @@ const struct game thegame = {
     is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,                       /* flags */
 };

@@ -1889,6 +1889,8 @@ static game_state *execute_move(const game_state *state, const char *move)
 
     if (!*move) goto badmove;
 
+    ret->used_solve = ret->completed = false;
+
     while (*move) {
         c = *move;
         if (c == 'S') {
@@ -1918,7 +1920,7 @@ static game_state *execute_move(const game_state *state, const char *move)
             move++;
         else if (*move) goto badmove;
     }
-    if (grid_correct(ret)) ret->completed = true;
+    ret->completed = grid_correct(ret);
     return ret;
 
 badmove:
@@ -2097,6 +2099,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         float animtime, float flashtime)
 {
     int x,y;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (!ds->started) {
         draw_rect_outline(dr, COORD(0)-1, COORD(0)-1,
@@ -2192,7 +2200,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,             /* wants_statusbar */
+    true,             /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,               /* flags */
 };

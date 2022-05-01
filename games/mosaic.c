@@ -959,9 +959,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     char *ret = NULL;
     const char *cell_state;
     bool changed = false;
-    if (state->not_completed_clues == 0) {
-        return NULL;
-    }
+
     gameX = (x-(ds->tilesize/2))/ds->tilesize;
     gameY = (y-(ds->tilesize/2))/ds->tilesize;
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
@@ -1131,7 +1129,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     struct board_cell *curr_cell;
     char move_type;
     int nparams = 0, move_params[5];
-
+    new_state->cheating = false;
     p = move;
     move_type = *p++;
     switch (move_type) {

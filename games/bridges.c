@@ -2314,8 +2314,8 @@ static game_state *execute_move(const game_state *state, const char *move)
     int x1, y1, x2, y2, nl, n;
     struct island *is1, *is2;
     char c;
-
-    debug(("execute_move: %s\n", move));
+    
+    ret->solved = ret->completed = false;
 
     if (!*move) goto badmove;
     while (*move) {
@@ -2363,10 +2363,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     }
 
     map_update_possibles(ret);
-    if (map_check(ret)) {
-        debug(("Game completed.\n"));
-        ret->completed = true;
-    }
+    ret->completed = map_check(ret);
     return ret;
 
 badmove:
@@ -2744,6 +2741,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y, lv, lh;
     grid_type v;
     struct island *is, *is_drag_src = NULL, *is_drag_dst = NULL;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->solved    ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     /* Clear screen, if required. */
     if (!ds->started) {
@@ -2979,7 +2982,7 @@ const struct game thegame = {
     is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,               /* flags */
 };

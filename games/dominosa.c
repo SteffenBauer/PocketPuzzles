@@ -2590,6 +2590,8 @@ static game_state *execute_move(const game_state *state, const char *move)
     int d1, d2, d3, p;
     game_state *ret = dup_game(state);
 
+    ret->cheated = ret->completed = false;
+    
     while (*move) {
         if (move[0] == 'S') {
             int i;
@@ -2956,6 +2958,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int n = state->params.n, w = state->w, h = state->h, wh = w*h;
     int x, y, i;
     unsigned char *used;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     /*
      * See how many dominoes of each type there are, so we can
@@ -3097,7 +3105,7 @@ const struct game thegame = {
     is_key_highlighted,
     game_status,
     false, false, NULL, NULL,
-    false,                     /* wants_statusbar */
+    true,                     /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,           /* flags */
 };

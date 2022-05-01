@@ -1503,7 +1503,6 @@ static game_state *execute_move(const game_state *state, const char *move)
     int s = w2 * h2;
     int x, y, i;
     char c;
-
     game_state *ret;
 
     if (move[0] == 'S') {
@@ -1536,13 +1535,10 @@ static game_state *execute_move(const game_state *state, const char *move)
             free_game(ret);
             return NULL;
         }
-
         ret->grid[i] = (c == '1' ? N_ONE : c == '0' ? N_ZERO : EMPTY);
-
-        if (!ret->completed && unruly_validate_counts(ret, NULL, NULL) == 0
-            && (unruly_validate_all_rows(ret, NULL) == 0))
-            ret->completed = true;
-
+        ret->completed = ((unruly_validate_counts(ret, NULL, NULL) == 0) && 
+                          (unruly_validate_all_rows(ret, NULL) == 0));
+        ret->cheated = false;
         return ret;
     }
 
@@ -1696,6 +1692,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int s = w2 * h2;
     int x, y, i;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     if (!ds->started) {
         /* Outer edge of grid */
         draw_rect(dr, COORD(0)-TILE_SIZE/10, COORD(0)-TILE_SIZE/10,
@@ -1813,7 +1816,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                      /* wants_statusbar */
+    true,                      /* wants_statusbar */
     false, game_timing_state,
     REQUIRE_RBUTTON,                          /* flags */
 };

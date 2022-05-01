@@ -680,35 +680,35 @@ static game_state *execute_move(const game_state *from, const char *move)
     game_state *ret;
 
     if (!strcmp(move, "S")) {
-    int i;
+        int i;
 
-    ret = dup_game(from);
+        ret = dup_game(from);
 
-    /*
-     * Simply replace the grid with a solved one. For this game,
-     * this isn't a useful operation for actually telling the user
-     * what they should have done, but it is useful for
-     * conveniently being able to get hold of a clean state from
-     * which to practise manoeuvres.
-     */
-    for (i = 0; i < ret->n; i++)
-        ret->tiles[i] = i+1;
-    ret->used_solve = true;
-    ret->completed = ret->movecount = 1;
+        /*
+         * Simply replace the grid with a solved one. For this game,
+         * this isn't a useful operation for actually telling the user
+         * what they should have done, but it is useful for
+         * conveniently being able to get hold of a clean state from
+         * which to practise manoeuvres.
+         */
+        for (i = 0; i < ret->n; i++)
+            ret->tiles[i] = i+1;
+        ret->used_solve = true;
+        ret->completed = ret->movecount = 1;
 
-    return ret;
+        return ret;
     }
 
     if (move[0] == 'R' && sscanf(move+1, "%d,%d", &cy, &dx) == 2 &&
-    cy >= 0 && cy < from->h) {
-    cx = dy = 0;
-    n = from->w;
+        cy >= 0 && cy < from->h) {
+        cx = dy = 0;
+        n = from->w;
     } else if (move[0] == 'C' && sscanf(move+1, "%d,%d", &cx, &dy) == 2 &&
            cx >= 0 && cx < from->w) {
-    cy = dx = 0;
-    n = from->h;
+        cy = dx = 0;
+        n = from->h;
     } else
-    return NULL;
+        return NULL;
 
     ret = dup_game(from);
 
@@ -727,13 +727,12 @@ static game_state *execute_move(const game_state *from, const char *move)
     /*
      * See if the game has been completed.
      */
-    if (!ret->completed) {
+    if (!ret->used_solve) {
         ret->completed = ret->movecount;
         for (n = 0; n < ret->n; n++)
             if (ret->tiles[n] != n+1)
                 ret->completed = 0;
     }
-
     return ret;
 }
 

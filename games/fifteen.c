@@ -702,6 +702,7 @@ static game_state *execute_move(const game_state *from, const char *move)
     if (!strcmp(move, "S")) {
         ret = dup_game(from);
         ret->used_solve = true;
+        ret->movecount = 0;
         if (compute_hint(ret, &nx, &ny)) {
             ret->hx = nx; ret->hy = ny;
         }
@@ -738,13 +739,13 @@ static game_state *execute_move(const game_state *from, const char *move)
     for (p = from->gap_pos; p != ret->gap_pos; p += up) {
         assert(p >= 0 && p < from->n);
         ret->tiles[p] = from->tiles[p + up];
-    ret->movecount++;
+        ret->movecount++;
     }
 
     /*
      * See if the game has been completed.
      */
-    if (!ret->completed) {
+    if (!ret->used_solve) {
         ret->completed = ret->movecount;
         for (p = 0; p < ret->n; p++)
             if (ret->tiles[p] != (p < ret->n-1 ? p+1 : 0))
@@ -916,7 +917,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         if (state->used_solve)
             sprintf(statusbuf, "Moves since auto-solve: %d",
-                state->movecount - state->completed);
+                state->movecount);
         else
             sprintf(statusbuf, "%sMoves: %d",
                 (state->completed ? "COMPLETED! " : ""),

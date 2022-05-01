@@ -1465,6 +1465,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         if (*endptr || endptr == delim+1) goto err;
         if (value < 0 || value > 9) goto err;
         new_state = dup_game(state);
+        new_state->cheated = false;
         while (*move) {
             const int i = strtol(move, &endptr, 0);
             if (endptr == move) goto err;
@@ -1479,7 +1480,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     /*
      * Check for completion.
      */
-    if (!new_state->completed) {
+    {
         const int w = new_state->shared->params.w;
         const int h = new_state->shared->params.h;
         const int sz = w * h;
@@ -1487,8 +1488,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         int i;
         for (i = 0; i < sz && new_state->board[i] == dsf_size(dsf, i); ++i);
         sfree(dsf);
-        if (i == sz)
-            new_state->completed = true;
+        new_state->completed = (i == sz);
     }
 
     return new_state;
@@ -1867,6 +1867,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     const int w = state->shared->params.w;
     const int h = state->shared->params.h;
+    char buf[48];
+
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (!ds->started) {
     /*
@@ -1952,7 +1959,7 @@ const struct game thegame = {
     NULL,
     game_status,
     false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
+    true,                   /* wants_statusbar */
     false, game_timing_state,
     0,               /* flags */
 };
