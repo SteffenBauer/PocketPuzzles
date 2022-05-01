@@ -70,7 +70,7 @@ extern ibitmap icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,
                menu_exit, menu_help, menu_new, menu_restart, menu_solve,
                bt_add, bt_backspace, bt_bridges_g, bt_fill_nums, bt_fill_marks, bt_fill_map, bt_fill_rome,
                bt_guess_i, bt_redo, bt_redo_d, bt_remove, bt_map_c, bt_map_j,
-               bt_net_shuffle, bt_salad_o, bt_salad_x, bt_net_shuffle, bt_bridges_g,
+               bt_net_shuffle, bt_salad_o, bt_salad_x, bt_net_shuffle, bt_net_lock, bt_bridges_g,
                bt_west, bt_east, bt_north, bt_south,
                bt_swap, bt_undo, bt_undo_d;
 
@@ -90,6 +90,7 @@ static BUTTON btn_redo = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_REDO, ' ', &bt_re
 static BUTTON btn_salad_o     = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'O', &bt_salad_o, NULL, NULL};
 static BUTTON btn_salad_x     = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'X', &bt_salad_x, NULL, NULL};
 static BUTTON btn_net_shuffle = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'J', &bt_net_shuffle, NULL, NULL};
+static BUTTON btn_net_lock    = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'L', &bt_net_lock, NULL, NULL};
 static BUTTON btn_bridges_g   = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'G', &bt_bridges_g, NULL, NULL};
 static BUTTON btn_rome_w      = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'W', &bt_west, NULL, NULL};
 static BUTTON btn_rome_e      = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'E', &bt_east, NULL, NULL};
