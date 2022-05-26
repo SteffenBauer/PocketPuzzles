@@ -6,6 +6,9 @@
 * All games: Use status bar to show game completion instead of pushy message box
 * *Net*: Add lock button for locking tiles in place where one is sure of the orientation.
 
+### Fixed
+* Rome: Fixed missing screen update on button click
+
 ## 0.7.10 - 2022/04/02
 
 ### Added

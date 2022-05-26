@@ -1612,6 +1612,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     else if (!ui->hshow && (button == 'T' || button == 'D' || button == 'W' || button == 'E' || button == '\b')) {
         if (ui->hhint == button) ui->hhint = ' ';
         else ui->hhint = button;
+        return UI_UPDATE;
     }
     else if (button == '+') {
         sprintf(buf, "M");
