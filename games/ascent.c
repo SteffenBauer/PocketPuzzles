@@ -1906,8 +1906,8 @@ struct game_ui
     number *prevhints, *nexthints;
     int s;
 
-    /* Current state of keyboard cursor */
-    enum { CSHOW_NONE, CSHOW_KEYBOARD, CSHOW_MOUSE } cshow;
+    /* Current state of cursor */
+    enum { CSHOW_NONE, CSHOW_MOUSE } cshow;
     cell typing_cell;
     number typing_number;
     int cx, cy;
@@ -2258,14 +2258,6 @@ struct game_drawstate {
     number old_next_target, old_prev_target;
     int *oldpath, *path;
     number *prevhints, *nexthints;
-
-    /* Blitter for the background of the keyboard cursor */
-    blitter *bl;
-    bool bl_on;
-    /* Position of the center of the blitter */
-    int blx, bly;
-    /* Radius of the keyboard cursor */
-    int blr;
 };
 
 static int ascent_count_segments(const game_state *ret, cell i)
@@ -2362,7 +2354,7 @@ static bool ascent_validate_path_move(cell i, const game_state *state, const gam
 #define DRAG_RADIUS 0.6F
 
 static char *ascent_mouse_click(const game_state *state, game_ui *ui,
-                                int gx, int gy, int button, bool keyboard)
+                                int gx, int gy, int button)
 {
     /*
      * There are four ways to enter a number:
@@ -2414,14 +2406,6 @@ static char *ascent_mouse_click(const game_state *state, game_ui *ui,
         }
         if(n >= 0)
         {
-            /* When using the keyboard, draw a line to this number */
-            if (keyboard && ascent_validate_path_move(i, state, ui))
-            {
-                sprintf(buf, "L%d,%d", i, ui->held);
-                ui->held = i;
-                return dupstr(buf);
-            }
-
             /* Highlight a placed number */
             ui->held = i;
             ui_seek(ui, state);
@@ -2448,11 +2432,12 @@ static char *ascent_mouse_click(const game_state *state, game_ui *ui,
             ui->dragx = gx;
             ui->dragy = gy;
 
+            /*
             if (ui->held % w > 0 && ui->held % w < w - 1)
                 ui->dragx = -1;
             if (ui->held / w > 0 && ui->held / w < h - 1)
                 ui->dragy = -1;
-
+            */
             return NULL;
         }
         /* Dragging over a number in sequence will move the highlight forward or backward */
@@ -2479,16 +2464,8 @@ static char *ascent_mouse_click(const game_state *state, game_ui *ui,
             ui->held = i;
             ui_seek(ui, state);
             
-            if(!keyboard)
-                ui->cshow = CSHOW_NONE;
+            ui->cshow = CSHOW_NONE;
 
-            return dupstr(buf);
-        }
-        /* Keyboard-drag a pathline */
-        else if (keyboard && !ui->dir && ascent_validate_path_move(i, state, ui))
-        {
-            sprintf(buf, "L%d,%d", i, ui->held);
-            ui->held = i;
             return dupstr(buf);
         }
         /* Highlight an empty cell */
@@ -2497,7 +2474,7 @@ static char *ascent_mouse_click(const game_state *state, game_ui *ui,
             ui_clear(ui);
             ui->cx = i % w;
             ui->cy = i / w;
-            ui->cshow = keyboard ? CSHOW_KEYBOARD : CSHOW_MOUSE;
+            ui->cshow = CSHOW_MOUSE;
 
             ui->held = i;
             ui->select = NUMBER_EMPTY;
@@ -2532,7 +2509,6 @@ static char *ascent_mouse_click(const game_state *state, game_ui *ui,
             return dupstr(buf);
         }
     break;
-    case MIDDLE_BUTTON:
     case RIGHT_BUTTON:
         if(n == NUMBER_EMPTY || GET_BIT(state->immutable, i))
         {
@@ -2540,7 +2516,6 @@ static char *ascent_mouse_click(const game_state *state, game_ui *ui,
         }
 
     /* Deliberate fallthrough */
-    case MIDDLE_DRAG:
     case RIGHT_DRAG:
         /* Drag over numbers to clear them */
         if(ui->typing_cell == CELL_NONE && !GET_BIT(state->immutable, i) &&
@@ -2564,7 +2539,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     cell i;
     number n;
     char *ret = NULL;
-    ascent_step dir = {0,0};
     bool finish_typing = false;
     
     oy -= ds->offsety;
@@ -2614,87 +2588,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         finish_typing = true;
     }
 
-    /* Parse keyboard cursor movement */
-    if(ui->move_with_numpad)
-    {
-        if(button == (MOD_NUM_KEYPAD | '8')) button = CURSOR_UP;
-        if(button == (MOD_NUM_KEYPAD | '2')) button = CURSOR_DOWN;
-        if(button == (MOD_NUM_KEYPAD | '4')) button = CURSOR_LEFT;
-        if(button == (MOD_NUM_KEYPAD | '6')) button = CURSOR_RIGHT;
-    }
-    else
-        button &= ~MOD_NUM_KEYPAD;
-
-    if(IS_HEXAGONAL(state->mode))
-    {
-        /*
-         * When moving across a hexagonal field, moving the cursor up or down
-         * will alternate between moving orthogonally and diagonally.
-         */
-        if (button == CURSOR_UP && ui->cy > 0 && (ui->cy & 1) == 0)
-            button = MOD_NUM_KEYPAD | '9';
-        else if(button == CURSOR_DOWN && ui->cy < h-1 && ui->cy & 1)
-            button = MOD_NUM_KEYPAD | '1';
-        /* Moving top-left or down-right is replaced with moving directly up or down. */
-        else if(button == (MOD_NUM_KEYPAD | '7'))
-            button = CURSOR_UP;
-        else if(button == (MOD_NUM_KEYPAD | '3'))
-            button = CURSOR_DOWN;
-    }
-
-    /* Apply keyboard cursor movement */
-    if      (button == CURSOR_UP)              dir = (ascent_step){ 0, -1};
-    else if (button == CURSOR_DOWN)            dir = (ascent_step){ 0,  1};
-    else if (button == CURSOR_LEFT)            dir = (ascent_step){-1,  0};
-    else if (button == CURSOR_RIGHT)           dir = (ascent_step){ 1,  0};
-    else if (button == (MOD_NUM_KEYPAD | '7')) dir = (ascent_step){-1, -1};
-    else if (button == (MOD_NUM_KEYPAD | '1')) dir = (ascent_step){-1,  1};
-    else if (button == (MOD_NUM_KEYPAD | '9')) dir = (ascent_step){ 1, -1};
-    else if (button == (MOD_NUM_KEYPAD | '3')) dir = (ascent_step){ 1,  1};
-
-    if (dir.dx || dir.dy)
-    {
-        ui->cshow = CSHOW_KEYBOARD;
-        ui->cx += dir.dx;
-        ui->cy += dir.dy;
-
-        ui->cx = max(0, min(ui->cx, w-1));
-        ui->cy = max(0, min(ui->cy, h-1));
-        
-        if (state->mode == MODE_HEXAGON)
-        {
-            int center = h / 2;
-            if (ui->cy < center)
-                ui->cx = max(ui->cx, center - ui->cy);
-            else
-                ui->cx = min(ui->cx, (w-1) + center - ui->cy);
-        }
-        if (state->mode == MODE_HONEYCOMB)
-        {
-            int extra = (h | ui->cy) & 1 ? 0 : 1;
-            ui->cx = min(ui->cx, w - (ui->cy / 2) - 1);
-            ui->cx = max(ui->cx, ((h - ui->cy) / 2) - extra);
-        }
-
-        finish_typing = true;
-    }
-
     /* Clicking outside the grid clears the selection. */
     if (IS_MOUSE_DOWN(button) && (gx < 0 || gy < 0 || gx >= w || gy >= h))
         ui_clear(ui);
 
-    /* Pressing Enter, Spacebar or Backspace when not typing will emulate a mouse click */
-    if (IS_CURSOR_SELECT(button) && ui->cshow == CSHOW_KEYBOARD && ui->typing_cell == CELL_NONE)
-    {
-        ret = ascent_mouse_click(state, ui, ui->cx, ui->cy,
-              button == CURSOR_SELECT ? LEFT_BUTTON : RIGHT_BUTTON, true);
-        if(!ret)
-        ret = ascent_mouse_click(state, ui, ui->cx, ui->cy,
-              button == CURSOR_SELECT ? LEFT_RELEASE : RIGHT_RELEASE, true);
+    if ((button >= '0' && button <= '9') || button == '\b') {
+        ret = UI_UPDATE;
     }
-    /* Press Enter to confirm typing */
-    if (IS_CURSOR_SELECT(button))
-        finish_typing = true;
 
     /* Typing a number */
     if (button >= '0' && button <= '9' && ui->cshow)
@@ -2716,6 +2616,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         char buf[20];
         if (!GET_BIT(state->immutable, ui->held)) {
             sprintf(buf, "C%d",ui->held);
+            ui_clear(ui);
             return dupstr(buf);
         }
         else {
@@ -2747,7 +2648,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             if(abs(ox-hx) + abs(oy-hy) > DRAG_RADIUS*tilesize)
                 return NULL;
         }
-        ret = ascent_mouse_click(state, ui, gx, gy, button, false);
+        ret = ascent_mouse_click(state, ui, gx, gy, button);
         finish_typing = true;
     }
     
@@ -2777,9 +2678,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ret = dupstr(buf);
     }
 
-    if(finish_typing && !ret)
-        return UI_UPDATE;
-    return ret;
+    return ret ? ret : UI_UPDATE;
 }
 
 static bool ascent_modify_path(game_state *ret, char move, cell i, cell i2)
@@ -3078,10 +2977,6 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
     game_compute_size(params, tilesize, &ds->w, &ds->h);
 
     game_set_offsets(params->h, params->mode, tilesize, &ds->offsetx, &ds->offsety);
-
-    ds->blr = tilesize*0.4;
-    assert(!ds->bl);
-    ds->bl = blitter_new(dr, tilesize, tilesize);
 }
 
 static float *game_colours(frontend *fe, int *ncolours)
@@ -3130,11 +3025,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     memset(ds->nexthints, ~0, s*sizeof(number));
     memset(ds->prevhints, ~0, s*sizeof(number));
 
-    ds->bl = NULL;
-    ds->bl_on = false;
-    ds->blx = -1;
-    ds->bly = -1;
-    ds->blr = -1;
     return ds;
 }
 
@@ -3147,8 +3037,6 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
     sfree(ds->path);
     sfree(ds->nexthints);
     sfree(ds->prevhints);
-    if (ds->bl)
-        blitter_free(dr, ds->bl);
     sfree(ds);
 }
 
@@ -3236,10 +3124,8 @@ static number ascent_display_number(cell i, const game_drawstate *ds, const game
     if (!IS_NUMBER_EDGE(ui->select) && ui->held >= 0 && ascent_validate_path_move(i, state, ui))
     {
         if(n == NUMBER_EMPTY)
-            n = ui->select >= 0 && ui->positions[ui->select] == CELL_NONE ? ui->select :
-                ui->cshow == CSHOW_KEYBOARD ? NUMBER_MOVE : NUMBER_EMPTY;
-        else if(ui->cshow == CSHOW_KEYBOARD)
-            n |= NUMBER_FLAG_MOVE;
+            n = ui->select >= 0 && ui->positions[ui->select] == CELL_NONE ? 
+                ui->select : NUMBER_EMPTY;
     }
 
     /* When this cell has hints, only show candidate number if it matches one of these hints */
@@ -3289,16 +3175,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             state->cheated   ? "Auto-solved." :
             state->completed ? "COMPLETED!" : "");
     status_bar(dr, buf);
-
-    if (ds->bl_on)
-    {
-        blitter_load(dr, ds->bl,
-            ds->blx - ds->blr, ds->bly - ds->blr);
-        draw_update(dr,
-            ds->blx - ds->blr, ds->bly - ds->blr,
-            tilesize, tilesize);
-        ds->bl_on = false;
-    }
 
     /* Add confirmed path lines */
     for (i = 0; i < w*h; i++)
@@ -3416,7 +3292,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             continue;
 
         colour = n == NUMBER_WALL ? COL_BORDER :
-            ui->dragx == i%w || ui->dragy == i/w ? COL_HIGHLIGHT :
+            ui->dragx == i%w && ui->dragy == i/w ? COL_HIGHLIGHT :
             ui->held == i || ui->typing_cell == i ||
                 (ui->cshow == CSHOW_MOUSE && ui->cy*w+ui->cx == i) ? COL_HIGHLIGHT :
             n <= state->last && positions[n] == CELL_MULTIPLE && ui->typing_cell != i ? COL_LOWLIGHT :
@@ -3617,21 +3493,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         }
 
         unclip(dr);
-    }
-
-    if (ui->cshow == CSHOW_KEYBOARD)
-    {
-        ds->blx = ui->cx*tilesize + ds->offsetx + (tilesize / 2);
-        ds->bly = ui->cy*tilesize + ds->offsety + (tilesize / 2);
-
-        if (IS_HEXAGONAL(state->mode))
-            ds->blx += ui->cy * tilesize / 2;
-
-        blitter_save(dr, ds->bl, ds->blx - ds->blr, ds->bly - ds->blr);
-        ds->bl_on = true;
-
-        draw_rect_corners(dr, ds->blx, ds->bly, ds->blr - 1, COL_CURSOR);
-        draw_update(dr, ds->blx - ds->blr, ds->bly - ds->blr, tilesize, tilesize);
     }
 }
 
