@@ -96,9 +96,9 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
     else if (ret->nosame_mode)
       sprintf(buf+strlen(buf), ", unique");
     sprintf(buf+strlen(buf), ", %s",
-            (ret->diff==1 ? "trivial" :
-             ret->diff==2 ? "easy" :
-             ret->diff==3 ? "normal" :
+            (ret->diff==1 ? "easy" :
+             ret->diff==2 ? "normal" :
+             ret->diff==3 ? "tricky" :
              ret->diff==4 ? "hard" : "extreme"));
 
     *name = dupstr(buf);
@@ -178,7 +178,7 @@ static config_item *game_configure(const game_params *params)
     ind++;
     ret[ind].name = "Difficulty";
     ret[ind].type = C_CHOICES;
-    ret[ind].u.choices.choicenames = ":Trivial:Easy:Normal:Hard:Extreme";
+    ret[ind].u.choices.choicenames = ":Easy:Normal:Tricky:Hard:Extreme";
     ret[ind].u.choices.selected = params->diff-1;
 
     ind++;
