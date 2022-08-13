@@ -70,14 +70,14 @@ static char const *const bricks_diffnames[] = { DIFFLIST(TITLE) };
 static char const bricks_diffchars[] = DIFFLIST(ENCODE);
 
 const static struct game_params bricks_presets[] = {
-    { 4,  5, DIFF_EASY },
-    { 4,  5, DIFF_NORMAL },
-    { 6,  7, DIFF_EASY },
-    { 6,  7, DIFF_NORMAL },
-    { 6,  7, DIFF_TRICKY },
-    { 8, 10, DIFF_EASY },
-    { 8, 10, DIFF_NORMAL },
-    { 8, 10, DIFF_TRICKY },
+    { 5,  5, DIFF_EASY },
+    { 5,  5, DIFF_NORMAL },
+    { 7,  7, DIFF_EASY },
+    { 7,  7, DIFF_NORMAL },
+    { 7,  7, DIFF_TRICKY },
+    { 8,  8, DIFF_NORMAL },
+    { 8,  8, DIFF_TRICKY },
+    { 10, 10, DIFF_TRICKY },
 };
 
 #define DEFAULT_PRESET 0
