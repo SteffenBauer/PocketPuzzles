@@ -87,15 +87,15 @@ struct game_state {
 
 #define DEFAULT_PRESET 1
 static const struct game_params walls_presets[] = {
-    {4, 5,  DIFF_EASY},
-    {4, 5,  DIFF_NORMAL},
-    {4, 5,  DIFF_TRICKY},
-    {6, 7,  DIFF_NORMAL},
-    {6, 7,  DIFF_TRICKY},
-    {6, 7,  DIFF_HARD},
-    {7, 8, DIFF_NORMAL},
-    {7, 8, DIFF_TRICKY},
-    {7, 8, DIFF_HARD}
+    {4, 4,  DIFF_EASY},
+    {5, 5,  DIFF_NORMAL},
+    {6, 6,  DIFF_TRICKY},
+    {6, 6,  DIFF_NORMAL},
+    {7, 7,  DIFF_TRICKY},
+    {7, 7,  DIFF_HARD},
+    {8, 8, DIFF_NORMAL},
+    {8, 8, DIFF_TRICKY},
+    {8, 8, DIFF_HARD}
 };
 
 static game_params *default_params(void) {
