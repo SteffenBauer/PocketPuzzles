@@ -10,6 +10,7 @@
 ### Fixed
 * Rome: Fixed missing screen update on button click
 * Ascent: Screen update of number buttons
+* Unruly: Memory leak
 
 ## 0.7.10 - 2022/04/02
 

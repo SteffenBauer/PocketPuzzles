@@ -106,12 +106,6 @@ struct clues {
     x = w, y = index-3*w; \
 } while (0)
 
-#ifdef STANDALONE_SOLVER
-static const char *const cluepos[] = {
-    "above column", "below column", "left of row", "right of row"
-};
-#endif
-
 struct game_state {
     game_params par;
     struct clues *clues;
@@ -264,9 +258,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
     int c, i, j, n, m, furthest;
     int start, step, cstart, cstep, clue, pos, cpos;
     int ret = 0;
-#ifdef STANDALONE_SOLVER
-    char prefix[256];
-#endif
 
     if (!ctx->started) {
     ctx->started = true;
@@ -287,16 +278,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
         pos = start + (ctx->clues[c]-1)*step;
         cpos = cstart + (ctx->clues[c]-1)*cstep;
         if (solver->cube[cpos*w+w-1]) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-            printf("%*sfacing clues on %s %d are maximal:\n",
-                   solver_recurse_depth*4, "",
-                   c>=2*w ? "row" : "column", c % w + 1);
-            printf("%*s  placing %d at (%d,%d)\n",
-                   solver_recurse_depth*4, "",
-                   w, pos%w+1, pos/w+1);
-            }
-#endif
             latin_solver_place(solver, pos%w, pos/w, w);
             ret = 1;
         } else {
@@ -339,14 +320,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
         }
     }
     if (clue == n+1 && furthest > 1) {
-#ifdef STANDALONE_SOLVER
-        if (solver_show_working)
-        sprintf(prefix, "%*sclue %s %d is nearly filled:\n",
-            solver_recurse_depth*4, "",
-            cluepos[c/w], c%w+1);
-        else
-        prefix[0] = '\0';           /* placate optimiser */
-#endif
         /*
          * We can already see an increasing sequence of the very
          * highest numbers, of length one less than that
@@ -368,14 +341,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
             continue;           /* skip this number, it's elsewhere */
         j--;
         if (solver->cube[cstart*w+i-1]) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-            printf("%s%*s  ruling out %d at (%d,%d)\n",
-                   prefix, solver_recurse_depth*4, "",
-                   i, start%w+1, start/w+1);
-            prefix[0] = '\0';
-            }
-#endif
             solver->cube[cstart*w+i-1] = 0;
             ret = 1;
         }
@@ -384,15 +349,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
 
     if (ret)
         return ret;
-
-#ifdef STANDALONE_SOLVER
-        if (solver_show_working)
-        sprintf(prefix, "%*slower bounds for clue %s %d:\n",
-            solver_recurse_depth*4, "",
-            cluepos[c/w], c%w+1);
-        else
-        prefix[0] = '\0';           /* placate optimiser */
-#endif
 
     i = 0;
     for (n = w; n > 0; n--) {
@@ -417,15 +373,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
 
         for (j = 0; j < clue - i - 1; j++)
         if (solver->cube[(cstart + j*cstep)*w+n-1]) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-            int pos = start+j*step;
-            printf("%s%*s  ruling out %d at (%d,%d)\n",
-                   prefix, solver_recurse_depth*4, "",
-                   n, pos%w+1, pos/w+1);
-            prefix[0] = '\0';
-            }
-#endif
             solver->cube[(cstart + j*cstep)*w+n-1] = 0;
             ret = 1;
         }
@@ -445,9 +392,6 @@ static int solver_hard(struct latin_solver *solver, void *vctx)
     int w = ctx->w;
     int c, i, j, n, best, clue, start, step, ret;
     long bitmap;
-#ifdef STANDALONE_SOLVER
-    char prefix[256];
-#endif
 
     /*
      * Go over every clue analysing all possibilities.
@@ -529,15 +473,6 @@ static int solver_hard(struct latin_solver *solver, void *vctx)
         }
     }
 
-#ifdef STANDALONE_SOLVER
-    if (solver_show_working)
-        sprintf(prefix, "%*sexhaustive analysis of clue %s %d:\n",
-            solver_recurse_depth*4, "",
-            cluepos[c/w], c%w+1);
-    else
-        prefix[0] = '\0';           /* placate optimiser */
-#endif
-
     ret = 0;
 
     for (i = 0; i < w; i++) {
@@ -545,14 +480,6 @@ static int solver_hard(struct latin_solver *solver, void *vctx)
         for (j = 1; j <= w; j++) {
         if (solver->cube[pos*w+j-1] &&
             !(ctx->iscratch[i] & (1L << j))) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-            printf("%s%*s  ruling out %d at (%d,%d)\n",
-                   prefix, solver_recurse_depth*4, "",
-                   j, pos/w+1, pos%w+1);
-            prefix[0] = '\0';
-            }
-#endif
             solver->cube[pos*w+j-1] = 0;
             ret = 1;
         }
@@ -595,12 +522,6 @@ static bool towers_valid(struct latin_solver *solver, void *vctx)
         }
 
         if (n != clue) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working)
-        printf("%*sclue %s %d is violated\n",
-            solver_recurse_depth*4, "",
-            cluepos[c/w], c%w+1);
-#endif
             return false;
         }
     }
