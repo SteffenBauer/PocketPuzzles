@@ -10,7 +10,7 @@ Choose between one of these build stages:
 
 ### Installation
 
-Connect your PocketBook with you PC with an USB cable. Copy `SGTPuzzles.app` to the folder `/applications` on your device. Unmount the USB connection, and reboot the PocketBook. You should now see an entry `@SGTPuzzles` among your apps.
+Connect your PocketBook to your PC with an USB cable. Copy `SGTPuzzles.app` to the folder `/applications` on your device. Unmount the USB connection, and reboot the PocketBook. You should now see an entry `@SGTPuzzles` among your apps.
 
 ### Important Note!
 
