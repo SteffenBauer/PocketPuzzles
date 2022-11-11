@@ -4026,7 +4026,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (((button == LEFT_RELEASE && !swapped) || 
              (button == LEFT_BUTTON && swapped)) &&
              (!ui->hdrag && ui->hhint >= 0) &&
-             !state->immutable[ty*cr+tx]) {
+             (!state->immutable[ty*cr+tx] || fixed_entry)) {
             sprintf(buf, "%c%d,%d,%d", fixed_entry ? 'F' : 'R', tx, ty, ui->hhint);
             return dupstr(buf);
         }
