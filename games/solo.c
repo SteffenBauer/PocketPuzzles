@@ -4022,20 +4022,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     tx = (x + TILE_SIZE - BORDER) / TILE_SIZE - 1;
     ty = (y + TILE_SIZE - BORDER) / TILE_SIZE - 1;
 
-    if ((tx < 0 || tx >= cr || ty < 0 || ty >= cr) &&
-        ((button == LEFT_RELEASE && !swapped) || 
-         (button == LEFT_BUTTON && swapped))) {
-        if (fixed_entry) {
-            ui->hshow = false;
-            sprintf(buf, "Y");
-            return dupstr(buf);
-        }
-    }
-
     if (tx >= 0 && tx < cr && ty >= 0 && ty < cr) {
         if (((button == LEFT_RELEASE && !swapped) || 
              (button == LEFT_BUTTON && swapped)) &&
-             (!ui->hdrag && ui->hhint >= 0)) {
+             (!ui->hdrag && ui->hhint >= 0) &&
+             !state->immutable[ty*cr+tx]) {
             sprintf(buf, "%c%d,%d,%d", fixed_entry ? 'F' : 'R', tx, ty, ui->hhint);
             return dupstr(buf);
         }
@@ -4093,6 +4084,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->hhint = -1;
         ui->hdrag = false;
         return UI_UPDATE;
+    }
+
+    if (fixed_entry && (button == '+' || button == '-')) {
+        ui->hshow = false;
+        sprintf(buf, "Y");
+        return dupstr(buf);
     }
 
     if (!fixed_entry && button == '+') { sprintf(buf,"+"); return dupstr(buf); }
@@ -4664,7 +4661,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     char buf[48];
     /* Draw status bar */
     sprintf(buf, "%s",
-            state->manual && !state->fixed ? "Enter numbers; click outside grid when finished" :
+            state->manual && !state->fixed ? "Enter numbers; click + or - button when finished" :
             state->cheated   ? "Auto-solved." :
             state->completed ? "COMPLETED!" : "");
     status_bar(dr, buf);
@@ -4809,7 +4806,7 @@ static const char rules[] = "In this game, generally known as ’Sudoku’, each
 "- 'X': Each of the square's two main diagonals contains only one occurrence of each digit.\n"
 "- 'Jigsaw': The sub-blocks are arbitrary shapes.\n"
 "- 'Killer': The grid is divided into ‘cages’, and for each cage the the sum of all the digits in that cage must be the given number. No digit may appear more than once within a cage, even if the cage crosses the boundaries of existing regions.\n"
-"- 'Manual': The game starts with an empty grid, where you can enter numbers taken from newspaper sudokus or other sources. When finished, click the border outside the grid to fix the numbers in place, then the puzzle is ready to play.\n\n"
+"- 'Manual': The game starts with an empty grid, where you can enter numbers taken from newspaper sudokus or other sources. When finished, click the + or - button to fix the numbers in place, then the puzzle is ready to play.\n\n"
 "This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {

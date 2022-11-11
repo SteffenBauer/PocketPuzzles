@@ -1420,7 +1420,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         if (((button == LEFT_RELEASE && !swapped) || 
              (button == LEFT_BUTTON && swapped)) &&
-             (!ui->hdrag && (ui->hhint >= 0))) {
+             (!ui->hdrag && (ui->hhint >= 0)) &&
+             !(GRID(state, flags, x, y) & F_IMMUTABLE)) {
             sprintf(buf, "R%d,%d,%d", x, y, ui->hhint);
             return dupstr(buf);
         }

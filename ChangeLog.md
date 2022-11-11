@@ -6,11 +6,13 @@
 * All games: Use status bar to show game completion instead of pushy message box
 * *Net*: Add lock button for locking tiles in place where one is sure of the orientation.
 * *CrossNum*: Adjust level difficulty labels
+* *Solo*: Finish number entry in manual mode now by clicking + or - button
 
 ### Fixed
-* Rome: Fixed missing screen update on button click
-* Ascent: Screen update of number buttons
-* Unruly: Memory leak
+* *Rome*: Fixed missing screen update on button click
+* *Ascent*: Screen update of number buttons
+* *Unruly*: Memory leak
+* *Solo* and *Unequal*: Bug that made it possible to overwrite given fixed numbers
 
 ## 0.7.10 - 2022/04/02
 
