@@ -1,6 +1,6 @@
 ## ChangeLog
 
-## 0.7.11 nightly
+## 0.7.11
 
 ### Changed
 * All games: Use status bar to show game completion instead of pushy message box
