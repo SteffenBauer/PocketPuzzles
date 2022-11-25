@@ -4805,7 +4805,7 @@ static const char rules[] = "In this game, generally known as ’Sudoku’, each
 "You are given some of the numbers as clues; your aim is to place the rest of the numbers correctly. This puzzle contains some additional special modes:\n\n"
 "- 'X': Each of the square's two main diagonals contains only one occurrence of each digit.\n"
 "- 'Jigsaw': The sub-blocks are arbitrary shapes.\n"
-"- 'Killer': The grid is divided into ‘cages’, and for each cage the the sum of all the digits in that cage must be the given number. No digit may appear more than once within a cage, even if the cage crosses the boundaries of existing regions.\n"
+"- 'Killer': The grid is divided into ‘cages’, and for each cage the sum of all the digits in that cage must be the given number. No digit may appear more than once within a cage, even if the cage crosses the boundaries of existing regions.\n"
 "- 'Manual': The game starts with an empty grid, where you can enter numbers taken from newspaper sudokus or other sources. When finished, click the + or - button to fix the numbers in place, then the puzzle is ready to play.\n\n"
 "This puzzle was implemented by Simon Tatham.";
 

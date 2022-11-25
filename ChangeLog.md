@@ -1,6 +1,12 @@
 ## ChangeLog
 
-## 0.7.11
+## 0.7.12 nightly
+
+### Fixed
+* *Solo*: Typo in How to Play
+* *Guess*: Bug that made it possible to choose invalid color guesses
+
+## 0.7.11 - 2022/11/13
 
 ### Changed
 * All games: Use status bar to show game completion instead of pushy message box
