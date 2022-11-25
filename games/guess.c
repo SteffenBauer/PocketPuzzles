@@ -650,7 +650,9 @@ static char *interpret_move(const game_state *from, game_ui *ui,
     }
 
     if (button == LEFT_BUTTON) {
-        if (over_col >= 0 && ui->colour_cur != over_col) {
+        if ((over_col >= 0) &&
+            (over_col <= from->params.ncolours) &&
+            (ui->colour_cur != over_col)) {
             ui->display_cur = true;
             ui->colour_cur = over_col;
             ui->peg_col = -1;
