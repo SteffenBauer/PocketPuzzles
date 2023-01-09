@@ -2,6 +2,9 @@
 
 ## 0.7.12 nightly
 
+### Changed
+* *Untangle*: Update vertex screen draw only at end of screen drag
+
 ### Fixed
 * *Solo*: Typo in How to Play
 * *Guess*: Bug that made it possible to choose invalid color guesses

@@ -1079,8 +1079,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     if (bestd <= DRAG_THRESHOLD * DRAG_THRESHOLD) {
         ui->dragpoint = best;
-        ui->newpoint.x = x;
-        ui->newpoint.y = y;
+        ui->newpoint.x = state->pts[best].x * ds->tilesize / state->pts[best].d;
+        ui->newpoint.y = state->pts[best].y * ds->tilesize / state->pts[best].d;
         ui->newpoint.d = ds->tilesize;
         return UI_UPDATE;
     }
