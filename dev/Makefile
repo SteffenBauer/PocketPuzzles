@@ -9,7 +9,7 @@ CC := $(TOOLPATH)$(CC)
 # to 1.2 if it isn't found.
 GTK_CONFIG = sh -c 'pkg-config gtk+-2.0 $$0 2>/dev/null || gtk-config $$0'
 
-CFLAGS := -O2 -Wall -Werror -g -I./ -I../include/ `$(GTK_CONFIG) --cflags` \
+CFLAGS := -O2 -Wall -g -I./ -I../include/ `$(GTK_CONFIG) --cflags` \
 		$(CFLAGS)
 XLIBS = `$(GTK_CONFIG) --libs` -lm
 ULIBS = -lm
@@ -146,10 +146,10 @@ lightup: combi.o drawing.o gtk.o lightup.o no-icon.o \
 		malloc.o midend.o misc.o printing.o ps.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
-loopy: drawing.o dsf.o grid.o gtk.o loopgen.o loopy.o \
+loopy: drawing.o dsf.o grid.o gtk.o hat.o loopgen.o loopy.o \
 		no-icon.o malloc.o midend.o misc.o penrose.o printing.o \
 		ps.o random.o tree234.o version.o
-	$(CC) -o $@ drawing.o dsf.o grid.o gtk.o loopgen.o loopy.o \
+	$(CC) -o $@ drawing.o dsf.o grid.o gtk.o hat.o loopgen.o loopy.o \
 		no-icon.o malloc.o midend.o misc.o penrose.o printing.o \
 		ps.o random.o tree234.o version.o  $(XLFLAGS) $(XLIBS)
 
@@ -470,6 +470,8 @@ findloop.o: ../utils/findloop.c ../include/puzzles.h
 grid.o: ../utils/grid.c ../include/puzzles.h ../include/tree234.h ../include/grid.h ../include/penrose.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 gtk.o: ./gtk.c ../include/puzzles.h
+	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
+hat.o: ../utils/hat.c ../include/puzzles.h ../include/hat.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 latin.o: ../utils/latin.c ../include/puzzles.h ../include/tree234.h ../include/matching.h ../include/latin.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@

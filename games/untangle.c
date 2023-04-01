@@ -409,7 +409,9 @@ static void addedge(tree234 *edges, int a, int b)
     e->a = min(a, b);
     e->b = max(a, b);
 
-    add234(edges, e);
+    if (add234(edges, e) != e)
+        /* Duplicate edge. */
+        sfree(e);
 }
 
 static bool isedge(tree234 *edges, int a, int b)
@@ -431,8 +433,8 @@ typedef struct vertex {
 
 static int vertcmpC(const void *av, const void *bv)
 {
-    const vertex *a = (vertex *)av;
-    const vertex *b = (vertex *)bv;
+    const vertex *a = (const vertex *)av;
+    const vertex *b = (const vertex *)bv;
 
     if (a->param < b->param)
     return -1;
@@ -728,22 +730,24 @@ static const char *validate_desc(const game_params *params, const char *desc)
     int a, b;
 
     while (*desc) {
-    a = atoi(desc);
-    if (a < 0 || a >= params->n)
-        return "Number out of range in game description";
-    while (*desc && isdigit((unsigned char)*desc)) desc++;
-    if (*desc != '-')
-        return "Expected '-' after number in game description";
-    desc++;                   /* eat dash */
-    b = atoi(desc);
-    if (b < 0 || b >= params->n)
-        return "Number out of range in game description";
-    while (*desc && isdigit((unsigned char)*desc)) desc++;
-    if (*desc) {
-        if (*desc != ',')
-        return "Expected ',' after number in game description";
-        desc++;               /* eat comma */
-    }
+        a = atoi(desc);
+        if (a < 0 || a >= params->n)
+            return "Number out of range in game description";
+        while (*desc && isdigit((unsigned char)*desc)) desc++;
+        if (*desc != '-')
+            return "Expected '-' after number in game description";
+        desc++;                   /* eat dash */
+        b = atoi(desc);
+        if (b < 0 || b >= params->n)
+            return "Number out of range in game description";
+        while (*desc && isdigit((unsigned char)*desc)) desc++;
+        if (*desc) {
+            if (*desc != ',')
+            return "Expected ',' after number in game description";
+            desc++;               /* eat comma */
+        }
+        if (a == b)
+          return "Node linked to itself in game description";
     }
 
     return NULL;

@@ -2,12 +2,17 @@
 
 ## 0.7.12 nightly
 
+### Added
+* *Loopy*: New grid type *hat*
+
 ### Changed
 * *Untangle*: Update vertex screen draw only at end of screen drag
+* *Galaxies*: Sync with upstream (solver for unreasonable puzzles now tries to maximize 'wiggliness')
 
 ### Fixed
 * *Solo*: Typo in How to Play
 * *Guess*: Bug that made it possible to choose invalid color guesses
+* Various puzzles: Memory leaks
 
 ## 0.7.11 - 2022/11/13
 
