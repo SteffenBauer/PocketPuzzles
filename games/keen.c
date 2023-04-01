@@ -1307,12 +1307,14 @@ static const char *validate_desc(const game_params *params, const char *desc)
     dsf = snew_dsf(a);
     ret = parse_block_structure(&p, w, dsf);
     if (ret) {
-    sfree(dsf);
-    return ret;
+        sfree(dsf);
+        return ret;
     }
 
-    if (*p != ',')
-    return "Expected ',' after block structure description";
+    if (*p != ',') {
+        sfree(dsf);
+        return "Expected ',' after block structure description";
+    }
     p++;
 
     /*
@@ -1320,23 +1322,28 @@ static const char *validate_desc(const game_params *params, const char *desc)
      * and DIV clues don't apply to blocks of the wrong size.
      */
     for (i = 0; i < a; i++) {
-    if (dsf_canonify(dsf, i) == i) {
-        if (*p == 'a' || *p == 'm') {
-        /* these clues need no validation */
-        } else if (*p == 'd' || *p == 's') {
-        if (dsf_size(dsf, i) != 2)
-            return "Subtraction and division blocks must have area 2";
-        } else if (!*p) {
-        return "Too few clues for block structure";
-        } else {
-        return "Unrecognised clue type";
+        if (dsf_canonify(dsf, i) == i) {
+            if (*p == 'a' || *p == 'm') {
+                /* these clues need no validation */
+            } else if (*p == 'd' || *p == 's') {
+                if (dsf_size(dsf, i) != 2) {
+                    sfree(dsf);
+                    return "Subtraction and division blocks must have area 2";
+                }
+            } else if (!*p) {
+                sfree(dsf);
+                return "Too few clues for block structure";
+            } else {
+                sfree(dsf);
+                return "Unrecognised clue type";
+            }
+            p++;
+            while (*p && isdigit((unsigned char)*p)) p++;
         }
-        p++;
-        while (*p && isdigit((unsigned char)*p)) p++;
     }
-    }
+    sfree(dsf);
     if (*p)
-    return "Too many clues for block structure";
+        return "Too many clues for block structure";
 
     return NULL;
 }

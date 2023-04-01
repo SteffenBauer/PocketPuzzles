@@ -109,11 +109,15 @@ typedef struct grid {
   A(GREATGREATDODECAGONAL,greatgreatdodecagonal) \
   A(COMPASSDODECAGONAL,compassdodecagonal) \
   A(PENROSE_P2,penrose_p2_kite) \
-  A(PENROSE_P3,penrose_p3_thick)
+  A(PENROSE_P3,penrose_p3_thick) \
+  A(HATS,hats) \
+  /* end of list */
 
 #define ENUM(upper,lower) GRID_ ## upper,
 typedef enum grid_type { GRIDGEN_LIST(ENUM) GRID_TYPE_MAX } grid_type;
 #undef ENUM
+
+const char *grid_validate_params(grid_type type, int width, int height);
 
 /* Free directly after use if non-NULL. Will never contain an underscore
  * (so clients can safely use that as a separator). */
