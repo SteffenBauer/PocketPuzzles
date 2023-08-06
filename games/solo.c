@@ -20,7 +20,7 @@
  *     + while I'm revamping this area, filling in the _last_
  *       number in a nearly-full row or column should certainly be
  *       permitted even at the lowest difficulty level.
- *     + also Owen noticed that `Basic' grids requiring numeric
+ *     + also Alex noticed that `Basic' grids requiring numeric
  *       elimination are actually very hard, so I wonder if a
  *       difficulty gradation between that and positional-
  *       elimination-only might be in order
@@ -1916,7 +1916,8 @@ static void solver(int cr, struct block_structure *blocks,
     for (y = 0; y < cr; y++)
     for (b = 0; b < cr; b++)
     for (n = 1; n <= cr; n++) {
-                if (usage->row[y*cr+n-1] || usage->blk[b*cr+n-1])
+                if (usage->row[y*cr+n-1] ||
+                    usage->blk[b*cr+n-1])
                     continue;
                 for (i = 0; i < cr; i++) {
                     scratch->indexlist[i] = cubepos(i, y, n);
@@ -2244,6 +2245,7 @@ static void solver(int cr, struct block_structure *blocks,
     sfree(usage->row);
     sfree(usage->col);
     sfree(usage->blk);
+    sfree(usage->diag);
     if (usage->kblocks) {
     free_block_structure(usage->kblocks);
     free_block_structure(usage->extra_cages);
@@ -2575,6 +2577,7 @@ static bool gridgen(int cr, struct block_structure *blocks,
     sfree(usage->blk);
     sfree(usage->col);
     sfree(usage->row);
+    sfree(usage->diag);
     sfree(usage);
 
     return ret;
@@ -2706,7 +2709,7 @@ static bool check_valid(int cr, struct block_structure *blocks,
      * Check that each diagonal contains precisely one of everything.
      */
     if (xtype) {
-        memset(used, 0, cr * sizeof(bool));
+        memset(used, 0, (unsigned int)cr * sizeof(bool));
     for (i = 0; i < cr; i++)
         if (grid[diag0(i)] > 0 && grid[diag0(i)] <= cr)
             used[grid[diag0(i)]-1] = true;
@@ -2716,7 +2719,7 @@ static bool check_valid(int cr, struct block_structure *blocks,
             return false;
         }
 
-    memset(used, 0, cr * sizeof(bool));
+    memset(used, 0, (unsigned int)cr * sizeof(bool));
     for (i = 0; i < cr; i++)
         if (grid[diag1(i)] > 0 && grid[diag1(i)] <= cr)
         used[grid[diag1(i)]-1] = true;
@@ -2828,7 +2831,7 @@ static char *encode_solve_move(int cr, digit *grid)
     return ret;
 }
 
-static void dsf_to_blocks(int *dsf, struct block_structure *blocks,
+static void dsf_to_blocks(DSF *dsf, struct block_structure *blocks,
               int min_expected, int max_expected)
 {
     int cr = blocks->c * blocks->r, area = cr * cr;
@@ -3263,10 +3266,11 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      * the puzzle size: all 2x2 puzzles appear to be Trivial
      * (DIFF_BLOCK) so we cannot hold out for even a Basic
      * (DIFF_SIMPLE) one.
+     * Jigsaw puzzles of size 2 and 3 are also all trivial.
      */
     dlev.maxdiff = params->diff;
     dlev.maxkdiff = params->kdiff;
-    if (c == 2 && r == 2)
+    if ((c == 2 && r == 2) || (r == 1 && c < 4))
         dlev.maxdiff = DIFF_BLOCK;
 
     grid = snewn(area, digit);
@@ -3289,11 +3293,11 @@ static char *new_game_desc(const game_params *params, random_state *rs,
          * constructing the block structure.
          */
         if (r == 1) {               /* jigsaw mode */
-            int *dsf = divvy_rectangle(cr, cr, cr, rs);
+            DSF *dsf = divvy_rectangle(cr, cr, cr, rs);
 
-            dsf_to_blocks (dsf, blocks, cr, cr);
+            dsf_to_blocks(dsf, blocks, cr, cr);
 
-            sfree(dsf);
+            dsf_free(dsf);
         } else {               /* basic Sudoku mode */
             for (y = 0; y < cr; y++)
             for (x = 0; x < cr; x++)
@@ -3513,14 +3517,14 @@ static const char *spec_to_grid(const char *desc, digit *grid, int area)
  * end of the block spec, and return an error string or NULL if everything
  * is OK. The DSF is stored in *PDSF.
  */
-static const char *spec_to_dsf(const char **pdesc, int **pdsf,
+static const char *spec_to_dsf(const char **pdesc, DSF **pdsf,
                                int cr, int area)
 {
     const char *desc = *pdesc;
     int pos = 0;
-    int *dsf;
+    DSF *dsf;
 
-    *pdsf = dsf = snew_dsf(area);
+    *pdsf = dsf = dsf_new(area);
 
     while (*desc && *desc != ',') {
     int c;
@@ -3531,7 +3535,7 @@ static const char *spec_to_dsf(const char **pdesc, int **pdsf,
     else if (*desc >= 'a' && *desc <= 'z')
         c = *desc - 'a' + 1;
     else {
-        sfree(dsf);
+        dsf_free(dsf);
         return "Invalid character in game description";
     }
     desc++;
@@ -3546,9 +3550,9 @@ static const char *spec_to_dsf(const char **pdesc, int **pdsf,
          * side of it.
          */
         if (pos >= 2*cr*(cr-1)) {
-                sfree(dsf);
-                return "Too much data in block structure specification";
-            }
+            dsf_free(dsf);
+            return "Too much data in block structure specification";
+        }
 
         if (pos < cr*(cr-1)) {
         int y = pos/(cr-1);
@@ -3576,8 +3580,8 @@ static const char *spec_to_dsf(const char **pdesc, int **pdsf,
      * edge at the end.
      */
     if (pos != 2*cr*(cr-1)+1) {
-    sfree(dsf);
-    return "Not enough data in block structure specification";
+        dsf_free(dsf);
+        return "Not enough data in block structure specification";
     }
 
     return NULL;
@@ -3618,11 +3622,11 @@ static const char *validate_block_desc(const char **pdesc, int cr, int area,
                                        int min_nr_squares, int max_nr_squares)
 {
     const char *err;
-    int *dsf;
+    DSF *dsf;
 
     err = spec_to_dsf(pdesc, &dsf, cr, area);
     if (err) {
-    return err;
+        return err;
     }
 
     if (min_nr_squares == max_nr_squares) {
@@ -3647,7 +3651,7 @@ static const char *validate_block_desc(const char **pdesc, int cr, int area,
         if (canons[c] == j) {
             counts[c]++;
             if (counts[c] > max_nr_squares) {
-            sfree(dsf);
+            dsf_free(dsf);
             sfree(canons);
             sfree(counts);
             return "A jigsaw block is too big";
@@ -3657,7 +3661,7 @@ static const char *validate_block_desc(const char **pdesc, int cr, int area,
 
         if (c == ncanons) {
         if (ncanons >= max_nr_blocks) {
-            sfree(dsf);
+            dsf_free(dsf);
             sfree(canons);
             sfree(counts);
             return "Too many distinct jigsaw blocks";
@@ -3669,14 +3673,14 @@ static const char *validate_block_desc(const char **pdesc, int cr, int area,
     }
 
     if (ncanons < min_nr_blocks) {
-        sfree(dsf);
+        dsf_free(dsf);
         sfree(canons);
         sfree(counts);
         return "Not enough distinct jigsaw blocks";
     }
     for (c = 0; c < ncanons; c++) {
         if (counts[c] < min_nr_squares) {
-        sfree(dsf);
+        dsf_free(dsf);
         sfree(canons);
         sfree(counts);
         return "A jigsaw block is too small";
@@ -3686,7 +3690,7 @@ static const char *validate_block_desc(const char **pdesc, int cr, int area,
     sfree(counts);
     }
 
-    sfree(dsf);
+    dsf_free(dsf);
     return NULL;
 }
 
@@ -3774,13 +3778,13 @@ static game_state *new_game(midend *me, const game_params *params,
 
     if (r == 1) {
         const char *err;
-        int *dsf;
+        DSF *dsf;
         assert(*desc == ',');
         desc++;
         err = spec_to_dsf(&desc, &dsf, cr, area);
         assert(err == NULL);
         dsf_to_blocks(dsf, state->blocks, cr, cr);
-        sfree(dsf);
+        dsf_free(dsf);
     } else {
         int x, y;
 
@@ -3792,13 +3796,13 @@ static game_state *new_game(midend *me, const game_params *params,
 
     if (params->killer) {
         const char *err;
-        int *dsf;
+        DSF *dsf;
         assert(*desc == ',');
         desc++;
         err = spec_to_dsf(&desc, &dsf, cr, area);
         assert(err == NULL);
         dsf_to_blocks(dsf, state->kblocks, cr, area);
-        sfree(dsf);
+        dsf_free(dsf);
         make_blocks_from_whichblock(state->kblocks);
 
         assert(*desc == ',');
@@ -4590,7 +4594,7 @@ static void draw_number(drawing *dr, game_drawstate *ds,
                 fw = (pr - pl) / (float)pw;
                 fh = (pb - pt) / (float)ph;
                 fs = min(fw, fh);
-                if (fs > bestsize) {
+                if (fs >= bestsize) {
                     bestsize = fs;
                     pbest = pw;
                 }
@@ -4658,7 +4662,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int cr = state->cr;
     int x, y;
 
-    char buf[48];
+    char buf[64];
     /* Draw status bar */
     sprintf(buf, "%s",
             state->manual && !state->fixed ? "Enter numbers; click + or - button when finished" :

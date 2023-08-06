@@ -151,15 +151,15 @@ static void decode_params(game_params *params, char const *string)
         params->h = params->w;
     }
     if (*p == 'n') {
-    p++;
-    params->n = atoi(p);
-    while (*p && (*p == '.' || isdigit((unsigned char)*p))) p++;
+        p++;
+        params->n = atoi(p);
+        while (*p && (*p == '.' || isdigit((unsigned char)*p))) p++;
     } else {
-    params->n = params->w * params->h / 10;
+        params->n = params->w * params->h / 10;
     }
 
     while (*p) {
-    if (*p == 'a') {
+        if (*p == 'a') {
             p++;
         params->unique = false;
     } else
@@ -1869,72 +1869,7 @@ static char *describe_layout(bool *grid, int area, int x, int y,
 static bool *new_mine_layout(int w, int h, int n, int x, int y, bool unique,
                  random_state *rs, char **game_desc)
 {
-    bool *grid;
-
-#ifdef TEST_OBFUSCATION
-    static int tested_obfuscation = false;
-    if (!tested_obfuscation) {
-    /*
-     * A few simple test vectors for the obfuscator.
-     * 
-     * First test: the 28-bit stream 1234567. This divides up
-     * into 1234 and 567[0]. The SHA of 56 70 30 (appending
-     * "0") is 15ce8ab946640340bbb99f3f48fd2c45d1a31d30. Thus,
-     * we XOR the 16-bit string 15CE into the input 1234 to get
-     * 07FA. Next, we SHA that with "0": the SHA of 07 FA 30 is
-     * 3370135c5e3da4fed937adc004a79533962b6391. So we XOR the
-     * 12-bit string 337 into the input 567 to get 650. Thus
-     * our output is 07FA650.
-     */
-    {
-        unsigned char bmp1[] = "\x12\x34\x56\x70";
-        obfuscate_bitmap(bmp1, 28, false);
-        printf("test 1 encode: %s\n",
-           memcmp(bmp1, "\x07\xfa\x65\x00", 4) ? "failed" : "passed");
-        obfuscate_bitmap(bmp1, 28, true);
-        printf("test 1 decode: %s\n",
-           memcmp(bmp1, "\x12\x34\x56\x70", 4) ? "failed" : "passed");
-    }
-    /*
-     * Second test: a long string to make sure we switch from
-     * one SHA to the next correctly. My input string this time
-     * is simply fifty bytes of zeroes.
-     */
-    {
-        unsigned char bmp2[50];
-        unsigned char bmp2a[50];
-        memset(bmp2, 0, 50);
-        memset(bmp2a, 0, 50);
-        obfuscate_bitmap(bmp2, 50 * 8, false);
-        /*
-         * SHA of twenty-five zero bytes plus "0" is
-         * b202c07b990c01f6ff2d544707f60e506019b671. SHA of
-         * twenty-five zero bytes plus "1" is
-         * fcb1d8b5a2f6b592fe6780b36aa9d65dd7aa6db9. Thus our
-         * first half becomes
-         * b202c07b990c01f6ff2d544707f60e506019b671fcb1d8b5a2.
-         * 
-         * SHA of that lot plus "0" is
-         * 10b0af913db85d37ca27f52a9f78bba3a80030db. SHA of the
-         * same string plus "1" is
-         * 3d01d8df78e76d382b8106f480135a1bc751d725. So the
-         * second half becomes
-         * 10b0af913db85d37ca27f52a9f78bba3a80030db3d01d8df78.
-         */
-        printf("test 2 encode: %s\n",
-           memcmp(bmp2, "\xb2\x02\xc0\x7b\x99\x0c\x01\xf6\xff\x2d\x54"
-              "\x47\x07\xf6\x0e\x50\x60\x19\xb6\x71\xfc\xb1\xd8"
-              "\xb5\xa2\x10\xb0\xaf\x91\x3d\xb8\x5d\x37\xca\x27"
-              "\xf5\x2a\x9f\x78\xbb\xa3\xa8\x00\x30\xdb\x3d\x01"
-              "\xd8\xdf\x78", 50) ? "failed" : "passed");
-        obfuscate_bitmap(bmp2, 50 * 8, true);
-        printf("test 2 decode: %s\n",
-           memcmp(bmp2, bmp2a, 50) ? "failed" : "passed");
-    }
-    }
-#endif
-
-    grid = minegen(w, h, n, x, y, unique, rs);
+    bool *grid = minegen(w, h, n, x, y, unique, rs);
 
     if (game_desc)
         *game_desc = describe_layout(grid, w * h, x, y, true);
@@ -1990,6 +1925,8 @@ static const char *validate_desc(const game_params *params, const char *desc)
         desc++;
     if (!*desc || !isdigit((unsigned char)*desc))
         return "No initial mine count in game description";
+    if (atoi(desc) > wh - 9)
+        return "Too many mines for grid size";
     while (*desc && isdigit((unsigned char)*desc))
         desc++;               /* skip over mine count */
     if (*desc != ',')
@@ -2005,21 +1942,21 @@ static const char *validate_desc(const game_params *params, const char *desc)
     if (*desc && isdigit((unsigned char)*desc)) {
         x = atoi(desc);
         if (x < 0 || x >= params->w)
-        return "Initial x-coordinate was out of range";
+            return "Initial x-coordinate was out of range";
         while (*desc && isdigit((unsigned char)*desc))
-        desc++;               /* skip over x coordinate */
+            desc++;               /* skip over x coordinate */
         if (*desc != ',')
-        return "No ',' after initial x-coordinate in game description";
+            return "No ',' after initial x-coordinate in game description";
         desc++;               /* eat comma */
         if (!*desc || !isdigit((unsigned char)*desc))
-        return "No initial y-coordinate in game description";
+            return "No initial y-coordinate in game description";
         y = atoi(desc);
         if (y < 0 || y >= params->h)
-        return "Initial y-coordinate was out of range";
+            return "Initial y-coordinate was out of range";
         while (*desc && isdigit((unsigned char)*desc))
-        desc++;               /* skip over y coordinate */
+            desc++;               /* skip over y coordinate */
         if (*desc != ',')
-        return "No ',' after initial y-coordinate in game description";
+            return "No ',' after initial y-coordinate in game description";
         desc++;               /* eat comma */
     }
     /* eat `m' for `masked' or `u' for `unmasked', if present */
@@ -2039,42 +1976,42 @@ static int open_square(game_state *state, int x, int y)
     int xx, yy, nmines, ncovered;
 
     if (!state->layout->mines) {
-    /*
-     * We have a preliminary game in which the mine layout
-     * hasn't been generated yet. Generate it based on the
-     * initial click location.
-     */
-    char *desc, *privdesc;
-    state->layout->mines = new_mine_layout(w, h, state->layout->n,
-                           x, y, state->layout->unique,
-                           state->layout->rs,
-                           &desc);
-    /*
-     * Find the trailing substring of the game description
-     * corresponding to just the mine layout; we will use this
-     * as our second `private' game ID for serialisation.
-     */
-    privdesc = desc;
-    while (*privdesc && isdigit((unsigned char)*privdesc)) privdesc++;
-    if (*privdesc == ',') privdesc++;
-    while (*privdesc && isdigit((unsigned char)*privdesc)) privdesc++;
-    if (*privdesc == ',') privdesc++;
-    assert(*privdesc == 'm');
-    midend_supersede_game_desc(state->layout->me, desc, privdesc);
-    sfree(desc);
-    random_free(state->layout->rs);
-    state->layout->rs = NULL;
+        /*
+         * We have a preliminary game in which the mine layout
+         * hasn't been generated yet. Generate it based on the
+         * initial click location.
+         */
+        char *desc, *privdesc;
+        state->layout->mines = new_mine_layout(w, h, state->layout->n,
+                               x, y, state->layout->unique,
+                               state->layout->rs,
+                               &desc);
+        /*
+         * Find the trailing substring of the game description
+         * corresponding to just the mine layout; we will use this
+         * as our second `private' game ID for serialisation.
+         */
+        privdesc = desc;
+        while (*privdesc && isdigit((unsigned char)*privdesc)) privdesc++;
+        if (*privdesc == ',') privdesc++;
+        while (*privdesc && isdigit((unsigned char)*privdesc)) privdesc++;
+        if (*privdesc == ',') privdesc++;
+        assert(*privdesc == 'm');
+        midend_supersede_game_desc(state->layout->me, desc, privdesc);
+        sfree(desc);
+        random_free(state->layout->rs);
+        state->layout->rs = NULL;
     }
 
     if (state->layout->mines[y*w+x]) {
-    /*
-     * The player has landed on a mine. Bad luck. Expose the
-     * mine that killed them, but not the rest (in case they
-     * want to Undo and carry on playing).
-     */
-    state->dead = true;
-    state->grid[y*w+x] = 65;
-    return -1;
+        /*
+         * The player has landed on a mine. Bad luck. Expose the
+         * mine that killed them, but not the rest (in case they
+         * want to Undo and carry on playing).
+         */
+        state->dead = true;
+        state->grid[y*w+x] = 65;
+        return -1;
     }
 
     /*
@@ -2092,40 +2029,40 @@ static int open_square(game_state *state, int x, int y)
      * using repeated N^2 scans of the grid.
      */
     while (1) {
-    bool done_something = false;
+        bool done_something = false;
 
-    for (yy = 0; yy < h; yy++)
-        for (xx = 0; xx < w; xx++)
-        if (state->grid[yy*w+xx] == -10) {
-            int dx, dy, v;
+        for (yy = 0; yy < h; yy++)
+            for (xx = 0; xx < w; xx++)
+                if (state->grid[yy*w+xx] == -10) {
+                    int dx, dy, v;
 
-            assert(!state->layout->mines[yy*w+xx]);
+                    assert(!state->layout->mines[yy*w+xx]);
 
-            v = 0;
+                    v = 0;
 
-            for (dx = -1; dx <= +1; dx++)
-            for (dy = -1; dy <= +1; dy++)
-                if (xx+dx >= 0 && xx+dx < state->w &&
-                yy+dy >= 0 && yy+dy < state->h &&
-                state->layout->mines[(yy+dy)*w+(xx+dx)])
-                v++;
+                    for (dx = -1; dx <= +1; dx++)
+                        for (dy = -1; dy <= +1; dy++)
+                            if (xx+dx >= 0 && xx+dx < state->w &&
+                            yy+dy >= 0 && yy+dy < state->h &&
+                            state->layout->mines[(yy+dy)*w+(xx+dx)])
+                            v++;
 
-            state->grid[yy*w+xx] = v;
+                    state->grid[yy*w+xx] = v;
 
-            if (v == 0) {
-            for (dx = -1; dx <= +1; dx++)
-                for (dy = -1; dy <= +1; dy++)
-                if (xx+dx >= 0 && xx+dx < state->w &&
-                    yy+dy >= 0 && yy+dy < state->h &&
-                    state->grid[(yy+dy)*w+(xx+dx)] == -2)
-                    state->grid[(yy+dy)*w+(xx+dx)] = -10;
-            }
+                    if (v == 0) {
+                        for (dx = -1; dx <= +1; dx++)
+                            for (dy = -1; dy <= +1; dy++)
+                                if (xx+dx >= 0 && xx+dx < state->w &&
+                                    yy+dy >= 0 && yy+dy < state->h &&
+                                    state->grid[(yy+dy)*w+(xx+dx)] == -2)
+                                    state->grid[(yy+dy)*w+(xx+dx)] = -10;
+                    }
 
-            done_something = true;
-        }
+                    done_something = true;
+                }
 
-    if (!done_something)
-        break;
+        if (!done_something)
+            break;
     }
 
     /*
@@ -2135,20 +2072,20 @@ static int open_square(game_state *state, int x, int y)
      */
     nmines = ncovered = 0;
     for (yy = 0; yy < h; yy++)
-    for (xx = 0; xx < w; xx++) {
-        if (state->grid[yy*w+xx] < 0)
-        ncovered++;
-        if (state->layout->mines[yy*w+xx])
-        nmines++;
-    }
+        for (xx = 0; xx < w; xx++) {
+            if (state->grid[yy*w+xx] < 0)
+                ncovered++;
+            if (state->layout->mines[yy*w+xx])
+                nmines++;
+        }
     assert(ncovered >= nmines);
     if (ncovered == nmines) {
-    for (yy = 0; yy < h; yy++)
-        for (xx = 0; xx < w; xx++) {
-        if (state->grid[yy*w+xx] < 0)
-            state->grid[yy*w+xx] = -1;
-    }
-    state->won = true;
+        for (yy = 0; yy < h; yy++)
+            for (xx = 0; xx < w; xx++) {
+                if (state->grid[yy*w+xx] < 0)
+                    state->grid[yy*w+xx] = -1;
+            }
+        state->won = true;
     }
 
     return 0;
@@ -2178,35 +2115,36 @@ static game_state *new_game(midend *me, const game_params *params,
     memset(state->grid, -2, wh);
 
     if (*desc == 'r') {
-    desc++;
-    state->layout->n = atoi(desc);
-    while (*desc && isdigit((unsigned char)*desc))
-        desc++;               /* skip over mine count */
-    if (*desc) desc++;           /* eat comma */
-    if (*desc == 'a')
-        state->layout->unique = false;
-    else
-        state->layout->unique = true;
-    desc++;
-    if (*desc) desc++;           /* eat comma */
+        desc++;
+        state->layout->n = atoi(desc);
+        while (*desc && isdigit((unsigned char)*desc))
+            desc++;               /* skip over mine count */
+        if (*desc) desc++;           /* eat comma */
+        if (*desc == 'a')
+            state->layout->unique = false;
+        else
+            state->layout->unique = true;
+        desc++;
+        if (*desc) desc++;           /* eat comma */
 
-    state->layout->mines = NULL;
-    state->layout->rs = random_state_decode(desc);
-    state->layout->me = me;
+        state->layout->mines = NULL;
+        state->layout->rs = random_state_decode(desc);
+        state->layout->me = me;
 
     } else {
         state->layout->rs = NULL;
         state->layout->me = NULL;
         state->layout->mines = snewn(wh, bool);
+        memset(state->layout->mines, 0, wh * sizeof(bool));
 
         if (*desc && isdigit((unsigned char)*desc)) {
             x = atoi(desc);
             while (*desc && isdigit((unsigned char)*desc))
-            desc++;               /* skip over x coordinate */
+                desc++;               /* skip over x coordinate */
             if (*desc) desc++;           /* eat comma */
             y = atoi(desc);
             while (*desc && isdigit((unsigned char)*desc))
-            desc++;               /* skip over y coordinate */
+                desc++;               /* skip over y coordinate */
             if (*desc) desc++;           /* eat comma */
         } else {
             x = y = -1;
@@ -2217,7 +2155,7 @@ static game_state *new_game(midend *me, const game_params *params,
             desc++;
         } else {
             if (*desc == 'u')
-            desc++;
+                desc++;
             /*
              * We permit game IDs to be entered by hand without the
              * masking transformation.
@@ -2247,7 +2185,6 @@ static game_state *new_game(midend *me, const game_params *params,
         if (masked)
             obfuscate_bitmap(bmp, wh, true);
 
-        memset(state->layout->mines, 0, wh * sizeof(bool));
         for (i = 0; i < wh; i++) {
             if (bmp[i / 8] & (0x80 >> (i % 8)))
                 state->layout->mines[i] = true;

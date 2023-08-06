@@ -2,16 +2,28 @@
  * Code to generate patches of the aperiodic 'hat' tiling discovered
  * in 2023.
  *
- * auxiliary/doc/hats.html contains an explanation of the basic ideas
- * of this algorithm, which can't really be put in a source file
- * because it just has too many complicated diagrams. So read that
- * first, because the comments in here will refer to it.
+ * This uses the 'combinatorial coordinates' system documented in my
+ * public article
+ * https://www.chiark.greenend.org.uk/~sgtatham/quasiblog/aperiodic-tilings/
+ *
+ * The internal document auxiliary/doc/hats.html also contains an
+ * explanation of the basic ideas of this algorithm (less polished but
+ * containing more detail).
+ *
+ * Neither of those documents can really be put in a source file,
+ * because they just have too many complicated diagrams. So read at
+ * least one of those first; the comments in here will refer to it.
  *
  * Discoverers' website: https://cs.uwaterloo.ca/~csk/hat/
  * Preprint of paper:    https://arxiv.org/abs/2303.10798
  */
 
-#include <math.h>
+#include <assert.h>
+#ifdef NO_TGMATH_H
+#  include <math.h>
+#else
+#  include <tgmath.h>
+#endif
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,130 +31,9 @@
 
 #include "puzzles.h"
 #include "hat.h"
+#include "hat-internal.h"
 
-/*
- * Coordinate system:
- *
- * The output of this code lives on the tiling known to grid.c as
- * 'Kites', which can be viewed as a tiling of hexagons each of which
- * is subdivided into six kites sharing their pointy vertex, or
- * (equivalently) a tiling of equilateral triangles each subdivided
- * into three kits sharing their blunt vertex.
- *
- * We express coordinates in this system relative to the basis (1, r)
- * where r = (1 + sqrt(3)i) / 2 is a primitive 6th root of unity. This
- * gives us a system in which two integer coordinates can address any
- * grid point, provided we scale up so that the side length of the
- * equilateral triangles in the tiling is 6.
- */
-
-typedef struct Point {
-    int x, y;                          /* represents x + yr */
-} Point;
-
-static inline Point pointscale(int scale, Point a)
-{
-    Point r = { scale * a.x, scale * a.y };
-    return r;
-}
-
-static inline Point pointadd(Point a, Point b)
-{
-    Point r = { a.x + b.x, a.y + b.y };
-    return r;
-}
-
-/*
- * We identify a single kite by the coordinates of its four vertices.
- * This allows us to construct the coordinates of an adjacent kite by
- * taking affine transformations of the original kite's vertices.
- *
- * This is a useful way to do it because it means that if you reflect
- * the kite (by swapping its left and right vertices) then these
- * transformations also perform in a reflected way. This will be
- * useful in the code below that outputs the coordinates of each hat,
- * because this way it can work by walking around its 8 kites using a
- * fixed set of steps, and if the hat is reflected, then we just
- * reflect the starting kite before doing that, and everything still
- * works.
- */
-
-typedef struct Kite {
-    Point centre, left, right, outer;
-} Kite;
-
-static inline Kite kite_left(Kite k)
-{
-    Kite r;
-    r.centre = k.centre;
-    r.right = k.left;
-    r.outer = pointadd(pointscale(2, k.left), pointscale(-1, k.outer));
-    r.left = pointadd(pointadd(k.centre, k.left), pointscale(-1, k.right));
-    return r;
-}
-
-static inline Kite kite_right(Kite k)
-{
-    Kite r;
-    r.centre = k.centre;
-    r.left = k.right;
-    r.outer = pointadd(pointscale(2, k.right), pointscale(-1, k.outer));
-    r.right = pointadd(pointadd(k.centre, k.right), pointscale(-1, k.left));
-    return r;
-}
-
-static inline Kite kite_forward_left(Kite k)
-{
-    Kite r;
-    r.outer = k.outer;
-    r.right = k.left;
-    r.centre = pointadd(pointscale(2, k.left), pointscale(-1, k.centre));
-    r.left = pointadd(pointadd(k.right, k.left), pointscale(-1, k.centre));
-    return r;
-}
-
-static inline Kite kite_forward_right(Kite k)
-{
-    Kite r;
-    r.outer = k.outer;
-    r.left = k.right;
-    r.centre = pointadd(pointscale(2, k.right), pointscale(-1, k.centre));
-    r.right = pointadd(pointadd(k.left, k.right), pointscale(-1, k.centre));
-    return r;
-}
-
-typedef enum KiteStep { KS_LEFT, KS_RIGHT, KS_F_LEFT, KS_F_RIGHT } KiteStep;
-
-static inline Kite kite_step(Kite k, KiteStep step)
-{
-    switch (step) {
-      case KS_LEFT: return kite_left(k);
-      case KS_RIGHT: return kite_right(k);
-      case KS_F_LEFT: return kite_forward_left(k);
-      default /* case KS_F_RIGHT */: return kite_forward_right(k);
-    }
-}
-
-/*
- * Function to enumerate the kites in a rectangular region, in a
- * serpentine-raster fashion so that every kite delivered shares an
- * edge with a recent previous one.
- */
-#define KE_NKEEP 3
-typedef struct KiteEnum {
-    /* Fields private to the enumerator */
-    int state;
-    int x, y, w, h;
-    unsigned curr_index;
-
-    /* Fields the client can legitimately read out */
-    Kite *curr;
-    Kite recent[KE_NKEEP];
-    unsigned last_index;
-    KiteStep last_step; /* step that got curr from recent[last_index] */
-} KiteEnum;
-
-static void first_kite(KiteEnum *s, int w, int h)
+void hat_kiteenum_first(KiteEnum *s, int w, int h)
 {
     Kite start = { {0,0}, {0, 3}, {3, 0}, {2, 2} };
     size_t i;
@@ -157,7 +48,8 @@ static void first_kite(KiteEnum *s, int w, int h)
     s->x = 0;
     s->y = 0;
 }
-static bool next_kite(KiteEnum *s)
+
+bool hat_kiteenum_next(KiteEnum *s)
 {
     unsigned lastbut1 = s->last_index;
     s->last_index = s->curr_index;
@@ -302,38 +194,6 @@ static bool next_kite(KiteEnum *s)
 
     *s->curr = kite_step(s->recent[s->last_index], s->last_step);
     return true;
-}
-
-/*
- * Assorted useful definitions.
- */
-typedef enum TileType { TT_H, TT_T, TT_P, TT_F, TT_KITE, TT_HAT } TileType;
-static const char tilechars[] = "HTPF";
-
-#define HAT_KITES 8     /* number of kites in a hat */
-#define MT_MAXEXPAND 13 /* largest number of metatiles in any expansion */
-
-/*
- * Definitions for the autogenerated hat-tables.h header file that
- * defines all the lookup tables.
- */
-typedef struct KitemapEntry {
-    int kite, hat, meta;               /* all -1 if impossible */
-} KitemapEntry;
-
-typedef struct MetamapEntry {
-    int meta, meta2;
-} MetamapEntry;
-
-static inline size_t kitemap_index(KiteStep step, unsigned kite,
-                                   unsigned hat, unsigned meta)
-{
-    return step + 4 * (kite + 8 * (hat + 4 * meta));
-}
-
-static inline size_t metamap_index(unsigned meta, unsigned meta2)
-{
-    return meta2 * MT_MAXEXPAND + meta;
 }
 
 /*
@@ -523,35 +383,7 @@ static const MetatilePossibleParent starting_hats[] = {
 #undef PROB_P
 #undef PROB_F
 
-/*
- * Coordinate system for tracking kites within a randomly selected
- * part of the recursively expanded hat tiling.
- *
- * HatCoords will store an array of HatCoord, in little-endian
- * arrangement. So hc->c[0] will always have type TT_KITE and index a
- * single kite within a hat; hc->c[1] will have type TT_HAT and index
- * a hat within a first-order metatile; hc->c[2] will be the smallest
- * metatile containing this hat, and hc->c[3, 4, 5, ...] will be
- * higher-order metatiles as needed.
- *
- * The last coordinate stored, hc->c[hc->nc-1], will have a tile type
- * but no index (represented by index==-1). This means "we haven't
- * decided yet what this level of metatile needs to be". If we need to
- * refer to this level during the step_coords algorithm, we make it up
- * at random, based on a table of what metatiles each type can
- * possibly be part of, at what index.
- */
-typedef struct HatCoord {
-    int index; /* index within that tile, or -1 if not yet known */
-    TileType type;  /* type of this tile */
-} HatCoord;
-
-typedef struct HatCoords {
-    HatCoord *c;
-    size_t nc, csize;
-} HatCoords;
-
-static HatCoords *hc_new(void)
+HatCoords *hat_coords_new(void)
 {
     HatCoords *hc = snew(HatCoords);
     hc->nc = hc->csize = 0;
@@ -559,7 +391,7 @@ static HatCoords *hc_new(void)
     return hc;
 }
 
-static void hc_free(HatCoords *hc)
+void hat_coords_free(HatCoords *hc)
 {
     if (hc) {
         sfree(hc->c);
@@ -567,7 +399,7 @@ static void hc_free(HatCoords *hc)
     }
 }
 
-static void hc_make_space(HatCoords *hc, size_t size)
+void hat_coords_make_space(HatCoords *hc, size_t size)
 {
     if (hc->csize < size) {
         hc->csize = hc->csize * 5 / 4 + 16;
@@ -577,10 +409,10 @@ static void hc_make_space(HatCoords *hc, size_t size)
     }
 }
 
-static HatCoords *hc_copy(HatCoords *hc_in)
+HatCoords *hat_coords_copy(HatCoords *hc_in)
 {
-    HatCoords *hc_out = hc_new();
-    hc_make_space(hc_out, hc_in->nc);
+    HatCoords *hc_out = hat_coords_new();
+    hat_coords_make_space(hc_out, hc_in->nc);
     memcpy(hc_out->c, hc_in->c, hc_in->nc * sizeof(*hc_out->c));
     hc_out->nc = hc_in->nc;
     return hc_out;
@@ -610,45 +442,18 @@ static const MetatilePossibleParent *choose_mpp(
         value -= parents[i].probability;
     }
 
+    assert(i == nparents - 1);
+    assert(value < parents[i].probability);
     return &parents[i];
 }
-
-/*
- * HatCoordContext is the shared context of a whole run of the
- * algorithm. Its 'prototype' HatCoords object represents the
- * coordinates of the starting kite, and is extended as necessary; any
- * other HatCoord that needs extending will copy the higher-order
- * values from ctx->prototype as needed, so that once each choice has
- * been made, it remains consistent.
- *
- * When we're inventing a random piece of tiling in the first place,
- * we append to ctx->prototype by choosing a random (but legal)
- * higher-level metatile for the current topmost one to turn out to be
- * part of. When we're replaying a generation whose parameters are
- * already stored, we don't have a random_state, and we make fixed
- * decisions if not enough coordinates were provided.
- *
- * (Of course another approach would be to reject grid descriptions
- * that didn't define enough coordinates! But that would involve a
- * whole extra iteration over the whole grid region just for
- * validation, and that seems like more timewasting than really
- * needed. So we tolerate short descriptions, and do something
- * deterministic with them.)
- */
-
-typedef struct HatCoordContext {
-    random_state *rs;
-    HatCoords *prototype;
-} HatCoordContext;
-
-static void init_coords_random(HatCoordContext *ctx, random_state *rs)
+void hatctx_init_random(HatContext *ctx, random_state *rs)
 {
     const MetatilePossibleParent *starting_hat = choose_mpp(
         rs, starting_hats, lenof(starting_hats));
 
     ctx->rs = rs;
-    ctx->prototype = hc_new();
-    hc_make_space(ctx->prototype, 3);
+    ctx->prototype = hat_coords_new();
+    hat_coords_make_space(ctx->prototype, 3);
     ctx->prototype->c[2].type = starting_hat->type;
     ctx->prototype->c[2].index = -1;
     ctx->prototype->c[1].type = TT_HAT;
@@ -666,15 +471,17 @@ static inline int metatile_char_to_enum(char metatile)
             metatile == 'F' ? TT_F : -1);
 }
 
-static void init_coords_params(HatCoordContext *ctx,
+static void init_coords_params(HatContext *ctx,
                                const struct HatPatchParams *hp)
 {
     size_t i;
 
     ctx->rs = NULL;
-    ctx->prototype = hc_new();
+    ctx->prototype = hat_coords_new();
 
-    hc_make_space(ctx->prototype, hp->ncoords + 1);
+    assert(hp->ncoords >= 3);
+
+    hat_coords_make_space(ctx->prototype, hp->ncoords + 1);
     ctx->prototype->nc = hp->ncoords + 1;
 
     for (i = 0; i < hp->ncoords; i++)
@@ -689,13 +496,16 @@ static void init_coords_params(HatCoordContext *ctx,
 
     for (i = hp->ncoords - 1; i > 1; i--) {
         TileType metatile = ctx->prototype->c[i+1].type;
+        assert(hp->coords[i] < nchildren[metatile]);
         ctx->prototype->c[i].type = children[metatile][hp->coords[i]];
     }
+
+    assert(hp->coords[0] < 8);
 }
 
-static HatCoords *initial_coords(HatCoordContext *ctx)
+HatCoords *hatctx_initial_coords(HatContext *ctx)
 {
-    return hc_copy(ctx->prototype);
+    return hat_coords_copy(ctx->prototype);
 }
 
 /*
@@ -703,12 +513,13 @@ static HatCoords *initial_coords(HatCoordContext *ctx)
  * ctx->prototype if needed, and extending ctx->prototype if needed in
  * order to do that.
  */
-static void ensure_coords(HatCoordContext *ctx, HatCoords *hc, size_t n)
+void hatctx_extend_coords(HatContext *ctx, HatCoords *hc, size_t n)
 {
     if (ctx->prototype->nc < n) {
-        hc_make_space(ctx->prototype, n);
+        hat_coords_make_space(ctx->prototype, n);
         while (ctx->prototype->nc < n) {
             TileType type = ctx->prototype->c[ctx->prototype->nc - 1].type;
+            assert(ctx->prototype->c[ctx->prototype->nc - 1].index == -1);
             const MetatilePossibleParent *parent;
 
             if (ctx->rs)
@@ -724,8 +535,10 @@ static void ensure_coords(HatCoordContext *ctx, HatCoords *hc, size_t n)
         }
     }
 
-    hc_make_space(hc, n);
+    hat_coords_make_space(hc, n);
     while (hc->nc < n) {
+        assert(hc->c[hc->nc - 1].index == -1);
+        assert(hc->c[hc->nc - 1].type == ctx->prototype->c[hc->nc - 1].type);
         hc->c[hc->nc - 1].index = ctx->prototype->c[hc->nc - 1].index;
         hc->c[hc->nc].index = -1;
         hc->c[hc->nc].type = ctx->prototype->c[hc->nc].type;
@@ -733,12 +546,10 @@ static void ensure_coords(HatCoordContext *ctx, HatCoords *hc, size_t n)
     }
 }
 
-static void cleanup_coords(HatCoordContext *ctx)
+void hatctx_cleanup(HatContext *ctx)
 {
-    hc_free(ctx->prototype);
+    hat_coords_free(ctx->prototype);
 }
-
-#define debug_coords(p,c,s) ((void)0)
 
 /*
  * The actual system for finding the coordinates of an adjacent kite.
@@ -750,10 +561,10 @@ static void cleanup_coords(HatCoordContext *ctx)
  * around the individual kites. If this fails, return NULL.
  */
 static HatCoords *try_step_coords_kitemap(
-    HatCoordContext *ctx, HatCoords *hc_in, KiteStep step)
+    HatContext *ctx, HatCoords *hc_in, KiteStep step)
 {
-    ensure_coords(ctx, hc_in, 4);
-    debug_coords("  try kitemap  ", hc_in, "\n");
+    hatctx_extend_coords(ctx, hc_in, 4);
+    hat_coords_debug("  try kitemap  ", hc_in, "\n");
     unsigned kite = hc_in->c[0].index;
     unsigned hat = hc_in->c[1].index;
     unsigned meta = hc_in->c[2].index;
@@ -765,7 +576,7 @@ static HatCoords *try_step_coords_kitemap(
          * Success! We've got coordinates for the next kite in this
          * direction.
          */
-        HatCoords *hc_out = hc_copy(hc_in);
+        HatCoords *hc_out = hat_coords_copy(hc_in);
 
         hc_out->c[2].index = ke->meta;
         hc_out->c[2].type = children[meta2type][ke->meta];
@@ -774,7 +585,7 @@ static HatCoords *try_step_coords_kitemap(
         hc_out->c[0].index = ke->kite;
         hc_out->c[0].type = TT_KITE;
 
-        debug_coords("  success!     ", hc_out, "\n");
+        hat_coords_debug("  success!     ", hc_out, "\n");
         return hc_out;
     }
 
@@ -790,12 +601,15 @@ static HatCoords *try_step_coords_kitemap(
  * metamap rewrite), return NULL.
  */
 static HatCoords *try_step_coords_metamap(
-    HatCoordContext *ctx, HatCoords *hc_in, KiteStep step, size_t depth)
+    HatContext *ctx, HatCoords *hc_in, KiteStep step, size_t depth)
 {
     HatCoords *hc_tmp = NULL, *hc_out;
 
-    ensure_coords(ctx, hc_in, depth+3);
-
+    hatctx_extend_coords(ctx, hc_in, depth+3);
+#ifdef HAT_COORDS_DEBUG
+    fprintf(stderr, "  try meta %-4d", (int)depth);
+    hat_coords_debug("", hc_in, "\n");
+#endif
     unsigned meta_orig = hc_in->c[depth].index;
     unsigned meta2_orig = hc_in->c[depth+1].index;
     TileType meta3type = hc_in->c[depth+2].type;
@@ -811,13 +625,14 @@ static HatCoords *try_step_coords_metamap(
         else
             hc_out = try_step_coords_kitemap(ctx, hc_curr, step);
         if (hc_out) {
-            hc_free(hc_tmp);
+            hat_coords_free(hc_tmp);
             return hc_out;
         }
 
         me = &metamap[meta3type][metamap_index(meta, meta2)];
+        assert(me->meta != -1);
         if (me->meta == meta_orig && me->meta2 == meta2_orig) {
-            hc_free(hc_tmp);
+            hat_coords_free(hc_tmp);
             return NULL;
         }
 
@@ -836,25 +651,30 @@ static HatCoords *try_step_coords_metamap(
          * just use a separate copy.
          */
         if (!hc_tmp)
-            hc_tmp = hc_copy(hc_in);
+            hc_tmp = hat_coords_copy(hc_in);
 
         hc_tmp->c[depth+1].index = meta2;
         hc_tmp->c[depth+1].type = children[meta3type][meta2];
         hc_tmp->c[depth].index = meta;
         hc_tmp->c[depth].type = children[hc_tmp->c[depth+1].type][meta];
 
-        debug_coords("  rewritten -> ", hc_tmp, "\n");
+        hat_coords_debug("  rewritten -> ", hc_tmp, "\n");
     }
 }
 
 /*
  * The top-level algorithm for finding the next tile.
  */
-static HatCoords *step_coords(HatCoordContext *ctx, HatCoords *hc_in,
-                              KiteStep step)
+HatCoords *hatctx_step(HatContext *ctx, HatCoords *hc_in, KiteStep step)
 {
     HatCoords *hc_out;
     size_t depth;
+
+#ifdef HAT_COORDS_DEBUG
+    static const char *const directions[] = {
+        " left\n", " right\n", " forward left\n", " forward right\n" };
+    hat_coords_debug("step start     ", hc_in, directions[step]);
+#endif
 
     /*
      * First, just try a kitemap step immediately. If that succeeds,
@@ -877,9 +697,10 @@ static HatCoords *step_coords(HatCoordContext *ctx, HatCoords *hc_in,
 
 /*
  * Generate a random set of parameters for a tiling of a given size.
- * To do this, we iterate over the whole tiling via first_kite and
- * next_kite, and for each kite, calculate its coordinates. But then
- * we throw the coordinates away and don't do anything with them!
+ * To do this, we iterate over the whole tiling via hat_kiteenum_first
+ * and hat_kiteenum_next, and for each kite, calculate its
+ * coordinates. But then we throw the coordinates away and don't do
+ * anything with them!
  *
  * But the side effect of _calculating_ all those coordinates is that
  * we found out how far ctx->prototype needed to be extended, and did
@@ -890,21 +711,21 @@ static HatCoords *step_coords(HatCoordContext *ctx, HatCoords *hc_in,
 void hat_tiling_randomise(struct HatPatchParams *hp, int w, int h,
                           random_state *rs)
 {
-    HatCoordContext ctx[1];
+    HatContext ctx[1];
     HatCoords *coords[KE_NKEEP];
     KiteEnum s[1];
     size_t i;
 
-    init_coords_random(ctx, rs);
+    hatctx_init_random(ctx, rs);
     for (i = 0; i < lenof(coords); i++)
         coords[i] = NULL;
 
-    first_kite(s, w, h);
-    coords[s->curr_index] = initial_coords(ctx);
+    hat_kiteenum_first(s, w, h);
+    coords[s->curr_index] = hatctx_initial_coords(ctx);
 
-    while (next_kite(s)) {
-        hc_free(coords[s->curr_index]);
-        coords[s->curr_index] = step_coords(
+    while (hat_kiteenum_next(s)) {
+        hat_coords_free(coords[s->curr_index]);
+        coords[s->curr_index] = hatctx_step(
             ctx, coords[s->last_index], s->last_step);
     }
 
@@ -914,9 +735,9 @@ void hat_tiling_randomise(struct HatPatchParams *hp, int w, int h,
         hp->coords[i] = ctx->prototype->c[i].index;
     hp->final_metatile = tilechars[ctx->prototype->c[hp->ncoords].type];
 
-    cleanup_coords(ctx);
+    hatctx_cleanup(ctx);
     for (i = 0; i < lenof(coords); i++)
-        hc_free(coords[i]);
+        hat_coords_free(coords[i]);
 }
 
 const char *hat_tiling_params_invalid(const struct HatPatchParams *hp)
@@ -944,24 +765,8 @@ const char *hat_tiling_params_invalid(const struct HatPatchParams *hp)
     return NULL;
 }
 
-/*
- * For each kite generated by hat_tiling_generate, potentially
- * generate an output hat and give it to our caller.
- *
- * We do this by starting from kite #0 of each hat, and tracing round
- * the boundary. If the whole boundary is within the caller's bounding
- * region, we return it; if it goes off the edge, we don't.
- *
- * (Of course, every hat we _do_ want to return will have all its
- * kites inside the rectangle, so its kite #0 will certainly be caught
- * by this iteration.)
- */
-
-typedef void (*internal_hat_callback_fn)(void *ctx, Kite kite0, HatCoords *hc,
-                                         int *coords);
-
-static void maybe_report_hat(int w, int h, Kite kite, HatCoords *hc,
-                             internal_hat_callback_fn cb, void *cbctx)
+void maybe_report_hat(int w, int h, Kite kite, HatCoords *hc,
+                      internal_hat_callback_fn cb, void *cbctx)
 {
     Kite kite0;
     Point vertices[14];
@@ -1054,7 +859,7 @@ static void report_hat(void *vctx, Kite kite0, HatCoords *hc, int *coords)
 void hat_tiling_generate(const struct HatPatchParams *hp, int w, int h,
                          hat_tile_callback_fn cb, void *cbctx)
 {
-    HatCoordContext ctx[1];
+    HatContext ctx[1];
     HatCoords *coords[KE_NKEEP];
     KiteEnum s[1];
     size_t i;
@@ -1067,21 +872,20 @@ void hat_tiling_generate(const struct HatPatchParams *hp, int w, int h,
     for (i = 0; i < lenof(coords); i++)
         coords[i] = NULL;
 
-    first_kite(s, w, h);
-    coords[s->curr_index] = initial_coords(ctx);
+    hat_kiteenum_first(s, w, h);
+    coords[s->curr_index] = hatctx_initial_coords(ctx);
     maybe_report_hat(w, h, *s->curr, coords[s->curr_index],
                      report_hat, report_hat_ctx);
 
-    while (next_kite(s)) {
-        hc_free(coords[s->curr_index]);
-        coords[s->curr_index] = step_coords(
+    while (hat_kiteenum_next(s)) {
+        hat_coords_free(coords[s->curr_index]);
+        coords[s->curr_index] = hatctx_step(
             ctx, coords[s->last_index], s->last_step);
         maybe_report_hat(w, h, *s->curr, coords[s->curr_index],
                          report_hat, report_hat_ctx);
     }
 
-    cleanup_coords(ctx);
+    hatctx_cleanup(ctx);
     for (i = 0; i < lenof(coords); i++)
-        hc_free(coords[i]);
+        hat_coords_free(coords[i]);
 }
-

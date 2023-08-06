@@ -210,7 +210,7 @@ static const char *validate_params(const game_params *params, bool full)
 
 enum { STATUS_COMPLETE, STATUS_UNFINISHED, STATUS_INVALID };
 
-static void sticks_make_dsf(game_state *state, int *dsf, int *lengths)
+static void sticks_make_dsf(game_state *state, DSF *dsf, int *lengths)
 {
     int w = state->w, h = state->h;
     int x, y, i;
@@ -220,7 +220,7 @@ static void sticks_make_dsf(game_state *state, int *dsf, int *lengths)
             lengths[i] = -1;
     }
     
-    dsf_init(dsf, w*h);
+    dsf_reinit(dsf);
     
     for(y = 0; y < h; y++)
     for(x = 0; x < w; x++)
@@ -246,7 +246,7 @@ static void sticks_make_dsf(game_state *state, int *dsf, int *lengths)
     }
 }
 
-static int sticks_max_size_horizontal(game_state *state, int *dsf, int *lengths, int idx)
+static int sticks_max_size_horizontal(game_state *state, DSF *dsf, int *lengths, int idx)
 {
     int w = state->w;
     int c, x, y = idx / w;
@@ -287,7 +287,7 @@ static int sticks_max_size_horizontal(game_state *state, int *dsf, int *lengths,
     return ret;
 }
 
-static int sticks_max_size_vertical(game_state *state, int *dsf, int *lengths, int idx)
+static int sticks_max_size_vertical(game_state *state, DSF *dsf, int *lengths, int idx)
 {
     int w = state->w, h = state->h;
     int c, y, x = idx%w;
@@ -328,7 +328,7 @@ static int sticks_max_size_vertical(game_state *state, int *dsf, int *lengths, i
     return ret;
 }
 
-static int sticks_validate(game_state *state, int *dsf, int *lengths)
+static int sticks_validate(game_state *state, DSF *dsf, int *lengths)
 {
     int w = state->w, h = state->h;
     int x, y, i;
@@ -336,7 +336,7 @@ static int sticks_validate(game_state *state, int *dsf, int *lengths)
     bool hastemp = dsf != NULL;
     if (!hastemp)
     {
-        dsf = snewn(w*h, int);
+        dsf = dsf_new_min(w*h);
         lengths = snewn(w*h, int);
     }
     bool error;
@@ -414,7 +414,7 @@ static int sticks_validate(game_state *state, int *dsf, int *lengths)
 
     if (!hastemp)
     {
-        sfree(dsf);
+        dsf_free(dsf);
         sfree(lengths);
     }
     return ret;
@@ -530,7 +530,7 @@ static void free_game(game_state *state)
     sfree(state);
 }
 
-static int sticks_try(game_state *state, int *dsf, int *lengths)
+static int sticks_try(game_state *state, DSF *dsf, int *lengths)
 {
     int s = state->w * state->h;
     int i;
@@ -565,7 +565,7 @@ static int sticks_solve_game(game_state *state)
     int i;
     int ret = STATUS_UNFINISHED;
 
-    int *dsf = snewn(s, int);
+    DSF *dsf = dsf_new_min(s);
     int *lengths = snewn(s, int);
 
     for (i = 0; i < s; i++)
@@ -582,7 +582,7 @@ static int sticks_solve_game(game_state *state)
         break;
     }
 
-    sfree(dsf);
+    dsf_free(dsf);
     sfree(lengths);
     return ret;
 }
@@ -704,7 +704,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
                char **aux, bool interactive)
 {
     int w = params->w, h = params->h;
-    int *dsf = snewn(w*h, int);
+    DSF *dsf = dsf_new_min(w*h);
     int *spaces = snewn(w*h, int);
     int i, j;
     game_state *state = new_game(NULL, params, NULL);
@@ -737,7 +737,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
                 if (i / w < h - 1 && state->grid[i + w] & F_VER) n++;
                 state->numbers[i] = n;
             }
-            else if (dsf_canonify(dsf, i) == i)
+            else if (dsf_minimal(dsf, i) == i)
             {
                 int n = dsf_size(dsf, i);
 
@@ -807,7 +807,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     *p++ = '\0';
     ret = sresize(ret, p - ret, char);
     free_game(state);
-    sfree(dsf);
+    dsf_free(dsf);
     sfree(spaces);
 
     return ret;

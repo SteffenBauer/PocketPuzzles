@@ -443,7 +443,7 @@ static int net_solver(int w, int h, unsigned char *tiles,
     unsigned char *tilestate;
     unsigned char *edgestate;
     int *deadends;
-    int *equivalence;
+    DSF *equivalence;
     struct todo *todo;
     int i, j, x, y;
     int area;
@@ -528,7 +528,7 @@ static int net_solver(int w, int h, unsigned char *tiles,
      * classes) by finding the representative of each tile and
      * setting equivalence[one]=the_other.
      */
-    equivalence = snew_dsf(w * h);
+    equivalence = dsf_new(w * h);
 
     /*
      * On a non-wrapping grid, we instantly know that all the edges
@@ -799,7 +799,7 @@ static int net_solver(int w, int h, unsigned char *tiles,
     sfree(tilestate);
     sfree(edgestate);
     sfree(deadends);
-    sfree(equivalence);
+    dsf_free(equivalence);
 
     return j;
 }
@@ -2166,8 +2166,8 @@ static game_state *execute_move(const game_state *from, const char *move)
     if (move[0] == 'J' || move[0] == 'S') {
         if (move[0] == 'S')
             ret->used_solve = true;
-            move++;
-            if (*move == ';') move++;
+        move++;
+        if (*move == ';') move++;
             noanim = true;
     } else noanim = false;
 

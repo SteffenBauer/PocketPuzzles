@@ -221,6 +221,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 2 || params->h < 2)
         return "Width and height must be at least two";
+    if (params->w > 20 || params->h > 20)
+        return "Width and height must be not bigger than 20";
     if (params->n < 5)
         return "Must have at least five regions";
     if (params->n > params->w * params->h)
@@ -903,21 +905,21 @@ static int map_solver(struct solver_scratch *sc,
         }
 
         if ((p & (p-1)) == 0) {    /* p is a power of two */
-        int c;
-                bool ret;
-        for (c = 0; c < FOUR; c++)
-            if (p == (1 << c))
-                break;
+            int c;
+            bool ret;
+            for (c = 0; c < FOUR; c++)
+                if (p == (1 << c))
+                    break;
             assert(c < FOUR);
             ret = place_colour(sc, colouring, i, c);
-                /*
-                 * place_colour() can only fail if colour c was not
-                 * even a _possibility_ for region i, and we're
-                 * pretty sure it was because we checked before
-                 * calling place_colour(). So we can safely assert
-                 * here rather than having to return a nice
-                 * friendly error code.
-                 */
+            /*
+             * place_colour() can only fail if colour c was not
+             * even a _possibility_ for region i, and we're
+             * pretty sure it was because we checked before
+             * calling place_colour(). So we can safely assert
+             * here rather than having to return a nice
+             * friendly error code.
+             */
             assert(ret);
             done_something = true;
         }
@@ -1543,8 +1545,8 @@ static const char *parse_edge_list(const game_params *params,
     int i, k, pos;
     bool state;
     const char *p = *desc;
-
-    dsf_init(map+wh, wh);
+    const char *err = NULL;
+    DSF *dsf = dsf_new(wh);
 
     pos = -1;
     state = false;
@@ -1555,64 +1557,76 @@ static const char *parse_edge_list(const game_params *params,
      * pairs of squares whenever the edge list shows a non-edge).
      */
     while (*p && *p != ',') {
-    if (*p < 'a' || *p > 'z')
-        return "Unexpected character in edge list";
-    if (*p == 'z')
-        k = 25;
-    else
-        k = *p - 'a' + 1;
-    while (k-- > 0) {
-        int x, y, dx, dy;
+        if (*p < 'a' || *p > 'z') {
+            err = "Unexpected character in edge list";
+            goto out;
+        }
+        if (*p == 'z')
+            k = 25;
+        else
+            k = *p - 'a' + 1;
+        while (k-- > 0) {
+            int x, y, dx, dy;
 
-        if (pos < 0) {
-        pos++;
-        continue;
-        } else if (pos < w*(h-1)) {
-        /* Horizontal edge. */
-        y = pos / w;
-        x = pos % w;
-        dx = 0;
-        dy = 1;
-        } else if (pos < 2*wh-w-h) {
-        /* Vertical edge. */
-        x = (pos - w*(h-1)) / h;
-        y = (pos - w*(h-1)) % h;
-        dx = 1;
-        dy = 0;
-        } else
-        return "Too much data in edge list";
-        if (!state)
-        dsf_merge(map+wh, y*w+x, (y+dy)*w+(x+dx));
+            if (pos < 0) {
+                pos++;
+                continue;
+            } else if (pos < w*(h-1)) {
+                /* Horizontal edge. */
+                y = pos / w;
+                x = pos % w;
+                dx = 0;
+                dy = 1;
+            } else if (pos < 2*wh-w-h) {
+                /* Vertical edge. */
+                x = (pos - w*(h-1)) / h;
+                y = (pos - w*(h-1)) % h;
+                dx = 1;
+                dy = 0;
+            } else {
+                err = "Too much data in edge list";
+                goto out;
+            }
+            if (!state)
+                dsf_merge(dsf, y*w+x, (y+dy)*w+(x+dx));
 
-        pos++;
-    }
-    if (*p != 'z')
-        state = !state;
-    p++;
+            pos++;
+        }
+        if (*p != 'z')
+            state = !state;
+        p++;
     }
     assert(pos <= 2*wh-w-h);
-    if (pos < 2*wh-w-h)
-    return "Too little data in edge list";
+    if (pos < 2*wh-w-h) {
+        err = "Too little data in edge list";
+        goto out;
+    }
 
     /*
      * Now go through again and allocate region numbers.
      */
     pos = 0;
     for (i = 0; i < wh; i++)
-    map[i] = -1;
+        map[i] = -1;
     for (i = 0; i < wh; i++) {
-    k = dsf_canonify(map+wh, i);
-    if (map[k] < 0)
-        map[k] = pos++;
-    map[i] = map[k];
+        k = dsf_canonify(dsf, i);
+        if (map[k] < 0)
+            map[k] = pos++;
+        map[i] = map[k];
     }
-    if (pos != n)
-    return "Edge list defines the wrong number of regions";
+    if (pos != n) {
+        err = "Edge list defines the wrong number of regions";
+        goto out;
+    }
 
     *desc = p;
+    err = NULL; /* no error */
 
-    return NULL;
+  out:
+    dsf_free(dsf);
+    return err;
 }
+
 
 static const char *validate_desc(const game_params *params, const char *desc)
 {
@@ -1621,7 +1635,7 @@ static const char *validate_desc(const game_params *params, const char *desc)
     int *map;
     const char *ret;
 
-    map = snewn(2*wh, int);
+    map = snewn(wh, int);
     ret = parse_edge_list(params, &desc, map);
     sfree(map);
     if (ret)

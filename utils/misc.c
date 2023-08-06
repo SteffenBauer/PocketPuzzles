@@ -3,6 +3,8 @@
  */
 
 #include <assert.h>
+#include <ctype.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -16,8 +18,8 @@ void free_cfg(config_item *cfg)
     config_item *i;
 
     for (i = cfg; i->type != C_END; i++)
-	if (i->type == C_STRING)
-	    sfree(i->u.string.sval);
+        if (i->type == C_STRING)
+            sfree(i->u.string.sval);
     sfree(cfg);
 }
 
@@ -50,10 +52,10 @@ void obfuscate_bitmap(unsigned char *bmp, int bits, bool decode)
 {
     int bytes, firsthalf, secondhalf;
     struct step {
-	unsigned char *seedstart;
-	int seedlen;
-	unsigned char *targetstart;
-	int targetlen;
+        unsigned char *seedstart;
+        int seedlen;
+        unsigned char *targetstart;
+        int targetlen;
     } steps[2];
     int i, j;
 
@@ -62,28 +64,28 @@ void obfuscate_bitmap(unsigned char *bmp, int bits, bool decode)
      * encoding used in some forms of RSA. Here's a specification
      * of it:
      * 
-     * 	+ We have a `masking function' which constructs a stream of
-     * 	  pseudorandom bytes from a seed of some number of input
-     * 	  bytes.
+     *         + We have a `masking function' which constructs a stream of
+     *           pseudorandom bytes from a seed of some number of input
+     *           bytes.
      * 
-     * 	+ We pad out our input bit stream to a whole number of
-     * 	  bytes by adding up to 7 zero bits on the end. (In fact
-     * 	  the bitmap passed as input to this function will already
-     * 	  have had this done in practice.)
+     *         + We pad out our input bit stream to a whole number of
+     *           bytes by adding up to 7 zero bits on the end. (In fact
+     *           the bitmap passed as input to this function will already
+     *           have had this done in practice.)
      * 
-     * 	+ We divide the _byte_ stream exactly in half, rounding the
-     * 	  half-way position _down_. So an 81-bit input string, for
-     * 	  example, rounds up to 88 bits or 11 bytes, and then
-     * 	  dividing by two gives 5 bytes in the first half and 6 in
-     * 	  the second half.
+     *         + We divide the _byte_ stream exactly in half, rounding the
+     *           half-way position _down_. So an 81-bit input string, for
+     *           example, rounds up to 88 bits or 11 bytes, and then
+     *           dividing by two gives 5 bytes in the first half and 6 in
+     *           the second half.
      * 
-     * 	+ We generate a mask from the second half of the bytes, and
-     * 	  XOR it over the first half.
+     *         + We generate a mask from the second half of the bytes, and
+     *           XOR it over the first half.
      * 
-     * 	+ We generate a mask from the (encoded) first half of the
-     * 	  bytes, and XOR it over the second half. Any null bits at
-     * 	  the end which were added as padding are cleared back to
-     * 	  zero even if this operation would have made them nonzero.
+     *         + We generate a mask from the (encoded) first half of the
+     *           bytes, and XOR it over the second half. Any null bits at
+     *           the end which were added as padding are cleared back to
+     *           zero even if this operation would have made them nonzero.
      * 
      * To de-obfuscate, the steps are precisely the same except
      * that the final two are reversed.
@@ -109,30 +111,30 @@ void obfuscate_bitmap(unsigned char *bmp, int bits, bool decode)
     steps[decode ? 0 : 1].targetlen = secondhalf;
 
     for (i = 0; i < 2; i++) {
-	SHA_State base, final;
-	unsigned char digest[20];
-	char numberbuf[80];
-	int digestpos = 20, counter = 0;
+        SHA_State base, final;
+        unsigned char digest[20];
+        char numberbuf[80];
+        int digestpos = 20, counter = 0;
 
-	SHA_Init(&base);
-	SHA_Bytes(&base, steps[i].seedstart, steps[i].seedlen);
+        SHA_Init(&base);
+        SHA_Bytes(&base, steps[i].seedstart, steps[i].seedlen);
 
-	for (j = 0; j < steps[i].targetlen; j++) {
-	    if (digestpos >= 20) {
-		sprintf(numberbuf, "%d", counter++);
-		final = base;
-		SHA_Bytes(&final, numberbuf, strlen(numberbuf));
-		SHA_Final(&final, digest);
-		digestpos = 0;
-	    }
-	    steps[i].targetstart[j] ^= digest[digestpos++];
-	}
+        for (j = 0; j < steps[i].targetlen; j++) {
+            if (digestpos >= 20) {
+                sprintf(numberbuf, "%d", counter++);
+                final = base;
+                SHA_Bytes(&final, numberbuf, strlen(numberbuf));
+                SHA_Final(&final, digest);
+                digestpos = 0;
+            }
+            steps[i].targetstart[j] ^= digest[digestpos++];
+        }
 
-	/*
-	 * Mask off the pad bits in the final byte after both steps.
-	 */
-	if (bits % 8)
-	    bmp[bits / 8] &= 0xFF & (0xFF00 >> (bits % 8));
+        /*
+         * Mask off the pad bits in the final byte after both steps.
+         */
+        if (bits % 8)
+            bmp[bits / 8] &= 0xFF & (0xFF00 >> (bits % 8));
     }
 }
 
@@ -183,44 +185,99 @@ char *fgetline(FILE *fp)
     char *ret = snewn(512, char);
     int size = 512, len = 0;
     while (fgets(ret + len, size - len, fp)) {
-	len += strlen(ret + len);
-	if (ret[len-1] == '\n')
-	    break;		       /* got a newline, we're done */
-	size = len + 512;
-	ret = sresize(ret, size, char);
+        len += strlen(ret + len);
+        if (ret[len-1] == '\n')
+            break;                       /* got a newline, we're done */
+        size = len + 512;
+        ret = sresize(ret, size, char);
     }
-    if (len == 0) {		       /* first fgets returned NULL */
-	sfree(ret);
-	return NULL;
+    if (len == 0) {                       /* first fgets returned NULL */
+        sfree(ret);
+        return NULL;
     }
     ret[len] = '\0';
     return ret;
 }
 
-void game_mkhighlight_specific(frontend *fe, float *ret,
-			       int background, int highlight, int lowlight)
+int getenv_bool(const char *name, int dflt)
 {
-    float max;
+    char *env = getenv(name);
+    if (env == NULL) return dflt;
+    if (strchr("yYtT", env[0])) return true;
+    return false;
+}
+
+/* Utility functions for colour manipulation. */
+
+static float colour_distance(const float a[3], const float b[3])
+{
+    return (float)sqrt((a[0]-b[0]) * (a[0]-b[0]) +
+                       (a[1]-b[1]) * (a[1]-b[1]) +
+                       (a[2]-b[2]) * (a[2]-b[2]));
+}
+
+void colour_mix(const float src1[3], const float src2[3], float p, float dst[3])
+{
     int i;
+    for (i = 0; i < 3; i++)
+        dst[i] = src1[i] * (1.0F - p) + src2[i] * p;
+}
 
+void game_mkhighlight_specific(frontend *fe, float *ret,
+                                int background, int highlight, int lowlight)
+{
+    static const float black[3] = { 0.0F, 0.0F, 0.0F };
+    static const float white[3] = { 1.0F, 1.0F, 1.0F };
+    float db, dw;
+    int i;
     /*
-     * Drop the background colour so that the highlight is
-     * noticeably brighter than it while still being under 1.
+     * New geometric highlight-generation algorithm: Draw a line from
+     * the base colour to white.  The point K distance along this line
+     * from the base colour is the highlight colour.  Similarly, draw
+     * a line from the base colour to black.  The point on this line
+     * at a distance K from the base colour is the shadow.  If either
+     * of these colours is imaginary (for reasonable K at most one
+     * will be), _extrapolate_ the base colour along the same line
+     * until it's a distance K from white (or black) and start again
+     * with that as the base colour.
+     *
+     * This preserves the hue of the base colour, ensures that of the
+     * three the base colour is the most saturated, and only ever
+     * flattens the highlight and shadow to pure white or pure black.
+     *
+     * K must be at most sqrt(3)/2, or mid grey would be too close to
+     * both white and black.  Here K is set to sqrt(3)/6 so that this
+     * code produces the same results as the former code in the common
+     * case where the background is grey and the highlight saturates
+     * to white.
      */
-    max = ret[background*3];
-    for (i = 1; i < 3; i++)
-        if (ret[background*3+i] > max)
-            max = ret[background*3+i];
-    if (max * 1.2F > 1.0F) {
-        for (i = 0; i < 3; i++)
-            ret[background*3+i] /= (max * 1.2F);
+    const float k = sqrt(3)/6.0F;
+    if (lowlight >= 0) {
+        db = colour_distance(&ret[background*3], black);
+        if (db < k) {
+            for (i = 0; i < 3; i++) ret[lowlight*3+i] = black[i];
+            if (db == 0.0F)
+                colour_mix(black, white, k/sqrt(3), &ret[background*3]);
+            else
+                colour_mix(black, &ret[background*3], k/db, &ret[background*3]);
+        } else {
+            colour_mix(&ret[background*3], black, k/db, &ret[lowlight*3]);
+        }
     }
-
-    for (i = 0; i < 3; i++) {
-	if (highlight >= 0)
-	    ret[highlight * 3 + i] = ret[background * 3 + i] * 1.2F;
-	if (lowlight >= 0)
-	    ret[lowlight * 3 + i] = ret[background * 3 + i] * 0.8F;
+    if (highlight >= 0) {
+        dw = colour_distance(&ret[background*3], white);
+        if (dw < k) {
+            for (i = 0; i < 3; i++) ret[highlight*3+i] = white[i];
+            if (dw == 0.0F)
+                colour_mix(white, black, k/sqrt(3), &ret[background*3]);
+            else
+                colour_mix(white, &ret[background*3], k/dw, &ret[background*3]);
+            /* Background has changed; recalculate lowlight. */
+            if (lowlight >= 0)
+                colour_mix(&ret[background*3], black, k/db, &ret[lowlight*3]);
+        } else {
+            colour_mix(&ret[background*3], white, k/dw, &ret[highlight*3]);
+        }
     }
 }
 
@@ -237,13 +294,13 @@ static void memswap(void *av, void *bv, int size)
     char *a = av, *b = bv;
 
     while (size > 0) {
-	int thislen = min(size, sizeof(tmpbuf));
-	memcpy(tmpbuf, a, thislen);
-	memcpy(a, b, thislen);
-	memcpy(b, tmpbuf, thislen);
-	a += thislen;
-	b += thislen;
-	size -= thislen;
+        int thislen = min(size, sizeof(tmpbuf));
+        memcpy(tmpbuf, a, thislen);
+        memcpy(a, b, thislen);
+        memcpy(b, tmpbuf, thislen);
+        a += thislen;
+        b += thislen;
+        size -= thislen;
     }
 }
 
@@ -444,4 +501,160 @@ char *button2label(int button)
     return NULL;
 }
 
+char *make_prefs_path(const char *dir, const char *sep,
+                      const game *game, const char *suffix)
+{
+    size_t dirlen = strlen(dir);
+    size_t seplen = strlen(sep);
+    size_t gamelen = strlen(game->name);
+    size_t suffixlen = strlen(suffix);
+    char *path, *p;
+    const char *q;
+
+    if (!dir || !sep || !game || !suffix)
+        return NULL;
+
+    path = snewn(dirlen + seplen + gamelen + suffixlen + 1, char);
+    p = path;
+
+    memcpy(p, dir, dirlen);
+    p += dirlen;
+
+    memcpy(p, sep, seplen);
+    p += seplen;
+
+    for (q = game->name; *q; q++)
+        if (*q != ' ')
+            *p++ = tolower((unsigned char)*q);
+
+    memcpy(p, suffix, suffixlen);
+    p += suffixlen;
+
+    *p = '\0';
+    return path;
+}
+
+/*
+ * Calculate the nearest integer to n*sqrt(k), via a bitwise algorithm
+ * that avoids floating point.
+ *
+ * (It would probably be OK in practice to use floating point, but I
+ * felt like overengineering it for fun. With FP, there's at least a
+ * theoretical risk of rounding the wrong way, due to the three
+ * successive roundings involved - rounding sqrt(k), rounding its
+ * product with n, and then rounding to the nearest integer. This
+ * approach avoids that: it's exact.)
+ */
+int n_times_root_k(int n_signed, int k)
+{
+    unsigned x, r, m;
+    int sign = n_signed < 0 ? -1 : +1;
+    unsigned n = n_signed * sign;
+    unsigned bitpos;
+
+    /*
+     * Method:
+     *
+     * We transform m gradually from zero into n, by multiplying it by
+     * 2 in each step and optionally adding 1, so that it's always
+     * floor(n/2^something).
+     *
+     * At the start of each step, x is the largest integer less than
+     * or equal to m*sqrt(k). We transform m to 2m+bit, and therefore
+     * we must transform x to 2x+something to match. The 'something'
+     * we add to 2x is at most floor(sqrt(k))+2. (Worst case is if m
+     * sqrt(k) was equal to x + 1-eps for some tiny eps, and then the
+     * incoming bit of m is 1, so that (2m+1)sqrt(k) =
+     * 2x+2+sqrt(k)-2eps.)
+     *
+     * To compute this, we also track the residual value r such that
+     * x^2+r = km^2.
+     *
+     * The algorithm below is very similar to the usual approach for
+     * taking the square root of an integer in binary. The wrinkle is
+     * that we have an integer multiplier, i.e. we're computing
+     * n*sqrt(k) rather than just sqrt(k). Of course in principle we
+     * could just take sqrt(n^2k), but we'd need an integer twice the
+     * width to hold n^2. Pulling out n and treating it specially
+     * makes overflow less likely.
+     */
+
+    x = r = m = 0;
+
+    for (bitpos = UINT_MAX & ~(UINT_MAX >> 1); bitpos; bitpos >>= 1) {
+        unsigned a, b = (n & bitpos) ? 1 : 0;
+
+        /*
+         * Check invariants. We expect that x^2 + r = km^2 (i.e. our
+         * residual term is correct), and also that r < 2x+1 (because
+         * if not, then we could replace x with x+1 and still get a
+         * value that made r non-negative, i.e. x would not be the
+         * _largest_ integer less than m sqrt(k)).
+         */
+        assert(x*x + r == k*m*m);
+        assert(r < 2*x+1);
+
+        /*
+         * We're going to replace m with 2m+b, and x with 2x+a for
+         * some a we haven't decided on yet.
+         *
+         * The new value of the residual will therefore be
+         *
+         *   k (2m+b)^2 - (2x+a)^2
+         * = (4km^2 + 4kmb + kb^2) - (4x^2 + 4xa + a^2)
+         * = 4 (km^2 - x^2) + 4kmb + kb^2 - 4xa - a^2
+         * = 4r + 4kmb + kb^2 - 4xa - a^2          (because r = km^2 - x^2)
+         * = 4r + (4m + 1)kb - 4xa - a^2           (b is 0 or 1, so b = b^2)
+         */
+        for (a = 0;; a++) {
+            /* If we made this routine handle square roots of numbers
+             * significantly bigger than 3 or 5 then it would be
+             * sensible to make this a binary search. Here, it hardly
+             * seems important. */
+            unsigned pos = 4*r + k*b*(4*m + 1);
+            unsigned neg = 4*a*x + a*a;
+            if (pos < neg)
+                break;                 /* this value of a is too big */
+        }
+
+        /* The above loop will have terminated with a one too big. So
+         * now decrementing a will give us the right value to add. */
+        a--;
+
+        r = 4*r + b*k*(4*m + 1) - (4*a*x + a*a);
+        m = 2*m+b;
+        x = 2*x+a;
+    }
+
+    /*
+     * Finally, round to the nearest integer. At present, x is the
+     * largest integer that is _at most_ m sqrt(k). But we want the
+     * _nearest_ integer, whether that's rounded up or down. So check
+     * whether (x + 1/2) is still less than m sqrt(k), i.e. whether
+     * (x + 1/2)^2 < km^2; if it is, then we increment x.
+     *
+     * We have km^2 - (x + 1/2)^2 = km^2 - x^2 - x - 1/4
+     *                            = r - x - 1/4
+     *
+     * and since r and x are integers, this is greater than 0 if and
+     * only if r > x.
+     *
+     * (There's no need to worry about tie-breaking exact halfway
+     * rounding cases. sqrt(k) is irrational, so none such exist.)
+     */
+    if (r > x)
+        x++;
+
+    /*
+     * Put the sign back on, and convert back from unsigned to int.
+     */
+    if (sign == +1) {
+        return x;
+    } else {
+        /* Be a little careful to avoid compilers deciding I've just
+         * perpetrated signed-integer overflow. This should optimise
+         * down to no actual code. */
+        return INT_MIN + (int)(-x - (unsigned)INT_MIN);
+    }
+}
 /* vim: set shiftwidth=4 tabstop=8: */
