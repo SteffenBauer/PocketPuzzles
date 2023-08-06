@@ -1084,7 +1084,7 @@ static char boats_validate_gridclues(const game_state *state, int *errs)
     return ret;
 }
 
-static char boats_check_dsf(game_state *state, int *dsf, int *fleetcount)
+static char boats_check_dsf(game_state *state, DSF *dsf, int *fleetcount)
 {
     /* 
      * Build a dsf of all unfinished boats. Finished boats, water and empty
@@ -1099,7 +1099,7 @@ static char boats_check_dsf(game_state *state, int *dsf, int *fleetcount)
     char ret = STATUS_COMPLETE;
     
     memcpy(tempfleet, fleetcount, sizeof(int)*state->fleet);
-    dsf_init(dsf, (w*h)+1);
+    dsf_reinit(dsf);
     for(y = 0; y < h; y++)
     for(x = 0; x < w; x++)
     {
@@ -1153,7 +1153,7 @@ static char boats_check_dsf(game_state *state, int *dsf, int *fleetcount)
     return ret;
 }
 
-static char boats_validate_full_state(game_state *state, int *blankcounts, int *shipcounts, int *fleetcount, int *dsf)
+static char boats_validate_full_state(game_state *state, int *blankcounts, int *shipcounts, int *fleetcount, DSF *dsf)
 {
     /*
      * Check if the current state is complete, incomplete, or contains errors.
@@ -1586,7 +1586,7 @@ static int boats_solver_centers_normal(game_state *state, int *shipcounts)
     return ret;
 }
 
-static int boats_solver_min_expand_dsf_forward(game_state *state, int *fleetcount, int *dsf,
+static int boats_solver_min_expand_dsf_forward(game_state *state, int *fleetcount, DSF *dsf,
         int sx, int sy, int d, int ship)
 {
     /*
@@ -1621,7 +1621,7 @@ static int boats_solver_min_expand_dsf_forward(game_state *state, int *fleetcoun
     return 0;
 }
 
-static int boats_solver_min_expand_dsf_back(game_state *state, int *fleetcount, int *dsf,
+static int boats_solver_min_expand_dsf_back(game_state *state, int *fleetcount, DSF *dsf,
         int d, int ship)
 {
     /*
@@ -1656,7 +1656,7 @@ static int boats_solver_min_expand_dsf_back(game_state *state, int *fleetcount, 
     return 0;
 }
 
-static int boats_solver_min_expand_dsf(game_state *state, int *fleetcount, int *dsf)
+static int boats_solver_min_expand_dsf(game_state *state, int *fleetcount, DSF *dsf)
 {
     /*
      * See if an unfinished boat needs to expand in the last possible direction.
@@ -1686,7 +1686,7 @@ static int boats_solver_min_expand_dsf(game_state *state, int *fleetcount, int *
     return 0;
 }
 
-static int boats_solver_max_expand_dsf(game_state *state, int *fleetcount, int *dsf)
+static int boats_solver_max_expand_dsf(game_state *state, int *fleetcount, DSF *dsf)
 {
     /* 
      * See if an unfinished boat becomes too large when expanding into
@@ -2276,7 +2276,7 @@ static int boats_solve_game(game_state *state, int maxdiff)
 
     struct boats_run *runs = NULL;
     char *tmpgrid = NULL;
-    int *dsf = NULL;
+    DSF *dsf = NULL;
     int runcount = 0;
     int *borderclues = NULL;
     int diff = DIFF_EASY;
@@ -2300,7 +2300,7 @@ static int boats_solve_game(game_state *state, int maxdiff)
     {
         runs = snewn(w*h*2, struct boats_run);
         
-        dsf = snewn((w*h)+1, int);
+        dsf = dsf_new((w*h)+1);
     }
     
     for(i = 0; i < w+h && !hasnoclue; i++)
@@ -2418,7 +2418,7 @@ static int boats_solve_game(game_state *state, int maxdiff)
     sfree(runs);
     sfree(tmpgrid);
     sfree(borderclues);
-    sfree(dsf);
+    dsf_free(dsf);
     
     return diff;
 }

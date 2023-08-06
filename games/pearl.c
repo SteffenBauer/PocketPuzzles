@@ -285,7 +285,8 @@ static int pearl_solve(int w, int h, char *clues, char *result,
 {
     int W = 2*w+1, H = 2*h+1;
     short *workspace;
-    int *dsf, *dsfsize;
+    DSF *dsf;
+    int *dsfsize;
     int x, y, b, d;
     int ret = -1;
 
@@ -338,7 +339,7 @@ static int pearl_solve(int w, int h, char *clues, char *result,
      * We maintain a dsf of connected squares, together with a
      * count of the size of each equivalence class.
      */
-    dsf = snewn(w*h, int);
+    dsf = dsf_new(w*h);
     dsfsize = snewn(w*h, int);
 
     /*
@@ -581,9 +582,9 @@ static int pearl_solve(int w, int h, char *clues, char *result,
     {
         int nonblanks, loopclass;
 
-        dsf_init(dsf, w*h);
+        dsf_reinit(dsf);
         for (x = 0; x < w*h; x++)
-        dsfsize[x] = 1;
+            dsfsize[x] = 1;
 
         /*
          * First go through the edge entries and update the dsf
@@ -848,10 +849,39 @@ cleanup:
                if (ret == 1) assert(b < 0xD); /* we should have had a break by now */
             }
         }
+
+        /*
+         * Ensure we haven't left the _data structure_ inconsistent,
+         * regardless of the consistency of the _puzzle_. In
+         * particular, we should never have marked one square as
+         * linked to its neighbour if the neighbour is not
+         * reciprocally linked back to the original square.
+         *
+         * This can happen if we get part way through solving an
+         * impossible puzzle and then give up trying to make further
+         * progress. So here we fix it up to avoid confusing the rest
+         * of the game.
+         */
+        for (y = 0; y < h; y++) {
+            for (x = 0; x < w; x++) {
+                for (d = 1; d <= 8; d += d) {
+                    int nx = x + DX(d), ny = y + DY(d);
+                    int rlink;
+                    if (0 <= nx && nx < w && 0 <= ny && ny < h)
+                        rlink = result[ny*w+nx] & F(d);
+                    else
+                        rlink = 0;     /* off-board squares don't link back */
+
+                    /* If other square doesn't link to us, don't link to it */
+                    if (!rlink)
+                        result[y*w+x] &= ~d;
+                }
+            }
+        }
     }
 
     sfree(dsfsize);
-    sfree(dsf);
+    dsf_free(dsf);
     sfree(workspace);
     assert(ret >= 0);
     return ret;
@@ -939,9 +969,9 @@ static int pearl_loopgen_bias(void *vctx, char *board, int face)
              * to reprocess the edges for this boundary.
              */
             if (oldface == c || newface == c) {
-                grid_face *f = &g->faces[face];
+                grid_face *f = g->faces[face];
                 for (k = 0; k < f->order; k++)
-                    tdq_add(b->edges_todo, f->edges[k] - g->edges);
+                    tdq_add(b->edges_todo, f->edges[k]->index);
             }
         }
     }
@@ -957,15 +987,15 @@ static int pearl_loopgen_bias(void *vctx, char *board, int face)
          * the vertextypes_todo list.
          */
         while ((j = tdq_remove(b->edges_todo)) >= 0) {
-            grid_edge *e = &g->edges[j];
-            int fc1 = e->face1 ? board[e->face1 - g->faces] : FACE_BLACK;
-            int fc2 = e->face2 ? board[e->face2 - g->faces] : FACE_BLACK;
+            grid_edge *e = g->edges[j];
+            int fc1 = e->face1 ? board[e->face1->index] : FACE_BLACK;
+            int fc2 = e->face2 ? board[e->face2->index] : FACE_BLACK;
             bool oldedge = b->edges[j];
             bool newedge = (fc1==c) ^ (fc2==c);
             if (oldedge != newedge) {
                 b->edges[j] = newedge;
-                tdq_add(b->vertextypes_todo, e->dot1 - g->dots);
-                tdq_add(b->vertextypes_todo, e->dot2 - g->dots);
+                tdq_add(b->vertextypes_todo, e->dot1->index);
+                tdq_add(b->vertextypes_todo, e->dot2->index);
             }
         }
 
@@ -980,7 +1010,7 @@ static int pearl_loopgen_bias(void *vctx, char *board, int face)
          * old neighbours.
          */
         while ((j = tdq_remove(b->vertextypes_todo)) >= 0) {
-            grid_dot *d = &g->dots[j];
+            grid_dot *d = g->dots[j];
             int neighbours[2], type = 0, n = 0;
             
             for (k = 0; k < d->order; k++) {
@@ -988,10 +1018,10 @@ static int pearl_loopgen_bias(void *vctx, char *board, int face)
                 grid_dot *d2 = (e->dot1 == d ? e->dot2 : e->dot1);
                 /* dir == 0,1,2,3 for an edge going L,U,R,D */
                 int dir = (d->y == d2->y) + 2*(d->x+d->y > d2->x+d2->y);
-                int ei = e - g->edges;
+                int ei = e->index;
                 if (b->edges[ei]) {
                     type |= 1 << dir;
-                    neighbours[n] = d2 - g->dots; 
+                    neighbours[n] = d2->index; 
                     n++;
                 }
             }
@@ -1100,7 +1130,7 @@ static void pearl_loopgen(int w, int h, char *lines, random_state *rs)
     }
 
     for (i = 0; i < g->num_edges; i++) {
-        grid_edge *e = g->edges + i;
+        grid_edge *e = g->edges[i];
         enum face_colour c1 = FACE_COLOUR(e->face1);
         enum face_colour c2 = FACE_COLOUR(e->face2);
         assert(c1 != FACE_GREY);
@@ -1489,29 +1519,35 @@ static char nbits[16] = { 0, 1, 1, 2,
 
 #define ERROR_CLUE 16
 
-static void dsf_update_completion(game_state *state, int ax, int ay, char dir,
-                                 int *dsf)
+/* Returns false if the state is invalid. */
+static bool dsf_update_completion(game_state *state, int ax, int ay, char dir,
+                                 DSF *dsf)
 {
     int w = state->shared->w /*, h = state->shared->h */;
     int ac = ay*w+ax, bx, by, bc;
 
-    if (!(state->lines[ac] & dir)) return; /* no link */
+    if (!(state->lines[ac] & dir)) return true; /* no link */
     bx = ax + DX(dir); by = ay + DY(dir);
 
-    assert(INGRID(state, bx, by)); /* should not have a link off grid */
+    if (!INGRID(state, bx, by))
+        return false; /* should not have a link off grid */
 
     bc = by*w+bx;
-    assert(state->lines[bc] & F(dir)); /* should have reciprocal link */
-    if (!(state->lines[bc] & F(dir))) return;
+    if (!(state->lines[bc] & F(dir)))
+        return false; /* should have reciprocal link */
+    if (!(state->lines[bc] & F(dir))) return true;
 
     dsf_merge(dsf, ac, bc);
+    return true;
 }
 
-static void check_completion(game_state *state, bool mark)
+/* Returns false if the state is invalid. */
+static bool check_completion(game_state *state, bool mark)
 {
     int w = state->shared->w, h = state->shared->h, x, y, i, d;
     bool had_error = false;
-    int *dsf, *component_state;
+    DSF *dsf;
+    int *component_state;
     int nsilly, nloop, npath, largest_comp, largest_size, total_pathsize;
     enum { COMP_NONE, COMP_LOOP, COMP_PATH, COMP_SILLY, COMP_EMPTY };
 
@@ -1530,13 +1566,16 @@ static void check_completion(game_state *state, bool mark)
      * same reasons, since Loopy and Pearl have basically the same
      * form of expected solution.
      */
-    dsf = snew_dsf(w*h);
+    dsf = dsf_new(w*h);
 
     /* Build the dsf. */
     for (x = 0; x < w; x++) {
         for (y = 0; y < h; y++) {
-            dsf_update_completion(state, x, y, R, dsf);
-            dsf_update_completion(state, x, y, D, dsf);
+            if (!dsf_update_completion(state, x, y, R, dsf) ||
+                !dsf_update_completion(state, x, y, D, dsf)) {
+                dsf_free(dsf);
+                return false;
+            }
         }
     }
 
@@ -1617,7 +1656,7 @@ static void check_completion(game_state *state, bool mark)
      * part of a single loop, for which our counter variables
      * nsilly,nloop,npath are enough. */
     sfree(component_state);
-    sfree(dsf);
+    dsf_free(dsf);
 
     /*
      * Check that no clues are contradicted. This code is similar to
@@ -1691,6 +1730,7 @@ static void check_completion(game_state *state, bool mark)
         if (!had_error)
             state->completed = true;
     }
+    return true;
 }
 
 /* completion check:

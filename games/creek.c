@@ -67,7 +67,7 @@ struct game_params {
 typedef struct game_clues {
     int w, h;
     signed char *clues;
-    int *tmpdsf;
+    DSF *tmpdsf;
     int refcount;
 } game_clues;
 
@@ -222,7 +222,7 @@ static const char *validate_params(const game_params *params, bool full)
 }
 
 struct solver_scratch_creek {
-    int *whitedsf;
+    DSF *whitedsf;
     signed char *tmpsoln;
     const signed char *clues;
     int depth;
@@ -230,7 +230,7 @@ struct solver_scratch_creek {
 
 static struct solver_scratch_creek *new_scratch_creek(int w, int h) {
     struct solver_scratch_creek *ret = snew(struct solver_scratch_creek);
-    ret->whitedsf = snewn(w*h, int);
+    ret->whitedsf = dsf_new(w*h);
     ret->tmpsoln = snewn(w*h, signed char);
     ret->depth = 0;
     return ret;
@@ -239,8 +239,8 @@ static struct solver_scratch_creek *new_scratch_creek(int w, int h) {
 static struct solver_scratch_creek *dup_scratch_creek(int w, int h, const struct solver_scratch_creek *scc) {
     struct solver_scratch_creek *ret = snew(struct solver_scratch_creek);
     if (scc->whitedsf != NULL) {
-        ret->whitedsf = snewn(w*h, int);
-        memcpy(ret->whitedsf, scc->whitedsf, w*h*sizeof(int));
+        ret->whitedsf = dsf_new(w*h);
+        dsf_copy(ret->whitedsf, scc->whitedsf);
     }     
     
     if (scc->tmpsoln != NULL) {
@@ -253,7 +253,7 @@ static struct solver_scratch_creek *dup_scratch_creek(int w, int h, const struct
 }
 
 static void free_scratch_creek(struct solver_scratch_creek *scc) {
-    sfree(scc->whitedsf);
+    dsf_free(scc->whitedsf);
     sfree(scc->tmpsoln);
     sfree(scc);
 }
@@ -284,12 +284,12 @@ static int vertex_degree_creek(int w, int h, signed char *soln, int x, int y,
     return anti ? ret + (4-neigh) : ret;
 }
 
-static bool check_connectedness_creek(int w, int h, int *dsf,
+static bool check_connectedness_creek(int w, int h, DSF *dsf,
                      signed char *soln, const signed char *clues, int level) {
     int x, y, i, first_white = -1;
     int W = w+1, H = h+1;
     
-    dsf_init(dsf, w*h);
+    dsf_reinit(dsf);
     
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
@@ -356,7 +356,7 @@ static bool check_connectedness_creek(int w, int h, int *dsf,
         for (y = 0; y < h; y++) {
             for (x = 0; x < w; x++) {
                 if (soln[y*w+x] < 0) {
-                    if (dsf_canonify(dsf, first_white) != dsf_canonify(dsf, y*w+x)) {
+                    if (!dsf_equivalent(dsf, first_white, y*w+x)) {
                         return false;
                     }
                 }
@@ -391,7 +391,7 @@ static bool check_connectedness_creek(int w, int h, int *dsf,
                     co = 0;
                     for (i=0;i<nneigh;i++) {
                         if (soln[neighbours[i]] <= 0)
-                            if (dsf_canonify(dsf, first_white) == dsf_canonify(dsf, neighbours[i]))
+                            if (dsf_equivalent(dsf, first_white, neighbours[i]))
                                 co++;
                     }
                     if (co < nneigh-c)
@@ -408,7 +408,7 @@ static bool check_completed_creek(int w, int h,
            const signed char *clues,
            signed char *soln,
            unsigned char *errors,
-           int *dsf)
+           DSF *dsf)
 {
     int W = w+1, H = h+1;
     int x, y;
@@ -458,7 +458,7 @@ static void initialize_solver_creek(int w, int h, const signed char *clues,
                       int difficulty) {
     memset(soln, 0, w*h);
     scc->clues = clues;
-    dsf_init(scc->whitedsf, w*h);
+    dsf_reinit(scc->whitedsf);
     return;
 }
                       
@@ -621,7 +621,7 @@ static int creek_solve(int w, int h, const signed char *clues,
 
                         if (c == 2) {
                             tscc = dup_scratch_creek(w,h,scc);
-                            memcpy(scc->tmpsoln, soln, w*h*sizeof(signed char));                    
+                            memcpy(scc->tmpsoln, soln, w*h*sizeof(signed char));
                             tscc->depth = 1;
                             j = neighbours[i];
                             if (soln[j] == 0) {
@@ -682,7 +682,7 @@ static int creek_solve(int w, int h, const signed char *clues,
             }
         
         if (firstwhite >= 0) {
-            dsf_init(scc->whitedsf, w*h);
+            dsf_reinit(scc->whitedsf);
             for (i=0;i<w*h;i++) {
                 if (soln[i] == 1) continue;
                 x = i % w; y = i / w;
@@ -694,7 +694,7 @@ static int creek_solve(int w, int h, const signed char *clues,
             
             for (i=0;i<w*h;i++) {
                 if (soln[i] == 0) {
-                    if (dsf_canonify(scc->whitedsf, i) != dsf_canonify(scc->whitedsf, firstwhite)) {
+                    if (!dsf_equivalent(scc->whitedsf, i, firstwhite)) {
                         soln[i] = 1;
                         done_something = true; 
                     }
@@ -726,11 +726,12 @@ static int creek_solve(int w, int h, const signed char *clues,
 static void creek_generate(int w, int h, signed char *soln, random_state *rs)
 {
     int i;
-    int *connected, *whites, nw;
+    int *whites, nw;
+    DSF *connected;
     int ridx;
 
     memset(soln, -1, w*h);
-    connected = snew_dsf(w*h);
+    connected = dsf_new(w*h);
     whites = snewn(w*h, int);
 
     while(true) {
@@ -752,7 +753,7 @@ static void creek_generate(int w, int h, signed char *soln, random_state *rs)
     }
 
     sfree(whites);
-    sfree(connected);
+    dsf_free(connected);
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
@@ -949,7 +950,7 @@ static game_state *new_game(midend *me, const game_params *params,
     state->clues->h = h;
     state->clues->clues = snewn(W*H, signed char);
     state->clues->refcount = 1;
-    state->clues->tmpdsf = snewn(W*H*2+W+H, int);
+    state->clues->tmpdsf = dsf_new(W*H*2+W+H);
     memset(state->clues->clues, -1, W*H);
     while (*desc) {
         int n = *desc++;
@@ -992,7 +993,7 @@ static void free_game(game_state *state)
     assert(state->clues);
     if (--state->clues->refcount <= 0) {
         sfree(state->clues->clues);
-        sfree(state->clues->tmpdsf);
+        dsf_free(state->clues->tmpdsf);
         sfree(state->clues);
     }
     sfree(state);

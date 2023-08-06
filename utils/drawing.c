@@ -73,7 +73,8 @@ void drawing_free(drawing *dr)
 void draw_text(drawing *dr, int x, int y, int fonttype, int fontsize,
                int align, int colour, const char *text)
 {
-    dr->api->draw_text(dr->handle, x, y, fonttype, fontsize, align, colour, text);
+    dr->api->draw_text(dr->handle, x, y, fonttype, fontsize, align,
+                       colour, text);
 }
 
 void draw_rect(drawing *dr, int x, int y, int w, int h, int colour)
@@ -89,18 +90,19 @@ void draw_line(drawing *dr, int x1, int y1, int x2, int y2, int colour)
 void draw_thick_line(drawing *dr, float thickness,
                      float x1, float y1, float x2, float y2, int colour)
 {
-    if (thickness < 1.0)
-        thickness = 1.0;
+    if (thickness < 1.0F)
+        thickness = 1.0F;
     if (dr->api->draw_thick_line) {
-        dr->api->draw_thick_line(dr->handle, thickness, x1, y1, x2, y2, colour);
+        dr->api->draw_thick_line(dr->handle, thickness,
+                                 x1, y1, x2, y2, colour);
     } else {
         /* We'll fake it up with a filled polygon.  The tweak to the
          * thickness empirically compensates for rounding errors, because
          * polygon rendering uses integer coordinates.
          */
         float len = sqrt((x2 - x1)*(x2 - x1) + (y2 - y1)*(y2 - y1));
-        float tvhatx = (x2 - x1)/len * (thickness/2 - 0.2);
-        float tvhaty = (y2 - y1)/len * (thickness/2 - 0.2);
+        float tvhatx = (x2 - x1)/len * (thickness/2 - 0.2F);
+        float tvhaty = (y2 - y1)/len * (thickness/2 - 0.2F);
         int p[8];
 
         p[0] = x1 - tvhaty;
@@ -118,13 +120,15 @@ void draw_thick_line(drawing *dr, float thickness,
 void draw_polygon(drawing *dr, const int *coords, int npoints,
                   int fillcolour, int outlinecolour)
 {
-    dr->api->draw_polygon(dr->handle, coords, npoints, fillcolour, outlinecolour);
+    dr->api->draw_polygon(dr->handle, coords, npoints, fillcolour,
+                          outlinecolour);
 }
 
 void draw_circle(drawing *dr, int cx, int cy, int radius,
                  int fillcolour, int outlinecolour)
 {
-    dr->api->draw_circle(dr->handle, cx, cy, radius, fillcolour, outlinecolour);
+    dr->api->draw_circle(dr->handle, cx, cy, radius, fillcolour,
+                         outlinecolour);
 }
 
 void draw_update(drawing *dr, int x, int y, int w, int h)
@@ -288,7 +292,8 @@ static int print_generic_colour(drawing *dr, float r, float g, float b,
 {
     if (dr->ncolours >= dr->coloursize) {
         dr->coloursize = dr->ncolours + 16;
-        dr->colours = sresize(dr->colours, dr->coloursize, struct print_colour);
+        dr->colours = sresize(dr->colours, dr->coloursize,
+                              struct print_colour);
     }
     dr->colours[dr->ncolours].hatch = hatch;
     dr->colours[dr->ncolours].hatch_when = hatch_when;

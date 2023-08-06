@@ -8,6 +8,7 @@
 ### Changed
 * *Untangle*: Update vertex screen draw only at end of screen drag
 * *Galaxies*: Sync with upstream (solver for unreasonable puzzles now tries to maximize 'wiggliness')
+* Whole project: Sync with upstream (mainly new DSF library and subsystem for game UI configuration)
 
 ### Fixed
 * *Solo*: Typo in How to Play
