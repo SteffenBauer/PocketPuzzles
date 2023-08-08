@@ -910,7 +910,7 @@ static game_state *new_game(midend *me, const game_params *params, const char *d
 }
 
 struct solver_scratch {
-    int *dsf;
+    DSF *dsf;
 };
 
 static int solve_set_sflag(game_state *state, int x, int y,
@@ -925,8 +925,8 @@ static int solve_set_sflag(game_state *state, int x, int y,
     if (state->sflags[i] & (f == S_TRACK ? S_NOTRACK : S_TRACK)) {
         solverdebug(("opposite flag already set there, marking IMPOSSIBLE"));
         state->impossible = true;
-    }
-    state->sflags[i] |= f;
+    } else
+        state->sflags[i] |= f;
     return 1;
 }
 
@@ -943,8 +943,8 @@ static int solve_set_eflag(game_state *state, int x, int y, int d,
     if (sf & (f == E_TRACK ? E_NOTRACK : E_TRACK)) {
         solverdebug(("opposite flag already set there, marking IMPOSSIBLE"));
         state->impossible = true;
-    }
-    S_E_SET(state, x, y, d, f);
+    } else
+        S_E_SET(state, x, y, d, f);
     return 1;
 }
 
@@ -1312,7 +1312,7 @@ static int solve_check_neighbours(game_state *state, bool both_ways)
 }
 
 static int solve_check_loop_sub(game_state *state, int x, int y, int dir,
-                                int *dsf, int startc, int endc)
+                                DSF *dsf, int startc, int endc)
 {
     int w = state->p.w, h = state->p.h, i = y*w+x, j, k;
     bool satisfied = true;
@@ -1364,13 +1364,13 @@ static int solve_check_loop_sub(game_state *state, int x, int y, int dir,
 static int solve_check_loop(game_state *state)
 {
     int w = state->p.w, h = state->p.h, x, y, i, j, did = 0;
-    int *dsf, startc, endc;
+    DSF *dsf;
+    int startc, endc;
 
     /* TODO eventually we should pull this out into a solver struct and keep it
        updated as we connect squares. For now we recreate it every time we try
        this particular solver step. */
-    dsf = snewn(w*h, int);
-    dsf_init(dsf, w*h);
+    dsf = dsf_new(w*h);
 
     /* Work out the connectedness of the current loop set. */
     for (x = 0; x < w; x++) {
@@ -1408,7 +1408,7 @@ static int solve_check_loop(game_state *state)
         }
     }
 
-    sfree(dsf);
+    dsf_free(dsf);
 
     return did;
 }
@@ -1461,8 +1461,8 @@ static int solve_bridge_sub(game_state *state, int x, int y, int d,
     assert(d == D || d == R);
 
     if (!sc->dsf)
-        sc->dsf = snew_dsf(wh);
-    dsf_init(sc->dsf, wh);
+        sc->dsf = dsf_new(wh);
+    dsf_reinit(sc->dsf);
 
     for (xi = 0; xi < w; xi++) {
         for (yi = 0; yi < h; yi++) {
@@ -1601,7 +1601,7 @@ static int tracks_solve(game_state *state, int diff, int *max_diff_out)
         break;
     }
 
-    sfree(sc->dsf);
+    dsf_free(sc->dsf);
 
     if (max_diff_out)
         *max_diff_out = max_diff;
@@ -1686,7 +1686,7 @@ static void debug_state(game_state *state, const char *what) {
 }
 
 static void dsf_update_completion(game_state *state, int ax, int ay,
-                                  char dir, int *dsf)
+                                  char dir, DSF *dsf)
 {
     int w = state->p.w, ai = ay*w+ax, bx, by, bi;
 
@@ -1734,9 +1734,10 @@ static int tracks_neighbour(int vertex, void *vctx)
 static bool check_completion(game_state *state, bool mark)
 {
     int w = state->p.w, h = state->p.h, x, y, i, target;
-    bool ret = true;
+    bool ret = true, pathret;
     int ntrack, nnotrack, ntrackcomplete;
-    int *dsf, pathclass;
+    DSF *dsf;
+    int pathclass;
     struct findloopstate *fls;
     struct tracks_neighbour_ctx ctx;
 
@@ -1755,60 +1756,7 @@ static bool check_completion(game_state *state, bool mark)
         }
     }
 
-    /* A cell is 'complete', for the purposes of marking the game as
-     * finished, if it has two edges marked as TRACK. But it only has
-     * to have one edge marked as TRACK, or be filled in as trackful
-     * without any specific edges known, to count towards checking
-     * row/column clue errors. */
-    for (x = 0; x < w; x++) {
-        target = state->numbers->numbers[x];
-        ntrack = nnotrack = ntrackcomplete = 0;
-        for (y = 0; y < h; y++) {
-            if (S_E_COUNT(state, x, y, E_TRACK) > 0 ||
-                state->sflags[y*w+x] & S_TRACK)
-                ntrack++;
-            if (S_E_COUNT(state, x, y, E_TRACK) == 2)
-                ntrackcomplete++;
-            if (state->sflags[y*w+x] & S_NOTRACK)
-                nnotrack++;
-        }
-        if (mark) {
-            if (ntrack > target || nnotrack > (h-target)) {
-                debug(("col %d error: target %d, track %d, notrack %d",
-                       x, target, ntrack, nnotrack));
-                state->num_errors[x] = 1;
-                ret = false;
-            }
-        }
-        if (ntrackcomplete != target)
-            ret = false;
-    }
-    for (y = 0; y < h; y++) {
-        target = state->numbers->numbers[w+y];
-        ntrack = nnotrack = ntrackcomplete = 0;
-        for (x = 0; x < w; x++) {
-            if (S_E_COUNT(state, x, y, E_TRACK) > 0 ||
-                state->sflags[y*w+x] & S_TRACK)
-                ntrack++;
-            if (S_E_COUNT(state, x, y, E_TRACK) == 2)
-                ntrackcomplete++;
-            if (state->sflags[y*w+x] & S_NOTRACK)
-                nnotrack++;
-        }
-        if (mark) {
-            if (ntrack > target || nnotrack > (w-target)) {
-                debug(("row %d error: target %d, track %d, notrack %d",
-                       y, target, ntrack, nnotrack));
-                state->num_errors[w+y] = 1;
-                ret = false;
-            }
-        }
-        if (ntrackcomplete != target)
-            ret = false;
-    }
-
-    dsf = snewn(w*h, int);
-    dsf_init(dsf, w*h);
+    dsf = dsf_new(w*h);
 
     for (x = 0; x < w; x++) {
         for (y = 0; y < h; y++) {
@@ -1860,9 +1808,73 @@ static bool check_completion(game_state *state, bool mark)
         }
     }
 
+    /*
+     * A cell is 'complete', for the purposes of marking the game as
+     * finished, if it has two edges marked as TRACK. But it only has
+     * to have one edge marked as TRACK, or be filled in as trackful
+     * without any specific edges known, to count towards checking
+     * row/column clue errors.
+     *
+     * This changes if we haven't found any other errors by this
+     * point, so the player has constructed a route from A to B.  In
+     * that case, we highlight any row/column where the actually laid
+     * tracks don't match the clue.
+     */
+    pathret = ret; /* Do we have a plausible solution so far? */
+    for (x = 0; x < w; x++) {
+        target = state->numbers->numbers[x];
+        ntrack = nnotrack = ntrackcomplete = 0;
+        for (y = 0; y < h; y++) {
+            if (S_E_COUNT(state, x, y, E_TRACK) > 0 ||
+                state->sflags[y*w+x] & S_TRACK)
+                ntrack++;
+            if (S_E_COUNT(state, x, y, E_TRACK) == 2)
+                ntrackcomplete++;
+            if (state->sflags[y*w+x] & S_NOTRACK)
+                nnotrack++;
+        }
+        if (mark) {
+            if (ntrack > target || nnotrack > (h-target) ||
+                (pathret && ntrackcomplete != target)) {
+                debug(("col %d error: target %d, track %d, notrack %d, "
+                       "pathret %d, trackcomplete %d",
+                       x, target, ntrack, nnotrack, pathret, ntrackcomplete));
+                state->num_errors[x] = 1;
+                ret = false;
+            }
+        }
+        if (ntrackcomplete != target)
+            ret = false;
+    }
+    for (y = 0; y < h; y++) {
+        target = state->numbers->numbers[w+y];
+        ntrack = nnotrack = ntrackcomplete = 0;
+        for (x = 0; x < w; x++) {
+            if (S_E_COUNT(state, x, y, E_TRACK) > 0 ||
+                state->sflags[y*w+x] & S_TRACK)
+                ntrack++;
+            if (S_E_COUNT(state, x, y, E_TRACK) == 2)
+                ntrackcomplete++;
+            if (state->sflags[y*w+x] & S_NOTRACK)
+                nnotrack++;
+        }
+        if (mark) {
+            if (ntrack > target || nnotrack > (w-target) ||
+                (pathret && ntrackcomplete != target)) {
+                debug(("row %d error: target %d, track %d, notrack %d, "
+                       "pathret %d, trackcomplete %d",
+                       y, target, ntrack, nnotrack, pathret, ntrackcomplete));
+                state->num_errors[w+y] = 1;
+                ret = false;
+            }
+        }
+        if (ntrackcomplete != target)
+            ret = false;
+    }
+
     if (mark)
         state->completed = ret;
-    sfree(dsf);
+    dsf_free(dsf);
     return ret;
 }
 

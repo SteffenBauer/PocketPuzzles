@@ -1238,12 +1238,8 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     game_state *state;
     struct unruly_scratch *scratch;
 
-    int attempts = 0;
-
     while (1) {
-
         while (true) {
-            attempts++;
             state = blank_state(w2, h2, params->unique, true);
             scratch = unruly_new_scratch(state);
             if (unruly_fill_game(state, scratch, rs))
@@ -1767,11 +1763,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame unruly
 #endif
@@ -1819,7 +1810,7 @@ const struct game thegame = {
     game_status,
     false, false, NULL, NULL,
     true,                      /* wants_statusbar */
-    false, game_timing_state,
+    false, NULL,
     REQUIRE_RBUTTON,                          /* flags */
 };
 

@@ -267,7 +267,7 @@ static int check_solution(game_state *state, bool full) {
 
     int exit_count, exit1, exit2;
 
-    int *dsf;
+    DSF *dsf;
     int first_cell;
     bool mark_unconnected = false;
 
@@ -411,8 +411,7 @@ static int check_solution(game_state *state, bool full) {
     }
 
     /* Check if all cells are connected */
-    dsf = snewn(w*h,int);
-    dsf_init(dsf, w*h);
+    dsf = dsf_new(w*h);
     for (y=0;y<h;y++)
     for (x=0;x<w;x++) {
         i = x+y*w;
@@ -426,7 +425,7 @@ static int check_solution(game_state *state, bool full) {
         if ((*edges[3] & FLAG_PATH) > 0x00 && x<w-1) dsf_merge(dsf, i, i+1);
     }
     first_cell = dsf_canonify(dsf, 0);
-    if (exit_count == 2 && dsf_canonify(dsf, exit1) == dsf_canonify(dsf, exit2)) {
+    if (exit_count == 2 && dsf_equivalent(dsf, exit1, exit2)) {
         mark_unconnected = true;
         first_cell = dsf_canonify(dsf, exit1);
     }
@@ -439,13 +438,13 @@ static int check_solution(game_state *state, bool full) {
             }
         }
     }
-    sfree(dsf);
+    dsf_free(dsf);
 
     return solved;
 }
 
 struct solver_scratch {
-    int *loopdsf;
+    DSF *loopdsf;
     bool *done_islands;
     int island_counter;
     bool exits_found;
@@ -589,12 +588,11 @@ static bool check_partition(const game_state *state) {
     int w = state->w;
     int h = state->h;
     unsigned char *edges[4];
-    int *dsf;
+    DSF *dsf;
     int first_cell;
 
     /* Check if all cells can be connected */
-    dsf = snewn(w*h,int);
-    dsf_init(dsf, w*h);
+    dsf = dsf_new(w*h);
     for (y=0;y<h;y++)
     for (x=0;x<w;x++) {
         i = x+y*w;
@@ -610,11 +608,11 @@ static bool check_partition(const game_state *state) {
     first_cell = dsf_canonify(dsf, 0);
     for (i=0;i<w*h;i++) {
         if (dsf_canonify(dsf, i) != first_cell) {
-            sfree(dsf);
+            dsf_free(dsf);
             return false;
         }
     }
-    sfree(dsf);
+    dsf_free(dsf);
     return true;
 }
 
@@ -656,7 +654,7 @@ static bool parity_check_block(game_state *state, struct solver_scratch *scratch
     int h = state->h;
     int w = state->w;
     unsigned char *edges[4];
-    int *dsf;
+    DSF *dsf;
     bool found;
     bool result = false;
     int processed_count = 0;
@@ -666,8 +664,7 @@ static bool parity_check_block(game_state *state, struct solver_scratch *scratch
     scratch->done_islands[scratch->island_counter] = true;
 
     /* Build a dsf over the relevant area */
-    dsf = snewn(w*h,int);
-    dsf_init(dsf, w*h);
+    dsf = dsf_new(w*h);
     for (y=by;y<by+bh;y++)
     for (x=bx;x<bx+bw;x++) {
         i = x+y*w;
@@ -847,7 +844,7 @@ static bool parity_check_block(game_state *state, struct solver_scratch *scratch
 finish_parity:
     sfree(group_cells);
     sfree(processed_cells);
-    sfree(dsf);
+    dsf_free(dsf);
     return result;
 }
 
@@ -1105,8 +1102,7 @@ static int walls_solve(game_state *state, int difficulty) {
     int islands = (((w-1)*(w))*((h-1)*(h)))/4;
     struct solver_scratch *scratch = snew(struct solver_scratch);
 
-    scratch->loopdsf = snewn(w*h, int);
-    dsf_init(scratch->loopdsf, w*h);
+    scratch->loopdsf = dsf_new(w*h);
     scratch->done_islands = snewn(islands, bool);
     scratch->exits_found = false;
     scratch->difficulty = difficulty;
@@ -1127,7 +1123,7 @@ static int walls_solve(game_state *state, int difficulty) {
     }
 
     sfree(scratch->done_islands);
-    sfree(scratch->loopdsf);
+    dsf_free(scratch->loopdsf);
     sfree(scratch);
     return check_solution(state, false);
 }
@@ -2308,10 +2304,6 @@ static int game_status(const game_state *state) {
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui) {
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame walls
 #endif
@@ -2360,7 +2352,7 @@ const struct game thegame = {
     game_status,
     false, false, NULL, NULL,
     true,                 /* wants_statusbar */
-    false, game_timing_state,
+    false, NULL,
     REQUIRE_RBUTTON,       /* flags */
 };
 

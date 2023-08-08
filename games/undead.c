@@ -1478,7 +1478,7 @@ static int path_cmp(const void *a, const void *b) {
 
 static char *new_game_desc(const game_params *params, random_state *rs,
                            char **aux, bool interactive) {
-    int i,count,c,w,h,r,p,g;
+    int count,c,w,h,r,p,g;
     game_state *new;
 
     /* Variables for puzzle generation algorithm */
@@ -1496,7 +1496,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     char *e;
     char *desc;
 
-    i = 0;
     while (true) {
         new = new_state(params);
         abort = false;
@@ -1534,7 +1533,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         /* Monsters / Mirrors ratio should be balanced */
         ratio = (float)new->common->num_total /
             (float)(new->common->params.w * new->common->params.h);
-        if (ratio < 0.48 || ratio > 0.78) {
+        if (ratio < 0.48F || ratio > 0.78F) {
             free_game(new);
             continue;
         }
@@ -1717,7 +1716,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
         if (new->common->params.diff != determine_difficulty(new, sol)) {
             free_game(new);
-            i++;
             continue;
         }
 
@@ -1730,7 +1728,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         /* If puzzle is not solvable or does not satisfy the desired
          * difficulty level, free memory and start from scratch */
         free_game(new);
-        i++;
     }
 
     /* We have a valid puzzle! */
@@ -2818,7 +2815,7 @@ static void draw_path_hint(drawing *dr, game_drawstate *ds,
                            const struct game_params *params,
                            int hint_index, int hint) {
     int x, y, color, dx, dy, text_dx, text_dy, text_size;
-    char buf[4];
+    char buf[12];
 
     if (ds->hints_done[hint_index])
         color = COL_DONE;
@@ -3080,11 +3077,6 @@ static int game_status(const game_state *state)
     return state->solved;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame undead
 #endif
@@ -3135,7 +3127,7 @@ const struct game thegame = {
     game_status,
     false, false, NULL, NULL,
     true,                 /* wants_statusbar */
-    false, game_timing_state,
+    false, NULL,
     REQUIRE_RBUTTON,                     /* flags */
 };
 
