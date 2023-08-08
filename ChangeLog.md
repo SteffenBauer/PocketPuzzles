@@ -2,12 +2,10 @@
 
 ## 0.7.12 nightly
 
-### Added
-* *Loopy*: New grid type *hat*
-
 ### Changed
 * *Untangle*: Update vertex screen draw only at end of screen drag
 * *Galaxies*: Sync with upstream (solver for unreasonable puzzles now tries to maximize 'wiggliness')
+* *Loopy*: Remove grid types that don't really make sense on limited screen size
 * Whole project: Sync with upstream (mainly new DSF library and subsystem for game UI configuration)
 
 ### Fixed

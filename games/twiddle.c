@@ -111,24 +111,26 @@ static void decode_params(game_params *ret, char const *string)
     if (*string == 'x') {
         string++;
         ret->h = atoi(string);
-    while (*string && isdigit((unsigned char)*string)) string++;
+        while (*string && isdigit((unsigned char)*string)) string++;
     }
     if (*string == 'n') {
         string++;
         ret->n = atoi(string);
-    while (*string && isdigit((unsigned char)*string)) string++;
+        while (*string && isdigit((unsigned char)*string)) string++;
     }
     while (*string) {
-    if (*string == 'r') {
-        ret->rowsonly = true;
-    } else if (*string == 'o') {
-        ret->orientable = true;
-    } else if (*string == 'm') {
+        if (*string == 'r') {
+            ret->rowsonly = true;
             string++;
-        ret->movetarget = atoi(string);
-            while (string[1] && isdigit((unsigned char)string[1])) string++;
-    }
-    string++;
+        } else if (*string == 'o') {
+            ret->orientable = true;
+            string++;
+        } else if (*string == 'm') {
+            string++;
+            ret->movetarget = atoi(string);
+            while (*string && isdigit((unsigned char)*string)) string++;
+        } else
+            string++;
     }
 }
 
@@ -994,7 +996,7 @@ static int highlight_colour(float angle)
     COL_LOWLIGHT,
     };
 
-    return colours[(int)((angle + 2*PI) / (PI/16)) & 31];
+    return colours[(int)((angle + 2*(float)PI) / ((float)PI/16)) & 31];
 }
 
 static float game_anim_length_real(const game_state *oldstate,
@@ -1089,7 +1091,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     rot->cw = rot->ch = TILE_SIZE * state->n;
     rot->ox = rot->cx + rot->cw/2;
     rot->oy = rot->cy + rot->ch/2;
-    angle = (float)((-PI/2 * lastr) * (1.0 - animtime / anim_max));
+    angle = ((-(float)PI/2 * lastr) * (1.0F - animtime / anim_max));
     rot->c = (float)cos(angle);
     rot->s = (float)sin(angle);
 
@@ -1182,11 +1184,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     }
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame twiddle
 #endif
@@ -1235,7 +1232,7 @@ const struct game thegame = {
     game_status,
     false, false, NULL, NULL,
     true,                   /* wants_statusbar */
-    false, game_timing_state,
+    false, NULL,
     REQUIRE_RBUTTON,                       /* flags */
 };
 

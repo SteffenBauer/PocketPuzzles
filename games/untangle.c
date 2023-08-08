@@ -437,13 +437,13 @@ static int vertcmpC(const void *av, const void *bv)
     const vertex *b = (const vertex *)bv;
 
     if (a->param < b->param)
-    return -1;
+        return -1;
     else if (a->param > b->param)
-    return +1;
+        return +1;
     else if (a->vindex < b->vindex)
-    return -1;
+        return -1;
     else if (a->vindex > b->vindex)
-    return +1;
+        return +1;
     return 0;
 }
 static int vertcmp(void *av, void *bv) { return vertcmpC(av, bv); }
@@ -570,40 +570,40 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         qsort(vlist, m, sizeof(*vlist), vertcmpC);
 
         for (k = 0; k < m; k++) {
-        int p;
-        int ki = vlist[k].vindex;
+            int p;
+            int ki = vlist[k].vindex;
 
-        /*
-         * Check to see whether this edge intersects any
-         * existing edge or point.
-         */
-        for (p = 0; p < n; p++)
-            if (p != ki && p != j && cross(pts[ki], pts[j],
-                           pts[p], pts[p]))
-            break;
-        if (p < n)
-            continue;
-        for (p = 0; (e = index234(edges, p)) != NULL; p++)
-            if (e->a != ki && e->a != j &&
-            e->b != ki && e->b != j &&
-            cross(pts[ki], pts[j], pts[e->a], pts[e->b]))
-            break;
-        if (e)
-            continue;
+            /*
+             * Check to see whether this edge intersects any
+             * existing edge or point.
+             */
+            for (p = 0; p < n; p++)
+                if (p != ki && p != j && cross(pts[ki], pts[j],
+                               pts[p], pts[p]))
+                break;
+            if (p < n)
+                continue;
+            for (p = 0; (e = index234(edges, p)) != NULL; p++)
+                if (e->a != ki && e->a != j &&
+                e->b != ki && e->b != j &&
+                cross(pts[ki], pts[j], pts[e->a], pts[e->b]))
+                break;
+            if (e)
+                continue;
 
-        /*
-         * We're done! Add this edge, modify the degrees of
-         * the two vertices involved, and break.
-         */
-        addedge(edges, j, ki);
-        added = true;
-        del234(vertices, vs+j);
-        vs[j].param++;
-        add234(vertices, vs+j);
-        del234(vertices, vs+ki);
-        vs[ki].param++;
-        add234(vertices, vs+ki);
-        break;
+            /*
+             * We're done! Add this edge, modify the degrees of
+             * the two vertices involved, and break.
+             */
+            addedge(edges, j, ki);
+            added = true;
+            del234(vertices, vs+j);
+            vs[j].param++;
+            add234(vertices, vs+j);
+            del234(vertices, vs+ki);
+            vs[ki].param++;
+            add234(vertices, vs+ki);
+            break;
         }
 
         if (k < m)
@@ -804,19 +804,19 @@ static game_state *new_game(midend *me, const game_params *params,
     state->completed = state->cheated = state->just_solved = false;
 
     while (*desc) {
-    a = atoi(desc);
-    assert(a >= 0 && a < params->n);
-    while (*desc && isdigit((unsigned char)*desc)) desc++;
-    assert(*desc == '-');
-    desc++;                   /* eat dash */
-    b = atoi(desc);
-    assert(b >= 0 && b < params->n);
-    while (*desc && isdigit((unsigned char)*desc)) desc++;
-    if (*desc) {
-        assert(*desc == ',');
-        desc++;               /* eat comma */
-    }
-    addedge(state->graph->edges, a, b);
+        a = atoi(desc);
+        assert(a >= 0 && a < params->n);
+        while (*desc && isdigit((unsigned char)*desc)) desc++;
+        assert(*desc == '-');
+        desc++;                   /* eat dash */
+        b = atoi(desc);
+        assert(b >= 0 && b < params->n);
+        while (*desc && isdigit((unsigned char)*desc)) desc++;
+        if (*desc) {
+            assert(*desc == ',');
+            desc++;               /* eat comma */
+        }
+        addedge(state->graph->edges, a, b);
     }
 
     state->crosses = snewn(count234(state->graph->edges), int);

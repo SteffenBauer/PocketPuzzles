@@ -508,9 +508,9 @@ static bool towers_valid(struct latin_solver *solver, void *vctx)
     int w = ctx->w;
     int c, i, n, best, clue, start, step;
     for (c = 0; c < 4*w; c++) {
-    clue = ctx->clues[c];
-    if (!clue)
-        continue;
+        clue = ctx->clues[c];
+        if (!clue)
+            continue;
 
         STARTSTEP(start, step, c, w);
         n = best = 0;
@@ -1456,7 +1456,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     int i;
 
     ds->tilesize = 0;
-    ds->three_d = !getenv("TOWERS_2D");
+    ds->three_d = true;
     ds->tiles = snewn((w+2)*(w+2), long);
     ds->drawn = snewn((w+2)*(w+2)*4, long);
     for (i = 0; i < (w+2)*(w+2)*4; i++)
