@@ -1833,15 +1833,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -2048,11 +2039,11 @@ static char *mark_in_direction(const game_state *state, int x, int y, int dir,
 
     char ch = primary ? 'F' : 'M', *other;
 
-    if (!INGRID(state, x, y) || !INGRID(state, x2, y2)) return UI_UPDATE;
+    if (!INGRID(state, x, y) || !INGRID(state, x2, y2)) return MOVE_UI_UPDATE;
 
     /* disallow laying a mark over a line, or vice versa. */
     other = primary ? state->marks : state->lines;
-    if (other[y*w+x] & dir || other[y2*w+x2] & dir2) return UI_UPDATE;
+    if (other[y*w+x] & dir || other[y2*w+x2] & dir2) return MOVE_UI_UPDATE;
     
     sprintf(buf, "%c%d,%d,%d;%c%d,%d,%d", ch, dir, x, y, ch, dir2, x2, y2);
     return dupstr(buf);
@@ -2066,12 +2057,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int x, int y, int button, bool swapped)
 {
-    int w = state->shared->w, h = state->shared->h /*, sz = state->shared->sz */;
+    int w = state->shared->w /*, h = state->shared->h, sz = state->shared->sz */;
     int gx = FROMCOORD(x), gy = FROMCOORD(y), i;
     bool release = false;
     char tmpbuf[80];
 
-    bool shift = button & MOD_SHFT, control = button & MOD_CTRL;
     button &= ~MOD_MASK;
 
     if (IS_MOUSE_DOWN(button)) {
@@ -2086,57 +2076,19 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->dragcoords[0] = gy * w + gx;
         ui->ndragcoords = 0;           /* will be 1 once drag is confirmed */
 
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (button == LEFT_DRAG && ui->ndragcoords >= 0) {
         update_ui_drag(state, ui, gx, gy);
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (IS_MOUSE_RELEASE(button)) release = true;
 
-    if (IS_CURSOR_MOVE(button)) {
-    if (!ui->cursor_active) {
-        ui->cursor_active = true;
-    } else if (control || shift) {
-        char *move;
-        if (ui->ndragcoords > 0) return NULL;
-        ui->ndragcoords = -1;
-        move = mark_in_direction(state, ui->curx, ui->cury,
-                     KEY_DIRECTION(button), control, tmpbuf);
-        if (control && !shift && *move)
-        move_cursor(button, &ui->curx, &ui->cury, w, h, false);
-        return move;
-    } else {
-        move_cursor(button, &ui->curx, &ui->cury, w, h, false);
-        if (ui->ndragcoords >= 0)
-        update_ui_drag(state, ui, ui->curx, ui->cury);
-    }
-    return UI_UPDATE;
-    }
-
-    if (IS_CURSOR_SELECT(button)) {
-    if (!ui->cursor_active) {
-        ui->cursor_active = true;
-        return UI_UPDATE;
-    } else if (button == CURSOR_SELECT) {
-        if (ui->ndragcoords == -1) {
-        ui->ndragcoords = 0;
-        ui->dragcoords[0] = ui->cury * w + ui->curx;
-        ui->clickx = CENTERED_COORD(ui->curx);
-        ui->clicky = CENTERED_COORD(ui->cury);
-        return UI_UPDATE;
-        } else release = true;
-    } else if (button == CURSOR_SELECT2 && ui->ndragcoords >= 0) {
-        ui->ndragcoords = -1;
-        return UI_UPDATE;
-    }
-    }
-
     if (button == 27 || button == '\b') {
         ui->ndragcoords = -1;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (release) {
@@ -2168,7 +2120,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
             ui->ndragcoords = -1;
 
-            return buf ? buf : UI_UPDATE;
+            return buf ? buf : MOVE_UI_UPDATE;
         } else if (ui->ndragcoords == 0) {
             /* Click (or tiny drag). Work out which edge we were
              * closest to. */
@@ -2189,12 +2141,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             cx = CENTERED_COORD(gx);
             cy = CENTERED_COORD(gy);
 
-            if (!INGRID(state, gx, gy)) return UI_UPDATE;
+            if (!INGRID(state, gx, gy)) return MOVE_UI_UPDATE;
 
             if (max(abs(x-cx),abs(y-cy)) < TILE_SIZE/4) {
                 /* TODO closer to centre of grid: process as a cell click not an edge click. */
 
-                return UI_UPDATE;
+                return MOVE_UI_UPDATE;
             } else {
         int direction;
                 if (abs(x-cx) < abs(y-cy)) {
@@ -2213,7 +2165,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (button == 'H' || button == 'h')
         return dupstr("H");
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
 static game_state *execute_move(const game_state *state, const char *move)
@@ -2289,7 +2241,7 @@ badmove:
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int halfsz; } ads, *ds = &ads;
@@ -2548,13 +2500,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
-
-
 #ifdef COMBINED
 #define thegame pearl
 #endif
@@ -2568,7 +2513,7 @@ static const char rules[] = "You have a grid of squares. Your job is to draw lin
 const struct game thegame = {
     "Pearl", "games.pearl", "pearl", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -2581,13 +2526,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -2597,12 +2544,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
+    NULL,  /* is_key_highlighted */
     game_status,
-    false, false, NULL, NULL,
-    true,                   /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON,                       /* flags */
 };
 

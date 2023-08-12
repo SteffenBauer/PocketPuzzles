@@ -1026,15 +1026,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -1086,7 +1077,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->newpoint.x = state->pts[best].x * ds->tilesize / state->pts[best].d;
         ui->newpoint.y = state->pts[best].y * ds->tilesize / state->pts[best].d;
         ui->newpoint.d = ds->tilesize;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     } else if (IS_MOUSE_DRAG(button) && ui->dragpoint >= 0) {
@@ -1108,7 +1099,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->newpoint.x >= (long)state->w*ui->newpoint.d ||
             ui->newpoint.y < 0 ||
             ui->newpoint.y >= (long)state->h*ui->newpoint.d)
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
 
     /*
      * We aren't cancelling the drag. Construct a move string
@@ -1119,7 +1110,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return dupstr(buf);
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
 static game_state *execute_move(const game_state *state, const char *move)
@@ -1162,7 +1153,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     *x = *y = COORDLIMIT(params->n) * tilesize;
 }
@@ -1290,7 +1281,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     ds->dragpoint = ui->dragpoint;
     ds->bg = bg;
 
-    game_compute_size(&state->params, ds->tilesize, &w, &h);
+    game_compute_size(&state->params, ds->tilesize, NULL, &w, &h);
     clip(dr, 0, 0, w, h);
     draw_rect(dr, 0, 0, w, h, bg);
 
@@ -1353,11 +1344,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame untangle
 #endif
@@ -1382,13 +1368,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs, */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILESIZE, game_compute_size, game_set_size,
@@ -1398,12 +1386,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
+    NULL,  /* is_key_highlighted */
     game_status,
-    false, false, NULL, NULL,
-    true,                   /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     0,               /* flags */
 };
 

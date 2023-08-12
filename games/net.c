@@ -2016,7 +2016,7 @@ static char *encode_ui(const game_ui *ui)
     return dupstr(buf);
 }
 
-static void decode_ui(game_ui *ui, const char *encoding) {
+static void decode_ui(game_ui *ui, const char *encoding, const game_state *state) {
     sscanf(encoding, "O%d,%d;C%d,%d",
        &ui->org_x, &ui->org_y, &ui->cx, &ui->cy);
 }
@@ -2081,7 +2081,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         action = JUMBLE;
     } else if (button == 'L') {
         ui->use_locking = !ui->use_locking;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     } else
         return nullret;
 
@@ -2150,7 +2150,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         return ret;
     } else {
-        return NULL;
+        return MOVE_UNUSED;
     }
 }
 
@@ -2279,7 +2279,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 }
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -2807,11 +2807,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame net
 #endif
@@ -2825,7 +2820,7 @@ static const char rules[] = "A network is prepared by connecting up the centres 
 const struct game thegame = {
     "Net", "games.net", "net", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -2838,13 +2833,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs, */
     new_ui,
     free_ui,
     encode_ui,
     decode_ui,
     game_request_keys,
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -2854,12 +2851,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     is_key_highlighted,
     game_status,
-    false, false, NULL, NULL,
-    true,                   /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON,                       /* flags */
 };
 

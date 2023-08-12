@@ -2459,15 +2459,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -2545,30 +2536,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->cur_visible = false;
         sprintf(buf, "%c%d,%d", (int)(button == RIGHT_BUTTON ? 'E' : 'D'), d1, d2);
         return dupstr(buf);
-    } else if (IS_CURSOR_MOVE(button)) {
-    ui->cur_visible = true;
-
-        move_cursor(button, &ui->cur_x, &ui->cur_y, 2*w-1, 2*h-1, false);
-
-    return UI_UPDATE;
-    } else if (IS_CURSOR_SELECT(button)) {
-        int d1, d2;
-
-    if (!((ui->cur_x ^ ui->cur_y) & 1))
-        return NULL;           /* must have exactly one dimension odd */
-    d1 = (ui->cur_y / 2) * w + (ui->cur_x / 2);
-    d2 = ((ui->cur_y+1) / 2) * w + ((ui->cur_x+1) / 2);
-
-        /*
-         * We can't mark an edge next to any domino.
-         */
-        if (button == CURSOR_SELECT2 &&
-            (state->grid[d1] != d1 || state->grid[d2] != d2))
-            return NULL;
-
-        sprintf(buf, "%c%d,%d", (int)(button == CURSOR_SELECT2 ? 'E' : 'D'), d1, d2);
-        return dupstr(buf);
-    } else if (isdigit(button)) {
+    } 
+    else if (isdigit(button)) {
         int n = state->params.n, num = button - '0';
         if (num > n) {
             return NULL;
@@ -2583,10 +2552,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         } else {
             return NULL;
         }
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
 static game_state *execute_move(const game_state *state, const char *move)
@@ -2747,7 +2716,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     int n = params->n, w = n+2, h = n+1;
 
@@ -3061,11 +3030,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame dominosa
 #endif
@@ -3077,7 +3041,7 @@ static const char rules[] = "A set of dominoes has been arranged irregularly int
 const struct game thegame = {
     "Dominosa", "games.dominosa", "dominosa", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -3090,13 +3054,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs, */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILESIZE, game_compute_size, game_set_size,
@@ -3106,12 +3072,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     is_key_highlighted,
     game_status,
-    false, false, NULL, NULL,
-    true,                     /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON,           /* flags */
 };
 

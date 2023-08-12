@@ -85,13 +85,7 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
         return false;
 
     *name = dupstr(guess_presets[i].name);
-    /*
-     * get round annoying const issues
-     */
-    {
-        game_params tmp = guess_presets[i].params;
-        *params = dup_params(&tmp);
-    }
+    *params = dup_params(&guess_presets[i].params);
 
     return true;
 }
@@ -175,11 +169,11 @@ static config_item *game_configure(const game_params *params)
     sprintf(buf, "%d", params->nguesses);
     ret[2].u.string.sval = dupstr(buf);
 
-    ret[3].name = "Allow blanks in guess";
+    ret[3].name = "Allow blanks";
     ret[3].type = C_BOOLEAN;
     ret[3].u.boolean.bval = params->allow_blank;
 
-    ret[4].name = "Allow duplicates in solution";
+    ret[4].name = "Allow duplicates";
     ret[4].type = C_BOOLEAN;
     ret[4].u.boolean.bval = params->allow_multiple;
 
@@ -455,7 +449,8 @@ static char *encode_ui(const game_ui *ui)
     return sresize(ret, p - ret, char);
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void decode_ui(game_ui *ui, const char *encoding,
+                      const game_state *state)
 {
     int i;
     const char *p = encoding;
@@ -632,7 +627,7 @@ static char *interpret_move(const game_state *from, game_ui *ui,
     int guess_ox = GUESS_X(from->next_go, 0);
     int guess_oy = GUESS_Y(from->next_go, 0);
 
-    if (from->solved) return NULL;
+    if (from->solved) return MOVE_UNUSED;
 
     if (x >= COL_OX && x < (COL_OX + COL_W) &&
         y >= COL_OY && y < (COL_OY + COL_H)) {
@@ -658,12 +653,12 @@ static char *interpret_move(const game_state *from, game_ui *ui,
             ui->peg_col = -1;
             ui->peg_row = -1;
             ui->select_colour = over_col;
-            ret = UI_UPDATE;
+            ret = MOVE_UI_UPDATE;
         }
         else if (over_guess >= 0) {
             if (ui->display_cur && ui->select_colour >= 0) {
                 set_peg(&from->params, ui, over_guess, ui->select_colour);
-                ret = UI_UPDATE;
+                ret = MOVE_UI_UPDATE;
             }
         }
         else if (over_past_guess_y >= 0) {
@@ -673,7 +668,7 @@ static char *interpret_move(const game_state *from, game_ui *ui,
                 ui->colour_cur = -1;
                 ui->peg_col = -1;
                 ui->peg_row = -1;
-                ret = UI_UPDATE;
+                ret = MOVE_UI_UPDATE;
             }
             else {
                 int col = from->guesses[over_past_guess_y]->pegs[over_past_guess_x];
@@ -683,7 +678,7 @@ static char *interpret_move(const game_state *from, game_ui *ui,
                     ui->peg_col = over_past_guess_x;
                     ui->peg_row = over_past_guess_y;
                     ui->select_colour = col;
-                    ret = UI_UPDATE;
+                    ret = MOVE_UI_UPDATE;
                 }
             }
         }
@@ -696,7 +691,7 @@ static char *interpret_move(const game_state *from, game_ui *ui,
             ui->colour_cur = -1;
             ui->peg_col = -1;
             ui->peg_row = -1;
-            ret = UI_UPDATE;
+            ret = MOVE_UI_UPDATE;
         }
     }
 
@@ -765,7 +760,7 @@ static game_state *execute_move(const game_state *from, const char *move)
 #define BORDER    0.5
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     double hmul, vmul_c, vmul_g, vmul;
     int hintw = (params->npegs+1)/2;
@@ -809,7 +804,7 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
     guessh = ((ds->pegsz + ds->gapsz) * params->nguesses);      /* guesses */
     guessh += ds->gapsz + ds->pegsz;                            /* solution */
 
-    game_compute_size(params, tilesize, &ds->w, &ds->h);
+    game_compute_size(params, tilesize, NULL, &ds->w, &ds->h);
     ds->colx = ds->border;
     ds->coly = (ds->h - colh) / 2;
 
@@ -1160,11 +1155,6 @@ static int game_status(const game_state *state)
     return state->solved;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame guess
 #endif
@@ -1192,13 +1182,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs, */
     new_ui,
     free_ui,
     encode_ui,
     decode_ui,
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PEG_PREFER_SZ, game_compute_size, game_set_size,
@@ -1208,12 +1200,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL, /* game_get_cursor_location */
+    NULL, /* is_key_highlighted */
     game_status,
-    false, false, NULL, NULL,
-    true,                   /* wants_statusbar */
-    false, game_timing_state,
-    0,                       /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    0,                         /* flags */
 };
 

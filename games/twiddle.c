@@ -566,15 +566,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -598,19 +589,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     button = button & (~MOD_MASK | MOD_NUM_KEYPAD);
 
-    if (IS_CURSOR_MOVE(button)) {
-        if (button == CURSOR_LEFT && ui->cur_x > 0)
-            ui->cur_x--;
-        if (button == CURSOR_RIGHT && (ui->cur_x+n) < (w))
-            ui->cur_x++;
-        if (button == CURSOR_UP && ui->cur_y > 0)
-            ui->cur_y--;
-        if (button == CURSOR_DOWN && (ui->cur_y+n) < (h))
-            ui->cur_y++;
-        ui->cur_visible = true;
-        return UI_UPDATE;
-    }
-
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
     /*
      * Determine the coordinates of the click. We offset by n-1
@@ -625,52 +603,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (x < 0 || x > w-n || y < 0 || y > h-n)
             return NULL;
         ui->cur_visible = false;
-    } else if (IS_CURSOR_SELECT(button)) {
-        if (ui->cur_visible) {
-            x = ui->cur_x;
-            y = ui->cur_y;
-            dir = (button == CURSOR_SELECT2) ? -1 : +1;
-        } else {
-            ui->cur_visible = true;
-            return UI_UPDATE;
-        }
-    } else if (button == 'a' || button == 'A' || button==MOD_NUM_KEYPAD+'7') {
-        x = y = 0;
-        dir = (button == 'A' ? -1 : +1);
-    } else if (button == 'b' || button == 'B' || button==MOD_NUM_KEYPAD+'9') {
-        x = w-n;
-        y = 0;
-        dir = (button == 'B' ? -1 : +1);
-    } else if (button == 'c' || button == 'C' || button==MOD_NUM_KEYPAD+'1') {
-        x = 0;
-        y = h-n;
-        dir = (button == 'C' ? -1 : +1);
-    } else if (button == 'd' || button == 'D' || button==MOD_NUM_KEYPAD+'3') {
-        x = w-n;
-        y = h-n;
-        dir = (button == 'D' ? -1 : +1);
-    } else if (button==MOD_NUM_KEYPAD+'8' && (w-n) % 2 == 0) {
-        x = (w-n) / 2;
-        y = 0;
-        dir = +1;
-    } else if (button==MOD_NUM_KEYPAD+'2' && (w-n) % 2 == 0) {
-        x = (w-n) / 2;
-        y = h-n;
-        dir = +1;
-    } else if (button==MOD_NUM_KEYPAD+'4' && (h-n) % 2 == 0) {
-        x = 0;
-        y = (h-n) / 2;
-        dir = +1;
-    } else if (button==MOD_NUM_KEYPAD+'6' && (h-n) % 2 == 0) {
-        x = w-n;
-        y = (h-n) / 2;
-        dir = +1;
-    } else if (button==MOD_NUM_KEYPAD+'5' && (w-n) % 2 == 0 && (h-n) % 2 == 0){
-        x = (w-n) / 2;
-        y = (h-n) / 2;
-        dir = +1;
     } else {
-        return NULL;                   /* no move to be made */
+        return MOVE_UNUSED;
     }
 
     /*
@@ -732,7 +666,7 @@ static game_state *execute_move(const game_state *from, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -1198,7 +1132,7 @@ static const char rules[] = "You are given a grid of square tiles, each containi
 const struct game thegame = {
     "Twiddle", "games.twiddle", "twiddle", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1211,13 +1145,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -1227,12 +1163,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
+    NULL,  /* is_key_highlighted */
     game_status,
-    false, false, NULL, NULL,
-    true,                   /* wants_statusbar */
-    false, NULL,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON,                       /* flags */
 };
 

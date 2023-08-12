@@ -13,11 +13,7 @@
 #include <ctype.h>
 #include <float.h>
 #include <limits.h>
-#ifdef NO_TGMATH_H
-#  include <math.h>
-#else
-#  include <tgmath.h>
-#endif
+#include <math.h>
 
 #include "puzzles.h"
 #include "tree234.h"

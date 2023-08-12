@@ -1036,15 +1036,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void sel_clear(game_ui *ui, const game_state *state)
 {
     int i;
@@ -1226,7 +1217,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             int x, int y, int button, bool swapped)
 {
     int tx, ty;
-    char *ret = UI_UPDATE;
+    char *ret = MOVE_UI_UPDATE;
 
     if (button == RIGHT_BUTTON || button == LEFT_BUTTON) {
         tx = FROMCOORD(x); ty= FROMCOORD(y);
@@ -1295,7 +1286,7 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 }
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up tile size variables for macro expansion purposes */
     game_drawstate ads, *ds = &ads;
@@ -1665,11 +1656,6 @@ static int game_status(const game_state *state)
     return state->complete ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame samegame
 #endif
@@ -1680,7 +1666,7 @@ static const char rules[] = "You have a grid of coloured squares, which you have
 const struct game thegame = {
     "SameGame", "games.samegame", "samegame", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1693,13 +1679,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     false, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -1709,11 +1697,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
+    NULL,  /* is_key_highlighted */
     game_status,
-    false, false, NULL, NULL,
-    true,                   /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON,                       /* flags */
 };

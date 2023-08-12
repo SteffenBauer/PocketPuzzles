@@ -1768,17 +1768,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    /* nothing to encode. */
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-    /* nothing to decode. */
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -1818,7 +1807,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     enum { NONE, FLIP_LIGHT, FLIP_IMPOSSIBLE } action = NONE;
     int cx = -1, cy = -1;
     unsigned int flags;
-    char buf[80], *nullret = UI_UPDATE, *empty = UI_UPDATE, c;
+    char buf[80], *nullret = MOVE_UI_UPDATE, *empty = MOVE_UI_UPDATE, c;
 
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         if (ui->cur_visible)
@@ -1827,56 +1816,40 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         cx = FROMCOORD(x);
         cy = FROMCOORD(y);
         action = (button == LEFT_BUTTON) ? FLIP_LIGHT : FLIP_IMPOSSIBLE;
-    } else if (IS_CURSOR_SELECT(button) ||
-               button == 'i' || button == 'I' ||
-               button == ' ' || button == '\r' || button == '\n') {
-        if (ui->cur_visible) {
-            /* Only allow cursor-effect operations if the cursor is visible
-             * (otherwise you have no idea which square it might be affecting) */
-            cx = ui->cur_x;
-            cy = ui->cur_y;
-            action = (button == 'i' || button == 'I' || button == CURSOR_SELECT2) ?
-                FLIP_IMPOSSIBLE : FLIP_LIGHT;
-        }
-        ui->cur_visible = true;
-    } else if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->cur_x, &ui->cur_y, state->w, state->h, false);
-        ui->cur_visible = true;
-        nullret = empty;
     } else
         return NULL;
 
     switch (action) {
-    case FLIP_LIGHT:
-    case FLIP_IMPOSSIBLE:
-        if (cx < 0 || cy < 0 || cx >= state->w || cy >= state->h)
-            return nullret;
-        flags = GRID(state, flags, cx, cy);
-        if (flags & F_BLACK)
-            return nullret;
-        if (action == FLIP_LIGHT) {
-#ifdef STYLUS_BASED
-            if (flags & F_IMPOSSIBLE || flags & F_LIGHT) c = 'I'; else c = 'L';
-#else
-            if (flags & F_IMPOSSIBLE) return nullret;
-            c = 'L';
-#endif
-        } else {
-#ifdef STYLUS_BASED
-            if (flags & F_IMPOSSIBLE || flags & F_LIGHT) c = 'L'; else c = 'I';
-#else
-            if (flags & F_LIGHT) return nullret;
-            c = 'I';
-#endif
-        }
-        sprintf(buf, "%c%d,%d", (int)c, cx, cy);
-        break;
+        case FLIP_LIGHT:
+        case FLIP_IMPOSSIBLE:
+            if (cx < 0 || cy < 0 || cx >= state->w || cy >= state->h)
+                return nullret;
+            flags = GRID(state, flags, cx, cy);
+            if (flags & F_BLACK)
+                return nullret;
+            if (action == FLIP_LIGHT) {
+    #ifdef STYLUS_BASED
+                if (flags & F_IMPOSSIBLE || flags & F_LIGHT) c = 'I'; else c = 'L';
+    #else
+                if (flags & F_IMPOSSIBLE) return nullret;
+                c = 'L';
+    #endif
+            } else {
+    #ifdef STYLUS_BASED
+                if (flags & F_IMPOSSIBLE || flags & F_LIGHT) c = 'L'; else c = 'I';
+    #else
+                if (flags & F_LIGHT) return nullret;
+                c = 'I';
+    #endif
+            }
+            sprintf(buf, "%c%d,%d", (int)c, cx, cy);
+            break;
 
-    case NONE:
-        return nullret;
+        case NONE:
+            return nullret;
 
-    default:
-        assert(!"Shouldn't get here!");
+        default:
+            assert(!"Shouldn't get here!");
     }
     return dupstr(buf);
 }
@@ -1934,7 +1907,7 @@ badmove:
 
 /* XXX entirely cloned from fifteen.c; separate out? */
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -2146,11 +2119,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame lightup
 #endif
@@ -2167,7 +2135,7 @@ static const char rules[] = "You have a grid of squares. Some are filled in blac
 const struct game thegame = {
     "LightUp", "games.lightup", "lightup", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -2180,13 +2148,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs, */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -2196,12 +2166,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
+    NULL,  /* is_key_highlighted */
     game_status,
-    false, false, NULL, NULL,
-    true,             /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON,               /* flags */
 };
 

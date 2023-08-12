@@ -2015,15 +2015,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -2220,13 +2211,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->dy = y;
             ui->dotx = dot->x;
             ui->doty = dot->y;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
     } else if (button == RIGHT_DRAG && ui->dragging) {
         /* just move the drag coords. */
         ui->dx = x;
         ui->dy = y;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     } else if (button == RIGHT_RELEASE && ui->dragging) {
         ui->dragging = false;
 
@@ -2236,27 +2227,27 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         px = 2*FROMCOORD(x+TILE_SIZE) - 1;
         py = 2*FROMCOORD(y+TILE_SIZE) - 1;
 
-	/*
-	 * Dragging an arrow on to the same square it started from
-	 * is a null move; just update the ui and finish.
-	 */
-	if (px == ui->srcx && py == ui->srcy)
-	    return UI_UPDATE;
+        /*
+         * Dragging an arrow on to the same square it started from
+         * is a null move; just update the ui and finish.
+         */
+        if (px == ui->srcx && py == ui->srcy)
+            return MOVE_UI_UPDATE;
 
-	/*
-	 * Otherwise, we remove the arrow from its starting
-	 * square if we didn't start from a dot...
-	 */
-	if ((ui->srcx != ui->dotx || ui->srcy != ui->doty) &&
-	    SPACE(state, ui->srcx, ui->srcy).flags & F_TILE_ASSOC) {
-	    sprintf(buf + strlen(buf), "%sU%d,%d", sep, ui->srcx, ui->srcy);
-	    sep = ";";
-	}
+        /*
+         * Otherwise, we remove the arrow from its starting
+         * square if we didn't start from a dot...
+         */
+        if ((ui->srcx != ui->dotx || ui->srcy != ui->doty) &&
+            SPACE(state, ui->srcx, ui->srcy).flags & F_TILE_ASSOC) {
+            sprintf(buf + strlen(buf), "%sU%d,%d", sep, ui->srcx, ui->srcy);
+            sep = ";";
+        }
 
-	/*
-	 * ... and if the square we're moving it _to_ is valid, we
-	 * add one there instead.
-	 */
+        /*
+         * ... and if the square we're moving it _to_ is valid, we
+         * add one there instead.
+         */
         if (INUI(state, px, py)) {
             sp = &SPACE(state, px, py);
             dot = &SPACE(state, ui->dotx, ui->doty);
@@ -2268,67 +2259,17 @@ static char *interpret_move(const game_state *state, game_ui *ui,
              * undo chain.
              */
             if (ok_to_add_assoc_with_opposite(state, sp, dot))
-		sprintf(buf + strlen(buf), "%sA%d,%d,%d,%d",
-			sep, px, py, ui->dotx, ui->doty);
-	}
-
-	if (buf[0])
-	    return dupstr(buf);
-	else
-	    return UI_UPDATE;
-    } else if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->cur_x, &ui->cur_y, state->sx-1, state->sy-1, false);
-        if (ui->cur_x < 1) ui->cur_x = 1;
-        if (ui->cur_y < 1) ui->cur_y = 1;
-        ui->cur_visible = true;
-        if (ui->dragging) {
-            ui->dx = SCOORD(ui->cur_x);
-            ui->dy = SCOORD(ui->cur_y);
-        }
-        return UI_UPDATE;
-    } else if (IS_CURSOR_SELECT(button)) {
-        if (!ui->cur_visible) {
-            ui->cur_visible = true;
-            return UI_UPDATE;
-        }
-        sp = &SPACE(state, ui->cur_x, ui->cur_y);
-        if (ui->dragging) {
-            ui->dragging = false;
-
-            if ((ui->srcx != ui->dotx || ui->srcy != ui->doty) &&
-                SPACE(state, ui->srcx, ui->srcy).flags & F_TILE_ASSOC) {
-                sprintf(buf, "%sU%d,%d", sep, ui->srcx, ui->srcy);
-                sep = ";";
-            }
-            if (sp->type == s_tile && !(sp->flags & F_DOT) && !(sp->flags & F_TILE_ASSOC)) {
                 sprintf(buf + strlen(buf), "%sA%d,%d,%d,%d",
-                        sep, ui->cur_x, ui->cur_y, ui->dotx, ui->doty);
-            }
-            return dupstr(buf);
-        } else if (sp->flags & F_DOT) {
-            ui->dragging = true;
-            ui->dx = SCOORD(ui->cur_x);
-            ui->dy = SCOORD(ui->cur_y);
-            ui->dotx = ui->srcx = ui->cur_x;
-            ui->doty = ui->srcy = ui->cur_y;
-            return UI_UPDATE;
-        } else if (sp->flags & F_TILE_ASSOC) {
-            ui->dragging = true;
-            ui->dx = SCOORD(ui->cur_x);
-            ui->dy = SCOORD(ui->cur_y);
-            ui->dotx = sp->dotx;
-            ui->doty = sp->doty;
-            ui->srcx = ui->cur_x;
-            ui->srcy = ui->cur_y;
-            return UI_UPDATE;
-        } else if (sp->type == s_edge &&
-                   edge_placement_legal(state, ui->cur_x, ui->cur_y)) {
-            sprintf(buf, "E%d,%d", ui->cur_x, ui->cur_y);
-            return dupstr(buf);
+                        sep, px, py, ui->dotx, ui->doty);
         }
+
+        if (buf[0])
+            return dupstr(buf);
+        else
+            return MOVE_UI_UPDATE;
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
 static bool check_complete(const game_state *state, DSF *dsf, int *colours)
@@ -2605,7 +2546,7 @@ badmove:
  */
 
 static void game_compute_size(const game_params *params, int sz,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     struct { int tilesize, w, h; } ads, *ds = &ads;
 
@@ -3062,11 +3003,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame galaxies
 #endif
@@ -3078,7 +3014,7 @@ static const char rules[] = "You have a rectangular grid containing a number of 
 const struct game thegame = {
     "Galaxies", "games.galaxies", "galaxies", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -3091,13 +3027,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs, */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -3107,12 +3045,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
+    NULL,  /* is_key_highlighted */
     game_status,
-    false, false, NULL, NULL,
-    true,                     /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     0, /* REQUIRE_RBUTTON,            flags */
 };
 
