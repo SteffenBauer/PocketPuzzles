@@ -2038,16 +2038,6 @@ static void free_ui(game_ui *ui) {
     return;
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-    return;
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -2186,7 +2176,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (!ui->hshow && (button == 'G' || button == 'V' || button == 'Z' || button == '\b')) {
         if (ui->hhint == button) ui->hhint = ' ';
         else ui->hhint = button;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (gx > 0 && gx < ds->w+1 && gy > 0 && gy < ds->h+1) {
@@ -2210,7 +2200,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                         ui->hcursor = false;
                         ui->hx = gx; ui->hy = gy;
                     }
-                    return UI_UPDATE;
+                    return MOVE_UI_UPDATE;
                 }
                 else if (button == RIGHT_BUTTON && g == 7) {
                     if (ui->hhint != ' ') {
@@ -2221,7 +2211,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                     ui->hpencil = true;
                     ui->hcursor = false;
                     ui->hx = gx; ui->hy = gy;
-                    return UI_UPDATE;
+                    return MOVE_UI_UPDATE;
                 }
                 else if (button == LEFT_DRAG) {
                     ui->hdrag = true;
@@ -2235,14 +2225,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             ui->hpencil = false;
                             ui->hcursor = false;
                             ui->hx = 0; ui->hy = 0;
-                            return UI_UPDATE;
+                            return MOVE_UI_UPDATE;
                         }
                         else {
                             ui->hshow = true;
                             ui->hpencil = false;
                             ui->hcursor = false;
                             ui->hx = gx; ui->hy = gy;
-                            return UI_UPDATE;
+                            return MOVE_UI_UPDATE;
                         }
                     }
                     else {
@@ -2250,7 +2240,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                         ui->hpencil = false;
                         ui->hcursor = false;
                         ui->hx = gx; ui->hy = gy;
-                        return UI_UPDATE;
+                        return MOVE_UI_UPDATE;
                     }
                 }
                 else if (button == RIGHT_BUTTON) {
@@ -2259,7 +2249,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                         ui->hpencil = true;
                         ui->hcursor = false;
                         ui->hx = gx; ui->hy = gy;
-                        return UI_UPDATE;
+                        return MOVE_UI_UPDATE;
                     }
                     else {
                         if (gx == ui->hx && gy == ui->hy) {
@@ -2267,14 +2257,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             ui->hpencil = false;
                             ui->hcursor = false;
                             ui->hx = 0; ui->hy = 0;
-                            return UI_UPDATE;
+                            return MOVE_UI_UPDATE;
                         }
                         else if (g == 7) {
                             ui->hshow = true;
                             ui->hpencil = true;
                             ui->hcursor = false;
                             ui->hx = gx; ui->hy = gy;
-                            return UI_UPDATE;
+                            return MOVE_UI_UPDATE;
                         }
                     }
                 }
@@ -2289,10 +2279,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->hpencil = false;
         ui->hhint = ' ';
         ui->hdrag = false;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
 static bool check_numbers_draw(game_state *state, int *guess) {
@@ -2497,7 +2487,7 @@ static game_state *execute_move(const game_state *state, const char *move)
 #define PREFERRED_TILE_SIZE 64
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -3093,7 +3083,7 @@ static const char rules[] = "You are given a grid of squares, some of which cont
 const struct game thegame = {
     "Undead", "games.undead", "undead", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -3106,13 +3096,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -3122,12 +3114,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     is_key_highlighted,
     game_status,
-    false, false, NULL, NULL,
-    true,                 /* wants_statusbar */
-    false, NULL,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON,                     /* flags */
 };
 

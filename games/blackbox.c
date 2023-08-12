@@ -500,7 +500,8 @@ static char *encode_ui(const game_ui *ui)
     return dupstr(buf);
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void decode_ui(game_ui *ui, const char *encoding,
+                      const game_state *state)
 {
     sscanf(encoding, "E%d", &ui->errors);
 }
@@ -880,21 +881,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
            TOGGLE_COLUMN_LOCK, TOGGLE_ROW_LOCK} action = NONE;
     char buf[80], *nullret = NULL;
 
-    if (IS_CURSOR_MOVE(button)) {
-        int cx = ui->cur_x, cy = ui->cur_y;
-
-        move_cursor(button, &cx, &cy, state->w+2, state->h+2, false);
-        if ((cx == 0 && cy == 0 && !CAN_REVEAL(state)) ||
-            (cx == 0 && cy == state->h+1) ||
-            (cx == state->w+1 && cy == 0) ||
-            (cx == state->w+1 && cy == state->h+1))
-            return NULL; /* disallow moving cursor to corners. */
-        ui->cur_x = cx;
-        ui->cur_y = cy;
-        ui->cur_visible = true;
-        return UI_UPDATE;
-    }
-
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         gx = FROMDRAW(x);
         gy = FROMDRAW(y);
@@ -902,7 +888,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         wouldflash = 1;
     } else if (button == LEFT_RELEASE) {
         ui->flash_laser = 0;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     } else if (IS_CURSOR_SELECT(button)) {
         if (ui->cur_visible) {
             gx = ui->cur_x;
@@ -911,7 +897,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             wouldflash = 2;
         } else {
             ui->cur_visible = true;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
         /* Fix up 'button' for the below logic. */
         if (button == CURSOR_SELECT2) button = RIGHT_BUTTON;
@@ -939,42 +925,42 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
 
     switch (action) {
-    case TOGGLE_BALL:
-        sprintf(buf, "T%d,%d", gx, gy);
-        break;
+        case TOGGLE_BALL:
+            sprintf(buf, "T%d,%d", gx, gy);
+            break;
 
-    case TOGGLE_LOCK:
-        sprintf(buf, "LB%d,%d", gx, gy);
-        break;
+        case TOGGLE_LOCK:
+            sprintf(buf, "LB%d,%d", gx, gy);
+            break;
 
-    case TOGGLE_COLUMN_LOCK:
-        sprintf(buf, "LC%d", gx);
-        break;
+        case TOGGLE_COLUMN_LOCK:
+            sprintf(buf, "LC%d", gx);
+            break;
 
-    case TOGGLE_ROW_LOCK:
-        sprintf(buf, "LR%d", gy);
-        break;
+        case TOGGLE_ROW_LOCK:
+            sprintf(buf, "LR%d", gy);
+            break;
 
-    case FIRE:
-        if (state->reveal && state->exits[rangeno] == LASER_EMPTY)
+        case FIRE:
+            if (state->reveal && state->exits[rangeno] == LASER_EMPTY)
+                return nullret;
+            ui->flash_laserno = rangeno;
+            ui->flash_laser = wouldflash;
+            nullret = MOVE_UI_UPDATE;
+            if (state->exits[rangeno] != LASER_EMPTY)
+                return MOVE_UI_UPDATE;
+            sprintf(buf, "F%d", rangeno);
+            break;
+
+        case REVEAL:
+            if (!CAN_REVEAL(state)) return nullret;
+            if (ui->cur_visible) ui->cur_x = ui->cur_y = 1;
+            sprintf(buf, "R");
+            break;
+
+        default:
             return nullret;
-        ui->flash_laserno = rangeno;
-        ui->flash_laser = wouldflash;
-        nullret = UI_UPDATE;
-        if (state->exits[rangeno] != LASER_EMPTY)
-            return UI_UPDATE;
-        sprintf(buf, "F%d", rangeno);
-        break;
-
-    case REVEAL:
-        if (!CAN_REVEAL(state)) return nullret;
-        if (ui->cur_visible) ui->cur_x = ui->cur_y = 1;
-        sprintf(buf, "R");
-        break;
-
-    default:
-        return nullret;
-    }
+        }
     if (state->reveal) return nullret;
     ui->newmove = true;
     return dupstr(buf);
@@ -1088,7 +1074,7 @@ badmove:
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Border is ts/2, to make things easier.
      * Thus we have (width) + 2 (firing range*2) + 1 (border*2) tiles
@@ -1443,11 +1429,6 @@ static int game_status(const game_state *state)
     return 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame blackbox
 #endif
@@ -1465,7 +1446,7 @@ static const char rules[] = "Deduce the positions of the hidden balls by firing 
 const struct game thegame = {
     "BlackBox", "games.blackbox", "blackbox", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL,  /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1478,13 +1459,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs, */
     new_ui,
     free_ui,
     encode_ui,
     decode_ui,
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -1494,12 +1477,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
+    NULL,  /* is_key_highlighted */
     game_status,
-    false, false, NULL, NULL,
-    true,                   /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,               /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

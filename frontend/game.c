@@ -730,7 +730,7 @@ static void gamePrepareFrontend() {
     int x, y;
     x = ScreenWidth();
     y = fe->gamelayout.maincanvas.height;
-    midend_size(me, &x, &y, true);
+    midend_size(me, &x, &y, true, 1.0);
     fe->width  = x;
     fe->height = y;
     fe->xoffset = (ScreenWidth() - fe->width)/2;

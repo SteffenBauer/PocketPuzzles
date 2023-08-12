@@ -317,15 +317,17 @@ void midend_free(midend *me);
 const game *midend_which_game(midend *me);
 void midend_set_params(midend *me, game_params *params);
 game_params *midend_get_params(midend *me);
-void midend_size(midend *me, int *x, int *y, bool user_size);
+void midend_size(midend *me, int *x, int *y, bool user_size,
+                 double device_pixel_ratio);
 void midend_reset_tilesize(midend *me);
 void midend_new_game(midend *me);
 void midend_restart_game(midend *me);
 void midend_stop_anim(midend *me);
 enum { PKR_QUIT = 0, PKR_SOME_EFFECT, PKR_NO_EFFECT, PKR_UNUSED };
-bool midend_process_key(midend *me, int x, int y, int button, bool swapped);
+int midend_process_key(midend *me, int x, int y, int button, bool swapped);
 key_label *midend_request_keys(midend *me, int *nkeys);
 bool midend_is_key_highlighted(midend *me, char c);
+const char *midend_current_key_label(midend *me, int button);
 void midend_force_redraw(midend *me);
 void midend_redraw(midend *me);
 float *midend_colours(midend *me, int *ncolours);
@@ -355,6 +357,11 @@ void midend_serialise(midend *me,
 const char *midend_deserialise(midend *me,
                                bool (*read)(void *ctx, void *buf, int len),
                                void *rctx);
+const char *midend_load_prefs(
+    midend *me, bool (*read)(void *ctx, void *buf, int len), void *rctx);
+void midend_save_prefs(midend *me,
+                       void (*write)(void *ctx, const void *buf, int len),
+                       void *wctx);
 const char *identify_game(char **name,
                           bool (*read)(void *ctx, void *buf, int len),
                           void *rctx);
@@ -422,7 +429,8 @@ void draw_rect_outline(drawing *dr, int x, int y, int w, int h,
 /* Draw a set of rectangle corners (e.g. for a cursor display). */
 void draw_rect_corners(drawing *dr, int cx, int cy, int r, int col);
 
-void move_cursor(int button, int *x, int *y, int maxw, int maxh, bool wrap);
+char *move_cursor(int button, int *x, int *y, int maxw, int maxh, bool wrap,
+                  bool *visible);
 
 /* Used in netslide.c and sixteen.c for cursor movement around edge. */
 int c2pos(int w, int h, int cx, int cy);
@@ -565,7 +573,7 @@ void SHA_Simple(const void *p, int len, unsigned char *output);
 document *document_new(int pw, int ph, float userscale);
 void document_free(document *doc);
 void document_add_puzzle(document *doc, const game *game, game_params *par,
-             game_state *st, game_state *st2);
+             game_ui *ui, game_state *st, game_state *st2);
 int document_npages(const document *doc);
 void document_begin(const document *doc, drawing *dr);
 void document_end(const document *doc, drawing *dr);
@@ -697,19 +705,25 @@ struct game {
     bool can_format_as_text_ever;
     bool (*can_format_as_text_now)(const game_params *params);
     char *(*text_format)(const game_state *state);
+    bool has_preferences;
+    config_item *(*get_prefs)(game_ui *ui);
+    void (*set_prefs)(game_ui *ui, const config_item *cfg);
     game_ui *(*new_ui)(const game_state *state);
     void (*free_ui)(game_ui *ui);
     char *(*encode_ui)(const game_ui *ui);
-    void (*decode_ui)(game_ui *ui, const char *encoding);
+    void (*decode_ui)(game_ui *ui, const char *encoding,
+                      const game_state *state);
     key_label *(*request_keys)(const game_params *params, int *nkeys);
     void (*changed_state)(game_ui *ui, const game_state *oldstate,
                           const game_state *newstate);
+    const char *(*current_key_label)(const game_ui *ui,
+                                     const game_state *state, int button);
     char *(*interpret_move)(const game_state *state, game_ui *ui,
                             const game_drawstate *ds, int x, int y, int button, bool swapped);
     game_state *(*execute_move)(const game_state *state, const char *move);
     int preferred_tilesize;
     void (*compute_size)(const game_params *params, int tilesize,
-                         int *x, int *y);
+                         const game_ui *ui, int *x, int *y);
     void (*set_size)(drawing *dr, game_drawstate *ds,
              const game_params *params, int tilesize);
     float *(*colours)(frontend *fe, int *ncolours);
@@ -730,8 +744,10 @@ struct game {
     bool (*is_key_highlighted)(const game_ui *ui, char c);
     int (*status)(const game_state *state);
     bool can_print, can_print_in_colour;
-    void (*print_size)(const game_params *params, float *x, float *y);
-    void (*print)(drawing *dr, const game_state *state, int tilesize);
+    void (*print_size)(const game_params *params, const game_ui *ui,
+                       float *x, float *y);
+    void (*print)(drawing *dr, const game_state *state, const game_ui *ui,
+                  int tilesize);
     bool wants_statusbar;
     bool is_timed;
     bool (*timing_state)(const game_state *state, game_ui *ui);
@@ -792,12 +808,20 @@ extern const game thegame;
 #endif
 
 /*
- * Special string value to return from interpret_move in the case
- * where the game UI has been updated but no actual move is being
- * appended to the undo chain. Must be declared as a non-const char,
- * but should never actually be modified by anyone.
+ * Special string values to return from interpret_move.
+ *
+ * MOVE_UI_UPDATE is for the case where the game UI has been updated
+ * but no actual move is being appended to the undo chain.
+ *
+ * MOVE_NO_EFFECT is for when the key was understood by the puzzle,
+ * but it happens that there isn't effect, not even a UI change.
+ *
+ * MOVE_UNUSED is for keys that the puzzle has no use for at all.
+ *
+ * Each must be declared as a non-const char, but should never
+ * actually be modified by anyone.
  */
-extern char UI_UPDATE[];
+extern char MOVE_UI_UPDATE[], MOVE_NO_EFFECT[], MOVE_UNUSED[];
 
 /* A little bit of help to lazy developers */
 #define DEFAULT_STATUSBAR_TEXT "Use status_bar() to fill this in."

@@ -2044,7 +2044,8 @@ static const char *decode_ui_item(int *arr, int s, char stop, const char *p)
     return p;
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void decode_ui(game_ui *ui, const char *encoding,
+                      const game_state *state)
 {
     if(!encoding || encoding[0] != 'P') return;
     
@@ -2593,15 +2594,15 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui_clear(ui);
 
     if ((button >= '0' && button <= '9') || button == '\b') {
-        ret = UI_UPDATE;
+        ret = MOVE_UI_UPDATE;
     }
 
     /* Typing a number */
     if (button >= '0' && button <= '9' && ui->cshow)
     {
         i = ui->cy*w + ui->cx;
-        if (GET_BIT(state->immutable, i)) return NULL;
-        if (ui->typing_cell == CELL_NONE && state->grid[i] != NUMBER_EMPTY) return NULL;
+        if (GET_BIT(state->immutable, i)) return MOVE_NO_EFFECT;
+        if (ui->typing_cell == CELL_NONE && state->grid[i] != NUMBER_EMPTY) return MOVE_NO_EFFECT;
         n = ui->typing_number;
         n *= 10;
         n += button - '0';
@@ -2610,7 +2611,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->typing_cell = i;
         if (n < 1000)
             ui->typing_number = n;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
     if (button == '\b' && ui->held >= 0 && ui->typing_cell == CELL_NONE) {
         char buf[20];
@@ -2621,7 +2622,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
         else {
             ui_clear(ui);
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
     }
 
@@ -2631,7 +2632,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->typing_number /= 10;
         if (ui->typing_number == 0)
             ui->typing_cell = CELL_NONE;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
     if (gx >= 0 && gx < w && gy >= 0 && gy < h)
     {
@@ -2646,7 +2647,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
              * straight line when trying to draw a diagonal line.
              */
             if(abs(ox-hx) + abs(oy-hy) > DRAG_RADIUS*tilesize)
-                return NULL;
+                return MOVE_NO_EFFECT;
         }
         ret = ascent_mouse_click(state, ui, gx, gy, button);
         finish_typing = true;
@@ -2672,13 +2673,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
 
         if (state->grid[i] == n || n > state->last)
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
 
         sprintf(buf, "P%d,%d", i, n);
         ret = dupstr(buf);
     }
 
-    return ret ? ret : UI_UPDATE;
+    return ret ? ret : MOVE_UI_UPDATE;
 }
 
 static bool ascent_modify_path(game_state *ret, char move, cell i, cell i2)
@@ -2936,7 +2937,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  * **************** */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     *x = (params->w+1) * tilesize;
     *y = (params->h+1) * tilesize;
@@ -2974,7 +2975,7 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 {
     ds->tilesize = tilesize;
     ds->thickness = max(2.0L, tilesize / 7.0L);
-    game_compute_size(params, tilesize, &ds->w, &ds->h);
+    game_compute_size(params, tilesize, NULL, &ds->w, &ds->h);
 
     game_set_offsets(params->h, params->mode, tilesize, &ds->offsetx, &ds->offsety);
 }
@@ -3513,11 +3514,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame ascent
 #endif
@@ -3544,13 +3540,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs, */
     new_ui,
     free_ui,
     encode_ui,
     decode_ui,
     game_request_keys,
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     48, game_compute_size, game_set_size,
@@ -3560,12 +3558,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
+    NULL,  /* is_key_highlighted */
     game_status,
     false, false, NULL, NULL,
     true, /* wants_statusbar */
-    false, game_timing_state,
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON, /* flags */
 };
 

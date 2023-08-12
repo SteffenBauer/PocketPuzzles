@@ -2279,7 +2279,7 @@ static char *encode_ui(const game_ui *ui)
     return dupstr(buf);
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void decode_ui(game_ui *ui, const char *encoding, const game_state *state)
 {
     int p= 0;
     sscanf(encoding, "D%d%n", &ui->deaths, &p);
@@ -2324,39 +2324,6 @@ static char *interpret_move(const game_state *from, game_ui *ui,
     cx = FROMCOORD(x);
     cy = FROMCOORD(y);
 
-    if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->cur_x, &ui->cur_y, from->w, from->h, false);
-        ui->cur_visible = true;
-        return UI_UPDATE;
-    }
-    if (IS_CURSOR_SELECT(button)) {
-        int v = from->grid[ui->cur_y * from->w + ui->cur_x];
-
-        if (!ui->cur_visible) {
-            ui->cur_visible = true;
-            return UI_UPDATE;
-        }
-        if (button == CURSOR_SELECT2) {
-            /* As for RIGHT_BUTTON; only works on covered square. */
-            if (v != -2 && v != -1)
-                return NULL;
-            sprintf(buf, "F%d,%d", ui->cur_x, ui->cur_y);
-            return dupstr(buf);
-        }
-        /* Otherwise, treat as LEFT_BUTTON, for a single square. */
-        if (v == -2 || v == -3) {
-            if (from->layout->mines &&
-                from->layout->mines[ui->cur_y * from->w + ui->cur_x])
-                ui->deaths++;
-
-            sprintf(buf, "O%d,%d", ui->cur_x, ui->cur_y);
-            return dupstr(buf);
-        }
-        cx = ui->cur_x; cy = ui->cur_y;
-        ui->validradius = 1;
-        goto uncover;
-    }
-
     if (button == LEFT_BUTTON || button == LEFT_DRAG ||
         button == MIDDLE_BUTTON || button == MIDDLE_DRAG) {
         if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
@@ -2374,7 +2341,7 @@ static char *interpret_move(const game_state *from, game_ui *ui,
         else if (button == MIDDLE_BUTTON)
             ui->validradius = 1;
         ui->cur_visible = false;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (button == RIGHT_BUTTON) {
@@ -2402,10 +2369,10 @@ static char *interpret_move(const game_state *from, game_ui *ui,
 
     /*
      * At this stage we must never return NULL: we have adjusted
-     * the ui, so at worst we return UI_UPDATE.
+     * the ui, so at worst we return MOVE_UI_UPDATE.
      */
     if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
 
     /*
      * Left-clicking on a covered square opens a tile. Not
@@ -2425,7 +2392,7 @@ static char *interpret_move(const game_state *from, game_ui *ui,
     }
         goto uncover;
     }
-    return NULL;
+    return MOVE_UNUSED;
 
 uncover:
     {
@@ -2483,7 +2450,7 @@ uncover:
         }
     }
 
-    return UI_UPDATE;
+    return MOVE_UI_UPDATE;
     }
 }
 
@@ -2589,7 +2556,7 @@ static game_state *execute_move(const game_state *from, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -2973,11 +2940,6 @@ static int game_status(const game_state *state)
     return state->won ? (state->used_solve ? -1 : +1) : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame mines
 #endif
@@ -2990,7 +2952,7 @@ static const char rules[] = "You have a grid of covered squares, some of which c
 const struct game thegame = {
     "Mines", "games.mines", "mines", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -3003,13 +2965,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs, */
     new_ui,
     free_ui,
     encode_ui,
     decode_ui,
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -3019,12 +2983,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
+    NULL,  /* is_key_highlighted */
     game_status,
-    false, false, NULL, NULL,
-    true,                   /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     BUTTON_BEATS(LEFT_BUTTON, RIGHT_BUTTON) | REQUIRE_RBUTTON,
 };
 

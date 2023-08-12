@@ -10,6 +10,7 @@
 struct puzzle {
     const game *game;
     game_params *par;
+    game_ui *ui;
     game_state *st;
     game_state *st2;
 };
@@ -55,10 +56,11 @@ void document_free(document *doc)
     int i;
 
     for (i = 0; i < doc->npuzzles; i++) {
-	doc->puzzles[i].game->free_params(doc->puzzles[i].par);
-	doc->puzzles[i].game->free_game(doc->puzzles[i].st);
-	if (doc->puzzles[i].st2)
-	    doc->puzzles[i].game->free_game(doc->puzzles[i].st2);
+        doc->puzzles[i].game->free_params(doc->puzzles[i].par);
+        doc->puzzles[i].game->free_ui(doc->puzzles[i].ui);
+        doc->puzzles[i].game->free_game(doc->puzzles[i].st);
+        if (doc->puzzles[i].st2)
+            doc->puzzles[i].game->free_game(doc->puzzles[i].st2);
     }
 
     sfree(doc->colwid);
@@ -75,28 +77,33 @@ void document_free(document *doc)
  * another sheet (typically the solution to the first game_state).
  */
 void document_add_puzzle(document *doc, const game *game, game_params *par,
-			 game_state *st, game_state *st2)
+                         game_ui *ui, game_state *st, game_state *st2)
 {
     if (doc->npuzzles >= doc->puzzlesize) {
-	doc->puzzlesize += 32;
-	doc->puzzles = sresize(doc->puzzles, doc->puzzlesize, struct puzzle);
+        doc->puzzlesize += 32;
+        doc->puzzles = sresize(doc->puzzles, doc->puzzlesize, struct puzzle);
     }
     doc->puzzles[doc->npuzzles].game = game;
     doc->puzzles[doc->npuzzles].par = par;
+    doc->puzzles[doc->npuzzles].ui = ui;
     doc->puzzles[doc->npuzzles].st = st;
     doc->puzzles[doc->npuzzles].st2 = st2;
     doc->npuzzles++;
     if (st2)
-	doc->got_solns = true;
+        doc->got_solns = true;
 }
 
 static void get_puzzle_size(const document *doc, struct puzzle *pz,
-			    float *w, float *h, float *scale)
+                            float *w, float *h, float *scale)
 {
     float ww, hh, ourscale;
 
     /* Get the preferred size of the game, in mm. */
-    pz->game->print_size(pz->par, &ww, &hh);
+    {
+        game_ui *ui = pz->game->new_ui(pz->st);
+        pz->game->print_size(pz->par, ui, &ww, &hh);
+        pz->game->free_ui(ui);
+    }
 
     /* Adjust for user-supplied scale factor. */
     ourscale = doc->userscale;
@@ -121,7 +128,7 @@ static void get_puzzle_size(const document *doc, struct puzzle *pz,
  */
 int document_npages(const document *doc)
 {
-    int ppp;			       /* puzzles per page */
+    int ppp;               /* puzzles per page */
     int pages, passes;
 
     ppp = doc->pw * doc->ph;
@@ -152,7 +159,7 @@ void document_end(const document *doc, drawing *dr)
  */
 void document_print_page(const document *doc, drawing *dr, int page_nr)
 {
-    int ppp;			       /* puzzles per page */
+    int ppp;                   /* puzzles per page */
     int pages;
     int page, pass;
     int pageno;
@@ -221,7 +228,7 @@ void document_print_page(const document *doc, drawing *dr, int page_nr)
         int pixw, pixh, tilesize;
 
         if (pass == 1 && !pz->st2)
-            continue;	       /* nothing to do */
+            continue;          /* nothing to do */
 
         /*
          * The total amount of gutter space is the page
@@ -270,9 +277,9 @@ void document_print_page(const document *doc, drawing *dr, int page_nr)
          * permit each game to choose its own?)
          */
         tilesize = 512;
-        pz->game->compute_size(pz->par, tilesize, &pixw, &pixh);
+        pz->game->compute_size(pz->par, tilesize, pz->ui, &pixw, &pixh);
         print_begin_puzzle(dr, xm, xc, ym, yc, pixw, pixh, w, scale);
-        pz->game->print(dr, pass == 0 ? pz->st : pz->st2, tilesize);
+        pz->game->print(dr, pass == 0 ? pz->st : pz->st2, pz->ui, tilesize);
         print_end_puzzle(dr);
     }
 

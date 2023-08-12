@@ -1410,15 +1410,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -1449,22 +1440,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     int i, x = FROMCOORD(mx), y = FROMCOORD(my);
     enum { NONE, TOGGLE_BLACK, TOGGLE_CIRCLE, UI } action = NONE;
 
-    if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->cx, &ui->cy, state->w, state->h, true);
-        ui->cshow = true;
-        action = UI;
-    } else if (IS_CURSOR_SELECT(button)) {
-        x = ui->cx; y = ui->cy;
-        if (!ui->cshow) {
-            action = UI;
-            ui->cshow = true;
-        }
-        if (button == CURSOR_SELECT) {
-            action = TOGGLE_BLACK;
-        } else if (button == CURSOR_SELECT2) {
-            action = TOGGLE_CIRCLE;
-        }
-    } else if (IS_MOUSE_DOWN(button)) {
+    if (IS_MOUSE_DOWN(button)) {
         if (ui->cshow) {
             ui->cshow = false;
             action = UI;
@@ -1478,7 +1454,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             action = TOGGLE_CIRCLE;
         }
     }
-    if (action == UI) return UI_UPDATE;
+    if (action == UI) return MOVE_UI_UPDATE;
 
     if (action == TOGGLE_BLACK || action == TOGGLE_CIRCLE) {
         i = y * state->w + x;
@@ -1490,7 +1466,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return dupstr(buf);
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
 static game_state *execute_move(const game_state *state, const char *move)
@@ -1538,7 +1514,7 @@ badmove:
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -1714,11 +1690,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame singles
 #endif
@@ -1732,7 +1703,7 @@ static const char rules[] = "You have a grid of white squares, all of which cont
 const struct game thegame = {
     "Singles", "games.singles", "singles", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1745,13 +1716,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -1761,12 +1734,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
+    NULL,  /* is_key_highlighted */
     game_status,
-    false, false, NULL, NULL,
-    true,			       /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON,		       /* flags */
 };
 

@@ -1364,15 +1364,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -1438,8 +1429,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     button &= ~MOD_MASK;
 
     /* Mouse click */
-    if (button == LEFT_BUTTON || button == RIGHT_BUTTON ||
-        button == MIDDLE_BUTTON) {
+    if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         if (ox >= (ds->tilesize / 2) && gx < w2
             && oy >= (ds->tilesize / 2) && gy < h2) {
             hx = gx;
@@ -1449,19 +1439,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return NULL;
     }
 
-    /* Keyboard move */
-    if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->cx, &ui->cy, w2, h2, false);
-        ui->cursor = true;
-        return UI_UPDATE;
-    }
-
     /* Place one */
-    if ((ui->cursor && (button == CURSOR_SELECT || button == CURSOR_SELECT2
-                        || button == '\b' || button == '0' || button == '1'
-                        || button == '2')) ||
-        button == LEFT_BUTTON || button == RIGHT_BUTTON ||
-        button == MIDDLE_BUTTON) {
+    if (button == LEFT_BUTTON || button == RIGHT_BUTTON ) {
         char buf[80];
         char c, i;
 
@@ -1475,13 +1454,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             c = '0';
         else if (button == '1')
             c = '1';
-        else if (button == MIDDLE_BUTTON)
-            c = '-';
 
         /* Cycle through options */
-        else if (button == CURSOR_SELECT2 || button == RIGHT_BUTTON)
+        else if (button == RIGHT_BUTTON)
             c = (i == EMPTY ? '0' : i == N_ZERO ? '1' : '-');
-        else if (button == CURSOR_SELECT || button == LEFT_BUTTON)
+        else if (button == LEFT_BUTTON)
             c = (i == EMPTY ? '1' : i == N_ONE ? '0' : '-');
 
         if (state->grid[hy * w2 + hx] ==
@@ -1492,7 +1469,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         return dupstr(buf);
     }
-    return NULL;
+    return MOVE_UNUSED;
 }
 
 static game_state *execute_move(const game_state *state, const char *move)
@@ -1548,7 +1525,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     *x = tilesize * (params->w2 + 1);
     *y = tilesize * (params->h2 + 1);
@@ -1776,7 +1753,7 @@ static const char rules[] = "You are given a grid of squares, which you must col
 const struct game thegame = {
     "Unruly", "games.unruly", "unruly", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1789,13 +1766,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     DEFAULT_TILE_SIZE, game_compute_size, game_set_size,
@@ -1805,12 +1784,12 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
+    NULL,  /* is_key_highlighted */
     game_status,
-    false, false, NULL, NULL,
+    false, false, NULL, NULL,  /* print_size, print */
     true,                      /* wants_statusbar */
-    false, NULL,
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON,                          /* flags */
 };
 
