@@ -1280,7 +1280,8 @@ key_label *midend_request_keys(midend *me, int *n)
 /* Return a good label to show next to a key right now. */
 const char *midend_current_key_label(midend *me, int button)
 {
-    if (!me->ourgame->current_key_label) return "";
+    if (!me->ourgame->current_key_label)
+        return "";
     return me->ourgame->current_key_label(
         me->ui, me->states[me->statepos-1].state, button);
 }
