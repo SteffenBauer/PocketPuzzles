@@ -303,10 +303,14 @@ void gameMenuHandler(int index) {
         case 103:  /* Solve Game */
             gameSolveGame();
             break;
-        case 104:  /* How to Play */
+        case 104:  /* Settings */
+            paramPrepare(me, CFG_PREFS);
+            switchToParamScreen();
+            break;
+        case 105:  /* How to Play */
             Dialog(0, "Rules", fe->currentgame->rules, "OK", NULL, NULL);
             break;
-        case 105:  /* Exit app */
+        case 106:  /* Exit app */
             exitApp();
             break;
         default:
@@ -322,7 +326,7 @@ void typeMenuHandler(int index) {
     button_to_normal(&fe->gameButton[fe->btnTypeIDX], true);
 
     if (index == 200) {
-        paramPrepare(me);
+        paramPrepare(me, CFG_SETTINGS);
         switchToParamScreen();
     }
     if (index > 200) {
@@ -337,7 +341,9 @@ void typeMenuHandler(int index) {
 static void gameBuildGameMenu() {
     int i, np;
 
-    np = fe->currentgame->can_solve ? 7 : 6;
+    np = 6;
+    if (fe->currentgame->can_solve) np += 1;
+    if (fe->currentgame->has_preferences) np += 1;
 
     sfree(gameMenu);
     gameMenu=snewn(np, imenuex);
@@ -372,13 +378,20 @@ static void gameBuildGameMenu() {
         gameMenu[i++].icon = &menu_solve;
     }
 
+    if (fe->currentgame->has_preferences) {
+        gameMenu[i].type = ITEM_ACTIVE;
+        gameMenu[i].index = 104;
+        gameMenu[i].text = "Settings";
+        gameMenu[i++].icon = &menu_settings;
+    }
+
     gameMenu[i].type = ITEM_ACTIVE;
-    gameMenu[i].index = 104;
+    gameMenu[i].index = 105;
     gameMenu[i].text = "How to play";
     gameMenu[i++].icon = &menu_help;
 
     gameMenu[i].type = ITEM_ACTIVE;
-    gameMenu[i].index = 105;
+    gameMenu[i].index = 106;
     gameMenu[i].text = "Save game and exit";
     gameMenu[i++].icon = &menu_exit;
 
@@ -713,7 +726,7 @@ static void checkGameEnd() {
     }
 }
 
-static void gamePrepareFrontend() {
+void gamePrepareFrontend() {
     char buf[256];
 
     fe->current_pointer = 0;
