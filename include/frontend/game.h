@@ -67,7 +67,7 @@ struct preset_menu *presets;
 
 extern ibitmap icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,
                icon_game, icon_game_tap, icon_type, icon_type_tap,
-               menu_exit, menu_help, menu_new, menu_restart, menu_solve,
+               menu_exit, menu_help, menu_new, menu_restart, menu_solve, menu_settings,
                bt_add, bt_backspace, bt_bridges_g, bt_fill_nums, bt_fill_marks, bt_fill_map, bt_fill_rome,
                bt_guess_i, bt_redo, bt_redo_d, bt_remove, bt_map_c, bt_map_j,
                bt_net_shuffle, bt_salad_o, bt_salad_x, bt_net_shuffle, bt_net_lock, bt_bridges_g,
@@ -120,7 +120,7 @@ static void gameDrawStatusBar();
 
 static void checkGameEnd();
 static bool coord_in_gamecanvas(int x, int y);
-static void gamePrepareFrontend();
+void gamePrepareFrontend();
 static BUTTON gameGetButton(const char *gameName, char key);
 static LAYOUTTYPE gameGetLayout();
 static void gameDrawFurniture();
@@ -149,7 +149,7 @@ void gameSerialise();
 extern void stateSerialise(midend *me);
 extern void configAddItem(char *key, char *value);
 
-extern void paramPrepare(midend *me);
+extern void paramPrepare(midend *me, int ptype);
 
 void ink_draw_text(void *handle, int x, int y, int fonttype, int fontsize,
                int align, int colour, const char *text);

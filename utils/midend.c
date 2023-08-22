@@ -239,7 +239,7 @@ midend *midend_new(frontend *fe, const game *ourgame,
     me->be_prefs.buf = NULL;
     me->be_prefs.size = me->be_prefs.len = 0;
 
-    me->one_key_shortcuts = true;
+    me->one_key_shortcuts = false;
 
     midend_reset_tilesize(me);
 
@@ -1267,7 +1267,7 @@ key_label *midend_request_keys(midend *me, int *n)
         for(i = 0; i < nkeys; ++i)
         {
             if(!keys[i].label)
-                keys[i].label = button2label(keys[i].button);
+                keys[i].label = ""; /*button2label(keys[i].button);*/
         }
     }
 
@@ -1692,7 +1692,7 @@ config_item *midend_get_config(midend *me, int which, char **wintitle)
 
     switch (which) {
         case CFG_SETTINGS:
-            sprintf(titlebuf, "%s configuration", me->ourgame->name);
+            sprintf(titlebuf, "%s parameters", me->ourgame->name);
             *wintitle = titlebuf;
             return me->ourgame->configure(me->params);
         case CFG_SEED:
@@ -1739,7 +1739,7 @@ config_item *midend_get_config(midend *me, int which, char **wintitle)
 
             return ret;
         case CFG_PREFS:
-            sprintf(titlebuf, "%s preferences", me->ourgame->name);
+            sprintf(titlebuf, "%s settings", me->ourgame->name);
             *wintitle = titlebuf;
             return midend_get_prefs(me, NULL);
     }
@@ -2881,65 +2881,37 @@ static void midend_apply_prefs(midend *me, game_ui *ui)
 
 static config_item *midend_get_prefs(midend *me, game_ui *ui)
 {
-    int n_be_prefs, n_me_prefs, pos, i;
-    config_item *all_prefs, *be_prefs;
+    config_item *prefs;
 
-    be_prefs = NULL;
-    n_be_prefs = 0;
-    if (me->ourgame->get_prefs) {
+    prefs = NULL;
+    if (me->ourgame->has_preferences) {
         if (ui) {
-            be_prefs = me->ourgame->get_prefs(ui);
+            prefs = me->ourgame->get_prefs(ui);
         } else if (me->ui) {
-            be_prefs = me->ourgame->get_prefs(me->ui);
+            prefs = me->ourgame->get_prefs(me->ui);
         } else {
             game_ui *tmp_ui = me->ourgame->new_ui(NULL);
-            be_prefs = me->ourgame->get_prefs(tmp_ui);
+            prefs = me->ourgame->get_prefs(tmp_ui);
             me->ourgame->free_ui(tmp_ui);
         }
-        while (be_prefs[n_be_prefs].type != C_END)
-            n_be_prefs++;
+    }
+    else {
+        prefs = snewn(1, config_item);
+        prefs[0].name = NULL;
+        prefs[0].type = C_END;
     }
 
-    n_me_prefs = 1;
-    all_prefs = snewn(n_me_prefs + n_be_prefs + 1, config_item);
-
-    pos = 0;
-
-    assert(pos < n_me_prefs);
-    all_prefs[pos].name = "Keyboard shortcuts without Ctrl";
-    all_prefs[pos].kw = "one-key-shortcuts";
-    all_prefs[pos].type = C_BOOLEAN;
-    all_prefs[pos].u.boolean.bval = me->one_key_shortcuts;
-    pos++;
-
-    for (i = 0; i < n_be_prefs; i++) {
-        all_prefs[pos] = be_prefs[i];  /* structure copy */
-        pos++;
-    }
-
-    all_prefs[pos].name = NULL;
-    all_prefs[pos].type = C_END;
-
-    if (be_prefs)
-        /* We already copied each element, so don't free those with
-           free_cfg(). */
-        sfree(be_prefs);
-
-    return all_prefs;
+    return prefs;
 }
 
 static void midend_set_prefs(midend *me, game_ui *ui, config_item *all_prefs)
 {
-    int pos = 0;
     game_ui *tmpui = NULL;
 
-    me->one_key_shortcuts = all_prefs[pos].u.boolean.bval;
-    pos++;
-
-    if (me->ourgame->get_prefs) {
+    if (me->ourgame->has_preferences) {
         if (!ui)
             ui = tmpui = me->ourgame->new_ui(NULL);
-        me->ourgame->set_prefs(ui, all_prefs + pos);
+        me->ourgame->set_prefs(ui, all_prefs);
     }
 
     me->be_prefs.len = 0;

@@ -232,9 +232,10 @@ game_params *preset_menu_lookup_by_id(struct preset_menu *menu, int id);
 typedef struct key_label {
     /* What should be displayed to the user by the frontend. Backends
      * can set this field to NULL and have it filled in by the midend
-     * with a generic label. Dynamically allocated, but frontends
-     * should probably use free_keys() to free instead. */
-    char *label;
+     * with an empty string.
+     PocketPuzzles: label is ignored by frontend, so just don't bother.
+      */
+    const char *label;
     int button; /* passed to midend_process_key when button is pressed */
 } key_label;
 
