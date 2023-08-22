@@ -2479,11 +2479,10 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,  /* game_get_cursor_location */
-    NULL,  /* is_key_highlighted */
     game_status,
     false, false, NULL, NULL,  /* print_size, print */
     true,                      /* wants_statusbar */
     false, NULL,               /* timing_state */
-    REQUIRE_RBUTTON,               /* flags */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

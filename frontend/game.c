@@ -425,11 +425,12 @@ static void gameBuildTypeMenu() {
 
 static void gameCheckButtonState() {
     BUTTON *undo, *redo, *swap;
+    const char *highlight;
     int i;
     undo = &fe->gameButton[fe->btnUndoIDX];
     redo = &fe->gameButton[fe->btnRedoIDX];
-    if (midend_can_undo(me) && ! undo->active) activate_button(undo);
-    if (midend_can_redo(me) && ! redo->active) activate_button(redo);
+    if (midend_can_undo(me) && !undo->active) activate_button(undo);
+    if (midend_can_redo(me) && !redo->active) activate_button(redo);
     if (!midend_can_undo(me) && undo->active) deactivate_button(undo);
     if (!midend_can_redo(me) && redo->active) deactivate_button(redo);
     if (fe->with_swap) {
@@ -438,7 +439,8 @@ static void gameCheckButtonState() {
     }
     for (i=0;i<fe->numGameButtons;i++) {
         if (fe->gameButton[i].action == ACTION_CTRL)
-            if (midend_is_key_highlighted(me, fe->gameButton[i].actionParm.c))
+            highlight = midend_current_key_label(me, fe->gameButton[i].actionParm.c);
+            if (strcmp(highlight, "H") == 0)
                 button_to_tapped(&fe->gameButton[i], false);
             else
                 button_to_normal(&fe->gameButton[i], false);
@@ -452,6 +454,7 @@ static void gameCheckButtonState() {
 void gameTap(int x, int y) {
     int i;
     bool is_active;
+    const char *highlight;
     init_tap_x = x;
     init_tap_y = y;
 
@@ -459,8 +462,10 @@ void gameTap(int x, int y) {
         if ((fe->gameButton[i].action != ACTION_SWAP) &&
             coord_in_button(x, y, &fe->gameButton[i])) {
             is_active = false;
-            if (fe->gameButton[i].type == BTN_CHAR)
-                is_active = midend_is_key_highlighted(me, fe->gameButton[i].actionParm.c);
+            if (fe->gameButton[i].type == BTN_CHAR) {
+                highlight = midend_current_key_label(me, fe->gameButton[i].actionParm.c);
+                is_active = (strcmp(highlight, "H") == 0);
+            }
             if (is_active) button_to_normal(&fe->gameButton[i], true);
             else           button_to_tapped(&fe->gameButton[i], true);
         }

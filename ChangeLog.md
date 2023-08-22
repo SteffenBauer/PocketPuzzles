@@ -7,11 +7,12 @@
 * *Galaxies*: Sync with upstream (solver for unreasonable puzzles now tries to maximize 'wiggliness')
 * *Loopy*: Remove grid types that don't really make sense on limited screen size
 * Whole project: Sync with upstream (mainly new DSF library and subsystem for game UI configuration)
+* All puzzles: Remove *is_key_highlighted()* in favour of *current_key_label()*
 
 ### Fixed
 * *Solo*: Typo in How to Play
 * *Guess*: Bug that made it possible to choose invalid color guesses
-* Various puzzles: Memory leaks
+* Various memory leaks
 
 ## 0.7.11 - 2022/11/13
 

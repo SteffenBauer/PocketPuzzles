@@ -1277,18 +1277,9 @@ key_label *midend_request_keys(midend *me, int *n)
     return keys;
 }
 
-bool midend_is_key_highlighted(midend *me, char c)
-{
-    if (me->ourgame->is_key_highlighted) {
-        return me->ourgame->is_key_highlighted(me->ui, c);
-    }
-    return false;
-}
-
 /* Return a good label to show next to a key right now. */
 const char *midend_current_key_label(midend *me, int button)
 {
-    assert(IS_CURSOR_SELECT(button));
     if (!me->ourgame->current_key_label) return "";
     return me->ourgame->current_key_label(
         me->ui, me->states[me->statepos-1].state, button);

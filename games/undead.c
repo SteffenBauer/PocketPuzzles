@@ -2051,8 +2051,13 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
     }
 }
 
-static bool is_key_highlighted(const game_ui *ui, char c) {
-    return (c == ui->hhint);
+static const char *current_key_label(const game_ui *ui,
+                                     const game_state *state, int button){
+    if ((button != 'G') && 
+        (button != 'V') && 
+        (button != 'Z') && 
+        (button != '\b')) return "";
+    return (button == ui->hhint) ? "H" : "E";
 }
 
 struct game_drawstate {
@@ -3104,7 +3109,7 @@ const struct game thegame = {
     NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
-    NULL, /* current_key_label */
+    current_key_label,
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -3115,11 +3120,10 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,  /* game_get_cursor_location */
-    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,  /* print_size, print */
     true,                      /* wants_statusbar */
     false, NULL,               /* timing_state */
-    REQUIRE_RBUTTON,                     /* flags */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

@@ -17,6 +17,7 @@ bool release_button(int x, int y, BUTTON *button) {
             coord_in_button(x, y, button));
 }
 void button_to_normal(BUTTON *button, bool update) {
+    if (!button->active) return;
     if (button->bitmap != NULL) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap, 0);
         add_favoritestar(button);
@@ -27,6 +28,7 @@ void button_to_normal(BUTTON *button, bool update) {
     if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
 void button_to_tapped(BUTTON *button, bool update) {
+    if (!button->active) return;
     if (button->bitmap_tap != NULL) {
         StretchBitmap(button->posx, button->posy, button->size, button->size, button->bitmap_tap, 0);
     }
