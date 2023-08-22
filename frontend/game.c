@@ -451,12 +451,13 @@ static void gameCheckButtonState() {
         fe->swapped ? button_to_tapped(swap, false) : button_to_normal(swap, false);
     }
     for (i=0;i<fe->numGameButtons;i++) {
-        if (fe->gameButton[i].action == ACTION_CTRL)
+        if (fe->gameButton[i].action == ACTION_CTRL) {
             highlight = midend_current_key_label(me, fe->gameButton[i].actionParm.c);
             if (strcmp(highlight, "H") == 0)
                 button_to_tapped(&fe->gameButton[i], false);
             else
                 button_to_normal(&fe->gameButton[i], false);
+        }
     }
 }
 
