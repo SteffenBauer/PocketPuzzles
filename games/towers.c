@@ -1043,9 +1043,11 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
         ui->hshow = false;
     }
 }
-static bool is_key_highlighted(const game_ui *ui, char c) {
-    if (c == '\b' && ui->hhint == 0) return true;
-    return ((c-'0') == ui->hhint);
+static const char *current_key_label(const game_ui *ui,
+                                     const game_state *state, int button){
+    if (button == '\b') return (ui->hhint == 0) ? "H" : "E";
+    if ((button < '0') || (button > '9')) return "";
+    return ((button-'0') == ui->hhint) ? "H" : "E";
 }
 
 #define PREFERRED_TILESIZE 48
@@ -1804,7 +1806,7 @@ const struct game thegame = {
     NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
-    NULL, /* current_key_label */
+    current_key_label,
     interpret_move,
     execute_move,
     PREFERRED_TILESIZE, game_compute_size, game_set_size,
@@ -1815,11 +1817,10 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL, /* game_get_cursor_location */
-    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,  /* print_size, print */
     true,                      /* wants_statusbar */
     false, NULL,               /* timing_state */
-    REQUIRE_RBUTTON,  /* flags */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

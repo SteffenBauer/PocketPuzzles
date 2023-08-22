@@ -1215,7 +1215,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs, */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
     NULL, /* encode_ui */
@@ -1233,11 +1233,10 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,  /* game_get_cursor_location */
-    NULL,  /* is_key_highlighted */
     game_status,
     false, false, NULL, NULL,  /* print_size, print */
     true,                      /* wants_statusbar */
     false, NULL,               /* timing_state */
-    REQUIRE_RBUTTON,                                         /* flags */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

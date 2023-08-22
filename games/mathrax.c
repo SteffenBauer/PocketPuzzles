@@ -1111,9 +1111,11 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 {
 }
 
-static bool is_key_highlighted(const game_ui *ui, char c) {
-    if (c == '\b' && ui->hhint == 0) return true;
-    return ((c-'0') == ui->hhint);
+static const char *current_key_label(const game_ui *ui,
+                                     const game_state *state, int button){
+    if (button == '\b') return (ui->hhint == 0) ? "H" : "E";
+    if ((button < '0') || (button > '9')) return "";
+    return ((button-'0') == ui->hhint) ? "H" : "E";
 }
 
 struct mathrax_symbols {
@@ -1652,14 +1654,14 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs, */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
     NULL, /* encode_ui */
     NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
-    NULL, /* current_key_label */
+    current_key_label,
     interpret_move,
     execute_move,
     40, game_compute_size, game_set_size,
@@ -1670,11 +1672,10 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,  /* game_get_cursor_location */
-    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,  /* print_size, print */
     true,                      /* wants_statusbar */
     false, NULL,               /* timing_state */
-    REQUIRE_RBUTTON, /* flags */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

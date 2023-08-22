@@ -171,7 +171,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;            /* structure copy */
     return ret;
 }
 
@@ -185,7 +185,7 @@ static void decode_params(game_params *ret, char const *string)
     if (*p == 'x') {
         p++;
         ret->h = atoi(p);
-	while (*p && isdigit((unsigned char)*p)) p++;
+        while (*p && isdigit((unsigned char)*p)) p++;
     }
     if (*p == 'd') {
         ret->diff = DIFF_MAX; /* which is invalid */
@@ -252,7 +252,7 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 2 || params->h < 2)
-	return "Width and height must be at least two";
+        return "Width and height must be at least two";
     if (params->w > 16 || params->h > 16)
         return "Width and height must be at most 16";
     if (full) {
@@ -1261,7 +1261,7 @@ found:
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+                           char **aux, bool interactive)
 {
     game_state *state = blank_game(params->w, params->h);
     game_state *tosolve = blank_game(params->w, params->h);
@@ -1735,11 +1735,10 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,  /* game_get_cursor_location */
-    NULL,  /* is_key_highlighted */
     game_status,
     false, false, NULL, NULL,  /* print_size, print */
     true,                      /* wants_statusbar */
     false, NULL,               /* timing_state */
-    REQUIRE_RBUTTON,		       /* flags */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

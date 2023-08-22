@@ -2466,10 +2466,12 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
         ui->cur_visible = false;
 }
 
-static bool is_key_highlighted(const game_ui *ui, char c) {
-    if ((ui->highlight_1 >= 0) && ((c-'0') == ui->highlight_1)) return true;
-    if ((ui->highlight_2 >= 0) && ((c-'0') == ui->highlight_2)) return true;
-    return false;
+static const char *current_key_label(const game_ui *ui,
+                                     const game_state *state, int button) {
+    if (button < '0' || button > '9') return "";
+    if ((ui->highlight_1 >= 0) && ((button-'0') == ui->highlight_1)) return "H";
+    if ((ui->highlight_2 >= 0) && ((button-'0') == ui->highlight_2)) return "H";
+    return "E";
 }
 
 #define PREFERRED_TILESIZE 32
@@ -3055,14 +3057,14 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs, */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
     NULL, /* encode_ui */
     NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
-    NULL, /* current_key_label */
+    current_key_label,
     interpret_move,
     execute_move,
     PREFERRED_TILESIZE, game_compute_size, game_set_size,
@@ -3073,7 +3075,6 @@ const struct game thegame = {
     game_anim_length,
     game_flash_length,
     NULL,  /* game_get_cursor_location */
-    is_key_highlighted,
     game_status,
     false, false, NULL, NULL,  /* print_size, print */
     true,                      /* wants_statusbar */
