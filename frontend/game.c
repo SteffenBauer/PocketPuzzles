@@ -923,6 +923,7 @@ void gameSetGame(const struct game *thegame) {
     if (me != NULL) midend_free(me);
     me = midend_new(fe, thegame, &ink_drawing, fe);
     stateLoadParams(me, thegame);
+    stateLoadSettings(me, thegame);
 }
 
 void gameScreenShow() {
@@ -955,6 +956,7 @@ void gameSerialise() {
     deactivate_timer(fe);
     stateSerialise(me);
     stateSaveParams(me, fe->currentgame);
+    stateSaveSettings(me, fe->currentgame);
     configAddItem("config_resume", "game");
 }
 
