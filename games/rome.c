@@ -1339,20 +1339,6 @@ static bool rome_generate(game_state *state, random_state *rs, int diff)
     return ret;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    key_label *keys = snewn(6, key_label);
-    *nkeys = 6;
-    keys[0].button = 'T';  keys[0].label = "North";
-    keys[1].button = 'D';  keys[1].label = "South";
-    keys[2].button = 'W';  keys[2].label = "West";
-    keys[3].button = 'E';  keys[3].label = "East";
-    keys[4].button = '\b'; keys[4].label = NULL;
-    keys[5].button = '+';  keys[5].label = NULL;
-
-    return keys;
-}
-
 static char *new_game_desc(const game_params *params, random_state *rs,
                char **aux, bool interactive)
 {
@@ -1511,6 +1497,20 @@ static game_ui *new_ui(const game_state *state)
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    key_label *keys = snewn(6, key_label);
+    *nkeys = 6;
+    keys[0].button = 'T';  keys[0].label = "North";
+    keys[1].button = 'D';  keys[1].label = "South";
+    keys[2].button = 'W';  keys[2].label = "West";
+    keys[3].button = 'E';  keys[3].label = "East";
+    keys[4].button = '\b'; keys[4].label = NULL;
+    keys[5].button = '+';  keys[5].label = NULL;
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,

@@ -713,7 +713,7 @@ struct game {
     char *(*encode_ui)(const game_ui *ui);
     void (*decode_ui)(game_ui *ui, const char *encoding,
                       const game_state *state);
-    key_label *(*request_keys)(const game_params *params, int *nkeys);
+    key_label *(*request_keys)(const game_params *params, const game_ui *ui, int *nkeys);
     void (*changed_state)(game_ui *ui, const game_state *oldstate,
                           const game_state *newstate);
     const char *(*current_key_label)(const game_ui *ui,

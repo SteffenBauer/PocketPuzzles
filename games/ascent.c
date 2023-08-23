@@ -2208,7 +2208,7 @@ static void ui_backtrack(game_ui *ui, const game_state *state)
     ui_seek(ui, state);
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
 {
     int i;
     key_label *keys = snewn(11, key_label);

@@ -1270,7 +1270,6 @@ static void set_prefs(game_ui *ui, const config_item *cfg)
     ui->do_highlight = cfg[0].u.boolean.bval;
 }
 
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
