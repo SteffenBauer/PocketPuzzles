@@ -1910,7 +1910,7 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
 {
     int i;
     int w = params->max;

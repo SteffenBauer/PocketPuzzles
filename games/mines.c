@@ -2247,6 +2247,7 @@ struct game_ui {
     bool completed;
     int cur_x, cur_y;
     bool cur_visible;
+    int click_mode;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -2258,6 +2259,7 @@ static game_ui *new_ui(const game_state *state)
     ui->completed = false;
     ui->cur_x = ui->cur_y = 0;
     ui->cur_visible = false;
+    ui->click_mode = 0;
     return ui;
 }
 
@@ -2285,6 +2287,30 @@ static void decode_ui(game_ui *ui, const char *encoding, const game_state *state
     sscanf(encoding, "D%d%n", &ui->deaths, &p);
     if (encoding[p] == 'C')
     ui->completed = true;
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(2, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Uncover/Mark:Mark/Uncover";
+    ret[0].u.choices.choicekws = ":uncover:mark";
+    ret[0].u.choices.selected = ui->click_mode;
+
+    ret[1].name = NULL;
+    ret[1].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->click_mode = cfg[0].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -2324,8 +2350,7 @@ static char *interpret_move(const game_state *from, game_ui *ui,
     cx = FROMCOORD(x);
     cy = FROMCOORD(y);
 
-    if (button == LEFT_BUTTON || button == LEFT_DRAG ||
-        button == MIDDLE_BUTTON || button == MIDDLE_DRAG) {
+    if (button == ((ui->click_mode == 0) ? LEFT_BUTTON : RIGHT_BUTTON)) {
         if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
             return NULL;
 
@@ -2336,60 +2361,56 @@ static char *interpret_move(const game_state *from, game_ui *ui,
         ui->hx = cx;
         ui->hy = cy;
         ui->hradius = (from->grid[cy*from->w+cx] >= 0 ? 1 : 0);
-        if (button == LEFT_BUTTON)
-            ui->validradius = ui->hradius;
-        else if (button == MIDDLE_BUTTON)
-            ui->validradius = 1;
+        ui->validradius = ui->hradius;
         ui->cur_visible = false;
         return MOVE_UI_UPDATE;
     }
 
-    if (button == RIGHT_BUTTON) {
-    if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
-        return NULL;
+    if (button == ((ui->click_mode == 0) ? RIGHT_BUTTON : LEFT_BUTTON)) {
+        if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
+            return NULL;
 
-    /*
-     * Right-clicking only works on a covered square, and it
-     * toggles between -1 (marked as mine) and -2 (not marked
-     * as mine).
-     *
-     * FIXME: question marks.
-     */
-    if (from->grid[cy * from->w + cx] != -2 &&
-        from->grid[cy * from->w + cx] != -1)
-        return NULL;
+        /*
+         * Right-clicking only works on a covered square, and it
+         * toggles between -1 (marked as mine) and -2 (not marked
+         * as mine).
+         *
+         * FIXME: question marks.
+         */
+        if (from->grid[cy * from->w + cx] != -2 &&
+            from->grid[cy * from->w + cx] != -1)
+            return NULL;
 
-    sprintf(buf, "F%d,%d", cx, cy);
-    return dupstr(buf);
-    }
-
-    if (button == LEFT_RELEASE || button == MIDDLE_RELEASE) {
-    ui->hx = ui->hy = -1;
-    ui->hradius = 0;
-
-    /*
-     * At this stage we must never return NULL: we have adjusted
-     * the ui, so at worst we return MOVE_UI_UPDATE.
-     */
-    if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
-        return MOVE_UI_UPDATE;
-
-    /*
-     * Left-clicking on a covered square opens a tile. Not
-     * permitted if the tile is marked as a mine, for safety.
-     * (Unmark it and _then_ open it.)
-     */
-    if (button == LEFT_RELEASE &&
-        (from->grid[cy * from->w + cx] == -2 ||
-         from->grid[cy * from->w + cx] == -3) &&
-        ui->validradius == 0) {
-        /* Check if you've killed yourself. */
-        if (from->layout->mines && from->layout->mines[cy * from->w + cx])
-        ui->deaths++;
-
-        sprintf(buf, "O%d,%d", cx, cy);
+        sprintf(buf, "F%d,%d", cx, cy);
         return dupstr(buf);
     }
+
+    if (button == ((ui->click_mode == 0) ? LEFT_RELEASE : RIGHT_RELEASE)) {
+        ui->hx = ui->hy = -1;
+        ui->hradius = 0;
+
+        /*
+         * At this stage we must never return NULL: we have adjusted
+         * the ui, so at worst we return MOVE_UI_UPDATE.
+         */
+        if (cx < 0 || cx >= from->w || cy < 0 || cy >= from->h)
+            return MOVE_UI_UPDATE;
+
+        /*
+         * Left-clicking on a covered square opens a tile. Not
+         * permitted if the tile is marked as a mine, for safety.
+         * (Unmark it and _then_ open it.)
+         */
+        if ((from->grid[cy * from->w + cx] == -2 ||
+             from->grid[cy * from->w + cx] == -3) &&
+            ui->validradius == 0) {
+            /* Check if you've killed yourself. */
+            if (from->layout->mines && from->layout->mines[cy * from->w + cx])
+                ui->deaths++;
+
+            sprintf(buf, "O%d,%d", cx, cy);
+            return dupstr(buf);
+        }
         goto uncover;
     }
     return MOVE_UNUSED;
@@ -2966,7 +2987,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     encode_ui,

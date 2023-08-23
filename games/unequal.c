@@ -1273,27 +1273,6 @@ fail:
     return NULL;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    int order = params->order;
-    char off = (order > 9) ? '0' : '1';
-    key_label *keys = snewn(order + 2, key_label);
-    *nkeys = order + 2;
-
-    for(i = 0; i < order; i++) {
-        if (i==10) off = 'a'-10;
-        keys[i].button = i + off;
-        keys[i].label = NULL;
-    }
-    keys[order].button = '\b';
-    keys[order].label = NULL;
-    keys[order+1].button = '+';
-    keys[order+1].label = "Add";
-
-    return keys;
-}
-
 static game_state *new_game(midend *me, const game_params *params,
                             const char *desc)
 {
@@ -1364,6 +1343,27 @@ static game_ui *new_ui(const game_state *state)
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    int i;
+    int order = params->order;
+    char off = (order > 9) ? '0' : '1';
+    key_label *keys = snewn(order + 2, key_label);
+    *nkeys = order + 2;
+
+    for(i = 0; i < order; i++) {
+        if (i==10) off = 'a'-10;
+        keys[i].button = i + off;
+        keys[i].label = NULL;
+    }
+    keys[order].button = '\b';
+    keys[order].label = NULL;
+    keys[order+1].button = '+';
+    keys[order+1].label = "Add";
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,

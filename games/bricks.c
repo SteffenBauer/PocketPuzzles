@@ -858,21 +858,25 @@ struct game_ui
     cell dragtype;
     int *drag;
     int ndrags;
+    int click_mode;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
-    int i, w = state->w, s = w*state->h;
     game_ui *ret = snew(game_ui);
-
-    for (i = 0; i < s; i++)
-    {
-        if (state->grid[i] != F_BOUND) break;
-    }
-
     ret->ndrags = 0;
     ret->dragtype = 0;
-    ret->drag = snewn(s, int);
+    ret->click_mode = 0;
+    ret->drag = NULL;
+
+    if (state) {
+        int i, w = state->w, s = w*state->h;
+        for (i = 0; i < s; i++)
+        {
+            if (state->grid[i] != F_BOUND) break;
+        }
+        ret->drag = snewn(s, int);
+    }
 
     return ret;
 }
@@ -881,6 +885,30 @@ static void free_ui(game_ui *ui)
 {
     sfree(ui->drag);
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(2, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Black/White:White/Black";
+    ret[0].u.choices.choicekws = ":black:white";
+    ret[0].u.choices.selected = ui->click_mode;
+
+    ret[1].name = NULL;
+    ret[1].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->click_mode = cfg[0].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -933,9 +961,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         cell old = state->grid[i];
         old &= COL_MASK;
 
-        if (button == LEFT_BUTTON)
+        if (button == ((ui->click_mode == 0) ? LEFT_BUTTON : RIGHT_BUTTON))
             ui->dragtype = (old == F_UNSHADE ? F_EMPTY : old == F_SHADE ? F_UNSHADE : F_SHADE);
-        else if (button == RIGHT_BUTTON)
+        else if (button == ((ui->click_mode == 0) ? RIGHT_BUTTON : LEFT_BUTTON))
             ui->dragtype = (old == F_UNSHADE ? F_SHADE : old == F_SHADE ? F_EMPTY : F_UNSHADE);
         else
             ui->dragtype = F_EMPTY;
@@ -1347,7 +1375,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */

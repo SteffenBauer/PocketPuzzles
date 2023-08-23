@@ -40,7 +40,7 @@
 - [ ] Check draw update efficiency in all games
 - [ ] Check all games for memory leaks
 - [ ] General settings (show/hide statusbar, orientation, chooser style, color/grey mode)
-- [ ] Configurable game specific UI settings (short/long click action, helper buttons, classic/one-click entry)
+- [X] Configurable game specific UI settings (short/long click action, helper buttons, classic/one-click entry)
 - [ ] Information screen explaining game controls
 - [ ] Color mode
 - [ ] Screen orientation handling
@@ -172,17 +172,17 @@
 
 #### Game specific UI settings
 
-- [ ] Bricks: Short-click, black or white
-- [ ] Bridges: 'Show Grid' button
+- [X] Bricks: Short-click, black or white
+- [X] Bridges: 'Show Grid' button
 - [ ] Clusters: Short-click, black or white
 - [ ] Creek: Short-click, black or white
 - [ ] Map: Pencil fill, all or possible only
-- [ ] Mines: Short-click, flag or reveal
+- [X] Mines: Short-click, flag or reveal
 - [ ] Mosaic: Short-click, black or white
 - [ ] Pattern: Short-click, black or white
 - [ ] Range: Short-click, block or empty
 - [ ] Singles: Short-click, black or circle
-- [ ] Signpost: Long-click, Show incoming arrows or not
+- [X] Signpost: Long-click, Show incoming arrows or not
 - [ ] Slant: Short-click, left-upper or right-upper line
 - [ ] Unruly: Short-click, black or white
 - [ ] Games with one-click: on/off

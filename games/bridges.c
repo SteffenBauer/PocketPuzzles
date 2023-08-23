@@ -2011,17 +2011,6 @@ static game_state *new_game_sub(const game_params *params, const char *desc)
     return state;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    key_label *keys = snewn(1, key_label);
-    *nkeys = 1;
-
-    keys[0].button = 'G';
-    keys[0].label = "Grid";
-
-    return keys;
-}
-
 static game_state *new_game(midend *me, const game_params *params,
                             const char *desc)
 {
@@ -2039,6 +2028,7 @@ struct game_ui {
     bool cur_visible;
     bool show_hints;
     bool highlight;
+    bool grid_button;
 };
 
 static char *ui_cancel_drag(game_ui *ui)
@@ -2053,17 +2043,58 @@ static game_ui *new_ui(const game_state *state)
 {
     game_ui *ui = snew(game_ui);
     ui_cancel_drag(ui);
-    ui->cur_x = state->islands[0].x;
-    ui->cur_y = state->islands[0].y;
+    if (state) {
+        ui->cur_x = state->islands[0].x;
+        ui->cur_y = state->islands[0].y;
+    }
     ui->cur_visible = false;
     ui->show_hints = false;
     ui->highlight = false;
+    ui->grid_button = true;
     return ui;
 }
 
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(2, config_item);
+
+    ret[0].name = "Show button to display grid lines";
+    ret[0].kw = "grid-button";
+    ret[0].type = C_BOOLEAN;
+    ret[0].u.boolean.bval = ui->grid_button;
+
+    ret[1].name = NULL;
+    ret[1].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->grid_button = cfg[0].u.boolean.bval;
+}
+
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    if (!ui->grid_button) {
+        *nkeys = 0;
+        return NULL;
+    }
+    
+    key_label *keys = snewn(1, key_label);
+    *nkeys = 1;
+
+    keys[0].button = 'G';
+    keys[0].label = "Grid";
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -2964,7 +2995,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */

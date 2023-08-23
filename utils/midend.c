@@ -1263,7 +1263,8 @@ key_label *midend_request_keys(midend *me, int *n)
 
     if(me->ourgame->request_keys)
     {
-        keys = me->ourgame->request_keys(midend_get_params(me), &nkeys);
+        /* keys = me->ourgame->request_keys(midend_get_params(me), &nkeys); */
+        keys = me->ourgame->request_keys(me->params, me->ui, &nkeys);
         for(i = 0; i < nkeys; ++i)
         {
             if(!keys[i].label)
