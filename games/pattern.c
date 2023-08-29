@@ -26,9 +26,9 @@ enum {
 
 #define PREFERRED_TILE_SIZE 24
 #define TILE_SIZE (ds->tilesize)
-#define BORDER (1 * TILE_SIZE / 8)
-#define TLBORDER(d) ( (d) / 8 + 2 )
-#define GUTTER (0) /* (TILE_SIZE / 20) */
+#define BORDER (1 * TILE_SIZE / 4)
+#define TLBORDER(d) ( (d) / 5 + 2 )
+#define GUTTER (TILE_SIZE / 4)
 
 #define FROMCOORD(d, x) \
         ( ((x) - (BORDER + GUTTER + TILE_SIZE * TLBORDER(d))) / TILE_SIZE )

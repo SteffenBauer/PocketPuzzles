@@ -1742,6 +1742,38 @@ static void draw_clue(drawing *dr, game_drawstate *ds,
           CLUE_TEXTSIZE, ALIGN_VCENTRE|ALIGN_HCENTRE, tcol, p);
 }
 
+static void draw_slash(drawing *dr, game_drawstate *ds, int x, int y, long v, int colour) {
+    int i, w, h, x1, x2, y1, y2;
+    int STEP=15;
+    float ws, hs;
+
+    if (v & BACKSLASH) {
+        x1 = COORD(x)+1;
+        y1 = COORD(y)+1;
+        x2 = COORD(x+1)-1;
+        y2 = COORD(y+1)-1;
+    }
+    else {
+        x1 = COORD(x+1)-1;
+        y1 = COORD(y)+1;
+        x2 = COORD(x)+1;
+        y2 = COORD(y+1)-1;
+    }
+    if (v & ERRSLASH) {
+        w = x2-x1;
+        h = y2-y1;
+        ws = ((float)w/(float)STEP);
+        hs = ((float)h/(float)STEP);
+        for (i=0;i<STEP;i+=2) {
+            draw_thick_line(dr, 3.0, x1+ i   *ws, y1+ i   * hs, x1+(i+1)*ws, y1+(i+1)*hs, colour);
+            draw_thick_line(dr, 3.0, x1+(i+1)*ws, y1+(i+1)* hs, x1+(i+2)*ws, y1+(i+2)*hs, COL_BACKGROUND);
+        }
+    }
+    else {
+        draw_thick_line(dr, 3.0, x1, y1, x2, y2, colour);
+    }
+}
+
 static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
               int x, int y, long v)
 {
@@ -1751,10 +1783,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
     int bscol = chesscolour ? COL_SLANT1 : COL_SLANT2;
 
     clip(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
-
-    draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE,
-              (v & ERRSLASH) ? COL_ERROR :
-          (v & (BACKSLASH | FORWSLASH)) ? COL_FILLEDSQUARE : COL_BACKGROUND);
+    draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE, COL_BACKGROUND);
 
     /*
      * Draw the grid lines.
@@ -1778,43 +1807,9 @@ static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
 
     /*
      * Draw the slash.
-     * TODO Don't color background on error, draw dotted line
      */
-    if (v & BACKSLASH) {
-        int scol = bscol;
-        draw_line(dr, COORD(x), COORD(y), COORD(x+1), COORD(y+1), scol);
-        draw_line(dr, COORD(x)+1, COORD(y), COORD(x+1), COORD(y+1)-1,
-              scol);
-        draw_line(dr, COORD(x), COORD(y)+1, COORD(x+1)-1, COORD(y+1),
-              scol);
-    } else if (v & FORWSLASH) {
-        int scol = fscol;
-        draw_line(dr, COORD(x+1), COORD(y), COORD(x), COORD(y+1), scol);
-        draw_line(dr, COORD(x+1)-1, COORD(y), COORD(x), COORD(y+1)-1,
-              scol);
-        draw_line(dr, COORD(x+1), COORD(y)+1, COORD(x)+1, COORD(y+1),
-              scol);
-    }
-
-    /*
-     * Draw dots on the grid corners that appear if a slash is in a
-     * neighbouring cell.
-     */
-    if (v & (L_T | BACKSLASH))
-    draw_rect(dr, COORD(x), COORD(y)+1, 1, 1,
-                  (v & ERR_L_T ? COL_ERROR : bscol));
-    if (v & (L_B | FORWSLASH))
-    draw_rect(dr, COORD(x), COORD(y+1)-1, 1, 1,
-                  (v & ERR_L_B ? COL_ERROR : fscol));
-    if (v & (T_L | BACKSLASH))
-    draw_rect(dr, COORD(x)+1, COORD(y), 1, 1,
-                  (v & ERR_T_L ? COL_ERROR : bscol));
-    if (v & (T_R | FORWSLASH))
-    draw_rect(dr, COORD(x+1)-1, COORD(y), 1, 1,
-                  (v & ERR_T_R ? COL_ERROR : fscol));
-    if (v & (C_TL | BACKSLASH))
-    draw_rect(dr, COORD(x), COORD(y), 1, 1,
-                  (v & ERR_C_TL ? COL_ERROR : bscol));
+    if ((v & BACKSLASH) || (v & FORWSLASH))
+        draw_slash(dr, ds, x, y, v, (v & BACKSLASH) ? bscol : fscol);
 
     /*
      * And finally the clues at the corners.
