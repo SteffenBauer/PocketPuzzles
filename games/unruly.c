@@ -66,7 +66,6 @@ enum {
     COL_1,
     COL_1_HIGHLIGHT,
     COL_1_LOWLIGHT,
-    COL_CURSOR,
     COL_ERROR,
     NCOLOURS
 };
@@ -124,7 +123,6 @@ enum {
 
 #define FF_ONE            0x0080
 #define FF_ZERO           0x0100
-#define FF_CURSOR         0x0200
 
 #define FF_IMMUTABLE      0x1000
 
@@ -1345,16 +1343,16 @@ static char *new_game_desc(const game_params *params, random_state *rs,
  * ************** */
 
 struct game_ui {
-    int cx, cy;
-    bool cursor;
+    int click_mode;
+    bool show_errors;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
     game_ui *ret = snew(game_ui);
 
-    ret->cx = ret->cy = 0;
-    ret->cursor = false;
+    ret->click_mode = 0;
+    ret->show_errors = true;
 
     return ret;
 }
@@ -1362,6 +1360,36 @@ static game_ui *new_ui(const game_state *state)
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(3, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Black/White:White/Black";
+    ret[0].u.choices.choicekws = ":black:white";
+    ret[0].u.choices.selected = ui->click_mode;
+
+    ret[1].name = "Show errors";
+    ret[1].kw = "show-errors";
+    ret[1].type = C_BOOLEAN;
+    ret[1].u.boolean.bval = ui->show_errors;
+
+    ret[2].name = NULL;
+    ret[2].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->click_mode = cfg[0].u.choices.selected;
+    ui->show_errors = cfg[1].u.boolean.bval;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1418,9 +1446,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int ox, int oy, int button, bool swapped)
 {
-    int hx = ui->cx;
-    int hy = ui->cy;
-
     int gx = FROMCOORD(ox);
     int gy = FROMCOORD(oy);
 
@@ -1428,27 +1453,20 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     button &= ~MOD_MASK;
 
-    /* Mouse click */
-    if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
-        if (ox >= (ds->tilesize / 2) && gx < w2
-            && oy >= (ds->tilesize / 2) && gy < h2) {
-            hx = gx;
-            hy = gy;
-            ui->cursor = false;
-        } else
-            return NULL;
-    }
+    if (ox < (ds->tilesize / 2) || gx >= w2 ||
+        oy < (ds->tilesize / 2) || gy >= h2)
+            return MOVE_NO_EFFECT;
 
     /* Place one */
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON ) {
         char buf[80];
         char c, i;
 
-        if (state->common->immutable[hy * w2 + hx])
-            return NULL;
+        if (state->common->immutable[gy * w2 + gx])
+            return MOVE_NO_EFFECT;
 
         c = '-';
-        i = state->grid[hy * w2 + hx];
+        i = state->grid[gy * w2 + gx];
 
         if (button == '0' || button == '2')
             c = '0';
@@ -1456,16 +1474,18 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             c = '1';
 
         /* Cycle through options */
-        else if (button == RIGHT_BUTTON)
+        else if ((button == RIGHT_BUTTON && ui->click_mode == 0) ||
+                 (button == LEFT_BUTTON && ui->click_mode == 1))
             c = (i == EMPTY ? '0' : i == N_ZERO ? '1' : '-');
-        else if (button == LEFT_BUTTON)
+        else if ((button == LEFT_BUTTON && ui->click_mode == 0) ||
+                (button == RIGHT_BUTTON && ui->click_mode == 1))
             c = (i == EMPTY ? '1' : i == N_ONE ? '0' : '-');
 
-        if (state->grid[hy * w2 + hx] ==
+        if (state->grid[gy * w2 + gx] ==
             (c == '0' ? N_ZERO : c == '1' ? N_ONE : EMPTY))
-            return NULL;               /* don't put no-ops on the undo chain */
+            return MOVE_NO_EFFECT;               /* don't put no-ops on the undo chain */
 
-        sprintf(buf, "P%c,%d,%d", c, hx, hy);
+        sprintf(buf, "P%c,%d,%d", c, gx, gy);
 
         return dupstr(buf);
     }
@@ -1553,7 +1573,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_EMPTY       * 3 + i] = 0.5F;
         ret[COL_GRID        * 3 + i] = 0.3F;
         ret[COL_ERROR       * 3 + i] = 0.5F;
-        ret[COL_CURSOR      * 3 + i] = 0.0F;
     }
 
     *ncolours = NCOLOURS;
@@ -1572,7 +1591,7 @@ static void unruly_draw_err_rectangle(drawing *dr, int x, int y, int w, int h,
     draw_rect(dr, x+w-margin-thick, y+margin, thick, h-2*margin, COL_ERROR);
 }
 
-static void unruly_draw_tile(drawing *dr, int x, int y, int tilesize, int tile)
+static void unruly_draw_tile(drawing *dr, const game_ui *ui, int x, int y, int tilesize, int tile)
 {
     clip(dr, x, y, tilesize, tilesize);
 
@@ -1607,50 +1626,41 @@ static void unruly_draw_tile(drawing *dr, int x, int y, int tilesize, int tile)
         }
     }
 
-    /* 3-in-a-row errors */
-    if (tile & (FE_HOR_ROW_LEFT | FE_HOR_ROW_RIGHT)) {
-        int left = x, right = x + tilesize - 1;
-        if ((tile & FE_HOR_ROW_LEFT))
-            right += tilesize/2;
-        if ((tile & FE_HOR_ROW_RIGHT))
-            left -= tilesize/2;
-        unruly_draw_err_rectangle(dr, left, y, right-left, tilesize-1, tilesize);
-    }
-    if (tile & (FE_VER_ROW_TOP | FE_VER_ROW_BOTTOM)) {
-        int top = y, bottom = y + tilesize - 1;
-        if ((tile & FE_VER_ROW_TOP))
-            bottom += tilesize/2;
-        if ((tile & FE_VER_ROW_BOTTOM))
-            top -= tilesize/2;
-        unruly_draw_err_rectangle(dr, x, top, tilesize-1, bottom-top, tilesize);
-    }
+    if (ui->show_errors) {
+        /* 3-in-a-row errors */
+        if (tile & (FE_HOR_ROW_LEFT | FE_HOR_ROW_RIGHT)) {
+            int left = x, right = x + tilesize - 1;
+            if ((tile & FE_HOR_ROW_LEFT))
+                right += tilesize/2;
+            if ((tile & FE_HOR_ROW_RIGHT))
+                left -= tilesize/2;
+            unruly_draw_err_rectangle(dr, left, y, right-left, tilesize-1, tilesize);
+        }
+        if (tile & (FE_VER_ROW_TOP | FE_VER_ROW_BOTTOM)) {
+            int top = y, bottom = y + tilesize - 1;
+            if ((tile & FE_VER_ROW_TOP))
+                bottom += tilesize/2;
+            if ((tile & FE_VER_ROW_BOTTOM))
+                top -= tilesize/2;
+            unruly_draw_err_rectangle(dr, x, top, tilesize-1, bottom-top, tilesize);
+        }
 
-    /* Count errors */
-    if (tile & FE_COUNT) {
-        draw_text(dr, x + tilesize/2, y + tilesize/2, FONT_VARIABLE,
-                  tilesize/2, ALIGN_HCENTRE | ALIGN_VCENTRE, COL_ERROR, "!");
-    }
+        /* Count errors */
+        if (tile & FE_COUNT) {
+            draw_text(dr, x + tilesize/2, y + tilesize/2, FONT_VARIABLE,
+                      tilesize/2, ALIGN_HCENTRE | ALIGN_VCENTRE, COL_ERROR, "!");
+        }
 
-    /* Row-match errors */
-    if (tile & FE_ROW_MATCH) {
-        draw_rect(dr, x, y+tilesize/2-tilesize/12,
-                  tilesize, 2*(tilesize/12), COL_ERROR);
+        /* Row-match errors */
+        if (tile & FE_ROW_MATCH) {
+            draw_rect(dr, x, y+tilesize/2-tilesize/12,
+                      tilesize, 2*(tilesize/12), COL_ERROR);
+        }
+        if (tile & FE_COL_MATCH) {
+            draw_rect(dr, x+tilesize/2-tilesize/12, y,
+                      2*(tilesize/12), tilesize, COL_ERROR);
+        }
     }
-    if (tile & FE_COL_MATCH) {
-        draw_rect(dr, x+tilesize/2-tilesize/12, y,
-                  2*(tilesize/12), tilesize, COL_ERROR);
-    }
-
-    /* Cursor rectangle */
-    if (tile & FF_CURSOR) {
-        draw_rect(dr, x, y, tilesize/12, tilesize-1, COL_CURSOR);
-        draw_rect(dr, x, y, tilesize-1, tilesize/12, COL_CURSOR);
-        draw_rect(dr, x+tilesize-1-tilesize/12, y, tilesize/12, tilesize-1,
-                  COL_CURSOR);
-        draw_rect(dr, x, y+tilesize-1-tilesize/12, tilesize-1, tilesize/12,
-                  COL_CURSOR);
-    }
-
     unclip(dr);
     draw_update(dr, x, y, tilesize, tilesize);
 }
@@ -1712,12 +1722,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             if (state->common->immutable[i])
                 tile |= FF_IMMUTABLE;
 
-            if (ui->cursor && ui->cx == x && ui->cy == y)
-                tile |= FF_CURSOR;
 
             if (ds->grid[i] != tile) {
                 ds->grid[i] = tile;
-                unruly_draw_tile(dr, COORD(x), COORD(y), TILE_SIZE, tile);
+                unruly_draw_tile(dr, ui, COORD(x), COORD(y), TILE_SIZE, tile);
             }
         }
     }
@@ -1767,7 +1775,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */

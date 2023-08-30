@@ -1391,6 +1391,7 @@ static game_state *new_game(midend *me, const game_params *params,
 
 struct game_ui {
     int cx, cy;
+    int swap_buttons;
     bool cshow, show_black_nums;
 };
 
@@ -1400,6 +1401,7 @@ static game_ui *new_ui(const game_state *state)
 
     ui->cx = ui->cy = 0;
     ui->cshow = false;
+    ui->swap_buttons = 0;
     ui->show_black_nums = true;
 
     return ui;
@@ -1408,6 +1410,36 @@ static game_ui *new_ui(const game_state *state)
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(3, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Fill/Circle:Circle/Fill";
+    ret[0].u.choices.choicekws = ":fill:dot";
+    ret[0].u.choices.selected = ui->swap_buttons;
+
+    ret[1].name = "Show numbers on black squares";
+    ret[1].kw = "show-black-nums";
+    ret[1].type = C_BOOLEAN;
+    ret[1].u.boolean.bval = ui->show_black_nums;
+
+    ret[2].name = NULL;
+    ret[2].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->swap_buttons = cfg[0].u.choices.selected;
+    ui->show_black_nums = cfg[1].u.boolean.bval;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1446,14 +1478,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             action = UI;
         }
         if (!INGRID(state, x, y)) {
-            ui->show_black_nums = !ui->show_black_nums;
-            action = UI; /* this wants to be a per-game option. */
+            action = NONE;
         } else if (button == LEFT_BUTTON) {
-            action = TOGGLE_BLACK;
+            action = (ui->swap_buttons == 0) ? TOGGLE_BLACK : TOGGLE_CIRCLE;
         } else if (button == RIGHT_BUTTON) {
-            action = TOGGLE_CIRCLE;
+            action = (ui->swap_buttons == 0) ? TOGGLE_CIRCLE : TOGGLE_BLACK;
         }
     }
+    if (action == NONE) return MOVE_NO_EFFECT;
     if (action == UI) return MOVE_UI_UPDATE;
 
     if (action == TOGGLE_BLACK || action == TOGGLE_CIRCLE) {
@@ -1717,7 +1749,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */

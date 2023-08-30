@@ -773,6 +773,7 @@ static BUTTON gameGetButton(const char *gameName, char key) {
     else if (key == '+')  return btn_add;
     else if (key == '-')  return btn_remove;
 
+    else if (key == 'H' && strcmp(gameName, "Range")==0)   return btn_hint;
     else if (key == 'O' && strcmp(gameName, "Salad")==0)   return btn_salad_o;
     else if (key == 'X' && strcmp(gameName, "Salad")==0)   return btn_salad_x;
     else if (key == 'J' && strcmp(gameName, "Net")==0)     return btn_net_shuffle;

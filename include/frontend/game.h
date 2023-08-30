@@ -69,7 +69,7 @@ extern ibitmap icon_back, icon_back_tap, icon_redraw, icon_redraw_tap,
                icon_game, icon_game_tap, icon_type, icon_type_tap,
                menu_exit, menu_help, menu_new, menu_restart, menu_solve, menu_settings,
                bt_add, bt_backspace, bt_bridges_g, bt_fill_nums, bt_fill_marks, bt_fill_map, bt_fill_rome,
-               bt_guess_i, bt_redo, bt_redo_d, bt_remove, bt_map_c, bt_map_j,
+               bt_guess_i, bt_hint, bt_redo, bt_redo_d, bt_remove, bt_map_c, bt_map_j,
                bt_net_shuffle, bt_salad_o, bt_salad_x, bt_net_shuffle, bt_net_lock, bt_bridges_g,
                bt_west, bt_east, bt_north, bt_south,
                bt_swap, bt_undo, bt_undo_d;
@@ -82,6 +82,7 @@ static BUTTON btn_type = { true, BTN_MENU, 0, 0, 0, 0, ACTION_TYPE, ' ', &icon_t
 static BUTTON btn_backspace = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, '\b', &bt_backspace, NULL, NULL};
 static BUTTON btn_add       = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, '+', &bt_add, NULL, NULL};
 static BUTTON btn_remove    = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, '-', &bt_remove, NULL, NULL};
+static BUTTON btn_hint      = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_CTRL, 'H', &bt_hint, NULL, NULL};
 
 static BUTTON btn_swap = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_SWAP, ' ', &bt_swap, NULL, NULL};
 static BUTTON btn_undo = { false, BTN_CTRL, 0, 0, 0, 0, ACTION_UNDO, ' ', &bt_undo, NULL, &bt_undo_d};
