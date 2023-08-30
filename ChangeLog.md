@@ -2,11 +2,15 @@
 
 ## 0.7.12 nightly
 
+### Added
+* Game UI settings for games as indicated in ToDo.md
+
 ### Changed
 * *Untangle*: Update vertex screen draw only at end of screen drag
 * *Galaxies*: Sync with upstream (solver for unreasonable puzzles now tries to maximize 'wiggliness')
 * *Loopy*: Remove grid types that don't really make sense on limited screen size
 * *Slant*: Draw dotted line on closed loop error
+* *Creek*: Refine color cycling in dragging
 * Whole project: Sync with upstream (mainly new DSF library and subsystem for game UI configuration)
 * All puzzles: Remove *is_key_highlighted()* in favour of *current_key_label()*
 
@@ -14,6 +18,7 @@
 * *Solo*: Typo in How to Play
 * *Guess*: Bug that made it possible to choose invalid color guesses
 * *Pattern*: Add space between numbers and grid
+* *Bricks*: Invalid array access
 * Various memory leaks
 
 ## 0.7.11 - 2022/11/13

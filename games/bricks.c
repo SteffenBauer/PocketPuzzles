@@ -237,11 +237,10 @@ static char bricks_validate_threes(int w, int h, cell *grid)
 
     /* Check for any three in a row, and mark errors accordingly */
     for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
+        for (x = 1; x < w-1; x++) {
             int i1 = y * w + x-1;
             int i2 = y * w + x;
             int i3 = y * w + x+1;
-
             if ((grid[i1] & COL_MASK) == F_SHADE &&
                 (grid[i2] & COL_MASK) == F_SHADE &&
                 (grid[i3] & COL_MASK) == F_SHADE) {
@@ -502,7 +501,7 @@ static game_state *dup_game(const game_state *state)
 {
     int w = state->w;
     int h = state->h;
-    
+
     game_state *ret = snew(game_state);
 
     ret->w = w;
@@ -631,7 +630,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     cell n;
     int result;
 
-    bricks_solve_game(solved, DIFF_TRICKY, NULL, true, false);
+    bricks_solve_game(solved, DIFF_TRICKY, NULL, true, true);
 
     result = bricks_validate(w, h, solved->grid, false);
 
@@ -678,10 +677,10 @@ static void bricks_fill_grid(game_state *state, random_state *rs)
             int i2 = (y+1) * w + x-1;
             int i3 = (y+1) * w + x;
 
-            cell n2 = x == 0 ? F_BOUND : state->grid[i2];
+            cell n2 = (x == 0 || y == h-1) ? F_BOUND : state->grid[i2];
             if(!(n2 & F_BOUND))
                 n2 &= COL_MASK;
-            cell n3 = state->grid[i3];
+            cell n3 = (y == h-1) ? F_BOUND : state->grid[i3];
             if(!(n3 & F_BOUND))
                 n3 &= COL_MASK;
 
@@ -809,7 +808,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     enum { RUN_NONE, RUN_BLANK, RUN_NUMBER } runtype = RUN_NONE;
     for(i = 0; i <= w*h; i++)
     {
-        n = state->grid[i];
+        n = (i == w*h) ? 0 : state->grid[i];
 
         if(runtype == RUN_BLANK && (i == w*h || !(n & COL_MASK)))
         {
