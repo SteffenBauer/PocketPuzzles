@@ -1616,7 +1616,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     enum { RUN_NONE, RUN_BLANK, RUN_WALL, RUN_NUMBER } runtype = RUN_NONE;
     for(i = 0; i <= w*h; i++)
     {
-        n = grid[i];
+        n = (i == w*h) ? -1 : grid[i];
         if(IS_NUMBER_EDGE(n)) n = NUMBER_EDGE(n);
 
         if(runtype == RUN_BLANK && (i == w*h || n != NUMBER_EMPTY))
@@ -3296,11 +3296,11 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             ui->dragx == i%w && ui->dragy == i/w ? COL_HIGHLIGHT :
             ui->held == i || ui->typing_cell == i ||
                 (ui->cshow == CSHOW_MOUSE && ui->cy*w+ui->cx == i) ? COL_HIGHLIGHT :
-            n <= state->last && positions[n] == CELL_MULTIPLE && ui->typing_cell != i ? COL_LOWLIGHT :
+            n >= 0 && n <= state->last && positions[n] == CELL_MULTIPLE && ui->typing_cell != i ? COL_LOWLIGHT :
             ds->old_next_target >= 0 && positions[ds->old_next_target] == i ? COL_HIGHLIGHT :
             ds->old_prev_target >= 0 && positions[ds->old_prev_target] == i ? COL_HIGHLIGHT :
             COL_BACKGROUND;
-        
+
         if(ds->colours[i] == colour) continue;
         
         fn = ascent_display_number(i, ds, ui, state, movement);

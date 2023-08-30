@@ -18,7 +18,7 @@
 * *Solo*: Typo in How to Play
 * *Guess*: Bug that made it possible to choose invalid color guesses
 * *Pattern*: Add space between numbers and grid
-* *Bricks*: Invalid array access
+* *Ascent* and *Bricks*: Invalid array access
 * Various memory leaks
 
 ## 0.7.11 - 2022/11/13
