@@ -4169,7 +4169,7 @@ static bool check_hint(const game_state *state, int x, int y, int n) {
     return check;
 }
 
-static game_state *execute_move(const game_state *from, const char *move)
+static game_state *execute_move(const game_state *from, const game_ui *ui, const char *move)
 {
     int cr = from->cr;
     game_state *ret;

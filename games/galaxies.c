@@ -166,7 +166,7 @@ static int solver_obvious_dot(game_state *state, space *dot);
 static space *space_opposite_dot(const game_state *state, const space *sp,
                                  const space *dot);
 static space *tile_opposite(const game_state *state, const space *sp);
-static game_state *execute_move(const game_state *state, const char *move);
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move);
 
 /* ----------------------------------------------------------
  * Game parameters and presets
@@ -1956,7 +1956,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     int diff;
 
     if (aux) {
-        tosolve = execute_move(state, aux);
+        tosolve = execute_move(state, NULL, aux);
         goto solved;
     } else {
         tosolve = dup_game(currstate);
@@ -2450,7 +2450,7 @@ static bool check_complete(const game_state *state, DSF *dsf, int *colours)
     return ret;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int x, y, ax, ay, n, dx, dy;
     game_state *ret = dup_game(state);

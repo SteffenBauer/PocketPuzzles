@@ -176,7 +176,7 @@
 - [X] Bridges: 'Show Grid' button
 - [X] Clusters: Short-click, black or white
 - [X] Creek: Short-click, black or white
-- [ ] Map: Pencil fill, all or possible only
+- [X] Map: Show pencil button; Pencil fill, all or possible only
 - [X] Mines: Short-click, flag or reveal
 - [ ] Mosaic: Short-click, black or white
 - [ ] Pattern: Short-click, black or white

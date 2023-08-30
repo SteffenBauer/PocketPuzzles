@@ -2412,7 +2412,7 @@ static bool check_path_solution(game_state *state, int p) {
     return correct;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int x,y,n,p,i;
     char c;

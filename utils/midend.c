@@ -628,7 +628,7 @@ void midend_new_game(midend *me)
                      me->states[0].state,
                      me->aux_info, &msg);
         assert(movestr && !msg);
-        s = me->ourgame->execute_move(me->states[0].state, movestr);
+        s = me->ourgame->execute_move(me->states[0].state, me->ui, movestr);
         assert(s);
         me->ourgame->free_game(s);
         sfree(movestr);
@@ -1026,7 +1026,7 @@ static int midend_really_process_key(midend *me, int x, int y, int button, bool 
             s = me->states[me->statepos-1].state;
         else {
             s = me->ourgame->execute_move(me->states[me->statepos-1].state,
-                      movestr);
+                      me->ui, movestr);
             assert(s != NULL);
         }
 
@@ -2039,7 +2039,7 @@ const char *midend_solve(midend *me)
             msg = "Solve operation failed";   /* _shouldn't_ happen, but can */
         return msg;
     }
-    s = me->ourgame->execute_move(me->states[me->statepos-1].state, movestr);
+    s = me->ourgame->execute_move(me->states[me->statepos-1].state, me->ui, movestr);
     assert(s);
 
     /*
@@ -2562,7 +2562,7 @@ static const char *midend_deserialise_internal(
             case MOVE:
             case SOLVE:
                 data.states[i].state = me->ourgame->execute_move(
-                    data.states[i-1].state, data.states[i].movestr);
+                    data.states[i-1].state, me->ui, data.states[i].movestr);
                 if (data.states[i].state == NULL) {
                     ret = "Save file contained an invalid move";
                     goto cleanup;
@@ -2846,7 +2846,7 @@ const char *midend_print_puzzle(midend *me, document *doc, bool with_soln)
         if (!movestr)
             return msg;
         soln = me->ourgame->execute_move(me->states[me->statepos-1].state,
-                         movestr);
+                         me->ui, movestr);
         assert(soln);
 
         sfree(movestr);

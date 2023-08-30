@@ -1619,7 +1619,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *oldstate, const char *move)
+static game_state *execute_move(const game_state *oldstate, const game_ui *ui, const char *move)
 {
     int w = oldstate->w;
     int h = oldstate->h;

@@ -2810,7 +2810,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return sresize(movebuf, movelen+1, char);
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int i;
     game_state *newstate = dup_game(state);

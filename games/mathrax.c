@@ -1284,7 +1284,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *oldstate, const char *move)
+static game_state *execute_move(const game_state *oldstate, const game_ui *ui, const char *move)
 {
     int o = oldstate->o;
     int x, y;

@@ -1598,7 +1598,7 @@ static void discard_solution(game_state *ret)
     ret->solnpos = 0;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->p.w, h = state->p.h /*, wh = w*h */;
     int dir;

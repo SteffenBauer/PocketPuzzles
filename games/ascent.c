@@ -2802,7 +2802,7 @@ static bool ascent_apply_path(game_state *state, const cell *positions)
     return ret;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->w, h = state->h;
     cell i = -1, i2 = -1;

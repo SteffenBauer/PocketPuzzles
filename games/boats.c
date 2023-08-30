@@ -3017,7 +3017,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int sx, sy, ex, ey, x, y, pos;
     int w = state->w;
