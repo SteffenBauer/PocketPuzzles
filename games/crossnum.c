@@ -2239,7 +2239,7 @@ static bool check_errors(const game_state *state, long *errors)
     return ret;
 }
 
-static game_state *execute_move(const game_state *from0, const char *move)
+static game_state *execute_move(const game_state *from0, const game_ui *ui, const char *move)
 {
     game_state* from = (game_state*) from0;
     int sz = from->par->size + 1, a = sz*sz;

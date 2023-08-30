@@ -917,7 +917,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return nullret;
 }
 
-static game_state *execute_move(const game_state *from, const char *move)
+static game_state *execute_move(const game_state *from, const game_ui *ui, const char *move)
 {
     int w = from->w, h = from->h, wh = w * h;
     game_state *ret;

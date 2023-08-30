@@ -720,7 +720,7 @@ struct game {
                                      const game_state *state, int button);
     char *(*interpret_move)(const game_state *state, game_ui *ui,
                             const game_drawstate *ds, int x, int y, int button, bool swapped);
-    game_state *(*execute_move)(const game_state *state, const char *move);
+    game_state *(*execute_move)(const game_state *state, const game_ui *ui, const char *move);
     int preferred_tilesize;
     void (*compute_size)(const game_params *params, int tilesize,
                          const game_ui *ui, int *x, int *y);

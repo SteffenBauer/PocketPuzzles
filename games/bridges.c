@@ -2345,7 +2345,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     game_state *ret = dup_game(state);
     int x1, y1, x2, y2, nl, n;
@@ -2417,7 +2417,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
     if (aux) {
         debug(("solve_game: aux = %s\n", aux));
-        solved = execute_move(state, aux);
+        solved = execute_move(state, NULL, aux);
         if (!solved) {
             *error = "Generated aux string is not a valid move (!).";
             return NULL;

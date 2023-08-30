@@ -1344,7 +1344,7 @@ static void unlink_cell(game_state *state, int si)
     }
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     game_state *ret = NULL;
     int sx, sy, ex, ey, si, ei, w = state->w;
@@ -1715,7 +1715,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         char *movestr = interpret_move(state, &uicopy, ds, ui->dx, ui->dy, LEFT_RELEASE, false);
 
         if (movestr != NULL && strcmp(movestr, "") != 0) {
-            postdrop = execute_move(state, movestr);
+            postdrop = execute_move(state, NULL, movestr);
             sfree(movestr);
 
             state = postdrop;

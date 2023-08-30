@@ -2475,7 +2475,7 @@ uncover:
     }
 }
 
-static game_state *execute_move(const game_state *from, const char *move)
+static game_state *execute_move(const game_state *from, const game_ui *ui, const char *move)
 {
     int cy, cx;
     game_state *ret;

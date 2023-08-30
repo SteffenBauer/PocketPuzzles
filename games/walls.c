@@ -1819,7 +1819,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
 }
 
-static game_state *execute_move(const game_state *state, const char *move) {
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move) {
     char c;
     unsigned char newedge;
     int edge, n;

@@ -1240,7 +1240,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return ret;
 }
 
-static game_state *execute_move(const game_state *from, const char *move)
+static game_state *execute_move(const game_state *from, const game_ui *ui, const char *move)
 {
     int i, n;
     game_state *ret;
