@@ -61,7 +61,7 @@ bool verbose = false;
  */
 #define DIFFLIST(A) \
     A(EASY,Easy,e) \
-    A(HARD,Hard,h)
+    A(TRICKY,Tricky,t)
 #define ENUM(upper,title,lower) DIFF_ ## upper,
 #define TITLE(upper,title,lower) #title,
 #define ENCODE(upper,title,lower) #lower
@@ -106,13 +106,13 @@ static game_params *default_params(void)
 
 static const struct game_params slant_presets[] = {
     {5, 5, DIFF_EASY},
-    {5, 5, DIFF_HARD},
+    {5, 5, DIFF_TRICKY},
     {8, 8, DIFF_EASY},
-    {8, 8, DIFF_HARD},
+    {8, 8, DIFF_TRICKY},
     {10, 10, DIFF_EASY},
-    {10, 10, DIFF_HARD},
+    {10, 10, DIFF_TRICKY},
     {12, 12, DIFF_EASY},
-    {12, 12, DIFF_HARD},
+    {12, 12, DIFF_TRICKY},
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -148,6 +148,7 @@ static game_params *dup_params(const game_params *params)
 static void decode_params(game_params *ret, char const *string)
 {
     ret->w = ret->h = atoi(string);
+    ret->diff = DIFF_EASY;
     while (*string && isdigit((unsigned char)*string)) string++;
     if (*string == 'x') {
         string++;
@@ -221,7 +222,7 @@ static const char *validate_params(const game_params *params, bool full)
      * generator is actually capable of handling even zero grid
      * dimensions without crashing. Puzzles with a zero-area grid
      * are a bit boring, though, because they're already solved :-)
-     * And puzzles with a dimension of 1 can't be made Hard, which
+     * And puzzles with a dimension of 1 can't be made tricky, which
      * means the simplest thing is to forbid them altogether.
      */
 
@@ -1113,7 +1114,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     /*
      * Remove as many clues as possible while retaining solubility.
      *
-     * In DIFF_HARD mode, we prioritise the removal of obvious
+     * In DIFF_TRICKY mode, we prioritise the removal of obvious
      * starting points (4s, 0s, border 2s and corner 1s), on
      * the grounds that having as few of these as possible
      * seems like a good thing. In particular, we can often get
@@ -1486,7 +1487,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     struct solver_scratch *sc = new_scratch(w, h);
     soln = snewn(w*h, signed char);
     bs = -1;
-    ret = slant_solve(w, h, state->clues->clues, soln, sc, DIFF_HARD);
+    ret = slant_solve(w, h, state->clues->clues, soln, sc, DIFF_TRICKY);
     free_scratch(sc);
     if (ret != 1) {
         sfree(soln);
@@ -1742,6 +1743,38 @@ static void draw_clue(drawing *dr, game_drawstate *ds,
           CLUE_TEXTSIZE, ALIGN_VCENTRE|ALIGN_HCENTRE, tcol, p);
 }
 
+static void draw_slash(drawing *dr, game_drawstate *ds, int x, int y, long v, int colour) {
+    int i, w, h, x1, x2, y1, y2;
+    int STEP=15;
+    float ws, hs;
+
+    if (v & BACKSLASH) {
+        x1 = COORD(x)+1;
+        y1 = COORD(y)+1;
+        x2 = COORD(x+1);
+        y2 = COORD(y+1);
+    }
+    else {
+        x1 = COORD(x+1);
+        y1 = COORD(y)+1;
+        x2 = COORD(x)+1;
+        y2 = COORD(y+1);
+    }
+    if (v & ERRSLASH) {
+        w = x2-x1;
+        h = y2-y1;
+        ws = ((float)w/(float)STEP);
+        hs = ((float)h/(float)STEP);
+        for (i=0;i<STEP;i+=2) {
+            draw_thick_line(dr, 5.0, x1+ i   *ws, y1+ i   * hs, x1+(i+1)*ws, y1+(i+1)*hs, colour);
+            draw_thick_line(dr, 5.0, x1+(i+1)*ws, y1+(i+1)* hs, x1+(i+2)*ws, y1+(i+2)*hs, COL_BACKGROUND);
+        }
+    }
+    else {
+        draw_thick_line(dr, 5.0, x1, y1, x2, y2, colour);
+    }
+}
+
 static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
               int x, int y, long v)
 {
@@ -1751,10 +1784,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
     int bscol = chesscolour ? COL_SLANT1 : COL_SLANT2;
 
     clip(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
-
-    draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE,
-              (v & ERRSLASH) ? COL_ERROR :
-          (v & (BACKSLASH | FORWSLASH)) ? COL_FILLEDSQUARE : COL_BACKGROUND);
+    draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE, COL_BACKGROUND);
 
     /*
      * Draw the grid lines.
@@ -1778,43 +1808,9 @@ static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
 
     /*
      * Draw the slash.
-     * TODO Don't color background on error, draw dotted line
      */
-    if (v & BACKSLASH) {
-        int scol = bscol;
-        draw_line(dr, COORD(x), COORD(y), COORD(x+1), COORD(y+1), scol);
-        draw_line(dr, COORD(x)+1, COORD(y), COORD(x+1), COORD(y+1)-1,
-              scol);
-        draw_line(dr, COORD(x), COORD(y)+1, COORD(x+1)-1, COORD(y+1),
-              scol);
-    } else if (v & FORWSLASH) {
-        int scol = fscol;
-        draw_line(dr, COORD(x+1), COORD(y), COORD(x), COORD(y+1), scol);
-        draw_line(dr, COORD(x+1)-1, COORD(y), COORD(x), COORD(y+1)-1,
-              scol);
-        draw_line(dr, COORD(x+1), COORD(y)+1, COORD(x)+1, COORD(y+1),
-              scol);
-    }
-
-    /*
-     * Draw dots on the grid corners that appear if a slash is in a
-     * neighbouring cell.
-     */
-    if (v & (L_T | BACKSLASH))
-    draw_rect(dr, COORD(x), COORD(y)+1, 1, 1,
-                  (v & ERR_L_T ? COL_ERROR : bscol));
-    if (v & (L_B | FORWSLASH))
-    draw_rect(dr, COORD(x), COORD(y+1)-1, 1, 1,
-                  (v & ERR_L_B ? COL_ERROR : fscol));
-    if (v & (T_L | BACKSLASH))
-    draw_rect(dr, COORD(x)+1, COORD(y), 1, 1,
-                  (v & ERR_T_L ? COL_ERROR : bscol));
-    if (v & (T_R | FORWSLASH))
-    draw_rect(dr, COORD(x+1)-1, COORD(y), 1, 1,
-                  (v & ERR_T_R ? COL_ERROR : fscol));
-    if (v & (C_TL | BACKSLASH))
-    draw_rect(dr, COORD(x), COORD(y), 1, 1,
-                  (v & ERR_C_TL ? COL_ERROR : bscol));
+    if ((v & BACKSLASH) || (v & FORWSLASH))
+        draw_slash(dr, ds, x, y, v, (v & BACKSLASH) ? bscol : fscol);
 
     /*
      * And finally the clues at the corners.
