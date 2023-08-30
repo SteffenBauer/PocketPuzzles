@@ -1530,17 +1530,59 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 }
 
 struct game_ui {
+     bool swap_buttons;
+     bool show_filled;
+     bool show_errors;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
     game_ui *ui = snew(game_ui);
+    ui->swap_buttons = false;
+    ui->show_filled = false;
+    ui->show_errors = true;
     return ui;
 }
 
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(4, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Short \\, Long /:Short /, Long \\";
+    ret[0].u.choices.choicekws = ":\\:/";
+    ret[0].u.choices.selected = ui->swap_buttons;
+
+    ret[1].name = "Shade filled cells";
+    ret[1].kw = "show-filled";
+    ret[1].type = C_BOOLEAN;
+    ret[1].u.boolean.bval = ui->show_filled;
+
+    ret[2].name = "Show errors";
+    ret[2].kw = "show-errors";
+    ret[2].type = C_BOOLEAN;
+    ret[2].u.boolean.bval = ui->show_errors;
+
+    ret[3].name = NULL;
+    ret[3].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->swap_buttons = cfg[0].u.choices.selected;
+    ui->show_filled = cfg[1].u.boolean.bval;
+    ui->show_errors = cfg[2].u.boolean.bval;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1593,7 +1635,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     enum { CLOCKWISE, ANTICLOCKWISE, NONE } action = NONE;
 
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
-        action = (button == LEFT_BUTTON) ? CLOCKWISE : ANTICLOCKWISE;
+        action = ((button == LEFT_BUTTON && !ui->swap_buttons) ||
+                  (button == RIGHT_BUTTON && ui->swap_buttons)) ? CLOCKWISE : ANTICLOCKWISE;
 
         x = FROMCOORD(x);
         y = FROMCOORD(y);
@@ -1726,12 +1769,12 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
     sfree(ds);
 }
 
-static void draw_clue(drawing *dr, game_drawstate *ds,
+static void draw_clue(drawing *dr, game_drawstate *ds, const game_ui *ui,
               int x, int y, long v, bool err, int bg, int colour)
 {
     char p[2];
-    int ccol = colour >= 0 ? colour : err ? COL_ERROR : COL_BACKGROUND;
-    int tcol = colour >= 0 ? colour : err ? COL_BACKGROUND : COL_INK;
+    int ccol = colour >= 0 ? colour : (ui->show_errors && err) ? COL_ERROR : COL_BACKGROUND;
+    int tcol = colour >= 0 ? colour : (ui->show_errors && err) ? COL_BACKGROUND : COL_INK;
 
     if (v < 0)
     return;
@@ -1743,7 +1786,8 @@ static void draw_clue(drawing *dr, game_drawstate *ds,
           CLUE_TEXTSIZE, ALIGN_VCENTRE|ALIGN_HCENTRE, tcol, p);
 }
 
-static void draw_slash(drawing *dr, game_drawstate *ds, int x, int y, long v, int colour) {
+static void draw_slash(drawing *dr, game_drawstate *ds, const game_ui *ui,
+                       int x, int y, long v, int colour) {
     int i, w, h, x1, x2, y1, y2;
     int STEP=15;
     float ws, hs;
@@ -1760,7 +1804,7 @@ static void draw_slash(drawing *dr, game_drawstate *ds, int x, int y, long v, in
         x2 = COORD(x)+1;
         y2 = COORD(y+1);
     }
-    if (v & ERRSLASH) {
+    if (ui->show_errors && (v & ERRSLASH)) {
         w = x2-x1;
         h = y2-y1;
         ws = ((float)w/(float)STEP);
@@ -1775,16 +1819,19 @@ static void draw_slash(drawing *dr, game_drawstate *ds, int x, int y, long v, in
     }
 }
 
-static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
+static void draw_tile(drawing *dr, game_drawstate *ds, const game_ui *ui, game_clues *clues,
               int x, int y, long v)
 {
     int w = clues->w, h = clues->h, W = w+1 /*, H = h+1 */;
     int chesscolour = (x ^ y) & 1;
+    int bgcol = COL_BACKGROUND;
     int fscol = chesscolour ? COL_SLANT2 : COL_SLANT1;
     int bscol = chesscolour ? COL_SLANT1 : COL_SLANT2;
+    if (ui->show_filled && !(ui->show_errors && (v & ERRSLASH)) && (v & (BACKSLASH | FORWSLASH)))
+        bgcol = COL_FILLEDSQUARE;
 
     clip(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
-    draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE, COL_BACKGROUND);
+    draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE, bgcol);
 
     /*
      * Draw the grid lines.
@@ -1810,19 +1857,19 @@ static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
      * Draw the slash.
      */
     if ((v & BACKSLASH) || (v & FORWSLASH))
-        draw_slash(dr, ds, x, y, v, (v & BACKSLASH) ? bscol : fscol);
+        draw_slash(dr, ds, ui, x, y, v, (v & BACKSLASH) ? bscol : fscol);
 
     /*
      * And finally the clues at the corners.
      */
     if (x >= 0 && y >= 0)
-        draw_clue(dr, ds, x, y, clues->clues[y*W+x], v & ERR_TL, -1, -1);
+        draw_clue(dr, ds, ui, x, y, clues->clues[y*W+x], v & ERR_TL, -1, -1);
     if (x < w && y >= 0)
-        draw_clue(dr, ds, x+1, y, clues->clues[y*W+(x+1)], v & ERR_TR, -1, -1);
+        draw_clue(dr, ds, ui, x+1, y, clues->clues[y*W+(x+1)], v & ERR_TR, -1, -1);
     if (x >= 0 && y < h)
-        draw_clue(dr, ds, x, y+1, clues->clues[(y+1)*W+x], v & ERR_BL, -1, -1);
+        draw_clue(dr, ds, ui, x, y+1, clues->clues[(y+1)*W+x], v & ERR_BL, -1, -1);
     if (x < w && y < h)
-        draw_clue(dr, ds, x+1, y+1, clues->clues[(y+1)*W+(x+1)], v & ERR_BR,
+        draw_clue(dr, ds, ui, x+1, y+1, clues->clues[(y+1)*W+(x+1)], v & ERR_BR,
           -1, -1);
 
     unclip(dr);
@@ -1897,7 +1944,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (y = -1; y <= h; y++) {
     for (x = -1; x <= w; x++) {
         if (ds->todraw[(y+1)*(w+2)+(x+1)] != ds->grid[(y+1)*(w+2)+(x+1)]) {
-            draw_tile(dr, ds, state->clues, x, y, ds->todraw[(y+1)*(w+2)+(x+1)]);
+            draw_tile(dr, ds, ui, state->clues, x, y, ds->todraw[(y+1)*(w+2)+(x+1)]);
             ds->grid[(y+1)*(w+2)+(x+1)] = ds->todraw[(y+1)*(w+2)+(x+1)];
         }
     }
@@ -1947,7 +1994,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */

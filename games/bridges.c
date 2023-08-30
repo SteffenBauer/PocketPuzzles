@@ -2087,7 +2087,7 @@ static key_label *game_request_keys(const game_params *params, const game_ui *ui
         *nkeys = 0;
         return NULL;
     }
-    
+
     key_label *keys = snewn(1, key_label);
     *nkeys = 1;
 

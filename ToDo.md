@@ -174,16 +174,16 @@
 
 - [X] Bricks: Short-click, black or white
 - [X] Bridges: 'Show Grid' button
-- [ ] Clusters: Short-click, black or white
-- [ ] Creek: Short-click, black or white
+- [X] Clusters: Short-click, black or white
+- [X] Creek: Short-click, black or white
 - [ ] Map: Pencil fill, all or possible only
 - [X] Mines: Short-click, flag or reveal
 - [ ] Mosaic: Short-click, black or white
 - [ ] Pattern: Short-click, black or white
 - [ ] Range: Short-click, block or empty
-- [ ] Singles: Short-click, black or circle
+- [ ] Singles: Short-click, black or circle; show black numbers
 - [X] Signpost: Long-click, Show incoming arrows or not
-- [ ] Slant: Short-click, left-upper or right-upper line
+- [X] Slant: Show errors; show filled cells; Short-click, left-upper or right-upper line
 - [ ] Unruly: Short-click, black or white
 - [ ] Games with one-click: on/off
 - [ ] Games with 'Fill pencil marks' button: visible/hidden

@@ -1058,14 +1058,16 @@ struct game_ui {
     bool *seln;
     int dx, dy;
     DRAGMODE mode;
+    int click_mode;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
     game_ui *ui = snew(game_ui);
-    ui->seln = snewn(state->p.w * state->p.h, bool);
+    ui->seln = state ? snewn(state->p.w * state->p.h, bool) : NULL;
     ui->is_drag = false;
     ui->dx = ui->dy = -1;
+    ui->click_mode = 0;
     return ui;
 }
 
@@ -1073,6 +1075,30 @@ static void free_ui(game_ui *ui)
 {
     if (ui->seln) sfree(ui->seln);
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(2, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Black/White:White/Black";
+    ret[0].u.choices.choicekws = ":black:white";
+    ret[0].u.choices.selected = ui->click_mode;
+
+    ret[1].name = NULL;
+    ret[1].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->click_mode = cfg[0].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1107,13 +1133,15 @@ struct game_drawstate {
     long *todraw;
 };
 
-static DRAGMODE get_dragmode(int button, int cell, bool swapped) {
+static DRAGMODE get_dragmode(int button, int cell, const game_ui *ui, bool swapped) {
     if (button == LEFT_DRAG) button = LEFT_BUTTON;
     if (button == RIGHT_DRAG) button = RIGHT_BUTTON;
-    if (button == LEFT_BUTTON && cell == 0) return BLACK;
-    if (button == LEFT_BUTTON && cell == 1) return WHITE;
-    if (button == RIGHT_BUTTON && cell == 0) return WHITE;
-    if (button == RIGHT_BUTTON && cell == -1) return BLACK;
+    if (button == LEFT_BUTTON && cell == 0) return (ui->click_mode == 0) ? BLACK : WHITE;
+    if (button == LEFT_BUTTON && cell == 1) return (ui->click_mode == 0) ? WHITE : CLEAR;
+    if (button == LEFT_BUTTON && cell == -1) return (ui->click_mode == 0) ? CLEAR : BLACK;
+    if (button == RIGHT_BUTTON && cell == 0) return (ui->click_mode == 0) ? WHITE : BLACK;
+    if (button == RIGHT_BUTTON && cell == 1) return (ui->click_mode == 0) ? CLEAR : WHITE;
+    if (button == RIGHT_BUTTON && cell == -1) return (ui->click_mode == 0) ? BLACK : CLEAR;
     return CLEAR;
 }
 
@@ -1126,36 +1154,42 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     x = FROMCOORD(x);
     y = FROMCOORD(y);
 
-    if (x < 0 || y < 0 || x >= w || y >= h) {
-        ui->is_drag = false;
-        ui->dx = ui->dy = -1;
-        memset(ui->seln, false, w*h);
-        return MOVE_UI_UPDATE;
-    }
-
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
-        ui->mode = get_dragmode(button, state->soln[y*w+x], swapped);
+        if (x < 0 || y < 0 || x >= w || y >= h) {
+            ui->is_drag = false;
+            ui->dx = ui->dy = -1;
+            memset(ui->seln, false, (unsigned int)(w*h));
+            return MOVE_UI_UPDATE;
+        }
+        ui->mode = get_dragmode(button, state->soln[y*w+x], ui, swapped);
         ui->is_drag = true;
         ui->dx = x; ui->dy = y;
         memset(ui->seln, false, w*h);
         ui->seln[y*w+x] = true;
         return MOVE_UI_UPDATE;
-    } else if (button == LEFT_DRAG || button == RIGHT_DRAG) {
+    } else if ((button == LEFT_DRAG || button == RIGHT_DRAG) &&
+               (x >= 0 && y >= 0 && x < w && y < h)) {
         if (!ui->is_drag) {
             ui->is_drag = true;
-            ui->mode = get_dragmode(button, state->soln[y*w+x], swapped);
+            ui->dx = x; ui->dy = y;
+            memset(ui->seln, false, w*h);
+            ui->seln[y*w+x] = true;
+            ui->mode = get_dragmode(button, state->soln[y*w+x], ui, swapped);
+            return MOVE_UI_UPDATE;
         }
         if (x != ui->dx || y != ui->dy) {
             if (!ui->seln[y*w+x]) {
-                if (((ui->mode == BLACK || ui->mode == WHITE) && state->soln[y*w+x] == 0) ||
-                     (ui->mode == CLEAR && state->soln[y*w+x] != 0)) {
+                if ((ui->mode == BLACK && state->soln[y*w+x] != 1) ||
+                    (ui->mode == WHITE && state->soln[y*w+x] != -1) ||
+                    (ui->mode == CLEAR && state->soln[y*w+x] != 0)) {
                      ui->seln[y*w+x] = true;
                      ui->dx = x; ui->dy = y;
                      return MOVE_UI_UPDATE;
                 }
             } else if (ui->seln[ui->dy*w+ui->dx]){
-                if (((ui->mode == BLACK || ui->mode == WHITE) && state->soln[ui->dy*w+ui->dx] == 0) ||
-                     (ui->mode == CLEAR && state->soln[ui->dy*w+ui->dx] != 0)) {
+                if ((ui->mode == BLACK && state->soln[ui->dy*w+ui->dx] != 1) ||
+                    (ui->mode == WHITE && state->soln[ui->dy*w+ui->dx] != -1) ||
+                    (ui->mode == CLEAR && state->soln[ui->dy*w+ui->dx] != 0)) {
                      ui->seln[ui->dy*w+ui->dx] = false;
                      ui->dx = x; ui->dy = y;
                      return MOVE_UI_UPDATE;
@@ -1163,7 +1197,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             }
             return NULL;
         }
-    } else if (button == LEFT_RELEASE || button == RIGHT_RELEASE) {
+    } else if (button == LEFT_RELEASE || button == RIGHT_RELEASE ||
+               x < 0 || y < 0 || x >= w || y >= h) {
         int i, tmplen, buflen, bufsize;
         char *buf;
         const char *sep;
@@ -1194,7 +1229,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
         ui->is_drag = false;
         ui->dx = ui->dy = -1;
-        memset(ui->seln, false, w*h);
+        memset(ui->seln, false, (unsigned int)(w*h));
 
         if (buflen == 0) {
             sfree(buf);
@@ -1492,7 +1527,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */
