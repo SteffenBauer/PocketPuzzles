@@ -1,9 +1,9 @@
 ## ChangeLog
 
-## 0.7.12 nightly
+## 0.8.0
 
 ### Added
-* Game UI settings for games as indicated in ToDo.md
+* Game UI settings now configurable, for games indicated in ToDo.md
 
 ### Changed
 * *Untangle*: Update vertex screen draw only at end of screen drag
@@ -13,6 +13,7 @@
 * *Creek*: Refine color cycling in dragging
 * Whole project: Sync with upstream (new DSF library and subsystem for game UI configuration)
 * All puzzles: Remove *is_key_highlighted()* in favour of *current_key_label()*
+* Updated screenshots
 
 ### Fixed
 * *Solo*: Typo in How to Play
