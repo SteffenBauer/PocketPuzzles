@@ -167,7 +167,7 @@ static config_item *game_configure(const game_params *params)
     config_item *ret;
     char buf[80];
 
-    ret = snewn(4, config_item);
+    ret = snewn(5, config_item);
 
     ret[0].name = "Width";
     ret[0].type = C_STRING;

@@ -513,5 +513,5 @@ version.o: ../utils/version.c ../include/version.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o abcd ascent blackbox boats bricks bridges clusters creek crossnum cube dominosa fifteen filling flip flood galaxies guess inertia keen lightup loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs range rect rome salad samegame signpost singles sixteen slant solo spokes sticks tents towers tracks twiddle undead unequal unruly untangle walls
+	rm -f *.o abcd ascent binary blackbox boats bricks bridges clusters creek crossnum cube dominosa fifteen filling flip flood galaxies guess inertia keen lightup loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs range rect rome salad samegame signpost singles sixteen slant solo spokes sticks tents towers tracks twiddle undead unequal unruly untangle walls
 
