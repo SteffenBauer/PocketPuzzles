@@ -181,8 +181,8 @@
 - [ ] Mosaic: Short-click, black or white
 - [ ] Pattern: Short-click, black or white
 - [X] Range: Short-click, block or empty; Show Hint button
-- [X] Singles: Short-click, black or circle; show black numbers
 - [X] Signpost: Long-click, Show incoming arrows or not
+- [X] Singles: Short-click, black or circle; show black numbers
 - [X] Slant: Show errors; show filled cells; Short-click, left-upper or right-upper line
 - [X] Unruly: Show errors; Short-click, black or white
 - [ ] Games with one-click: on/off
