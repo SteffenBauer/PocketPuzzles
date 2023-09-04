@@ -1468,7 +1468,7 @@ static char *encode_ui(const game_ui *ui)
     return dupstr(buf);
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void decode_ui(game_ui *ui, const char *encoding, const game_state *state)
 {
     int p = 0;
     sscanf(encoding, "D%d%n", &ui->deaths, &p);
@@ -1526,56 +1526,36 @@ static char *interpret_move(const game_state *state, game_ui *ui,
      * accurately, in the appropriate octant) is an alternative
      * way to input moves.
      */
+        if (FROMCOORD(x) != state->px || FROMCOORD(y) != state->py) {
+            int dx, dy;
+            float angle;
 
-    if (FROMCOORD(x) != state->px || FROMCOORD(y) != state->py) {
-        int dx, dy;
-        float angle;
+            dx = FROMCOORD(x) - state->px;
+            dy = FROMCOORD(y) - state->py;
+            /* I pass dx,dy rather than dy,dx so that the octants
+             * end up the right way round. */
+            angle = atan2(dx, -dy);
 
-        dx = FROMCOORD(x) - state->px;
-        dy = FROMCOORD(y) - state->py;
-        /* I pass dx,dy rather than dy,dx so that the octants
-         * end up the right way round. */
-        angle = atan2(dx, -dy);
-
-        angle = (angle + (PI/8)) / (PI/4);
-        assert(angle > -16.0F);
-        dir = (int)(angle + 16.0F) & 7;
+            angle = (angle + (PI/8)) / (PI/4);
+            assert(angle > -16.0F);
+            dir = (int)(angle + 16.0F) & 7;
+        }
     }
-    } else if (button == CURSOR_UP || button == (MOD_NUM_KEYPAD | '8'))
-        dir = 0;
-    else if (button == CURSOR_DOWN || button == (MOD_NUM_KEYPAD | '2'))
-        dir = 4;
-    else if (button == CURSOR_LEFT || button == (MOD_NUM_KEYPAD | '4'))
-        dir = 6;
-    else if (button == CURSOR_RIGHT || button == (MOD_NUM_KEYPAD | '6'))
-        dir = 2;
-    else if (button == (MOD_NUM_KEYPAD | '7'))
-        dir = 7;
-    else if (button == (MOD_NUM_KEYPAD | '1'))
-        dir = 5;
-    else if (button == (MOD_NUM_KEYPAD | '9'))
-        dir = 1;
-    else if (button == (MOD_NUM_KEYPAD | '3'))
-        dir = 3;
-    else if (IS_CURSOR_SELECT(button) &&
-             state->soln && state->solnpos < state->soln->len)
-    dir = state->soln->list[state->solnpos];
-
     if (dir < 0)
-    return NULL;
+        return MOVE_UNUSED;
 
     /*
      * Reject the move if we can't make it at all due to a wall
      * being in the way.
      */
     if (AT(w, h, state->grid, state->px+DX(dir), state->py+DY(dir)) == WALL)
-    return NULL;
+        return MOVE_NO_EFFECT;
 
     /*
      * Reject the move if we're dead!
      */
     if (state->dead)
-    return NULL;
+        return MOVE_UNUSED;
 
     /*
      * Otherwise, we can make the move. All we need to specify is
@@ -1618,7 +1598,7 @@ static void discard_solution(game_state *ret)
     ret->solnpos = 0;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->p.w, h = state->p.h /*, wh = w*h */;
     int dir;
@@ -1695,7 +1675,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -2116,11 +2096,6 @@ static int game_status(const game_state *state)
     return state->gems == 0 ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame inertia
 #endif
@@ -2136,7 +2111,7 @@ static const char rules[] = "You are a small ball sitting in a grid full of obst
 const struct game thegame = {
     "Inertia", "games.inertia", "inertia", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -2149,13 +2124,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
     encode_ui,
     decode_ui,
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILESIZE, game_compute_size, game_set_size,
@@ -2165,12 +2142,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    true,                   /* wants_statusbar */
-    false, game_timing_state,
-    0,                       /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    0,                         /* flags */
 };
 

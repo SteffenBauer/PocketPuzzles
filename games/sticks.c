@@ -210,7 +210,7 @@ static const char *validate_params(const game_params *params, bool full)
 
 enum { STATUS_COMPLETE, STATUS_UNFINISHED, STATUS_INVALID };
 
-static void sticks_make_dsf(game_state *state, int *dsf, int *lengths)
+static void sticks_make_dsf(game_state *state, DSF *dsf, int *lengths)
 {
     int w = state->w, h = state->h;
     int x, y, i;
@@ -220,7 +220,7 @@ static void sticks_make_dsf(game_state *state, int *dsf, int *lengths)
             lengths[i] = -1;
     }
     
-    dsf_init(dsf, w*h);
+    dsf_reinit(dsf);
     
     for(y = 0; y < h; y++)
     for(x = 0; x < w; x++)
@@ -246,7 +246,7 @@ static void sticks_make_dsf(game_state *state, int *dsf, int *lengths)
     }
 }
 
-static int sticks_max_size_horizontal(game_state *state, int *dsf, int *lengths, int idx)
+static int sticks_max_size_horizontal(game_state *state, DSF *dsf, int *lengths, int idx)
 {
     int w = state->w;
     int c, x, y = idx / w;
@@ -287,7 +287,7 @@ static int sticks_max_size_horizontal(game_state *state, int *dsf, int *lengths,
     return ret;
 }
 
-static int sticks_max_size_vertical(game_state *state, int *dsf, int *lengths, int idx)
+static int sticks_max_size_vertical(game_state *state, DSF *dsf, int *lengths, int idx)
 {
     int w = state->w, h = state->h;
     int c, y, x = idx%w;
@@ -328,7 +328,7 @@ static int sticks_max_size_vertical(game_state *state, int *dsf, int *lengths, i
     return ret;
 }
 
-static int sticks_validate(game_state *state, int *dsf, int *lengths)
+static int sticks_validate(game_state *state, DSF *dsf, int *lengths)
 {
     int w = state->w, h = state->h;
     int x, y, i;
@@ -336,7 +336,7 @@ static int sticks_validate(game_state *state, int *dsf, int *lengths)
     bool hastemp = dsf != NULL;
     if (!hastemp)
     {
-        dsf = snewn(w*h, int);
+        dsf = dsf_new_min(w*h);
         lengths = snewn(w*h, int);
     }
     bool error;
@@ -414,7 +414,7 @@ static int sticks_validate(game_state *state, int *dsf, int *lengths)
 
     if (!hastemp)
     {
-        sfree(dsf);
+        dsf_free(dsf);
         sfree(lengths);
     }
     return ret;
@@ -530,7 +530,7 @@ static void free_game(game_state *state)
     sfree(state);
 }
 
-static int sticks_try(game_state *state, int *dsf, int *lengths)
+static int sticks_try(game_state *state, DSF *dsf, int *lengths)
 {
     int s = state->w * state->h;
     int i;
@@ -565,7 +565,7 @@ static int sticks_solve_game(game_state *state)
     int i;
     int ret = STATUS_UNFINISHED;
 
-    int *dsf = snewn(s, int);
+    DSF *dsf = dsf_new_min(s);
     int *lengths = snewn(s, int);
 
     for (i = 0; i < s; i++)
@@ -582,7 +582,7 @@ static int sticks_solve_game(game_state *state)
         break;
     }
 
-    sfree(dsf);
+    dsf_free(dsf);
     sfree(lengths);
     return ret;
 }
@@ -704,7 +704,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
                char **aux, bool interactive)
 {
     int w = params->w, h = params->h;
-    int *dsf = snewn(w*h, int);
+    DSF *dsf = dsf_new_min(w*h);
     int *spaces = snewn(w*h, int);
     int i, j;
     game_state *state = new_game(NULL, params, NULL);
@@ -737,7 +737,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
                 if (i / w < h - 1 && state->grid[i + w] & F_VER) n++;
                 state->numbers[i] = n;
             }
-            else if (dsf_canonify(dsf, i) == i)
+            else if (dsf_minimal(dsf, i) == i)
             {
                 int n = dsf_size(dsf, i);
 
@@ -807,7 +807,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     *p++ = '\0';
     ret = sresize(ret, p - ret, char);
     free_game(state);
-    sfree(dsf);
+    dsf_free(dsf);
     sfree(spaces);
 
     return ret;
@@ -841,15 +841,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -879,7 +870,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         ui->ndrags = 0;
         ui->dragtype = DRAG_START;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     /* Perform drag */
@@ -927,7 +918,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             for (d = 0; d < ui->ndrags; d++) {
                 if (i == ui->drag[d]) {
                     ui->dragmove[d] = dragmove;
-                    return UI_UPDATE;
+                    return MOVE_UI_UPDATE;
                 }
             }
         }
@@ -935,7 +926,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->dragmove[ui->ndrags] = dragmove;
         ui->drag[ui->ndrags++] = i;
 
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     /* Clearing drag */
@@ -954,7 +945,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->dragmove[ui->ndrags] = 0;
         ui->drag[ui->ndrags++] = i;
 
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     /* Mouse click */
@@ -964,7 +955,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         if (hx < 0 || hx >= w || hy < 0 || hy >= h) {
             ui->dragtype = DRAG_NONE;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
 
         int i = hy*w + hx;
@@ -1003,13 +994,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return buf;
         
         sfree(buf);
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->w, h = state->h;
     int s = w * h;
@@ -1020,12 +1011,9 @@ static game_state *execute_move(const game_state *state, const char *move)
     game_state *ret = dup_game(state);
     const char *p = move;
 
-    while (*p)
-    {
-        if (*p == 'S')
-        {
-            for (i = 0; i < s; i++)
-            {
+    while (*p) {
+        if (*p == 'S') {
+            for (i = 0; i < s; i++){
                 p++;
 
                 if (!*p || !(*p == '1' || *p == '0' || *p == '-')) {
@@ -1043,18 +1031,15 @@ static game_state *execute_move(const game_state *state, const char *move)
                 else
                     ret->grid[i] = 0;
             }
-
             cheated = true;
         }
         else if (sscanf(p, "%c%d", &c, &i) == 2 && i >= 0
             && i < w*h && (c == 'A' || c == 'B'
-                || c == 'C'))
-        {
+                || c == 'C')) {
             if (!(state->grid[i] & F_BLOCK))
                 ret->grid[i] = (c == 'A' ? F_HOR : c == 'B' ? F_VER : 0);
         }
-        else
-        {
+        else {
             free_game(ret);
             return NULL;
         }
@@ -1065,8 +1050,8 @@ static game_state *execute_move(const game_state *state, const char *move)
             p++;
     }
 
-    if (sticks_validate(ret, NULL, NULL) == STATUS_COMPLETE) ret->completed = true;
-    if(cheated) ret->cheated = ret->completed;
+    ret->completed = sticks_validate(ret, NULL, NULL) == STATUS_COMPLETE;
+    ret->cheated = cheated;
     return ret;
 }
 
@@ -1075,7 +1060,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     *x = (params->w + 1) * tilesize;
     *y = (params->h + 1) * tilesize;
@@ -1133,10 +1118,15 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int h = state->h;
     int x, y, d;
     int tilesize = ds->tilesize;
-    char buf[8];
-    
-    if (ds->grid[0] == ~0)
-    {
+    char buf[48];
+
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
+    if (ds->grid[0] == ~0) {
         draw_rect(dr, COORD(0) - tilesize / 10, COORD(0) - tilesize / 10,
             tilesize*w + 2 * (tilesize / 10) - 1,
             tilesize*h + 2 * (tilesize / 10) - 1, COL_GRID);
@@ -1147,21 +1137,19 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         for (x = 0; x < w; x++) {
             int tile = state->grid[y*w + x];
 
-            if (!(tile & F_BLOCK))
-            {
+            if (!(tile & F_BLOCK)) {
                 for (d = 0; d < ui->ndrags; d++)
                 {
                     if (ui->drag[d] == y*w + x)
                         tile = ui->dragmove[d];
                 }
             }
-            
 
             if(ds->grid[y*w + x] == tile)
                 continue;
-            
+
             ds->grid[y*w + x] = tile;
-            
+
             draw_rect(dr, COORD(x), COORD(y), tilesize, tilesize, COL_GRID);
             if ((tile & F_BLOCK) && (tile & F_ERROR)) {
                 int t = tilesize/10;
@@ -1209,11 +1197,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame sticks
 #endif
@@ -1224,7 +1207,7 @@ static const char rules[] = "Fill each white cell with a horizontal or vertical 
 const struct game thegame = {
     "Sticks", NULL, NULL, rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1237,13 +1220,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     48, game_compute_size, game_set_size,
@@ -1253,12 +1238,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL, /* is_key_highlighted */
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,                       /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

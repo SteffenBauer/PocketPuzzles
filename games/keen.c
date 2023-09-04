@@ -70,7 +70,7 @@ struct game_params {
 struct clues {
     int refcount;
     int w;
-    int *dsf;
+    DSF *dsf;
     long *clues;
 };
 
@@ -678,7 +678,7 @@ static bool keen_valid(struct latin_solver *solver, void *vctx)
     return true;
 }
 
-static int solver(int w, int *dsf, long *clues, digit *soln, int maxdiff)
+static int solver(int w, DSF *dsf, long *clues, digit *soln, int maxdiff)
 {
     int a = w*w;
     struct solver_ctx ctx;
@@ -705,11 +705,11 @@ static int solver(int w, int *dsf, long *clues, digit *soln, int maxdiff)
     ctx.clues = snewn(ctx.nboxes, long);
     ctx.whichbox = snewn(a, int);
     for (n = m = i = 0; i < a; i++)
-    if (dsf_canonify(dsf, i) == i) {
+    if (dsf_minimal(dsf, i) == i) {
         ctx.clues[n] = clues[i];
         ctx.boxes[n] = m;
         for (j = 0; j < a; j++)
-        if (dsf_canonify(dsf, j) == i) {
+        if (dsf_minimal(dsf, j) == i) {
             ctx.boxlist[m++] = (j % w) * w + (j / w);   /* transpose */
             ctx.whichbox[ctx.boxlist[m-1]] = n;
         }
@@ -741,7 +741,7 @@ static int solver(int w, int *dsf, long *clues, digit *soln, int maxdiff)
  * Grid generation.
  */
 
-static char *encode_block_structure(char *p, int w, int *dsf)
+static char *encode_block_structure(char *p, int w, DSF *dsf)
 {
     int i, currrun = 0;
     char *orig, *q, *r, c;
@@ -778,7 +778,7 @@ static char *encode_block_structure(char *p, int w, int *dsf)
         p0 = y*w+x;
         p1 = (y+1)*w+x;
         }
-        edge = (dsf_canonify(dsf, p0) != dsf_canonify(dsf, p1));
+        edge = !dsf_equivalent(dsf, p0, p1);
     }
 
     if (edge) {
@@ -816,13 +816,12 @@ static char *encode_block_structure(char *p, int w, int *dsf)
     return q;
 }
 
-static const char *parse_block_structure(const char **p, int w, int *dsf)
+static const char *parse_block_structure(const char **p, int w, DSF *dsf)
 {
-    int a = w*w;
     int pos = 0;
     int repc = 0, repn = 0;
 
-    dsf_init(dsf, a);
+    dsf_reinit(dsf);
 
     while (**p && (repn > 0 || **p != ',')) {
     int c;
@@ -891,7 +890,8 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 {
     int w = params->w, a = w*w;
     digit *grid, *soln;
-    int *order, *revorder, *singletons, *dsf;
+    int *order, *revorder, *singletons;
+    DSF *dsf;
     long *clues, *cluevals;
     int i, j, k, n, x, y, ret;
     int diff = params->diff;
@@ -928,7 +928,7 @@ done
     order = snewn(a, int);
     revorder = snewn(a, int);
     singletons = snewn(a, int);
-    dsf = snew_dsf(a);
+    dsf = dsf_new_min(a);
     clues = snewn(a, long);
     cluevals = snewn(a, long);
     soln = snewn(a, digit);
@@ -956,7 +956,7 @@ done
     for (i = 0; i < a; i++)
         singletons[i] = true;
 
-    dsf_init(dsf, a);
+    dsf_reinit(dsf);
 
     /* Place dominoes. */
     for (i = 0; i < a; i++) {
@@ -1038,11 +1038,10 @@ done
      * integer quotient, of course), but we rule out (or try to
      * avoid) some clues because they're of low quality.
      *
-     * Hence, we iterate once over the grid, stopping at the
-     * canonical element of every >2 block and the _non_-
-     * canonical element of every 2-block; the latter means that
-     * we can make our decision about a 2-block in the knowledge
-     * of both numbers in it.
+     * Hence, we iterate once over the grid, stopping at the first
+     * element in every >2 block and the _last_ element of every
+     * 2-block; the latter means that we can make our decision
+     * about a 2-block in the knowledge of both numbers in it.
      *
      * We reuse the 'singletons' array (finished with in the
      * above loop) to hold information about which blocks are
@@ -1056,7 +1055,7 @@ done
 
     for (i = 0; i < a; i++) {
         singletons[i] = 0;
-        j = dsf_canonify(dsf, i);
+        j = dsf_minimal(dsf, i);
         k = dsf_size(dsf, j);
         if (params->multiplication_only)
         singletons[j] = F_MUL;
@@ -1179,7 +1178,7 @@ done
      * Having chosen the clue types, calculate the clue values.
      */
     for (i = 0; i < a; i++) {
-        j = dsf_canonify(dsf, i);
+        j = dsf_minimal(dsf, i);
         if (j == i) {
         cluevals[j] = grid[i];
         } else {
@@ -1207,7 +1206,7 @@ done
     }
 
     for (i = 0; i < a; i++) {
-        j = dsf_canonify(dsf, i);
+        j = dsf_minimal(dsf, i);
         if (j == i) {
         clues[j] |= cluevals[j];
         }
@@ -1253,7 +1252,7 @@ done
     p = encode_block_structure(p, w, dsf);
     *p++ = ',';
     for (i = 0; i < a; i++) {
-    j = dsf_canonify(dsf, i);
+    j = dsf_minimal(dsf, i);
     if (j == i) {
         switch (clues[j] & CMASK) {
           case C_ADD: *p++ = 'a'; break;
@@ -1281,7 +1280,7 @@ done
     sfree(order);
     sfree(revorder);
     sfree(singletons);
-    sfree(dsf);
+    dsf_free(dsf);
     sfree(clues);
     sfree(cluevals);
     sfree(soln);
@@ -1296,7 +1295,7 @@ done
 static const char *validate_desc(const game_params *params, const char *desc)
 {
     int w = params->w, a = w*w;
-    int *dsf;
+    DSF *dsf;
     const char *ret;
     const char *p = desc;
     int i;
@@ -1304,15 +1303,17 @@ static const char *validate_desc(const game_params *params, const char *desc)
     /*
      * Verify that the block structure makes sense.
      */
-    dsf = snew_dsf(a);
+    dsf = dsf_new_min(a);
     ret = parse_block_structure(&p, w, dsf);
     if (ret) {
-    sfree(dsf);
-    return ret;
+        dsf_free(dsf);
+        return ret;
     }
 
-    if (*p != ',')
-    return "Expected ',' after block structure description";
+    if (*p != ',') {
+        dsf_free(dsf);
+        return "Expected ',' after block structure description";
+    }
     p++;
 
     /*
@@ -1320,47 +1321,30 @@ static const char *validate_desc(const game_params *params, const char *desc)
      * and DIV clues don't apply to blocks of the wrong size.
      */
     for (i = 0; i < a; i++) {
-    if (dsf_canonify(dsf, i) == i) {
-        if (*p == 'a' || *p == 'm') {
-        /* these clues need no validation */
-        } else if (*p == 'd' || *p == 's') {
-        if (dsf_size(dsf, i) != 2)
-            return "Subtraction and division blocks must have area 2";
-        } else if (!*p) {
-        return "Too few clues for block structure";
-        } else {
-        return "Unrecognised clue type";
+        if (dsf_minimal(dsf, i) == i) {
+            if (*p == 'a' || *p == 'm') {
+                /* these clues need no validation */
+            } else if (*p == 'd' || *p == 's') {
+                if (dsf_size(dsf, i) != 2) {
+                    dsf_free(dsf);
+                    return "Subtraction and division blocks must have area 2";
+                }
+            } else if (!*p) {
+                dsf_free(dsf);
+                return "Too few clues for block structure";
+            } else {
+                dsf_free(dsf);
+                return "Unrecognised clue type";
+            }
+            p++;
+            while (*p && isdigit((unsigned char)*p)) p++;
         }
-        p++;
-        while (*p && isdigit((unsigned char)*p)) p++;
     }
-    }
+    dsf_free(dsf);
     if (*p)
-    return "Too many clues for block structure";
+        return "Too many clues for block structure";
 
     return NULL;
-}
-
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    int w = params->w;
-
-    key_label *keys = snewn(w+2, key_label);
-    *nkeys = w + 2;
-
-    for (i = 0; i < w; i++) {
-        if (i<9) keys[i].button = '1' + i;
-        else keys[i].button = 'a' + i - 9;
-
-        keys[i].label = NULL;
-    }
-    keys[w].button = '\b';
-    keys[w].label = NULL;
-    keys[w+1].button = '+';
-    keys[w+1].label = "Add";
-
-    return keys;
 }
 
 static game_state *new_game(midend *me, const game_params *params,
@@ -1375,7 +1359,7 @@ static game_state *new_game(midend *me, const game_params *params,
     state->clues = snew(struct clues);
     state->clues->refcount = 1;
     state->clues->w = w;
-    state->clues->dsf = snew_dsf(a);
+    state->clues->dsf = dsf_new_min(a);
     parse_block_structure(&p, w, state->clues->dsf);
 
     assert(*p == ',');
@@ -1383,7 +1367,7 @@ static game_state *new_game(midend *me, const game_params *params,
 
     state->clues->clues = snewn(a, long);
     for (i = 0; i < a; i++) {
-    if (dsf_canonify(state->clues->dsf, i) == i) {
+    if (dsf_minimal(state->clues->dsf, i) == i) {
         long clue = 0;
         switch (*p) {
           case 'a':
@@ -1450,7 +1434,7 @@ static void free_game(game_state *state)
     sfree(state->grid);
     sfree(state->pencil);
     if (--state->clues->refcount <= 0) {
-    sfree(state->clues->dsf);
+    dsf_free(state->clues->dsf);
     sfree(state->clues->clues);
     sfree(state->clues);
     }
@@ -1544,13 +1528,26 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
 {
-    return NULL;
-}
+    int i;
+    int w = params->w;
 
-static void decode_ui(game_ui *ui, const char *encoding)
-{
+    key_label *keys = snewn(w+2, key_label);
+    *nkeys = w + 2;
+
+    for (i = 0; i < w; i++) {
+        if (i<9) keys[i].button = '1' + i;
+        else keys[i].button = 'a' + i - 9;
+
+        keys[i].label = NULL;
+    }
+    keys[w].button = '\b';
+    keys[w].label = NULL;
+    keys[w+1].button = '+';
+    keys[w+1].label = "Add";
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1569,9 +1566,11 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
     }
 }
 
-static bool is_key_highlighted(const game_ui *ui, char c) {
-    if (c == '\b' && ui->hhint == 0) return true;
-    return ((c-'0') == ui->hhint);
+static const char *current_key_label(const game_ui *ui,
+                                     const game_state *state, int button){
+    if (button == '\b') return (ui->hhint == 0) ? "H" : "E";
+    if ((button < '0') || (button > '9')) return "";
+    return ((button-'0') == ui->hhint) ? "H" : "E";
 }
 
 #define PREFERRED_TILESIZE 48
@@ -1616,7 +1615,7 @@ static bool check_errors(const game_state *state, long *errors)
     for (i = 0; i < a; i++) {
     long clue;
 
-    j = dsf_canonify(state->clues->dsf, i);
+    j = dsf_minimal(state->clues->dsf, i);
     if (j == i) {
         cluevals[i] = state->grid[i];
     } else {
@@ -1650,7 +1649,7 @@ static bool check_errors(const game_state *state, long *errors)
     }
 
     for (i = 0; i < a; i++) {
-    j = dsf_canonify(state->clues->dsf, i);
+    j = dsf_minimal(state->clues->dsf, i);
     if (j == i) {
         if ((state->clues->clues[j] & ~CMASK) != cluevals[i]) {
         errs = true;
@@ -1740,7 +1739,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hhint = -1;
             }
             ui->hcursor = false;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
         else if (button == RIGHT_BUTTON) {
             if ((ui->hhint >= 0) && (state->grid[ty*w+tx] == 0)) {
@@ -1763,7 +1762,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hcursor = false;
             ui->hhint = -1;
             ui->hdrag = false;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
         else if (button == LEFT_DRAG) {
             ui->hdrag = true;
@@ -1773,7 +1772,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->hcursor = false;
         ui->hhint = -1;
         ui->hdrag = false;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (ui->hshow &&
@@ -1803,16 +1802,16 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (button == '\b') n = 0;
         if (ui->hhint == n) ui->hhint = -1;
         else ui->hhint = n;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (button == '+' )
         return dupstr("M");
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *from, const char *move)
+static game_state *execute_move(const game_state *from, const game_ui *ui, const char *move)
 {
     int w = from->par.w, a = w*w;
     game_state *ret;
@@ -1850,9 +1849,8 @@ static game_state *execute_move(const game_state *from, const char *move)
         }
         else {
             ret->grid[y*w+x] = ret->grid[y*w+x] == n ? 0 : n;
-
-            if (!ret->completed && !check_errors(ret, NULL))
-                ret->completed = true;
+            ret->completed = !check_errors(ret, NULL);
+            ret->cheated = false;
         }
         return ret;
     } else if (move[0] == 'M') {
@@ -1879,7 +1877,7 @@ static game_state *execute_move(const game_state *from, const char *move)
 #define SIZE(w) ((w) * TILESIZE + 2*BORDER)
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -1953,6 +1951,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
     int tx, ty, tw, th;
     int cx, cy, cw, ch;
     char str[64];
+    bool draw_clue = dsf_minimal(clues->dsf, y*w+x) == y*w+x;
 
     tx = BORDER + x * TILESIZE + 1 + GRIDEXTRA;
     ty = BORDER + y * TILESIZE + 1 + GRIDEXTRA;
@@ -1962,14 +1961,14 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
     cw = tw = TILESIZE-1-2*GRIDEXTRA;
     ch = th = TILESIZE-1-2*GRIDEXTRA;
 
-    if (x > 0 && dsf_canonify(clues->dsf, y*w+x) == dsf_canonify(clues->dsf, y*w+x-1))
-    cx -= GRIDEXTRA, cw += GRIDEXTRA;
-    if (x+1 < w && dsf_canonify(clues->dsf, y*w+x) == dsf_canonify(clues->dsf, y*w+x+1))
-    cw += GRIDEXTRA;
-    if (y > 0 && dsf_canonify(clues->dsf, y*w+x) == dsf_canonify(clues->dsf, (y-1)*w+x))
-    cy -= GRIDEXTRA, ch += GRIDEXTRA;
-    if (y+1 < w && dsf_canonify(clues->dsf, y*w+x) == dsf_canonify(clues->dsf, (y+1)*w+x))
-    ch += GRIDEXTRA;
+    if (x > 0 && dsf_equivalent(clues->dsf, y*w+x, y*w+x-1))
+        cx -= GRIDEXTRA, cw += GRIDEXTRA;
+    if (x+1 < w && dsf_equivalent(clues->dsf, y*w+x, y*w+x+1))
+        cw += GRIDEXTRA;
+    if (y > 0 && dsf_equivalent(clues->dsf, y*w+x, (y-1)*w+x))
+        cy -= GRIDEXTRA, ch += GRIDEXTRA;
+    if (y+1 < w && dsf_equivalent(clues->dsf, y*w+x, (y+1)*w+x))
+        ch += GRIDEXTRA;
 
     clip(dr, cx, cy, cw, ch);
 
@@ -1995,14 +1994,46 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
      * Draw the corners of thick lines in corner-adjacent squares,
      * which jut into this square by one pixel.
      */
-    if (x > 0 && y > 0 && dsf_canonify(clues->dsf, y*w+x) != dsf_canonify(clues->dsf, (y-1)*w+x-1))
-    draw_rect(dr, tx-GRIDEXTRA, ty-GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
-    if (x+1 < w && y > 0 && dsf_canonify(clues->dsf, y*w+x) != dsf_canonify(clues->dsf, (y-1)*w+x+1))
-    draw_rect(dr, tx+TILESIZE-1-2*GRIDEXTRA, ty-GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
-    if (x > 0 && y+1 < w && dsf_canonify(clues->dsf, y*w+x) != dsf_canonify(clues->dsf, (y+1)*w+x-1))
-    draw_rect(dr, tx-GRIDEXTRA, ty+TILESIZE-1-2*GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
-    if (x+1 < w && y+1 < w && dsf_canonify(clues->dsf, y*w+x) != dsf_canonify(clues->dsf, (y+1)*w+x+1))
-    draw_rect(dr, tx+TILESIZE-1-2*GRIDEXTRA, ty+TILESIZE-1-2*GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
+     
+    if (x > 0 && y > 0 && !dsf_equivalent(clues->dsf, y*w+x, (y-1)*w+x-1))
+        draw_rect(dr, tx-GRIDEXTRA, ty-GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
+    if (x+1 < w && y > 0 && !dsf_equivalent(clues->dsf, y*w+x, (y-1)*w+x+1))
+        draw_rect(dr, tx+TILESIZE-1-2*GRIDEXTRA, ty-GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
+    if (x > 0 && y+1 < w && !dsf_equivalent(clues->dsf, y*w+x, (y+1)*w+x-1))
+        draw_rect(dr, tx-GRIDEXTRA, ty+TILESIZE-1-2*GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
+    if (x+1 < w && y+1 < w && !dsf_equivalent(clues->dsf, y*w+x, (y+1)*w+x+1))
+        draw_rect(dr, tx+TILESIZE-1-2*GRIDEXTRA, ty+TILESIZE-1-2*GRIDEXTRA, GRIDEXTRA, GRIDEXTRA, COL_GRID);
+
+    /* Draw the box clue. */
+    if (draw_clue) {
+        long clue = clues->clues[y*w+x];
+        long cluetype = clue & CMASK, clueval = clue & ~CMASK;
+        int size = dsf_size(clues->dsf, y*w+x);
+    /*
+     * Special case of clue-drawing: a box with only one square
+     * is written as just the number, with no operation, because
+     * it doesn't matter whether the operation is ADD or MUL.
+     * The generation code above should never produce puzzles
+     * containing such a thing - I think they're inelegant - but
+     * it's possible to type in game IDs from elsewhere, so I
+     * want to display them right if so.
+     */
+        sprintf (str, "%ld%s", clueval,
+             (size == 1 || only_one_op ? "" :
+              cluetype == C_ADD ? "+" :
+              cluetype == C_SUB ? ds->minus_sign :
+              cluetype == C_MUL ? ds->times_sign :
+              /* cluetype == C_DIV ? */ ds->divide_sign));
+        if (tile & DF_ERR_CLUE) {
+            int len = 2 + (clueval > 999 ? 4 : clueval > 99 ? 3 : clueval > 9 ? 2 : 1);
+            draw_rect(dr, tx + GRIDEXTRA, ty + GRIDEXTRA, len*TILESIZE/8, TILESIZE/4+2*GRIDEXTRA, COL_ERROR);
+            draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2 + TILESIZE/8,
+                  FONT_FIXED, TILESIZE/4, ALIGN_VCENTRE | ALIGN_HLEFT, COL_ERROR_USER, str);
+        }
+        else 
+            draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2 + TILESIZE/8,
+                  FONT_FIXED, TILESIZE/4, ALIGN_VCENTRE | ALIGN_HLEFT, COL_GRID, str);
+    }
 
     /* new number needs drawing? */
     if (tile & DF_DIGIT_MASK) {
@@ -2037,12 +2068,12 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
         pr = pl + TILESIZE - GRIDEXTRA;
         pt = ty + GRIDEXTRA;
         pb = pt + TILESIZE - GRIDEXTRA;
-        if (dsf_canonify(clues->dsf, y*w+x) == y*w+x) {
-        /*
-         * Make space for the clue text.
-         */
-        pt += TILESIZE/4;
-        /* minph--; */
+        if (draw_clue) {
+            /*
+             * Make space for the clue text.
+             */
+            pt += TILESIZE/4;
+            /* minph--; */
         }
 
         /*
@@ -2091,8 +2122,8 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
          * And move it down a bit if it's collided with some
          * clue text.
          */
-        if (dsf_canonify(clues->dsf, y*w+x) == y*w+x) {
-        pt = max(pt, ty + GRIDEXTRA * 3 + TILESIZE/4);
+        if (draw_clue) {
+            pt = max(pt, ty + GRIDEXTRA * 3 + TILESIZE/4);
         }
 
         /*
@@ -2113,37 +2144,6 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
     }
     }
 
-    /* Draw the box clue. */
-    if (dsf_canonify(clues->dsf, y*w+x) == y*w+x) {
-        long clue = clues->clues[y*w+x];
-        long cluetype = clue & CMASK, clueval = clue & ~CMASK;
-        int size = dsf_size(clues->dsf, y*w+x);
-    /*
-     * Special case of clue-drawing: a box with only one square
-     * is written as just the number, with no operation, because
-     * it doesn't matter whether the operation is ADD or MUL.
-     * The generation code above should never produce puzzles
-     * containing such a thing - I think they're inelegant - but
-     * it's possible to type in game IDs from elsewhere, so I
-     * want to display them right if so.
-     */
-        sprintf (str, "%ld%s", clueval,
-             (size == 1 || only_one_op ? "" :
-              cluetype == C_ADD ? "+" :
-              cluetype == C_SUB ? ds->minus_sign :
-              cluetype == C_MUL ? ds->times_sign :
-              /* cluetype == C_DIV ? */ ds->divide_sign));
-        if (tile & DF_ERR_CLUE) {
-            int len = 2 + (clueval > 999 ? 4 : clueval > 99 ? 3 : clueval > 9 ? 2 : 1);
-            draw_rect(dr, tx + GRIDEXTRA, ty + GRIDEXTRA, len*TILESIZE/8, TILESIZE/4+2*GRIDEXTRA, COL_ERROR);
-            draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2 + TILESIZE/8,
-                  FONT_FIXED, TILESIZE/4, ALIGN_VCENTRE | ALIGN_HLEFT, COL_ERROR_USER, str);
-        }
-        else 
-            draw_text(dr, tx + GRIDEXTRA * 2, ty + GRIDEXTRA * 2 + TILESIZE/8,
-                  FONT_FIXED, TILESIZE/4, ALIGN_VCENTRE | ALIGN_HLEFT, COL_GRID, str);
-    }
-
     unclip(dr);
 
     draw_update(dr, cx, cy, cw, ch);
@@ -2156,6 +2156,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int w = state->par.w /*, a = w*w */;
     int x, y;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (!ds->started) {
     /*
@@ -2217,12 +2223,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
-
 #ifdef COMBINED
 #define thegame keen
 #endif
@@ -2238,7 +2238,7 @@ static const char rules[] = "Fill a latin square such that the digits in each bl
 const struct game thegame = {
     "Keen", "games.keen", "keen", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -2251,13 +2251,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
+    current_key_label,
     interpret_move,
     execute_move,
     PREFERRED_TILESIZE, game_compute_size, game_set_size,
@@ -2267,12 +2269,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    is_key_highlighted,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,  /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

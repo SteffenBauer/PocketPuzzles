@@ -1,5 +1,41 @@
 ## ChangeLog
 
+## 0.8.0
+
+### Added
+* Game UI settings now configurable, for games indicated in ToDo.md
+
+### Changed
+* *Untangle*: Update vertex screen draw only at end of screen drag
+* *Galaxies*: Sync with upstream (solver for unreasonable puzzles now tries to maximize 'wiggliness')
+* *Loopy*: Remove grid types that don't really make sense on limited screen size
+* *Slant*: Draw dotted line on closed loop error
+* *Creek*: Refine color cycling in dragging
+* Whole project: Sync with upstream (new DSF library and subsystem for game UI configuration)
+* All puzzles: Remove *is_key_highlighted()* in favour of *current_key_label()*
+* Updated screenshots
+
+### Fixed
+* *Solo*: Typo in How to Play
+* *Guess*: Bug that made it possible to choose invalid color guesses
+* *Pattern*: Add space between numbers and grid
+* *Ascent* and *Bricks*: Invalid array access
+* Various memory leaks
+
+## 0.7.11 - 2022/11/13
+
+### Changed
+* All games: Use status bar to show game completion instead of pushy message box
+* *Net*: Add lock button for locking tiles in place where one is sure of the orientation.
+* *CrossNum*: Adjust level difficulty labels
+* *Solo*: Finish number entry in manual mode now by clicking + or - button
+
+### Fixed
+* *Rome*: Fixed missing screen update on button click
+* *Ascent*: Screen update of number buttons
+* *Unruly*: Memory leak
+* *Solo* and *Unequal*: Bug that made it possible to overwrite given fixed numbers
+
 ## 0.7.10 - 2022/04/02
 
 ### Added

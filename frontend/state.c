@@ -118,7 +118,8 @@ void configLoad() {
         if ((strncmp("params_",   key, 7) == 0) ||
             (strncmp("savegame",  key, 8) == 0) ||
             (strncmp("favorite_", key, 9) == 0) ||
-            (strncmp("config_",   key, 7) == 0))
+            (strncmp("config_",   key, 7) == 0) ||
+            (strncmp("settings_", key, 9) == 0))
             configAddItem(key, value);
       }
     }
@@ -169,8 +170,8 @@ const char *stateDeserialise(midend *me) {
     buf = configGetItem("savegame");
     if (buf != NULL) {
         sfree(game_save.buf);
-        game_save.buf = hex2bin(buf, strlen(buf)/2+1);
-        game_save.len = strlen(buf)/2+1;
+        game_save.buf = hex2bin(buf, (strlen(buf)+1)/2);
+        game_save.len = (strlen(buf)+1)/2;
         game_save.pos = 0;
         return midend_deserialise(me, deserialiseReadCallback, &game_save);
     }
@@ -182,8 +183,8 @@ const char *stateGamesaveName(char **name) {
     buf = configGetItem("savegame");
     if (buf != NULL) {
         sfree(game_save.buf);
-        game_save.buf = hex2bin(buf, strlen(buf)/2+1);
-        game_save.len = strlen(buf)/2+1;
+        game_save.buf = hex2bin(buf, (strlen(buf)+1)/2);
+        game_save.len = (strlen(buf)+1)/2;
         game_save.pos = 0;
         return identify_game(name, deserialiseReadCallback, &game_save);
     }
@@ -211,6 +212,39 @@ void stateSaveParams(midend *me, const game *ourgame) {
     sprintf(value, "%s", ourgame->encode_params(params, true));
     configAddItem(key, value);
     ourgame->free_params(params);
+}
+
+const char *stateLoadSettings(midend *me, const game *ourgame) {
+    char key[128];
+    char *buf;
+    if (ourgame->has_preferences) {
+        sprintf(key, "settings_%s", ourgame->name);
+        buf = configGetItem(key);
+        if (buf != NULL) {
+            sfree(game_save.buf);
+            game_save.buf = hex2bin(buf, (strlen(buf)+1)/2);
+            game_save.len = (strlen(buf)+1)/2;
+            game_save.pos = 0;
+            return midend_load_prefs(me, deserialiseReadCallback, &game_save);
+        }
+        return "didn't find a setting in dict";
+    }
+    return "game has no preferences";
+}
+
+void stateSaveSettings(midend *me, const game *ourgame) {
+    char key[128];
+    char *buf;
+    if (ourgame->has_preferences) {
+        sfree(game_save.buf);
+        game_save.buf = NULL;
+        game_save.len = game_save.pos = 0;
+        midend_save_prefs(me, serialiseWriteCallback, &game_save);
+        buf = bin2hex(game_save.buf, game_save.len);
+        sprintf(key, "settings_%s", ourgame->name);
+        configAddItem(key, buf);
+        sfree(buf);
+    }
 }
 
 void stateSetFavorite(const char *name) {

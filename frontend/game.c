@@ -303,10 +303,14 @@ void gameMenuHandler(int index) {
         case 103:  /* Solve Game */
             gameSolveGame();
             break;
-        case 104:  /* How to Play */
+        case 104:  /* Settings */
+            paramPrepare(me, CFG_PREFS);
+            switchToParamScreen();
+            break;
+        case 105:  /* How to Play */
             Dialog(0, "Rules", fe->currentgame->rules, "OK", NULL, NULL);
             break;
-        case 105:  /* Exit app */
+        case 106:  /* Exit app */
             exitApp();
             break;
         default:
@@ -322,7 +326,7 @@ void typeMenuHandler(int index) {
     button_to_normal(&fe->gameButton[fe->btnTypeIDX], true);
 
     if (index == 200) {
-        paramPrepare(me);
+        paramPrepare(me, CFG_SETTINGS);
         switchToParamScreen();
     }
     if (index > 200) {
@@ -337,7 +341,9 @@ void typeMenuHandler(int index) {
 static void gameBuildGameMenu() {
     int i, np;
 
-    np = fe->currentgame->can_solve ? 7 : 6;
+    np = 6;
+    if (fe->currentgame->can_solve) np += 1;
+    if (fe->currentgame->has_preferences) np += 1;
 
     sfree(gameMenu);
     gameMenu=snewn(np, imenuex);
@@ -372,13 +378,20 @@ static void gameBuildGameMenu() {
         gameMenu[i++].icon = &menu_solve;
     }
 
+    if (fe->currentgame->has_preferences) {
+        gameMenu[i].type = ITEM_ACTIVE;
+        gameMenu[i].index = 104;
+        gameMenu[i].text = "Settings";
+        gameMenu[i++].icon = &menu_settings;
+    }
+
     gameMenu[i].type = ITEM_ACTIVE;
-    gameMenu[i].index = 104;
+    gameMenu[i].index = 105;
     gameMenu[i].text = "How to play";
     gameMenu[i++].icon = &menu_help;
 
     gameMenu[i].type = ITEM_ACTIVE;
-    gameMenu[i].index = 105;
+    gameMenu[i].index = 106;
     gameMenu[i].text = "Save game and exit";
     gameMenu[i++].icon = &menu_exit;
 
@@ -425,11 +438,12 @@ static void gameBuildTypeMenu() {
 
 static void gameCheckButtonState() {
     BUTTON *undo, *redo, *swap;
+    const char *highlight;
     int i;
     undo = &fe->gameButton[fe->btnUndoIDX];
     redo = &fe->gameButton[fe->btnRedoIDX];
-    if (midend_can_undo(me) && ! undo->active) activate_button(undo);
-    if (midend_can_redo(me) && ! redo->active) activate_button(redo);
+    if (midend_can_undo(me) && !undo->active) activate_button(undo);
+    if (midend_can_redo(me) && !redo->active) activate_button(redo);
     if (!midend_can_undo(me) && undo->active) deactivate_button(undo);
     if (!midend_can_redo(me) && redo->active) deactivate_button(redo);
     if (fe->with_swap) {
@@ -437,11 +451,13 @@ static void gameCheckButtonState() {
         fe->swapped ? button_to_tapped(swap, false) : button_to_normal(swap, false);
     }
     for (i=0;i<fe->numGameButtons;i++) {
-        if (fe->gameButton[i].action == ACTION_CTRL)
-            if (midend_is_key_highlighted(me, fe->gameButton[i].actionParm.c))
+        if (fe->gameButton[i].action == ACTION_CTRL) {
+            highlight = midend_current_key_label(me, fe->gameButton[i].actionParm.c);
+            if (strcmp(highlight, "H") == 0)
                 button_to_tapped(&fe->gameButton[i], false);
             else
                 button_to_normal(&fe->gameButton[i], false);
+        }
     }
 }
 
@@ -452,6 +468,7 @@ static void gameCheckButtonState() {
 void gameTap(int x, int y) {
     int i;
     bool is_active;
+    const char *highlight;
     init_tap_x = x;
     init_tap_y = y;
 
@@ -459,8 +476,10 @@ void gameTap(int x, int y) {
         if ((fe->gameButton[i].action != ACTION_SWAP) &&
             coord_in_button(x, y, &fe->gameButton[i])) {
             is_active = false;
-            if (fe->gameButton[i].type == BTN_CHAR)
-                is_active = midend_is_key_highlighted(me, fe->gameButton[i].actionParm.c);
+            if (fe->gameButton[i].type == BTN_CHAR) {
+                highlight = midend_current_key_label(me, fe->gameButton[i].actionParm.c);
+                is_active = (strcmp(highlight, "H") == 0);
+            }
             if (is_active) button_to_normal(&fe->gameButton[i], true);
             else           button_to_tapped(&fe->gameButton[i], true);
         }
@@ -588,7 +607,7 @@ void gameRelease(int x, int y) {
         }
     }
     gameDrawFurniture();
-    checkGameEnd();
+    if (!fe->with_statusbar) checkGameEnd();
 }
 
 void gamePrev() {
@@ -708,7 +727,7 @@ static void checkGameEnd() {
     }
 }
 
-static void gamePrepareFrontend() {
+void gamePrepareFrontend() {
     char buf[256];
 
     fe->current_pointer = 0;
@@ -730,7 +749,7 @@ static void gamePrepareFrontend() {
     int x, y;
     x = ScreenWidth();
     y = fe->gamelayout.maincanvas.height;
-    midend_size(me, &x, &y, true);
+    midend_size(me, &x, &y, true, 1.0);
     fe->width  = x;
     fe->height = y;
     fe->xoffset = (ScreenWidth() - fe->width)/2;
@@ -754,9 +773,11 @@ static BUTTON gameGetButton(const char *gameName, char key) {
     else if (key == '+')  return btn_add;
     else if (key == '-')  return btn_remove;
 
+    else if (key == 'H' && strcmp(gameName, "Range")==0)   return btn_hint;
     else if (key == 'O' && strcmp(gameName, "Salad")==0)   return btn_salad_o;
     else if (key == 'X' && strcmp(gameName, "Salad")==0)   return btn_salad_x;
     else if (key == 'J' && strcmp(gameName, "Net")==0)     return btn_net_shuffle;
+    else if (key == 'L' && strcmp(gameName, "Net")==0)     return btn_net_lock;
     else if (key == 'G' && strcmp(gameName, "Bridges")==0) return btn_bridges_g;
     else if (key == 'T' && strcmp(gameName, "Rome")==0)    return btn_rome_n;
     else if (key == 'W' && strcmp(gameName, "Rome")==0)    return btn_rome_w;
@@ -903,6 +924,7 @@ void gameSetGame(const struct game *thegame) {
     if (me != NULL) midend_free(me);
     me = midend_new(fe, thegame, &ink_drawing, fe);
     stateLoadParams(me, thegame);
+    stateLoadSettings(me, thegame);
 }
 
 void gameScreenShow() {
@@ -935,6 +957,7 @@ void gameSerialise() {
     deactivate_timer(fe);
     stateSerialise(me);
     stateSaveParams(me, fe->currentgame);
+    stateSaveSettings(me, fe->currentgame);
     configAddItem("config_resume", "game");
 }
 

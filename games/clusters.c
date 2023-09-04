@@ -603,6 +603,7 @@ struct game_ui {
     int *drag;
     int dragtype;
     int ndrags;
+    int click_mode;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -613,7 +614,8 @@ static game_ui *new_ui(const game_state *state)
     ret->cursor = false;
     ret->ndrags = 0;
     ret->dragtype = -1;
-    ret->drag = snewn(state->w*state->h, int);
+    ret->drag = state ? snewn(state->w*state->h, int) : NULL;
+    ret->click_mode = 0;
 
     return ret;
 }
@@ -624,13 +626,28 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static config_item *get_prefs(game_ui *ui)
 {
-    return NULL;
+    config_item *ret;
+
+    ret = snewn(2, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Dark/Light:Light/Dark";
+    ret[0].u.choices.choicekws = ":dark:light";
+    ret[0].u.choices.selected = ui->click_mode;
+
+    ret[1].name = NULL;
+    ret[1].type = C_END;
+
+    return ret;
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void set_prefs(game_ui *ui, const config_item *cfg)
 {
+    ui->click_mode = cfg[0].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -659,7 +676,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     int w = state->w, h = state->h;
 
-    int shift = button & MOD_SHFT, control = button & MOD_CTRL;
     button &= ~MOD_MASK;
 
     /* Mouse click */
@@ -681,51 +697,16 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return NULL;
     }
 
-    /* Keyboard move */
-    if (IS_CURSOR_MOVE(button)) {
-        int ox = ui->cx, oy = ui->cy;
-        move_cursor(button, &ui->cx, &ui->cy, w, h, 0);
-        ui->cursor = true;
-
-        if (shift | control)
-        {
-            int i1, i2;
-            char c = shift && control ? 'C' : control ? 'B' : 'A';
-            char buf[16];
-            char *p = buf;
-
-            buf[0] = '\0';
-            
-            i1 = oy*w + ox;
-            i2 = ui->cy*w + ui->cx;
-            if (!(state->grid[i1] & F_SINGLE
-                    || (c == 'A' && state->grid[i1] & F_COLOR_0)
-                    || (c == 'B' && state->grid[i1] & F_COLOR_1)
-                    || (c == 'C' && !state->grid[i1])
-                    ))
-                p += sprintf(p, "%c%d;", c, i1);
-
-            if (!(i1 == i2 || state->grid[i2] & F_SINGLE
-                    || (c == 'A' && state->grid[i2] & F_COLOR_0)
-                    || (c == 'B' && state->grid[i2] & F_COLOR_1)
-                    || (c == 'C' && !state->grid[i2])
-                    ))
-                p += sprintf(p, "%c%d;", c, i2);
-
-            if(buf[0])
-                return dupstr(buf);
-        }
-        return UI_UPDATE;
-    }
-
     if (IS_MOUSE_DOWN(button))
     {
         int i = hy * w + hx;
         char old = state->grid[i];
 
-        if (button == LEFT_BUTTON)
+        if ((button == LEFT_BUTTON && ui->click_mode == 0) ||
+            (button == RIGHT_BUTTON && ui->click_mode == 1))
             ui->dragtype = (old == 0 ? F_COLOR_1 : old & F_COLOR_1 ? F_COLOR_0 : 0);
-        else if (button == RIGHT_BUTTON)
+        else if ((button == RIGHT_BUTTON && ui->click_mode == 0) ||
+                 (button == LEFT_BUTTON && ui->click_mode == 1))
             ui->dragtype = (old == 0 ? F_COLOR_0 : old & F_COLOR_0 ? F_COLOR_1 : 0);
         else
             ui->dragtype = 0;
@@ -734,7 +715,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (ui->dragtype || old)
             ui->drag[ui->ndrags++] = i;
 
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (IS_MOUSE_DRAG(button) && ui->dragtype != -1)
@@ -755,7 +736,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         ui->drag[ui->ndrags++] = i;
 
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (IS_MOUSE_RELEASE(button) && ui->ndrags)
@@ -780,47 +761,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return buf;
         
         sfree(buf);
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
-    /* Place one */
-    if (ui->cursor && (button == CURSOR_SELECT || button == CURSOR_SELECT2
-        || button == '\b' || button == '0' || button == '1'
-        || button == '2')) {
-        char buf[80];
-        char c, old;
-        int i = hy * w + hx;
-
-        if (state->grid[i] & F_SINGLE)
-            return NULL;
-
-        c = 'C';
-        old = state->grid[i];
-
-        if (button == '0' || button == '2')
-            c = 'A';
-        else if (button == '1')
-            c = 'B';
-
-        /* Cycle through options */
-        else if (button == CURSOR_SELECT2)
-            c = (old == 0 ? 'A' : old & F_COLOR_0 ? 'B' : 'C');
-        else if (button == CURSOR_SELECT)
-            c = (old == 0 ? 'B' : old & F_COLOR_1 ? 'A' : 'C');
-
-        if ((old & F_COLOR_0 && c == 'A') ||
-            (old & F_COLOR_1 && c == 'B') ||
-            (old == 0 && c == 'C'))
-            return NULL;               /* don't put no-ops on the undo chain */
-
-        sprintf(buf, "%c%d;", c, i);
-
-        return dupstr(buf);
-    }
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->w, h = state->h;
     int s = w * h;
@@ -829,6 +776,7 @@ static game_state *execute_move(const game_state *state, const char *move)
 
     game_state *ret = dup_game(state);
     const char *p = move;
+    ret->cheated = ret->completed = false;
 
     while (*p)
     {
@@ -875,7 +823,7 @@ static game_state *execute_move(const game_state *state, const char *move)
             p++;
     }
 
-    if (clusters_validate(ret) == STATUS_COMPLETE) ret->completed = true;
+    ret->completed = clusters_validate(ret) == STATUS_COMPLETE;
     return ret;
 }
 
@@ -884,7 +832,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  * **************** */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     *x = (params->w + 1) * tilesize;
     *y = (params->h + 1) * tilesize;
@@ -955,9 +903,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int h = state->h;
     int x, y, d;
     int tilesize = ds->tilesize;
+    char buf[48];
 
-    if(ds->grid[0] == ~0)
-    {
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
+    if(ds->grid[0] == ~0) {
         draw_rect(dr, COORD(0) - tilesize / 10, COORD(0) - tilesize / 10,
             tilesize*w + 2 * (tilesize / 10) - 1,
             tilesize*h + 2 * (tilesize / 10) - 1, COL_GRID);
@@ -1027,11 +980,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame clusters
 #endif
@@ -1044,7 +992,7 @@ static const char rules[] = "Fill in the grid with light and dark clusters.\n\n"
 const struct game thegame = {
     "Clusters", NULL, NULL, rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL,  /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1057,13 +1005,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     32, game_compute_size, game_set_size,
@@ -1073,12 +1023,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false, /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON, /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

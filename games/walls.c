@@ -87,15 +87,15 @@ struct game_state {
 
 #define DEFAULT_PRESET 1
 static const struct game_params walls_presets[] = {
-    {4, 5,  DIFF_EASY},
-    {4, 5,  DIFF_NORMAL},
-    {4, 5,  DIFF_TRICKY},
-    {6, 7,  DIFF_NORMAL},
-    {6, 7,  DIFF_TRICKY},
-    {6, 7,  DIFF_HARD},
-    {7, 8, DIFF_NORMAL},
-    {7, 8, DIFF_TRICKY},
-    {7, 8, DIFF_HARD}
+    {4, 4,  DIFF_EASY},
+    {5, 5,  DIFF_NORMAL},
+    {6, 6,  DIFF_TRICKY},
+    {6, 6,  DIFF_NORMAL},
+    {7, 7,  DIFF_TRICKY},
+    {7, 7,  DIFF_HARD},
+    {8, 8, DIFF_NORMAL},
+    {8, 8, DIFF_TRICKY},
+    {8, 8, DIFF_HARD}
 };
 
 static game_params *default_params(void) {
@@ -267,7 +267,7 @@ static int check_solution(game_state *state, bool full) {
 
     int exit_count, exit1, exit2;
 
-    int *dsf;
+    DSF *dsf;
     int first_cell;
     bool mark_unconnected = false;
 
@@ -411,8 +411,7 @@ static int check_solution(game_state *state, bool full) {
     }
 
     /* Check if all cells are connected */
-    dsf = snewn(w*h,int);
-    dsf_init(dsf, w*h);
+    dsf = dsf_new(w*h);
     for (y=0;y<h;y++)
     for (x=0;x<w;x++) {
         i = x+y*w;
@@ -426,7 +425,7 @@ static int check_solution(game_state *state, bool full) {
         if ((*edges[3] & FLAG_PATH) > 0x00 && x<w-1) dsf_merge(dsf, i, i+1);
     }
     first_cell = dsf_canonify(dsf, 0);
-    if (exit_count == 2 && dsf_canonify(dsf, exit1) == dsf_canonify(dsf, exit2)) {
+    if (exit_count == 2 && dsf_equivalent(dsf, exit1, exit2)) {
         mark_unconnected = true;
         first_cell = dsf_canonify(dsf, exit1);
     }
@@ -439,13 +438,13 @@ static int check_solution(game_state *state, bool full) {
             }
         }
     }
-    sfree(dsf);
+    dsf_free(dsf);
 
     return solved;
 }
 
 struct solver_scratch {
-    int *loopdsf;
+    DSF *loopdsf;
     bool *done_islands;
     int island_counter;
     bool exits_found;
@@ -589,12 +588,11 @@ static bool check_partition(const game_state *state) {
     int w = state->w;
     int h = state->h;
     unsigned char *edges[4];
-    int *dsf;
+    DSF *dsf;
     int first_cell;
 
     /* Check if all cells can be connected */
-    dsf = snewn(w*h,int);
-    dsf_init(dsf, w*h);
+    dsf = dsf_new(w*h);
     for (y=0;y<h;y++)
     for (x=0;x<w;x++) {
         i = x+y*w;
@@ -610,11 +608,11 @@ static bool check_partition(const game_state *state) {
     first_cell = dsf_canonify(dsf, 0);
     for (i=0;i<w*h;i++) {
         if (dsf_canonify(dsf, i) != first_cell) {
-            sfree(dsf);
+            dsf_free(dsf);
             return false;
         }
     }
-    sfree(dsf);
+    dsf_free(dsf);
     return true;
 }
 
@@ -656,7 +654,7 @@ static bool parity_check_block(game_state *state, struct solver_scratch *scratch
     int h = state->h;
     int w = state->w;
     unsigned char *edges[4];
-    int *dsf;
+    DSF *dsf;
     bool found;
     bool result = false;
     int processed_count = 0;
@@ -666,8 +664,7 @@ static bool parity_check_block(game_state *state, struct solver_scratch *scratch
     scratch->done_islands[scratch->island_counter] = true;
 
     /* Build a dsf over the relevant area */
-    dsf = snewn(w*h,int);
-    dsf_init(dsf, w*h);
+    dsf = dsf_new(w*h);
     for (y=by;y<by+bh;y++)
     for (x=bx;x<bx+bw;x++) {
         i = x+y*w;
@@ -847,7 +844,7 @@ static bool parity_check_block(game_state *state, struct solver_scratch *scratch
 finish_parity:
     sfree(group_cells);
     sfree(processed_cells);
-    sfree(dsf);
+    dsf_free(dsf);
     return result;
 }
 
@@ -1105,8 +1102,7 @@ static int walls_solve(game_state *state, int difficulty) {
     int islands = (((w-1)*(w))*((h-1)*(h)))/4;
     struct solver_scratch *scratch = snew(struct solver_scratch);
 
-    scratch->loopdsf = snewn(w*h, int);
-    dsf_init(scratch->loopdsf, w*h);
+    scratch->loopdsf = dsf_new(w*h);
     scratch->done_islands = snewn(islands, bool);
     scratch->exits_found = false;
     scratch->difficulty = difficulty;
@@ -1127,7 +1123,7 @@ static int walls_solve(game_state *state, int difficulty) {
     }
 
     sfree(scratch->done_islands);
-    sfree(scratch->loopdsf);
+    dsf_free(scratch->loopdsf);
     sfree(scratch);
     return check_solution(state, false);
 }
@@ -1598,13 +1594,6 @@ static void free_ui(game_ui *ui) {
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui) {
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding) {
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate) {
 }
@@ -1766,7 +1755,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             if (dragedge >= 0) ui->dragcoords[ui->ndragcoords++] = dragedge;
         }
         /* debug_draglist(ui); */
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
    /* Drag or click finished */
     else if (IS_MOUSE_RELEASE(button)) {
@@ -1815,22 +1804,22 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 buflen += tmplen;
             }
             clear_drag(ui, w, h);
-            return buf ? buf : UI_UPDATE;
+            return buf ? buf : MOVE_UI_UPDATE;
         }
 
         clear_drag(ui, w, h);
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (button == 'G' || button == 'g') {
         ui->show_grid = !ui->show_grid;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
-    return NULL;
+    return MOVE_UNUSED;
 
 }
 
-static game_state *execute_move(const game_state *state, const char *move) {
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move) {
     char c;
     unsigned char newedge;
     int edge, n;
@@ -1838,6 +1827,7 @@ static game_state *execute_move(const game_state *state, const char *move) {
     int h = state->h;
     game_state *ret = dup_game(state);
 
+    ret->used_solve = false;
     while (*move) {
         c = *move;
         if (c == 'S') {
@@ -1865,7 +1855,7 @@ static game_state *execute_move(const game_state *state, const char *move) {
         }
     }
 
-    if (check_solution(ret, true) == SOLVED) ret->completed = true;
+    ret->completed = (check_solution(ret, true) == SOLVED);
 
     return ret;
 }
@@ -1875,7 +1865,7 @@ static game_state *execute_move(const game_state *state, const char *move) {
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y) {
+                              const game_ui *ui, int *x, int *y) {
    /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
     ads.tilesize = tilesize;
@@ -2126,6 +2116,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     unsigned long *newcell;
     unsigned char cellerror;
     bool *drag_h, *drag_v;
+    char buf[48];
+
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     w = state->w; h = state->h;
     newcell = snewn((8*w+7)*(8*h+7), unsigned long);
@@ -2300,10 +2297,6 @@ static int game_status(const game_state *state) {
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui) {
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame walls
 #endif
@@ -2318,7 +2311,7 @@ static const char rules[] = "Draw a single continuous line through all cells in 
 const struct game thegame = {
     "Walls", "games.walls", "walls", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -2331,13 +2324,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -2347,12 +2342,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                 /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,       /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

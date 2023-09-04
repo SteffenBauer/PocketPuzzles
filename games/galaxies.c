@@ -13,9 +13,46 @@
  * Edges have on/off state; obviously the actual edges of the
  * board are fixed to on, and everything else starts as off.
  *
- * TTD:
-   * Cleverer solver
-   * Think about how to display remote groups of tiles?
+ * Future solver directions:
+ *
+ *  - Non-local version of the exclave extension? Suppose you have an
+ *    exclave with multiple potential paths back home, but all of them
+ *    go through the same tile somewhere in the middle of the path.
+ *    Then _that_ critical square can be assigned to the home dot,
+ *    even if we don't yet know the details of the path from it to
+ *    either existing region.
+ *
+ *  - Permit non-simply-connected puzzle instances in sub-Unreasonable
+ *    mode? Even the simplest case 5x3:ubb is graded Unreasonable at
+ *    present, because we have no solution technique short of
+ *    recursion that can handle it.
+ *
+ *    The reasoning a human uses for that puzzle is to observe that
+ *    the centre left square has to connect to the centre dot, so it
+ *    must have _some_ path back there. It could go round either side
+ *    of the dot in the way. But _whichever_ way it goes, that rules
+ *    out the left dot extending to the squares above and below it,
+ *    because if it did that, that would block _both_ routes back to
+ *    the centre.
+ *
+ *    But the exclave-extending deduction we have at present is only
+ *    capable of extending an exclave with _one_ liberty. This has
+ *    two, so the only technique we have available is to try them one
+ *    by one via recursion.
+ *
+ *    My vague plan to fix this would be to re-run the exclave
+ *    extension on a per-dot basis (probably after working out a
+ *    non-local version as described above): instead of trying to find
+ *    all exclaves at once, try it for one exclave at a time, or
+ *    perhaps all exclaves relating to a particular home dot H. The
+ *    point of this is that then you could spot pairs of squares with
+ *    _two_ possible dots, one of which is H, and which are opposite
+ *    to each other with respect to their other dot D (such as the
+ *    squares above/below the left dot in this example). And then you
+ *    merge those into one vertex of the connectivity graph, on the
+ *    grounds that they're either both H or both D - and _then_ you
+ *    have an exclave with only one path back home, and can make
+ *    progress.
  *
  * Bugs:
  *
@@ -121,14 +158,15 @@ struct game_state {
                            or -1 if stale. */
 };
 
-static bool check_complete(const game_state *state, int *dsf, int *colours);
+static bool check_complete(const game_state *state, DSF *dsf, int *colours);
+static int solver_state_inner(game_state *state, int maxdiff, int depth);
 static int solver_state(game_state *state, int maxdiff);
 static int solver_obvious(game_state *state);
 static int solver_obvious_dot(game_state *state, space *dot);
 static space *space_opposite_dot(const game_state *state, const space *sp,
                                  const space *dot);
 static space *tile_opposite(const game_state *state, const space *sp);
-static game_state *execute_move(const game_state *state, const char *move);
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move);
 
 /* ----------------------------------------------------------
  * Game parameters and presets
@@ -313,6 +351,8 @@ static bool ok_to_add_assoc_with_opposite_internal(
     int *colors;
     bool toret;
 
+    if (tile->type != s_tile)
+        return false;
     if (tile->flags & F_DOT)
         return false;
     if (opposite == NULL)
@@ -941,7 +981,6 @@ static bool generate_try_block(game_state *state, random_state *rs,
     return false;
 }
 
-#define MAXTRIES 50
 #define GP_DOTS   1
 
 static void generate_pass(game_state *state, random_state *rs, int *scratch,
@@ -949,6 +988,8 @@ static void generate_pass(game_state *state, random_state *rs, int *scratch,
 {
     int sz = state->sx*state->sy, nspc, i;
 
+    /* Random list of squares to try and process, one-by-one. */
+    for (i = 0; i < sz; i++) scratch[i] = i;
     shuffle(scratch, sz, sizeof(int), rs);
 
     /* This bug took me a, er, little while to track down. On PalmOS,
@@ -990,29 +1031,89 @@ static void generate_pass(game_state *state, random_state *rs, int *scratch,
     }
 }
 
+/*
+ * We try several times to generate a grid at all, before even feeding
+ * it to the solver. Then we pick whichever of the resulting grids was
+ * the most 'wiggly', as measured by the number of inward corners in
+ * the shape of any region.
+ *
+ * Rationale: wiggly shapes are what make this puzzle fun, and it's
+ * disappointing to be served a game whose entire solution is a
+ * collection of rectangles. But we also don't want to introduce a
+ * _hard requirement_ of wiggliness, because a player who knew that
+ * was there would be able to use it as an extra clue. This way, we
+ * just probabilistically skew in favour of wiggliness.
+ */
+#define GENERATE_TRIES 10
+
+static bool is_wiggle(const game_state *state, int x, int y, int dx, int dy)
+{
+    int x1 = x+2*dx, y1 = y+2*dy;
+    int x2 = x-2*dy, y2 = y+2*dx;
+    space *t, *t1, *t2;
+
+    if (!INGRID(state, x1, y1) || !INGRID(state, x2, y2))
+        return false;
+
+    t = &SPACE(state, x, y);
+    t1 = &SPACE(state, x1, y1);
+    t2 = &SPACE(state, x2, y2);
+    return ((t1->dotx == t2->dotx && t1->doty == t2->doty) &&
+            !(t1->dotx == t->dotx && t1->doty == t->doty));
+}
+
+static int measure_wiggliness(const game_state *state, int *scratch)
+{
+    int sz = state->sx*state->sy;
+    int x, y, nwiggles = 0;
+    memset(scratch, 0, sz);
+
+    for (y = 1; y < state->sy; y += 2) {
+        for (x = 1; x < state->sx; x += 2) {
+            if (y+2 < state->sy) {
+                nwiggles += is_wiggle(state, x, y, 0, +1);
+                nwiggles += is_wiggle(state, x, y, 0, -1);
+                nwiggles += is_wiggle(state, x, y, +1, 0);
+                nwiggles += is_wiggle(state, x, y, -1, 0);
+            }
+        }
+    }
+
+    return nwiggles;
+}
+
 static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+               char **aux, bool interactive)
 {
     game_state *state = blank_game(params->w, params->h), *copy;
     char *desc;
     int *scratch, sz = state->sx*state->sy, i;
-    int diff, ntries = 0;
+    int diff, best_wiggliness;
 
-    /* Random list of squares to try and process, one-by-one. */
     scratch = snewn(sz, int);
-    for (i = 0; i < sz; i++) scratch[i] = i;
 
 generate:
-    clear_game(state, true);
-    ntries++;
+    best_wiggliness = -1;
+    copy = NULL;
+    for (i = 0; i < GENERATE_TRIES; i++) {
+        int this_wiggliness;
 
-    /* generate_pass(state, rs, scratch, 10, GP_DOTS); */
-    /* generate_pass(state, rs, scratch, 100, 0); */
-    generate_pass(state, rs, scratch, 100, GP_DOTS);
+        do {
+            clear_game(state, true);
+            generate_pass(state, rs, scratch, 100, GP_DOTS);
+            game_update_dots(state);
+        } while (state->ndots == 1);
 
-    game_update_dots(state);
-
-    if (state->ndots == 1) goto generate;
+        this_wiggliness = measure_wiggliness(state, scratch);
+        if (this_wiggliness > best_wiggliness) {
+            best_wiggliness = this_wiggliness;
+            if (copy)
+                free_game(copy);
+            copy = dup_game(state);
+        }
+    }
+    free_game(state);
+    state = copy;
 
     for (i = 0; i < state->sx*state->sy; i++)
         if (state->grid[i].type == s_tile)
@@ -1026,23 +1127,22 @@ generate:
 
     if (diff != params->diff) {
         /*
-         * We'll grudgingly accept a too-easy puzzle, but we must
-         * _not_ permit a too-hard one (one which the solver
-         * couldn't handle at all).
+         * If the puzzle was insoluble at this difficulty level (i.e.
+         * too hard), _or_ soluble at a lower level (too easy), go
+         * round again.
+         *
+         * An exception is in soak-testing mode, where we return the
+         * first puzzle we got regardless.
          */
-        if (diff > params->diff ||
-            ntries < MAXTRIES) goto generate;
+         goto generate;
     }
-
     desc = encode_game(state);
-
     game_state *blank = blank_game(params->w, params->h);
     *aux = diff_game(blank, state, true);
     free_game(blank);
 
     free_game(state);
     sfree(scratch);
-
     return desc;
 }
 
@@ -1130,13 +1230,12 @@ static game_state *new_game(midend *me, const game_params *params,
  * Solver and all its little wizards.
  */
 
-static int solver_recurse_depth;
-
 typedef struct solver_ctx {
     game_state *state;
     int sz;             /* state->sx * state->sy */
     space **scratch;    /* size sz */
-
+    DSF *dsf;           /* size sz */
+    int *iscratch;      /* size sz */
 } solver_ctx;
 
 static solver_ctx *new_solver(game_state *state)
@@ -1145,12 +1244,16 @@ static solver_ctx *new_solver(game_state *state)
     sctx->state = state;
     sctx->sz = state->sx*state->sy;
     sctx->scratch = snewn(sctx->sz, space *);
+    sctx->dsf = dsf_new(sctx->sz);
+    sctx->iscratch = snewn(sctx->sz, int);
     return sctx;
 }
 
 static void free_solver(solver_ctx *sctx)
 {
     sfree(sctx->scratch);
+    dsf_free(sctx->dsf);
+    sfree(sctx->iscratch);
     sfree(sctx);
 }
 
@@ -1523,6 +1626,173 @@ static int solver_expand_dots(game_state *state, solver_ctx *sctx)
     return foreach_tile(state, solver_expand_postcb, IMPOSSIBLE_QUITS, sctx);
 }
 
+static int solver_extend_exclaves(game_state *state, solver_ctx *sctx)
+{
+    int x, y, done_something = 0;
+
+    /*
+     * Make a dsf by unifying any two adjacent tiles associated with
+     * the same dot. This will identify separate connected components
+     * of the tiles belonging to a given dot. Any such component that
+     * doesn't contain its own dot is an 'exclave', and will need some
+     * kind of path of tiles to connect it back to the dot.
+     */
+    dsf_reinit(sctx->dsf);
+    for (x = 1; x < state->sx; x += 2) {
+        for (y = 1; y < state->sy; y += 2) {
+            int dotx, doty;
+            space *tile, *othertile;
+
+            tile = &SPACE(state, x, y);
+            if (!(tile->flags & F_TILE_ASSOC))
+                continue;              /* not associated with any dot */
+            dotx = tile->dotx;
+            doty = tile->doty;
+
+            if (INGRID(state, x+2, y)) {
+                othertile = &SPACE(state, x+2, y);
+                if ((othertile->flags & F_TILE_ASSOC) &&
+                    othertile->dotx == dotx && othertile->doty == doty)
+                    dsf_merge(sctx->dsf, y*state->sx+x, y*state->sx+(x+2));
+            }
+
+            if (INGRID(state, x, y+2)) {
+                othertile = &SPACE(state, x, y+2);
+                if ((othertile->flags & F_TILE_ASSOC) &&
+                    othertile->dotx == dotx && othertile->doty == doty)
+                    dsf_merge(sctx->dsf, y*state->sx+x, (y+2)*state->sx+x);
+            }
+        }
+    }
+
+    /*
+     * Go through the grid again, and count the 'liberties' of each
+     * connected component, in the Go sense, i.e. the number of
+     * currently unassociated squares adjacent to the component. The
+     * idea is that if an exclave has just one liberty, then that
+     * square _must_ extend the exclave, or else it will be completely
+     * cut off from connecting back to its home dot.
+     *
+     * We need to count each adjacent square just once, even if it
+     * borders the component on multiple edges. So we'll go through
+     * each unassociated square, check all four of its neighbours, and
+     * de-duplicate them.
+     *
+     * We'll store the count of liberties in the entry of iscratch
+     * corresponding to the square centre (i.e. with odd coordinates).
+     * Every time we find a liberty, we store its index in the square
+     * to the left of that, so that when a component has exactly one
+     * liberty we can remember what it was.
+     *
+     * Square centres that are not the canonical dsf element of a
+     * connected component will get their liberty count set to -1,
+     * which will allow us to identify them in the later loop (after
+     * we start making changes and need to spot that an associated
+     * square _now_ was not associated when the dsf was built).
+     */
+
+    /* Initialise iscratch */
+    for (x = 1; x < state->sx; x += 2) {
+        for (y = 1; y < state->sy; y += 2) {
+            int index = y * state->sx + x;
+            if (!(SPACE(state, x, y).flags & F_TILE_ASSOC) ||
+                dsf_canonify(sctx->dsf, index) != index) {
+                sctx->iscratch[index] = -1; /* mark as not a component */
+            } else {
+                sctx->iscratch[index] = 0; /* zero liberty count */
+                sctx->iscratch[index-1] = 0; /* initialise neighbour id */
+            }
+        }
+    }
+
+    /* Find each unassociated square and see what it's a liberty of */
+    for (x = 1; x < state->sx; x += 2) {
+        for (y = 1; y < state->sy; y += 2) {
+            int dx, dy, ni[4], nn, i;
+
+            if ((SPACE(state, x, y).flags & F_TILE_ASSOC))
+                continue;              /* not an unassociated square */
+
+            /* Find distinct indices of adjacent components */
+            nn = 0;
+            for (dx = -1; dx <= 1; dx++) {
+                for (dy = -1; dy <= 1; dy++) {
+                    if (dx != 0 && dy != 0) continue;
+                    if (dx == 0 && dy == 0) continue;
+
+                    if (INGRID(state, x+2*dx, y+2*dy) &&
+                        (SPACE(state, x+2*dx, y+2*dy).flags & F_TILE_ASSOC)) {
+                        /* Find id of the component adjacent to x,y */
+                        int nindex = (y+2*dy) * state->sx + (x+2*dx);
+                        nindex = dsf_canonify(sctx->dsf, nindex);
+
+                        /* See if we've seen it before in another direction */
+                        for (i = 0; i < nn; i++)
+                            if (ni[i] == nindex)
+                                break;
+                        if (i == nn) {
+                            /* No, it's new. Mark x,y as a liberty of it */
+                            sctx->iscratch[nindex]++;
+                            sctx->iscratch[nindex-1] = y * state->sx + x;
+
+                            /* And record this component as having been seen */
+                            ni[nn++] = nindex;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /*
+     * Now we have all the data we need to find exclaves with exactly
+     * one liberty. In each case, associate the unique liberty square
+     * with the same dot.
+     */
+    for (x = 1; x < state->sx; x += 2) {
+        for (y = 1; y < state->sy; y += 2) {
+            int index, dotx, doty, ex, ey, added;
+            space *tile;
+
+            index = y*state->sx+x;
+            if (sctx->iscratch[index] == -1)
+                continue;    /* wasn't canonical when dsf was built */
+
+            tile = &SPACE(state, x, y);
+            if (!(tile->flags & F_TILE_ASSOC))
+                continue;              /* not associated with any dot */
+            dotx = tile->dotx;
+            doty = tile->doty;
+
+            if (index == dsf_canonify(
+                    sctx->dsf, (doty | 1) * state->sx + (dotx | 1)))
+                continue;    /* not an exclave - contains its own dot */
+
+            if (sctx->iscratch[index] == 0) {
+                return -1;
+            }
+
+            if (sctx->iscratch[index] != 1)
+                continue; /* more than one liberty, can't be sure which */
+
+            ex = sctx->iscratch[index-1] % state->sx;
+            ey = sctx->iscratch[index-1] / state->sx;
+            tile = &SPACE(state, ex, ey);
+            if (tile->flags & F_TILE_ASSOC)
+                continue; /* already done by earlier iteration of this loop */
+
+            added = solver_add_assoc(state, tile, dotx, doty,
+                                     "to connect exclave");
+            if (added < 0)
+                return -1;
+            if (added > 0)
+                done_something = 1;
+        }
+    }
+
+    return done_something;
+}
+
 struct recurse_ctx {
     space *best;
     int bestn;
@@ -1549,13 +1819,13 @@ static int solver_recurse_cb(game_state *state, space *tile, void *ctx)
 
 #define MAXRECURSE 5
 
-static int solver_recurse(game_state *state, int maxdiff)
+static int solver_recurse(game_state *state, int maxdiff, int depth)
 {
     int diff = DIFF_IMPOSSIBLE, ret, n, gsz = state->sx * state->sy;
     space *ingrid, *outgrid = NULL, *bestopp;
     struct recurse_ctx rctx;
 
-    if (solver_recurse_depth >= MAXRECURSE) {
+    if (depth >= MAXRECURSE) {
         return DIFF_UNFINISHED;
     }
 
@@ -1581,7 +1851,7 @@ static int solver_recurse(game_state *state, int maxdiff)
                          state->dots[n]->x, state->dots[n]->y,
                          "Attempting for recursion");
 
-        ret = solver_state(state, maxdiff);
+        ret = solver_state_inner(state, maxdiff, depth + 1);
 
         if (diff == DIFF_IMPOSSIBLE && ret != DIFF_IMPOSSIBLE) {
             /* we found our first solved grid; copy it away. */
@@ -1620,7 +1890,7 @@ static int solver_recurse(game_state *state, int maxdiff)
     return diff;
 }
 
-static int solver_state(game_state *state, int maxdiff)
+static int solver_state_inner(game_state *state, int maxdiff, int depth)
 {
     solver_ctx *sctx = new_solver(state);
     int ret, diff = DIFF_NORMAL;
@@ -1649,6 +1919,9 @@ cont:
         ret = solver_expand_dots(state, sctx);
         CHECKRET(DIFF_NORMAL);
 
+        ret = solver_extend_exclaves(state, sctx);
+        CHECKRET(DIFF_NORMAL);
+
         if (maxdiff <= DIFF_NORMAL)
             break;
 
@@ -1661,12 +1934,17 @@ cont:
     if (check_complete(state, NULL, NULL)) goto got_result;
 
     diff = (maxdiff >= DIFF_UNREASONABLE) ?
-        solver_recurse(state, maxdiff) : DIFF_UNFINISHED;
+        solver_recurse(state, maxdiff, depth) : DIFF_UNFINISHED;
 
 got_result:
     free_solver(sctx);
 
     return diff;
+}
+
+static int solver_state(game_state *state, int maxdiff)
+{
+    return solver_state_inner(state, maxdiff, 0);
 }
 
 static char *solve_game(const game_state *state, const game_state *currstate,
@@ -1678,8 +1956,8 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     int diff;
 
     if (aux) {
-        tosolve = execute_move(state, aux);
-         goto solved;
+        tosolve = execute_move(state, NULL, aux);
+        goto solved;
     } else {
         tosolve = dup_game(currstate);
         diff = solver_state(tosolve, DIFF_UNREASONABLE);
@@ -1735,15 +2013,6 @@ static game_ui *new_ui(const game_state *state)
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
-}
-
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1889,8 +2158,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         ui->cur_visible = false;
 
-        px = (int)(2*FROMCOORD((float)x) + 0.5);
-        py = (int)(2*FROMCOORD((float)y) + 0.5);
+        px = (int)(2*FROMCOORD((float)x) + 0.5F);
+        py = (int)(2*FROMCOORD((float)y) + 0.5F);
 
         dot = NULL;
 
@@ -1942,13 +2211,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->dy = y;
             ui->dotx = dot->x;
             ui->doty = dot->y;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
     } else if (button == RIGHT_DRAG && ui->dragging) {
         /* just move the drag coords. */
         ui->dx = x;
         ui->dy = y;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     } else if (button == RIGHT_RELEASE && ui->dragging) {
         ui->dragging = false;
 
@@ -1958,27 +2227,27 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         px = 2*FROMCOORD(x+TILE_SIZE) - 1;
         py = 2*FROMCOORD(y+TILE_SIZE) - 1;
 
-	/*
-	 * Dragging an arrow on to the same square it started from
-	 * is a null move; just update the ui and finish.
-	 */
-	if (px == ui->srcx && py == ui->srcy)
-	    return UI_UPDATE;
+        /*
+         * Dragging an arrow on to the same square it started from
+         * is a null move; just update the ui and finish.
+         */
+        if (px == ui->srcx && py == ui->srcy)
+            return MOVE_UI_UPDATE;
 
-	/*
-	 * Otherwise, we remove the arrow from its starting
-	 * square if we didn't start from a dot...
-	 */
-	if ((ui->srcx != ui->dotx || ui->srcy != ui->doty) &&
-	    SPACE(state, ui->srcx, ui->srcy).flags & F_TILE_ASSOC) {
-	    sprintf(buf + strlen(buf), "%sU%d,%d", sep, ui->srcx, ui->srcy);
-	    sep = ";";
-	}
+        /*
+         * Otherwise, we remove the arrow from its starting
+         * square if we didn't start from a dot...
+         */
+        if ((ui->srcx != ui->dotx || ui->srcy != ui->doty) &&
+            SPACE(state, ui->srcx, ui->srcy).flags & F_TILE_ASSOC) {
+            sprintf(buf + strlen(buf), "%sU%d,%d", sep, ui->srcx, ui->srcy);
+            sep = ";";
+        }
 
-	/*
-	 * ... and if the square we're moving it _to_ is valid, we
-	 * add one there instead.
-	 */
+        /*
+         * ... and if the square we're moving it _to_ is valid, we
+         * add one there instead.
+         */
         if (INUI(state, px, py)) {
             sp = &SPACE(state, px, py);
             dot = &SPACE(state, ui->dotx, ui->doty);
@@ -1990,70 +2259,20 @@ static char *interpret_move(const game_state *state, game_ui *ui,
              * undo chain.
              */
             if (ok_to_add_assoc_with_opposite(state, sp, dot))
-		sprintf(buf + strlen(buf), "%sA%d,%d,%d,%d",
-			sep, px, py, ui->dotx, ui->doty);
-	}
-
-	if (buf[0])
-	    return dupstr(buf);
-	else
-	    return UI_UPDATE;
-    } else if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->cur_x, &ui->cur_y, state->sx-1, state->sy-1, false);
-        if (ui->cur_x < 1) ui->cur_x = 1;
-        if (ui->cur_y < 1) ui->cur_y = 1;
-        ui->cur_visible = true;
-        if (ui->dragging) {
-            ui->dx = SCOORD(ui->cur_x);
-            ui->dy = SCOORD(ui->cur_y);
-        }
-        return UI_UPDATE;
-    } else if (IS_CURSOR_SELECT(button)) {
-        if (!ui->cur_visible) {
-            ui->cur_visible = true;
-            return UI_UPDATE;
-        }
-        sp = &SPACE(state, ui->cur_x, ui->cur_y);
-        if (ui->dragging) {
-            ui->dragging = false;
-
-            if ((ui->srcx != ui->dotx || ui->srcy != ui->doty) &&
-                SPACE(state, ui->srcx, ui->srcy).flags & F_TILE_ASSOC) {
-                sprintf(buf, "%sU%d,%d", sep, ui->srcx, ui->srcy);
-                sep = ";";
-            }
-            if (sp->type == s_tile && !(sp->flags & F_DOT) && !(sp->flags & F_TILE_ASSOC)) {
                 sprintf(buf + strlen(buf), "%sA%d,%d,%d,%d",
-                        sep, ui->cur_x, ui->cur_y, ui->dotx, ui->doty);
-            }
-            return dupstr(buf);
-        } else if (sp->flags & F_DOT) {
-            ui->dragging = true;
-            ui->dx = SCOORD(ui->cur_x);
-            ui->dy = SCOORD(ui->cur_y);
-            ui->dotx = ui->srcx = ui->cur_x;
-            ui->doty = ui->srcy = ui->cur_y;
-            return UI_UPDATE;
-        } else if (sp->flags & F_TILE_ASSOC) {
-            ui->dragging = true;
-            ui->dx = SCOORD(ui->cur_x);
-            ui->dy = SCOORD(ui->cur_y);
-            ui->dotx = sp->dotx;
-            ui->doty = sp->doty;
-            ui->srcx = ui->cur_x;
-            ui->srcy = ui->cur_y;
-            return UI_UPDATE;
-        } else if (sp->type == s_edge &&
-                   edge_placement_legal(state, ui->cur_x, ui->cur_y)) {
-            sprintf(buf, "E%d,%d", ui->cur_x, ui->cur_y);
-            return dupstr(buf);
+                        sep, px, py, ui->dotx, ui->doty);
         }
+
+        if (buf[0])
+            return dupstr(buf);
+        else
+            return MOVE_UI_UPDATE;
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static bool check_complete(const game_state *state, int *dsf, int *colours)
+static bool check_complete(const game_state *state, DSF *dsf, int *colours)
 {
     int w = state->w, h = state->h;
     int x, y, i;
@@ -2068,10 +2287,10 @@ static bool check_complete(const game_state *state, int *dsf, int *colours)
     } *sqdata;
 
     if (!dsf) {
-        dsf = snew_dsf(w*h);
+        dsf = dsf_new(w*h);
         free_dsf = true;
     } else {
-        dsf_init(dsf, w*h);
+        dsf_reinit(dsf);
         free_dsf = false;
     }
 
@@ -2226,17 +2445,18 @@ static bool check_complete(const game_state *state, int *dsf, int *colours)
 
     sfree(sqdata);
     if (free_dsf)
-	sfree(dsf);
+        dsf_free(dsf);
 
     return ret;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int x, y, ax, ay, n, dx, dy;
     game_state *ret = dup_game(state);
     space *sp, *dot;
     bool currently_solving = false;
+    ret->used_solve = false;
 
     while (*move) {
         char c = *move;
@@ -2302,8 +2522,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         else if (*move)
             goto badmove;
     }
-    if (check_complete(ret, NULL, NULL))
-        ret->completed = true;
+    ret->completed = check_complete(ret, NULL, NULL);
     return ret;
 
 badmove:
@@ -2327,7 +2546,7 @@ badmove:
  */
 
 static void game_compute_size(const game_params *params, int sz,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     struct { int tilesize, w, h; } ads, *ds = &ads;
 
@@ -2570,6 +2789,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int w = ds->w, h = ds->h;
     int x, y;
+    char buf[48];
 
     if (ds->dragging) {
         blitter_load(dr, ds->blmirror, ds->oppx, ds->oppy);
@@ -2591,6 +2811,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         draw_update(dr, 0, 0, DRAW_WIDTH, DRAW_HEIGHT);
         ds->started = true;
     }
+
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     check_complete(state, NULL, ds->colour_scratch);
 
@@ -2650,16 +2876,16 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
              * If this square is associated with a dot but it isn't
              * part of a valid region, draw an arrow in it pointing
              * in the direction of that dot.
-	     * 
-	     * Exception: if this is the source point of an active
-	     * drag, we don't draw the arrow.
+             * 
+             * Exception: if this is the source point of an active
+             * drag, we don't draw the arrow.
              */
             if ((sp->flags & F_TILE_ASSOC) && !ds->colour_scratch[y*w+x]) {
-		if (ui->dragging && ui->srcx == x*2+1 && ui->srcy == y*2+1) {
+                if (ui->dragging && ui->srcx == x*2+1 && ui->srcy == y*2+1) {
                     /* tile is the source, don't do it */
                 } else if (ui->dragging && opp && ui->srcx == opp->x && ui->srcy == opp->y) {
                     /* opposite tile is the source, don't do it */
-		} else if (sp->doty != y*2+1 || sp->dotx != x*2+1) {
+                } else if (sp->doty != y*2+1 || sp->dotx != x*2+1) {
                     flags |= DRAW_ARROW;
                     ddy = sp->doty - (y*2+1);
                     ddx = sp->dotx - (x*2+1);
@@ -2777,11 +3003,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame galaxies
 #endif
@@ -2793,7 +3014,7 @@ static const char rules[] = "You have a rectangular grid containing a number of 
 const struct game thegame = {
     "Galaxies", "games.galaxies", "galaxies", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -2806,13 +3027,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -2822,12 +3045,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                     /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     0, /* REQUIRE_RBUTTON,            flags */
 };
 

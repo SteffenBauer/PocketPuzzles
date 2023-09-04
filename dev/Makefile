@@ -9,7 +9,7 @@ CC := $(TOOLPATH)$(CC)
 # to 1.2 if it isn't found.
 GTK_CONFIG = sh -c 'pkg-config gtk+-2.0 $$0 2>/dev/null || gtk-config $$0'
 
-CFLAGS := -O2 -Wall -Werror -g -I./ -I../include/ `$(GTK_CONFIG) --cflags` \
+CFLAGS := -O2 -Wall -Wno-deprecated-declarations -g -I./ -I../include/ `$(GTK_CONFIG) --cflags` \
 		$(CFLAGS)
 XLIBS = `$(GTK_CONFIG) --libs` -lm
 ULIBS = -lm
@@ -147,10 +147,10 @@ lightup: combi.o drawing.o gtk.o lightup.o no-icon.o \
 		$(XLFLAGS) $(XLIBS)
 
 loopy: drawing.o dsf.o grid.o gtk.o loopgen.o loopy.o \
-		no-icon.o malloc.o midend.o misc.o penrose.o printing.o \
+		no-icon.o malloc.o midend.o misc.o printing.o \
 		ps.o random.o tree234.o version.o
 	$(CC) -o $@ drawing.o dsf.o grid.o gtk.o loopgen.o loopy.o \
-		no-icon.o malloc.o midend.o misc.o penrose.o printing.o \
+		no-icon.o malloc.o midend.o misc.o printing.o \
 		ps.o random.o tree234.o version.o  $(XLFLAGS) $(XLIBS)
 
 magnets: drawing.o gtk.o laydomino.o magnets.o no-icon.o \
@@ -205,10 +205,10 @@ pattern: drawing.o gtk.o malloc.o midend.o misc.o pattern.o \
 		$(XLFLAGS) $(XLIBS)
 
 pearl: drawing.o dsf.o grid.o gtk.o loopgen.o malloc.o midend.o \
-		misc.o pearl.o no-icon.o penrose.o printing.o ps.o \
+		misc.o pearl.o no-icon.o printing.o ps.o \
 		random.o tdq.o tree234.o version.o
 	$(CC) -o $@ drawing.o dsf.o grid.o gtk.o loopgen.o malloc.o midend.o \
-		misc.o pearl.o no-icon.o penrose.o printing.o ps.o \
+		misc.o pearl.o no-icon.o printing.o ps.o \
 		random.o tdq.o tree234.o version.o  $(XLFLAGS) $(XLIBS)
 
 pegs: drawing.o gtk.o malloc.o midend.o misc.o pegs.o \
@@ -467,7 +467,7 @@ dsf.o: ../utils/dsf.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 findloop.o: ../utils/findloop.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
-grid.o: ../utils/grid.c ../include/puzzles.h ../include/tree234.h ../include/grid.h ../include/penrose.h
+grid.o: ../utils/grid.c ../include/puzzles.h ../include/tree234.h ../include/grid.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 gtk.o: ./gtk.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
@@ -488,8 +488,6 @@ midend.o: ../utils/midend.c ../include/puzzles.h
 misc.o: ../utils/misc.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 no-icon.o: ./no-icon.c
-	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
-penrose.o: ../utils/penrose.c ../include/puzzles.h ../include/penrose.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 printing.o: ../utils/printing.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@

@@ -408,15 +408,6 @@ static void free_ui(game_ui *ui)
 {
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -428,17 +419,6 @@ struct game_drawstate {
     int *tiles;
     int tilesize;
 };
-
-static int flip_cursor(int button)
-{
-    switch (button) {
-    case CURSOR_UP: return CURSOR_DOWN;
-    case CURSOR_DOWN: return CURSOR_UP;
-    case CURSOR_LEFT: return CURSOR_RIGHT;
-    case CURSOR_RIGHT: return CURSOR_LEFT;
-    }
-    return 0;
-}
 
 static void next_move_3x2(int ax, int ay, int bx, int by,
                           int gx, int gy, int *dx, int *dy)
@@ -666,16 +646,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ny = FROMCOORD(y);
         if (nx < 0 || nx >= state->w || ny < 0 || ny >= state->h)
             return NULL;               /* out of bounds */
-    } else if (IS_CURSOR_MOVE(button)) {
-        static int invert_cursor = -1;
-        if (invert_cursor == -1) {
-            char *env = getenv("FIFTEEN_INVERT_CURSOR");
-            invert_cursor = (env && (env[0] == 'y' || env[0] == 'Y'));
-        }
-        button = flip_cursor(button); /* the default */
-        if (invert_cursor)
-            button = flip_cursor(button); /* undoes the first flip */
-        move_cursor(button, &nx, &ny, state->w, state->h, false);
     } else if ((button == 'h' || button == 'H') && !state->completed) {
         if (!compute_hint(state, &nx, &ny))
             return NULL; /* shouldn't happen, since ^^we^^checked^^ */
@@ -691,10 +661,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return dupstr(buf);
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *from, const char *move)
+static game_state *execute_move(const game_state *from, const game_ui *ui, const char *move)
 {
     int gx, gy, dx, dy, ux, uy, up, p, nx, ny;
     game_state *ret;
@@ -702,6 +672,7 @@ static game_state *execute_move(const game_state *from, const char *move)
     if (!strcmp(move, "S")) {
         ret = dup_game(from);
         ret->used_solve = true;
+        ret->movecount = 0;
         if (compute_hint(ret, &nx, &ny)) {
             ret->hx = nx; ret->hy = ny;
         }
@@ -738,13 +709,13 @@ static game_state *execute_move(const game_state *from, const char *move)
     for (p = from->gap_pos; p != ret->gap_pos; p += up) {
         assert(p >= 0 && p < from->n);
         ret->tiles[p] = from->tiles[p + up];
-    ret->movecount++;
+        ret->movecount++;
     }
 
     /*
      * See if the game has been completed.
      */
-    if (!ret->completed) {
+    if (!ret->used_solve) {
         ret->completed = ret->movecount;
         for (p = 0; p < ret->n; p++)
             if (ret->tiles[p] != (p < ret->n-1 ? p+1 : 0))
@@ -768,7 +739,7 @@ static game_state *execute_move(const game_state *from, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -916,7 +887,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         if (state->used_solve)
             sprintf(statusbuf, "Moves since auto-solve: %d",
-                state->movecount - state->completed);
+                state->movecount);
         else
             sprintf(statusbuf, "%sMoves: %d",
                 (state->completed ? "COMPLETED! " : ""),
@@ -943,11 +914,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame fifteen
 #endif
@@ -960,7 +926,7 @@ static const char rules[] = "This is the good old ‘15-puzzle’ with sliding t
 const struct game thegame = {
     "Fifteen", "games.fifteen", "fifteen", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -973,13 +939,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -989,12 +957,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    true,                   /* wants_statusbar */
-    false, game_timing_state,
-    0,                       /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    0,                         /* flags */
 };
 

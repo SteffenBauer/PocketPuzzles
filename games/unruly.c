@@ -66,7 +66,6 @@ enum {
     COL_1,
     COL_1_HIGHLIGHT,
     COL_1_LOWLIGHT,
-    COL_CURSOR,
     COL_ERROR,
     NCOLOURS
 };
@@ -124,7 +123,6 @@ enum {
 
 #define FF_ONE            0x0080
 #define FF_ZERO           0x0100
-#define FF_CURSOR         0x0200
 
 #define FF_IMMUTABLE      0x1000
 
@@ -349,7 +347,7 @@ static const char *validate_desc(const game_params *params, const char *desc)
     return NULL;
 }
 
-static game_state *blank_state(int w2, int h2, bool unique)
+static game_state *blank_state(int w2, int h2, bool unique, bool new_common)
 {
     game_state *state = snew(game_state);
     int s = w2 * h2;
@@ -358,12 +356,14 @@ static game_state *blank_state(int w2, int h2, bool unique)
     state->h2 = h2;
     state->unique = unique;
     state->grid = snewn(s, char);
-    state->common = snew(unruly_common);
-    state->common->refcount = 1;
-    state->common->immutable = snewn(s, bool);
-
     memset(state->grid, EMPTY, s);
-    memset(state->common->immutable, 0, s*sizeof(bool));
+
+    if (new_common) {
+        state->common = snew(unruly_common);
+        state->common->refcount = 1;
+        state->common->immutable = snewn(s, bool);
+        memset(state->common->immutable, 0, s*sizeof(bool));
+    }
 
     state->completed = state->cheated = false;
 
@@ -376,7 +376,7 @@ static game_state *new_game(midend *me, const game_params *params,
     int w2 = params->w2, h2 = params->h2;
     int s = w2 * h2;
 
-    game_state *state = blank_state(w2, h2, params->unique);
+    game_state *state = blank_state(w2, h2, params->unique, true);
 
     const char *p = desc;
     int pos = 0;
@@ -413,7 +413,7 @@ static game_state *dup_game(const game_state *state)
     int w2 = state->w2, h2 = state->h2;
     int s = w2 * h2;
 
-    game_state *ret = blank_state(w2, h2, state->unique);
+    game_state *ret = blank_state(w2, h2, state->unique, false);
 
     memcpy(ret->grid, state->grid, s);
     ret->common = state->common;
@@ -1236,13 +1236,9 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     game_state *state;
     struct unruly_scratch *scratch;
 
-    int attempts = 0;
-
     while (1) {
-
         while (true) {
-            attempts++;
-            state = blank_state(w2, h2, params->unique);
+            state = blank_state(w2, h2, params->unique, true);
             scratch = unruly_new_scratch(state);
             if (unruly_fill_game(state, scratch, rs))
                 break;
@@ -1347,16 +1343,16 @@ static char *new_game_desc(const game_params *params, random_state *rs,
  * ************** */
 
 struct game_ui {
-    int cx, cy;
-    bool cursor;
+    int click_mode;
+    bool show_errors;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
     game_ui *ret = snew(game_ui);
 
-    ret->cx = ret->cy = 0;
-    ret->cursor = false;
+    ret->click_mode = 0;
+    ret->show_errors = true;
 
     return ret;
 }
@@ -1366,13 +1362,34 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static config_item *get_prefs(game_ui *ui)
 {
-    return NULL;
+    config_item *ret;
+
+    ret = snewn(3, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Black/White:White/Black";
+    ret[0].u.choices.choicekws = ":black:white";
+    ret[0].u.choices.selected = ui->click_mode;
+
+    ret[1].name = "Show errors";
+    ret[1].kw = "show-errors";
+    ret[1].type = C_BOOLEAN;
+    ret[1].u.boolean.bval = ui->show_errors;
+
+    ret[2].name = NULL;
+    ret[2].type = C_END;
+
+    return ret;
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void set_prefs(game_ui *ui, const config_item *cfg)
 {
+    ui->click_mode = cfg[0].u.choices.selected;
+    ui->show_errors = cfg[1].u.boolean.bval;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1429,9 +1446,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int ox, int oy, int button, bool swapped)
 {
-    int hx = ui->cx;
-    int hy = ui->cy;
-
     int gx = FROMCOORD(ox);
     int gy = FROMCOORD(oy);
 
@@ -1439,71 +1453,51 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     button &= ~MOD_MASK;
 
-    /* Mouse click */
-    if (button == LEFT_BUTTON || button == RIGHT_BUTTON ||
-        button == MIDDLE_BUTTON) {
-        if (ox >= (ds->tilesize / 2) && gx < w2
-            && oy >= (ds->tilesize / 2) && gy < h2) {
-            hx = gx;
-            hy = gy;
-            ui->cursor = false;
-        } else
-            return NULL;
-    }
-
-    /* Keyboard move */
-    if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->cx, &ui->cy, w2, h2, false);
-        ui->cursor = true;
-        return UI_UPDATE;
-    }
+    if (ox < (ds->tilesize / 2) || gx >= w2 ||
+        oy < (ds->tilesize / 2) || gy >= h2)
+            return MOVE_NO_EFFECT;
 
     /* Place one */
-    if ((ui->cursor && (button == CURSOR_SELECT || button == CURSOR_SELECT2
-                        || button == '\b' || button == '0' || button == '1'
-                        || button == '2')) ||
-        button == LEFT_BUTTON || button == RIGHT_BUTTON ||
-        button == MIDDLE_BUTTON) {
+    if (button == LEFT_BUTTON || button == RIGHT_BUTTON ) {
         char buf[80];
         char c, i;
 
-        if (state->common->immutable[hy * w2 + hx])
-            return NULL;
+        if (state->common->immutable[gy * w2 + gx])
+            return MOVE_NO_EFFECT;
 
         c = '-';
-        i = state->grid[hy * w2 + hx];
+        i = state->grid[gy * w2 + gx];
 
         if (button == '0' || button == '2')
             c = '0';
         else if (button == '1')
             c = '1';
-        else if (button == MIDDLE_BUTTON)
-            c = '-';
 
         /* Cycle through options */
-        else if (button == CURSOR_SELECT2 || button == RIGHT_BUTTON)
+        else if ((button == RIGHT_BUTTON && ui->click_mode == 0) ||
+                 (button == LEFT_BUTTON && ui->click_mode == 1))
             c = (i == EMPTY ? '0' : i == N_ZERO ? '1' : '-');
-        else if (button == CURSOR_SELECT || button == LEFT_BUTTON)
+        else if ((button == LEFT_BUTTON && ui->click_mode == 0) ||
+                (button == RIGHT_BUTTON && ui->click_mode == 1))
             c = (i == EMPTY ? '1' : i == N_ONE ? '0' : '-');
 
-        if (state->grid[hy * w2 + hx] ==
+        if (state->grid[gy * w2 + gx] ==
             (c == '0' ? N_ZERO : c == '1' ? N_ONE : EMPTY))
-            return NULL;               /* don't put no-ops on the undo chain */
+            return MOVE_NO_EFFECT;               /* don't put no-ops on the undo chain */
 
-        sprintf(buf, "P%c,%d,%d", c, hx, hy);
+        sprintf(buf, "P%c,%d,%d", c, gx, gy);
 
         return dupstr(buf);
     }
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w2 = state->w2, h2 = state->h2;
     int s = w2 * h2;
     int x, y, i;
     char c;
-
     game_state *ret;
 
     if (move[0] == 'S') {
@@ -1536,13 +1530,10 @@ static game_state *execute_move(const game_state *state, const char *move)
             free_game(ret);
             return NULL;
         }
-
         ret->grid[i] = (c == '1' ? N_ONE : c == '0' ? N_ZERO : EMPTY);
-
-        if (!ret->completed && unruly_validate_counts(ret, NULL, NULL) == 0
-            && (unruly_validate_all_rows(ret, NULL) == 0))
-            ret->completed = true;
-
+        ret->completed = ((unruly_validate_counts(ret, NULL, NULL) == 0) && 
+                          (unruly_validate_all_rows(ret, NULL) == 0));
+        ret->cheated = false;
         return ret;
     }
 
@@ -1554,7 +1545,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     *x = tilesize * (params->w2 + 1);
     *y = tilesize * (params->h2 + 1);
@@ -1582,7 +1573,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_EMPTY       * 3 + i] = 0.5F;
         ret[COL_GRID        * 3 + i] = 0.3F;
         ret[COL_ERROR       * 3 + i] = 0.5F;
-        ret[COL_CURSOR      * 3 + i] = 0.0F;
     }
 
     *ncolours = NCOLOURS;
@@ -1601,7 +1591,7 @@ static void unruly_draw_err_rectangle(drawing *dr, int x, int y, int w, int h,
     draw_rect(dr, x+w-margin-thick, y+margin, thick, h-2*margin, COL_ERROR);
 }
 
-static void unruly_draw_tile(drawing *dr, int x, int y, int tilesize, int tile)
+static void unruly_draw_tile(drawing *dr, const game_ui *ui, int x, int y, int tilesize, int tile)
 {
     clip(dr, x, y, tilesize, tilesize);
 
@@ -1636,50 +1626,41 @@ static void unruly_draw_tile(drawing *dr, int x, int y, int tilesize, int tile)
         }
     }
 
-    /* 3-in-a-row errors */
-    if (tile & (FE_HOR_ROW_LEFT | FE_HOR_ROW_RIGHT)) {
-        int left = x, right = x + tilesize - 1;
-        if ((tile & FE_HOR_ROW_LEFT))
-            right += tilesize/2;
-        if ((tile & FE_HOR_ROW_RIGHT))
-            left -= tilesize/2;
-        unruly_draw_err_rectangle(dr, left, y, right-left, tilesize-1, tilesize);
-    }
-    if (tile & (FE_VER_ROW_TOP | FE_VER_ROW_BOTTOM)) {
-        int top = y, bottom = y + tilesize - 1;
-        if ((tile & FE_VER_ROW_TOP))
-            bottom += tilesize/2;
-        if ((tile & FE_VER_ROW_BOTTOM))
-            top -= tilesize/2;
-        unruly_draw_err_rectangle(dr, x, top, tilesize-1, bottom-top, tilesize);
-    }
+    if (ui->show_errors) {
+        /* 3-in-a-row errors */
+        if (tile & (FE_HOR_ROW_LEFT | FE_HOR_ROW_RIGHT)) {
+            int left = x, right = x + tilesize - 1;
+            if ((tile & FE_HOR_ROW_LEFT))
+                right += tilesize/2;
+            if ((tile & FE_HOR_ROW_RIGHT))
+                left -= tilesize/2;
+            unruly_draw_err_rectangle(dr, left, y, right-left, tilesize-1, tilesize);
+        }
+        if (tile & (FE_VER_ROW_TOP | FE_VER_ROW_BOTTOM)) {
+            int top = y, bottom = y + tilesize - 1;
+            if ((tile & FE_VER_ROW_TOP))
+                bottom += tilesize/2;
+            if ((tile & FE_VER_ROW_BOTTOM))
+                top -= tilesize/2;
+            unruly_draw_err_rectangle(dr, x, top, tilesize-1, bottom-top, tilesize);
+        }
 
-    /* Count errors */
-    if (tile & FE_COUNT) {
-        draw_text(dr, x + tilesize/2, y + tilesize/2, FONT_VARIABLE,
-                  tilesize/2, ALIGN_HCENTRE | ALIGN_VCENTRE, COL_ERROR, "!");
-    }
+        /* Count errors */
+        if (tile & FE_COUNT) {
+            draw_text(dr, x + tilesize/2, y + tilesize/2, FONT_VARIABLE,
+                      tilesize/2, ALIGN_HCENTRE | ALIGN_VCENTRE, COL_ERROR, "!");
+        }
 
-    /* Row-match errors */
-    if (tile & FE_ROW_MATCH) {
-        draw_rect(dr, x, y+tilesize/2-tilesize/12,
-                  tilesize, 2*(tilesize/12), COL_ERROR);
+        /* Row-match errors */
+        if (tile & FE_ROW_MATCH) {
+            draw_rect(dr, x, y+tilesize/2-tilesize/12,
+                      tilesize, 2*(tilesize/12), COL_ERROR);
+        }
+        if (tile & FE_COL_MATCH) {
+            draw_rect(dr, x+tilesize/2-tilesize/12, y,
+                      2*(tilesize/12), tilesize, COL_ERROR);
+        }
     }
-    if (tile & FE_COL_MATCH) {
-        draw_rect(dr, x+tilesize/2-tilesize/12, y,
-                  2*(tilesize/12), tilesize, COL_ERROR);
-    }
-
-    /* Cursor rectangle */
-    if (tile & FF_CURSOR) {
-        draw_rect(dr, x, y, tilesize/12, tilesize-1, COL_CURSOR);
-        draw_rect(dr, x, y, tilesize-1, tilesize/12, COL_CURSOR);
-        draw_rect(dr, x+tilesize-1-tilesize/12, y, tilesize/12, tilesize-1,
-                  COL_CURSOR);
-        draw_rect(dr, x, y+tilesize-1-tilesize/12, tilesize-1, tilesize/12,
-                  COL_CURSOR);
-    }
-
     unclip(dr);
     draw_update(dr, x, y, tilesize, tilesize);
 }
@@ -1695,6 +1676,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int w2 = state->w2, h2 = state->h2;
     int s = w2 * h2;
     int x, y, i;
+
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (!ds->started) {
         /* Outer edge of grid */
@@ -1734,12 +1722,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             if (state->common->immutable[i])
                 tile |= FF_IMMUTABLE;
 
-            if (ui->cursor && ui->cx == x && ui->cy == y)
-                tile |= FF_CURSOR;
 
             if (ds->grid[i] != tile) {
                 ds->grid[i] = tile;
-                unruly_draw_tile(dr, COORD(x), COORD(y), TILE_SIZE, tile);
+                unruly_draw_tile(dr, ui, COORD(x), COORD(y), TILE_SIZE, tile);
             }
         }
     }
@@ -1762,11 +1748,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame unruly
 #endif
@@ -1780,7 +1761,7 @@ static const char rules[] = "You are given a grid of squares, which you must col
 const struct game thegame = {
     "Unruly", "games.unruly", "unruly", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1793,13 +1774,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     DEFAULT_TILE_SIZE, game_compute_size, game_set_size,
@@ -1809,12 +1792,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                      /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,                          /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

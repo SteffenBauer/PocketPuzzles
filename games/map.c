@@ -221,6 +221,8 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 2 || params->h < 2)
         return "Width and height must be at least two";
+    if (params->w > 20 || params->h > 20)
+        return "Width and height must be not bigger than 20";
     if (params->n < 5)
         return "Must have at least five regions";
     if (params->n > params->w * params->h)
@@ -903,21 +905,21 @@ static int map_solver(struct solver_scratch *sc,
         }
 
         if ((p & (p-1)) == 0) {    /* p is a power of two */
-        int c;
-                bool ret;
-        for (c = 0; c < FOUR; c++)
-            if (p == (1 << c))
-                break;
+            int c;
+            bool ret;
+            for (c = 0; c < FOUR; c++)
+                if (p == (1 << c))
+                    break;
             assert(c < FOUR);
             ret = place_colour(sc, colouring, i, c);
-                /*
-                 * place_colour() can only fail if colour c was not
-                 * even a _possibility_ for region i, and we're
-                 * pretty sure it was because we checked before
-                 * calling place_colour(). So we can safely assert
-                 * here rather than having to return a nice
-                 * friendly error code.
-                 */
+            /*
+             * place_colour() can only fail if colour c was not
+             * even a _possibility_ for region i, and we're
+             * pretty sure it was because we checked before
+             * calling place_colour(). So we can safely assert
+             * here rather than having to return a nice
+             * friendly error code.
+             */
             assert(ret);
             done_something = true;
         }
@@ -1543,8 +1545,8 @@ static const char *parse_edge_list(const game_params *params,
     int i, k, pos;
     bool state;
     const char *p = *desc;
-
-    dsf_init(map+wh, wh);
+    const char *err = NULL;
+    DSF *dsf = dsf_new(wh);
 
     pos = -1;
     state = false;
@@ -1555,64 +1557,76 @@ static const char *parse_edge_list(const game_params *params,
      * pairs of squares whenever the edge list shows a non-edge).
      */
     while (*p && *p != ',') {
-    if (*p < 'a' || *p > 'z')
-        return "Unexpected character in edge list";
-    if (*p == 'z')
-        k = 25;
-    else
-        k = *p - 'a' + 1;
-    while (k-- > 0) {
-        int x, y, dx, dy;
+        if (*p < 'a' || *p > 'z') {
+            err = "Unexpected character in edge list";
+            goto out;
+        }
+        if (*p == 'z')
+            k = 25;
+        else
+            k = *p - 'a' + 1;
+        while (k-- > 0) {
+            int x, y, dx, dy;
 
-        if (pos < 0) {
-        pos++;
-        continue;
-        } else if (pos < w*(h-1)) {
-        /* Horizontal edge. */
-        y = pos / w;
-        x = pos % w;
-        dx = 0;
-        dy = 1;
-        } else if (pos < 2*wh-w-h) {
-        /* Vertical edge. */
-        x = (pos - w*(h-1)) / h;
-        y = (pos - w*(h-1)) % h;
-        dx = 1;
-        dy = 0;
-        } else
-        return "Too much data in edge list";
-        if (!state)
-        dsf_merge(map+wh, y*w+x, (y+dy)*w+(x+dx));
+            if (pos < 0) {
+                pos++;
+                continue;
+            } else if (pos < w*(h-1)) {
+                /* Horizontal edge. */
+                y = pos / w;
+                x = pos % w;
+                dx = 0;
+                dy = 1;
+            } else if (pos < 2*wh-w-h) {
+                /* Vertical edge. */
+                x = (pos - w*(h-1)) / h;
+                y = (pos - w*(h-1)) % h;
+                dx = 1;
+                dy = 0;
+            } else {
+                err = "Too much data in edge list";
+                goto out;
+            }
+            if (!state)
+                dsf_merge(dsf, y*w+x, (y+dy)*w+(x+dx));
 
-        pos++;
-    }
-    if (*p != 'z')
-        state = !state;
-    p++;
+            pos++;
+        }
+        if (*p != 'z')
+            state = !state;
+        p++;
     }
     assert(pos <= 2*wh-w-h);
-    if (pos < 2*wh-w-h)
-    return "Too little data in edge list";
+    if (pos < 2*wh-w-h) {
+        err = "Too little data in edge list";
+        goto out;
+    }
 
     /*
      * Now go through again and allocate region numbers.
      */
     pos = 0;
     for (i = 0; i < wh; i++)
-    map[i] = -1;
+        map[i] = -1;
     for (i = 0; i < wh; i++) {
-    k = dsf_canonify(map+wh, i);
-    if (map[k] < 0)
-        map[k] = pos++;
-    map[i] = map[k];
+        k = dsf_canonify(dsf, i);
+        if (map[k] < 0)
+            map[k] = pos++;
+        map[i] = map[k];
     }
-    if (pos != n)
-    return "Edge list defines the wrong number of regions";
+    if (pos != n) {
+        err = "Edge list defines the wrong number of regions";
+        goto out;
+    }
 
     *desc = p;
+    err = NULL; /* no error */
 
-    return NULL;
+  out:
+    dsf_free(dsf);
+    return err;
 }
+
 
 static const char *validate_desc(const game_params *params, const char *desc)
 {
@@ -1621,7 +1635,7 @@ static const char *validate_desc(const game_params *params, const char *desc)
     int *map;
     const char *ret;
 
-    map = snewn(2*wh, int);
+    map = snewn(wh, int);
     ret = parse_edge_list(params, &desc, map);
     sfree(map);
     if (ret)
@@ -1647,17 +1661,6 @@ static const char *validate_desc(const game_params *params, const char *desc)
     return "Too much data in clue list";
 
     return NULL;
-}
-
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    key_label *keys = snewn(1, key_label);
-    *nkeys = 1;
-
-    keys[0].button = '+';
-    keys[0].label = "Add";
-
-    return keys;
 }
 
 static game_state *new_game(midend *me, const game_params *params,
@@ -2110,6 +2113,8 @@ struct game_ui {
     int highlight_region;
     int cur_x, cur_y, cur_lastmove;
     bool cur_visible, cur_moved;
+    bool marks_button;
+    int marks_action;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -2123,6 +2128,8 @@ static game_ui *new_ui(const game_state *state)
     ui->cur_visible = false;
     ui->cur_moved = false;
     ui->cur_lastmove = 0;
+    ui->marks_button = true;
+    ui->marks_action = 1;
     return ui;
 }
 
@@ -2131,13 +2138,51 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
 {
-    return NULL;
+    if (!ui->marks_button) {
+        *nkeys = 0;
+        return NULL;
+    }
+
+    key_label *keys = snewn(1, key_label);
+    *nkeys = 1;
+
+    keys[0].button = '+';
+    keys[0].label = "Add";
+
+    return keys;
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+
+static config_item *get_prefs(game_ui *ui)
 {
+    config_item *ret;
+
+    ret = snewn(3, config_item);
+
+    ret[0].name = "Show fill marks button";
+    ret[0].kw = "hint-button";
+    ret[0].type = C_BOOLEAN;
+    ret[0].u.boolean.bval = ui->marks_button;
+
+    ret[1].name = "Fill marks button action";
+    ret[1].kw = "marks-action";
+    ret[1].type = C_CHOICES;
+    ret[1].u.choices.choicenames = ":All marks:Possible marks only";
+    ret[1].u.choices.choicekws = ":all:possible";
+    ret[1].u.choices.selected = ui->marks_action;
+
+    ret[2].name = NULL;
+    ret[2].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->marks_button = cfg[0].u.boolean.bval;
+    ui->marks_action = cfg[1].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -2241,7 +2286,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->dragy = y;
         ui->cur_visible = false;
 
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if ((button == LEFT_DRAG || button == RIGHT_DRAG) &&
@@ -2271,17 +2316,17 @@ drag_dropped:
     ui->highlight_region = -1;
 
     if (r < 0)
-        return UI_UPDATE; 
+        return MOVE_UI_UPDATE; 
 
     if (state->map->immutable[r])
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
 
     if ((state->colouring[r] == c && state->pencil[r] == p) && !(c == -1 && p >= 0))
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
 
     if (alt_button) {
         if (state->colouring[r] >= 0) {
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         } else if (c >= 0) {
             /* p = state->pencil[r] ^ (1 << c); */
             p = (1 << c);
@@ -2310,7 +2355,7 @@ drag_dropped:
             bufp += sprintf(bufp, ";p%c:%d", (int)('0' + i), r);
     }
     else {
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     return dupstr(buf+1);
@@ -2318,7 +2363,7 @@ drag_dropped:
 
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int n = state->p.n;
     game_state *ret = dup_game(state);
@@ -2328,19 +2373,22 @@ static game_state *execute_move(const game_state *state, const char *move)
         for (i = 0; i < ret->map->n; i++) {
             if (ret->colouring[i] == -1) {
                 ret->pencil[i] = 15;
-                for (j = graph_vertex_start(state->map->graph, state->map->n,
-                         state->map->ngraph, i);
-                     (j < state->map->ngraph) && 
-                     (state->map->graph[j] < state->map->n*(i+1));
-                     j++) {
-                    k = state->map->graph[j] - i*state->map->n;
-                    if (ret->colouring[k] >= 0)
-                        ret->pencil[i] &= ~(1 << ret->colouring[k]);
+                if (ui && ui->marks_action == 1)
+                    for (j = graph_vertex_start(state->map->graph, state->map->n,
+                             state->map->ngraph, i);
+                         (j < state->map->ngraph) && 
+                         (state->map->graph[j] < state->map->n*(i+1));
+                         j++) {
+                        k = state->map->graph[j] - i*state->map->n;
+                        if (ret->colouring[k] >= 0)
+                            ret->pencil[i] &= ~(1 << ret->colouring[k]);
                 }
             }
         }
         return ret;
     }
+
+    ret->cheated = ret->completed = false;
 
     while (*move) {
         bool pencil = false;
@@ -2418,7 +2466,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -2773,6 +2821,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int w = state->p.w, h = state->p.h, wh = w*h, n = state->p.n;
     int x, y, i;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     ds->drag_visible = false;
 
     if (!ds->started) {
@@ -2891,11 +2946,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame map
 #endif
@@ -2906,7 +2956,7 @@ static const char rules[] = "You are given a map consisting of a number of regio
 const struct game thegame = {
     "Map", "games.map", "map", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -2919,13 +2969,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     20, game_compute_size, game_set_size,
@@ -2935,12 +2987,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,                       /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

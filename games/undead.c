@@ -1478,7 +1478,7 @@ static int path_cmp(const void *a, const void *b) {
 
 static char *new_game_desc(const game_params *params, random_state *rs,
                            char **aux, bool interactive) {
-    int i,count,c,w,h,r,p,g;
+    int count,c,w,h,r,p,g;
     game_state *new;
 
     /* Variables for puzzle generation algorithm */
@@ -1496,7 +1496,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     char *e;
     char *desc;
 
-    i = 0;
     while (true) {
         new = new_state(params);
         abort = false;
@@ -1534,7 +1533,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         /* Monsters / Mirrors ratio should be balanced */
         ratio = (float)new->common->num_total /
             (float)(new->common->params.w * new->common->params.h);
-        if (ratio < 0.48 || ratio > 0.78) {
+        if (ratio < 0.48F || ratio > 0.78F) {
             free_game(new);
             continue;
         }
@@ -1717,7 +1716,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
         if (new->common->params.diff != determine_difficulty(new, sol)) {
             free_game(new);
-            i++;
             continue;
         }
 
@@ -1730,7 +1728,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         /* If puzzle is not solvable or does not satisfy the desired
          * difficulty level, free memory and start from scratch */
         free_game(new);
-        i++;
     }
 
     /* We have a valid puzzle! */
@@ -1790,20 +1787,6 @@ static void num2grid(int num, int width, int height, int *x, int *y) {
     *x = 1+(num%width);
     *y = 1+(num/width);
     return;
-}
-
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    key_label *keys = snewn(5, key_label);
-    *nkeys = 5;
-
-    keys[0].button = 'G';  keys[0].label = "Ghost";
-    keys[1].button = 'V';  keys[1].label = "Vampire";
-    keys[2].button = 'Z';  keys[2].label = "Zombie";
-    keys[3].button = '\b'; keys[3].label = NULL;
-    keys[4].button = '+';  keys[4].label = NULL;
-
-    return keys;
 }
 
 static game_state *new_game(midend *me, const game_params *params,
@@ -2041,14 +2024,18 @@ static void free_ui(game_ui *ui) {
     return;
 }
 
-static char *encode_ui(const game_ui *ui)
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
 {
-    return NULL;
-}
+    key_label *keys = snewn(5, key_label);
+    *nkeys = 5;
 
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-    return;
+    keys[0].button = 'G';  keys[0].label = "Ghost";
+    keys[1].button = 'V';  keys[1].label = "Vampire";
+    keys[2].button = 'Z';  keys[2].label = "Zombie";
+    keys[3].button = '\b'; keys[3].label = NULL;
+    keys[4].button = '+';  keys[4].label = NULL;
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -2064,8 +2051,13 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
     }
 }
 
-static bool is_key_highlighted(const game_ui *ui, char c) {
-    return (c == ui->hhint);
+static const char *current_key_label(const game_ui *ui,
+                                     const game_state *state, int button){
+    if ((button != 'G') && 
+        (button != 'V') && 
+        (button != 'Z') && 
+        (button != '\b')) return "";
+    return (button == ui->hhint) ? "H" : "E";
 }
 
 struct game_drawstate {
@@ -2189,7 +2181,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (!ui->hshow && (button == 'G' || button == 'V' || button == 'Z' || button == '\b')) {
         if (ui->hhint == button) ui->hhint = ' ';
         else ui->hhint = button;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (gx > 0 && gx < ds->w+1 && gy > 0 && gy < ds->h+1) {
@@ -2213,7 +2205,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                         ui->hcursor = false;
                         ui->hx = gx; ui->hy = gy;
                     }
-                    return UI_UPDATE;
+                    return MOVE_UI_UPDATE;
                 }
                 else if (button == RIGHT_BUTTON && g == 7) {
                     if (ui->hhint != ' ') {
@@ -2224,7 +2216,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                     ui->hpencil = true;
                     ui->hcursor = false;
                     ui->hx = gx; ui->hy = gy;
-                    return UI_UPDATE;
+                    return MOVE_UI_UPDATE;
                 }
                 else if (button == LEFT_DRAG) {
                     ui->hdrag = true;
@@ -2238,14 +2230,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             ui->hpencil = false;
                             ui->hcursor = false;
                             ui->hx = 0; ui->hy = 0;
-                            return UI_UPDATE;
+                            return MOVE_UI_UPDATE;
                         }
                         else {
                             ui->hshow = true;
                             ui->hpencil = false;
                             ui->hcursor = false;
                             ui->hx = gx; ui->hy = gy;
-                            return UI_UPDATE;
+                            return MOVE_UI_UPDATE;
                         }
                     }
                     else {
@@ -2253,7 +2245,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                         ui->hpencil = false;
                         ui->hcursor = false;
                         ui->hx = gx; ui->hy = gy;
-                        return UI_UPDATE;
+                        return MOVE_UI_UPDATE;
                     }
                 }
                 else if (button == RIGHT_BUTTON) {
@@ -2262,7 +2254,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                         ui->hpencil = true;
                         ui->hcursor = false;
                         ui->hx = gx; ui->hy = gy;
-                        return UI_UPDATE;
+                        return MOVE_UI_UPDATE;
                     }
                     else {
                         if (gx == ui->hx && gy == ui->hy) {
@@ -2270,14 +2262,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             ui->hpencil = false;
                             ui->hcursor = false;
                             ui->hx = 0; ui->hy = 0;
-                            return UI_UPDATE;
+                            return MOVE_UI_UPDATE;
                         }
                         else if (g == 7) {
                             ui->hshow = true;
                             ui->hpencil = true;
                             ui->hcursor = false;
                             ui->hx = gx; ui->hy = gy;
-                            return UI_UPDATE;
+                            return MOVE_UI_UPDATE;
                         }
                     }
                 }
@@ -2292,10 +2284,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->hpencil = false;
         ui->hhint = ' ';
         ui->hdrag = false;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
 static bool check_numbers_draw(game_state *state, int *guess) {
@@ -2420,7 +2412,7 @@ static bool check_path_solution(game_state *state, int p) {
     return correct;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int x,y,n,p,i;
     char c;
@@ -2464,7 +2456,7 @@ static game_state *execute_move(const game_state *state, const char *move)
              * approach of starting off in that state and eliminating
              * things.
              */
-            for (i = 0; i < ret->common->wh; i++)
+            for (i = 0; i < ret->common->num_total; i++)
                 if (ret->guess[i] == 7)
                     ret->pencils[i] = 7;
             move++;
@@ -2487,8 +2479,8 @@ static game_state *execute_move(const game_state *state, const char *move)
         if (!(ret->guess[i] == 1 || ret->guess[i] == 2 ||
               ret->guess[i] == 4)) correct = false;
 
-    if (correct && !solver) ret->solved = true;
-    if (solver) ret->cheated = true;
+    ret->solved = correct;
+    ret->cheated = solver;
 
     return ret;
 }
@@ -2500,7 +2492,7 @@ static game_state *execute_move(const game_state *state, const char *move)
 #define PREFERRED_TILE_SIZE 64
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -2818,7 +2810,7 @@ static void draw_path_hint(drawing *dr, game_drawstate *ds,
                            const struct game_params *params,
                            int hint_index, int hint) {
     int x, y, color, dx, dy, text_dx, text_dy, text_size;
-    char buf[4];
+    char buf[12];
 
     if (ds->hints_done[hint_index])
         color = COL_DONE;
@@ -2955,6 +2947,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int xi, c;
     bool stale, hchanged;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->cheated ? "Auto-solved." :
+            state->solved  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     /* Draw static grid components at startup */
     if (!ds->started) {
         draw_rect(dr, BORDER+TILESIZE-1, BORDER+2*TILESIZE-1,
@@ -3073,11 +3072,6 @@ static int game_status(const game_state *state)
     return state->solved;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame undead
 #endif
@@ -3094,7 +3088,7 @@ static const char rules[] = "You are given a grid of squares, some of which cont
 const struct game thegame = {
     "Undead", "games.undead", "undead", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -3107,13 +3101,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
+    current_key_label,
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -3123,12 +3119,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    is_key_highlighted,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                 /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,                     /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

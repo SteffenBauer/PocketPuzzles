@@ -70,14 +70,14 @@ static char const *const bricks_diffnames[] = { DIFFLIST(TITLE) };
 static char const bricks_diffchars[] = DIFFLIST(ENCODE);
 
 const static struct game_params bricks_presets[] = {
-    { 4,  5, DIFF_EASY },
-    { 4,  5, DIFF_NORMAL },
-    { 6,  7, DIFF_EASY },
-    { 6,  7, DIFF_NORMAL },
-    { 6,  7, DIFF_TRICKY },
-    { 8, 10, DIFF_EASY },
-    { 8, 10, DIFF_NORMAL },
-    { 8, 10, DIFF_TRICKY },
+    { 5,  5, DIFF_EASY },
+    { 5,  5, DIFF_NORMAL },
+    { 7,  7, DIFF_EASY },
+    { 7,  7, DIFF_NORMAL },
+    { 7,  7, DIFF_TRICKY },
+    { 8,  8, DIFF_NORMAL },
+    { 8,  8, DIFF_TRICKY },
+    { 10, 10, DIFF_TRICKY },
 };
 
 #define DEFAULT_PRESET 0
@@ -237,11 +237,10 @@ static char bricks_validate_threes(int w, int h, cell *grid)
 
     /* Check for any three in a row, and mark errors accordingly */
     for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
+        for (x = 1; x < w-1; x++) {
             int i1 = y * w + x-1;
             int i2 = y * w + x;
             int i3 = y * w + x+1;
-
             if ((grid[i1] & COL_MASK) == F_SHADE &&
                 (grid[i2] & COL_MASK) == F_SHADE &&
                 (grid[i3] & COL_MASK) == F_SHADE) {
@@ -502,7 +501,7 @@ static game_state *dup_game(const game_state *state)
 {
     int w = state->w;
     int h = state->h;
-    
+
     game_state *ret = snew(game_state);
 
     ret->w = w;
@@ -631,7 +630,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     cell n;
     int result;
 
-    bricks_solve_game(solved, DIFF_TRICKY, NULL, true, false);
+    bricks_solve_game(solved, DIFF_TRICKY, NULL, true, true);
 
     result = bricks_validate(w, h, solved->grid, false);
 
@@ -678,10 +677,10 @@ static void bricks_fill_grid(game_state *state, random_state *rs)
             int i2 = (y+1) * w + x-1;
             int i3 = (y+1) * w + x;
 
-            cell n2 = x == 0 ? F_BOUND : state->grid[i2];
+            cell n2 = (x == 0 || y == h-1) ? F_BOUND : state->grid[i2];
             if(!(n2 & F_BOUND))
                 n2 &= COL_MASK;
-            cell n3 = state->grid[i3];
+            cell n3 = (y == h-1) ? F_BOUND : state->grid[i3];
             if(!(n3 & F_BOUND))
                 n3 &= COL_MASK;
 
@@ -809,7 +808,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     enum { RUN_NONE, RUN_BLANK, RUN_NUMBER } runtype = RUN_NONE;
     for(i = 0; i <= w*h; i++)
     {
-        n = state->grid[i];
+        n = (i == w*h) ? 0 : state->grid[i];
 
         if(runtype == RUN_BLANK && (i == w*h || !(n & COL_MASK)))
         {
@@ -858,21 +857,25 @@ struct game_ui
     cell dragtype;
     int *drag;
     int ndrags;
+    int click_mode;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
-    int i, w = state->w, s = w*state->h;
     game_ui *ret = snew(game_ui);
-
-    for (i = 0; i < s; i++)
-    {
-        if (state->grid[i] != F_BOUND) break;
-    }
-
     ret->ndrags = 0;
     ret->dragtype = 0;
-    ret->drag = snewn(s, int);
+    ret->click_mode = 0;
+    ret->drag = NULL;
+
+    if (state) {
+        int i, w = state->w, s = w*state->h;
+        for (i = 0; i < s; i++)
+        {
+            if (state->grid[i] != F_BOUND) break;
+        }
+        ret->drag = snewn(s, int);
+    }
 
     return ret;
 }
@@ -883,13 +886,28 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static config_item *get_prefs(game_ui *ui)
 {
-    return NULL;
+    config_item *ret;
+
+    ret = snewn(2, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Black/White:White/Black";
+    ret[0].u.choices.choicekws = ":black:white";
+    ret[0].u.choices.selected = ui->click_mode;
+
+    ret[1].name = NULL;
+    ret[1].type = C_END;
+
+    return ret;
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void set_prefs(game_ui *ui, const config_item *cfg)
 {
+    ui->click_mode = cfg[0].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -942,9 +960,9 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         cell old = state->grid[i];
         old &= COL_MASK;
 
-        if (button == LEFT_BUTTON)
+        if (button == ((ui->click_mode == 0) ? LEFT_BUTTON : RIGHT_BUTTON))
             ui->dragtype = (old == F_UNSHADE ? F_EMPTY : old == F_SHADE ? F_UNSHADE : F_SHADE);
-        else if (button == RIGHT_BUTTON)
+        else if (button == ((ui->click_mode == 0) ? RIGHT_BUTTON : LEFT_BUTTON))
             ui->dragtype = (old == F_UNSHADE ? F_SHADE : old == F_SHADE ? F_EMPTY : F_UNSHADE);
         else
             ui->dragtype = F_EMPTY;
@@ -953,7 +971,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (ui->dragtype || old)
             ui->drag[ui->ndrags++] = i;
 
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (IS_MOUSE_DRAG(button) && ui->dragtype)
@@ -972,7 +990,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         ui->drag[ui->ndrags++] = i;
 
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (IS_MOUSE_RELEASE(button) && ui->ndrags)
@@ -1002,13 +1020,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             return buf;
         
         sfree(buf);
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->w, h = state->h;
     int s = w * h;
@@ -1017,7 +1035,7 @@ static game_state *execute_move(const game_state *state, const char *move)
 
     game_state *ret = dup_game(state);
     const char *p = move;
-
+    ret->cheated = ret->completed = false;
     while (*p)
     {
         if (*p == 'S')
@@ -1065,7 +1083,7 @@ static game_state *execute_move(const game_state *state, const char *move)
             p++;
     }
 
-    if (bricks_validate(w, h, ret->grid, true) == STATUS_COMPLETE) ret->completed = true;
+    ret->completed = bricks_validate(w, h, ret->grid, true) == STATUS_COMPLETE;
     return ret;
 }
 
@@ -1074,7 +1092,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  * **************** */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     tilesize &= ~1;
     *x = (params->w+1) * tilesize;
@@ -1098,7 +1116,7 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
     tilesize &= ~1;
     ds->tilesize = tilesize;
     ds->thickness = max(2.0L, tilesize / 7.0L);
-    game_compute_size(params, tilesize, &ds->w, &ds->h);
+    game_compute_size(params, tilesize, NULL, &ds->w, &ds->h);
 
     game_set_offsets(params->h, tilesize, &ds->offsetx, &ds->offsety);
 }
@@ -1195,8 +1213,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int tx, ty, tx1, ty1, clipw;
     int i;
     cell n;
-    char buf[20];
+    char buf[48];
     int colour;
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if(ds->prevdrags >= ui->ndrags)
         memcpy(ds->grid, state->grid, w*h*sizeof(cell));
@@ -1323,11 +1346,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame bricks
 #endif
@@ -1342,7 +1360,7 @@ static const char rules[] = "Shade several cells in the grid while following the
 const struct game thegame = {
     "Bricks", "games.bricks", "bricks", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL,  /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1355,13 +1373,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     48, game_compute_size, game_set_size,
@@ -1371,12 +1391,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL, /*    is_key_highlighted */
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false, /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON, /* flags */
 };
 

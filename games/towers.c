@@ -106,12 +106,6 @@ struct clues {
     x = w, y = index-3*w; \
 } while (0)
 
-#ifdef STANDALONE_SOLVER
-static const char *const cluepos[] = {
-    "above column", "below column", "left of row", "right of row"
-};
-#endif
-
 struct game_state {
     game_params par;
     struct clues *clues;
@@ -264,9 +258,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
     int c, i, j, n, m, furthest;
     int start, step, cstart, cstep, clue, pos, cpos;
     int ret = 0;
-#ifdef STANDALONE_SOLVER
-    char prefix[256];
-#endif
 
     if (!ctx->started) {
     ctx->started = true;
@@ -287,16 +278,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
         pos = start + (ctx->clues[c]-1)*step;
         cpos = cstart + (ctx->clues[c]-1)*cstep;
         if (solver->cube[cpos*w+w-1]) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-            printf("%*sfacing clues on %s %d are maximal:\n",
-                   solver_recurse_depth*4, "",
-                   c>=2*w ? "row" : "column", c % w + 1);
-            printf("%*s  placing %d at (%d,%d)\n",
-                   solver_recurse_depth*4, "",
-                   w, pos%w+1, pos/w+1);
-            }
-#endif
             latin_solver_place(solver, pos%w, pos/w, w);
             ret = 1;
         } else {
@@ -339,14 +320,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
         }
     }
     if (clue == n+1 && furthest > 1) {
-#ifdef STANDALONE_SOLVER
-        if (solver_show_working)
-        sprintf(prefix, "%*sclue %s %d is nearly filled:\n",
-            solver_recurse_depth*4, "",
-            cluepos[c/w], c%w+1);
-        else
-        prefix[0] = '\0';           /* placate optimiser */
-#endif
         /*
          * We can already see an increasing sequence of the very
          * highest numbers, of length one less than that
@@ -368,14 +341,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
             continue;           /* skip this number, it's elsewhere */
         j--;
         if (solver->cube[cstart*w+i-1]) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-            printf("%s%*s  ruling out %d at (%d,%d)\n",
-                   prefix, solver_recurse_depth*4, "",
-                   i, start%w+1, start/w+1);
-            prefix[0] = '\0';
-            }
-#endif
             solver->cube[cstart*w+i-1] = 0;
             ret = 1;
         }
@@ -384,15 +349,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
 
     if (ret)
         return ret;
-
-#ifdef STANDALONE_SOLVER
-        if (solver_show_working)
-        sprintf(prefix, "%*slower bounds for clue %s %d:\n",
-            solver_recurse_depth*4, "",
-            cluepos[c/w], c%w+1);
-        else
-        prefix[0] = '\0';           /* placate optimiser */
-#endif
 
     i = 0;
     for (n = w; n > 0; n--) {
@@ -417,15 +373,6 @@ static int solver_easy(struct latin_solver *solver, void *vctx)
 
         for (j = 0; j < clue - i - 1; j++)
         if (solver->cube[(cstart + j*cstep)*w+n-1]) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-            int pos = start+j*step;
-            printf("%s%*s  ruling out %d at (%d,%d)\n",
-                   prefix, solver_recurse_depth*4, "",
-                   n, pos%w+1, pos/w+1);
-            prefix[0] = '\0';
-            }
-#endif
             solver->cube[(cstart + j*cstep)*w+n-1] = 0;
             ret = 1;
         }
@@ -445,9 +392,6 @@ static int solver_hard(struct latin_solver *solver, void *vctx)
     int w = ctx->w;
     int c, i, j, n, best, clue, start, step, ret;
     long bitmap;
-#ifdef STANDALONE_SOLVER
-    char prefix[256];
-#endif
 
     /*
      * Go over every clue analysing all possibilities.
@@ -529,15 +473,6 @@ static int solver_hard(struct latin_solver *solver, void *vctx)
         }
     }
 
-#ifdef STANDALONE_SOLVER
-    if (solver_show_working)
-        sprintf(prefix, "%*sexhaustive analysis of clue %s %d:\n",
-            solver_recurse_depth*4, "",
-            cluepos[c/w], c%w+1);
-    else
-        prefix[0] = '\0';           /* placate optimiser */
-#endif
-
     ret = 0;
 
     for (i = 0; i < w; i++) {
@@ -545,14 +480,6 @@ static int solver_hard(struct latin_solver *solver, void *vctx)
         for (j = 1; j <= w; j++) {
         if (solver->cube[pos*w+j-1] &&
             !(ctx->iscratch[i] & (1L << j))) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-            printf("%s%*s  ruling out %d at (%d,%d)\n",
-                   prefix, solver_recurse_depth*4, "",
-                   j, pos/w+1, pos%w+1);
-            prefix[0] = '\0';
-            }
-#endif
             solver->cube[pos*w+j-1] = 0;
             ret = 1;
         }
@@ -581,9 +508,9 @@ static bool towers_valid(struct latin_solver *solver, void *vctx)
     int w = ctx->w;
     int c, i, n, best, clue, start, step;
     for (c = 0; c < 4*w; c++) {
-    clue = ctx->clues[c];
-    if (!clue)
-        continue;
+        clue = ctx->clues[c];
+        if (!clue)
+            continue;
 
         STARTSTEP(start, step, c, w);
         n = best = 0;
@@ -595,12 +522,6 @@ static bool towers_valid(struct latin_solver *solver, void *vctx)
         }
 
         if (n != clue) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working)
-        printf("%*sclue %s %d is violated\n",
-            solver_recurse_depth*4, "",
-            cluepos[c/w], c%w+1);
-#endif
             return false;
         }
     }
@@ -897,27 +818,6 @@ static const char *validate_desc(const game_params *params, const char *desc)
     return NULL;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    int w = params->w;
-    key_label *keys = snewn(w+2, key_label);
-    *nkeys = w + 2;
-
-    for (i = 0; i < w; i++) {
-    if (i<9) keys[i].button = '1' + i;
-    else keys[i].button = 'a' + i - 9;
-
-        keys[i].label = NULL;
-    }
-    keys[w].button = '\b';
-    keys[w].label = NULL;
-    keys[w+1].button = '+';
-    keys[w+1].label = "Add";
-
-    return keys;
-}
-
 static game_state *new_game(midend *me, const game_params *params,
                             const char *desc)
 {
@@ -1107,13 +1007,25 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
 {
-    return NULL;
-}
+    int i;
+    int w = params->w;
+    key_label *keys = snewn(w+2, key_label);
+    *nkeys = w + 2;
 
-static void decode_ui(game_ui *ui, const char *encoding)
-{
+    for (i = 0; i < w; i++) {
+    if (i<9) keys[i].button = '1' + i;
+    else keys[i].button = 'a' + i - 9;
+
+        keys[i].label = NULL;
+    }
+    keys[w].button = '\b';
+    keys[w].label = NULL;
+    keys[w+1].button = '+';
+    keys[w+1].label = "Add";
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1131,9 +1043,11 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
         ui->hshow = false;
     }
 }
-static bool is_key_highlighted(const game_ui *ui, char c) {
-    if (c == '\b' && ui->hhint == 0) return true;
-    return ((c-'0') == ui->hhint);
+static const char *current_key_label(const game_ui *ui,
+                                     const game_state *state, int button){
+    if (button == '\b') return (ui->hhint == 0) ? "H" : "E";
+    if ((button < '0') || (button > '9')) return "";
+    return ((button-'0') == ui->hhint) ? "H" : "E";
 }
 
 #define PREFERRED_TILESIZE 48
@@ -1344,7 +1258,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hpencil = false;
             }
             ui->hcursor = false;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
         else if (button == RIGHT_BUTTON) {
             if ((ui->hhint >= 0) && !state->clues->immutable[ty*w+tx] &&
@@ -1368,7 +1282,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hcursor = false;
             ui->hhint = -1;
             ui->hdrag = false;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
         else if (button == LEFT_DRAG) {
             ui->hdrag = true;
@@ -1381,7 +1295,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->hhint = -1;
         ui->hdrag = false;
         ui->hshow = false;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (ui->hshow && ((button >= '0' && button <= '9' && button - '0' <= w) ||
@@ -1417,20 +1331,21 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         if (ui->hhint == n) ui->hhint = -1;
         else ui->hhint = n;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
     if (button == '+')
         return dupstr("M");
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *from, const char *move)
+static game_state *execute_move(const game_state *from, const game_ui *ui, const char *move)
 {
     int w = from->par.w, a = w*w;
     game_state *ret = dup_game(from);
     int x, y, i, n;
 
+    ret->cheated = false;
     if (move[0] == 'S') {
         ret->completed = ret->cheated = true;
 
@@ -1457,9 +1372,7 @@ static game_state *execute_move(const game_state *from, const char *move)
             ret->pencil[y*w+x] ^= 1L << n;
         } else {
             ret->grid[y*w+x] = ret->grid[y*w+x] == n ? 0 : n;
-
-            if (!ret->completed && !check_errors(ret, NULL))
-                ret->completed = true;
+            ret->completed = !check_errors(ret, NULL);
         }
         return ret;
     } else if (move[0] == 'M') {
@@ -1494,7 +1407,7 @@ static game_state *execute_move(const game_state *from, const char *move)
 #define SIZE(w) ((w) * TILESIZE + 2*BORDER)
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -1536,7 +1449,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     int i;
 
     ds->tilesize = 0;
-    ds->three_d = !getenv("TOWERS_2D");
+    ds->three_d = true;
     ds->tiles = snewn((w+2)*(w+2), long);
     ds->drawn = snewn((w+2)*(w+2)*4, long);
     for (i = 0; i < (w+2)*(w+2)*4; i++)
@@ -1750,6 +1663,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int w = state->par.w /*, a = w*w */;
     int i, x, y;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     check_errors(state, ds->errtmp);
 
     /*
@@ -1852,13 +1772,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    if (state->completed)
-    return false;
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame towers
 #endif
@@ -1872,7 +1785,7 @@ static const char rules[] = "On each square of the grid you can build a tower, w
 const struct game thegame = {
     "Towers", "games.towers", "towers", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1885,13 +1798,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
+    current_key_label,
     interpret_move,
     execute_move,
     PREFERRED_TILESIZE, game_compute_size, game_set_size,
@@ -1901,12 +1816,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    is_key_highlighted,
+    NULL, /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,  /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

@@ -67,7 +67,7 @@ struct game_params {
 typedef struct game_clues {
     int w, h;
     signed char *clues;
-    int *tmpdsf;
+    DSF *tmpdsf;
     int refcount;
 } game_clues;
 
@@ -222,7 +222,7 @@ static const char *validate_params(const game_params *params, bool full)
 }
 
 struct solver_scratch_creek {
-    int *whitedsf;
+    DSF *whitedsf;
     signed char *tmpsoln;
     const signed char *clues;
     int depth;
@@ -230,7 +230,7 @@ struct solver_scratch_creek {
 
 static struct solver_scratch_creek *new_scratch_creek(int w, int h) {
     struct solver_scratch_creek *ret = snew(struct solver_scratch_creek);
-    ret->whitedsf = snewn(w*h, int);
+    ret->whitedsf = dsf_new(w*h);
     ret->tmpsoln = snewn(w*h, signed char);
     ret->depth = 0;
     return ret;
@@ -239,8 +239,8 @@ static struct solver_scratch_creek *new_scratch_creek(int w, int h) {
 static struct solver_scratch_creek *dup_scratch_creek(int w, int h, const struct solver_scratch_creek *scc) {
     struct solver_scratch_creek *ret = snew(struct solver_scratch_creek);
     if (scc->whitedsf != NULL) {
-        ret->whitedsf = snewn(w*h, int);
-        memcpy(ret->whitedsf, scc->whitedsf, w*h*sizeof(int));
+        ret->whitedsf = dsf_new(w*h);
+        dsf_copy(ret->whitedsf, scc->whitedsf);
     }     
     
     if (scc->tmpsoln != NULL) {
@@ -253,7 +253,7 @@ static struct solver_scratch_creek *dup_scratch_creek(int w, int h, const struct
 }
 
 static void free_scratch_creek(struct solver_scratch_creek *scc) {
-    sfree(scc->whitedsf);
+    dsf_free(scc->whitedsf);
     sfree(scc->tmpsoln);
     sfree(scc);
 }
@@ -284,12 +284,12 @@ static int vertex_degree_creek(int w, int h, signed char *soln, int x, int y,
     return anti ? ret + (4-neigh) : ret;
 }
 
-static bool check_connectedness_creek(int w, int h, int *dsf,
+static bool check_connectedness_creek(int w, int h, DSF *dsf,
                      signed char *soln, const signed char *clues, int level) {
     int x, y, i, first_white = -1;
     int W = w+1, H = h+1;
     
-    dsf_init(dsf, w*h);
+    dsf_reinit(dsf);
     
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
@@ -356,7 +356,7 @@ static bool check_connectedness_creek(int w, int h, int *dsf,
         for (y = 0; y < h; y++) {
             for (x = 0; x < w; x++) {
                 if (soln[y*w+x] < 0) {
-                    if (dsf_canonify(dsf, first_white) != dsf_canonify(dsf, y*w+x)) {
+                    if (!dsf_equivalent(dsf, first_white, y*w+x)) {
                         return false;
                     }
                 }
@@ -391,7 +391,7 @@ static bool check_connectedness_creek(int w, int h, int *dsf,
                     co = 0;
                     for (i=0;i<nneigh;i++) {
                         if (soln[neighbours[i]] <= 0)
-                            if (dsf_canonify(dsf, first_white) == dsf_canonify(dsf, neighbours[i]))
+                            if (dsf_equivalent(dsf, first_white, neighbours[i]))
                                 co++;
                     }
                     if (co < nneigh-c)
@@ -408,7 +408,7 @@ static bool check_completed_creek(int w, int h,
            const signed char *clues,
            signed char *soln,
            unsigned char *errors,
-           int *dsf)
+           DSF *dsf)
 {
     int W = w+1, H = h+1;
     int x, y;
@@ -458,7 +458,7 @@ static void initialize_solver_creek(int w, int h, const signed char *clues,
                       int difficulty) {
     memset(soln, 0, w*h);
     scc->clues = clues;
-    dsf_init(scc->whitedsf, w*h);
+    dsf_reinit(scc->whitedsf);
     return;
 }
                       
@@ -621,7 +621,7 @@ static int creek_solve(int w, int h, const signed char *clues,
 
                         if (c == 2) {
                             tscc = dup_scratch_creek(w,h,scc);
-                            memcpy(scc->tmpsoln, soln, w*h*sizeof(signed char));                    
+                            memcpy(scc->tmpsoln, soln, w*h*sizeof(signed char));
                             tscc->depth = 1;
                             j = neighbours[i];
                             if (soln[j] == 0) {
@@ -682,7 +682,7 @@ static int creek_solve(int w, int h, const signed char *clues,
             }
         
         if (firstwhite >= 0) {
-            dsf_init(scc->whitedsf, w*h);
+            dsf_reinit(scc->whitedsf);
             for (i=0;i<w*h;i++) {
                 if (soln[i] == 1) continue;
                 x = i % w; y = i / w;
@@ -694,7 +694,7 @@ static int creek_solve(int w, int h, const signed char *clues,
             
             for (i=0;i<w*h;i++) {
                 if (soln[i] == 0) {
-                    if (dsf_canonify(scc->whitedsf, i) != dsf_canonify(scc->whitedsf, firstwhite)) {
+                    if (!dsf_equivalent(scc->whitedsf, i, firstwhite)) {
                         soln[i] = 1;
                         done_something = true; 
                     }
@@ -726,11 +726,12 @@ static int creek_solve(int w, int h, const signed char *clues,
 static void creek_generate(int w, int h, signed char *soln, random_state *rs)
 {
     int i;
-    int *connected, *whites, nw;
+    int *whites, nw;
+    DSF *connected;
     int ridx;
 
     memset(soln, -1, w*h);
-    connected = snew_dsf(w*h);
+    connected = dsf_new(w*h);
     whites = snewn(w*h, int);
 
     while(true) {
@@ -752,7 +753,7 @@ static void creek_generate(int w, int h, signed char *soln, random_state *rs)
     }
 
     sfree(whites);
-    sfree(connected);
+    dsf_free(connected);
 }
 
 static char *new_game_desc(const game_params *params, random_state *rs,
@@ -949,7 +950,7 @@ static game_state *new_game(midend *me, const game_params *params,
     state->clues->h = h;
     state->clues->clues = snewn(W*H, signed char);
     state->clues->refcount = 1;
-    state->clues->tmpdsf = snewn(W*H*2+W+H, int);
+    state->clues->tmpdsf = dsf_new(W*H*2+W+H);
     memset(state->clues->clues, -1, W*H);
     while (*desc) {
         int n = *desc++;
@@ -992,7 +993,7 @@ static void free_game(game_state *state)
     assert(state->clues);
     if (--state->clues->refcount <= 0) {
         sfree(state->clues->clues);
-        sfree(state->clues->tmpdsf);
+        dsf_free(state->clues->tmpdsf);
         sfree(state->clues);
     }
     sfree(state);
@@ -1057,14 +1058,16 @@ struct game_ui {
     bool *seln;
     int dx, dy;
     DRAGMODE mode;
+    int click_mode;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
     game_ui *ui = snew(game_ui);
-    ui->seln = snewn(state->p.w * state->p.h, bool);
+    ui->seln = state ? snewn(state->p.w * state->p.h, bool) : NULL;
     ui->is_drag = false;
     ui->dx = ui->dy = -1;
+    ui->click_mode = 0;
     return ui;
 }
 
@@ -1074,13 +1077,28 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static config_item *get_prefs(game_ui *ui)
 {
-    return NULL;
+    config_item *ret;
+
+    ret = snewn(2, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Black/White:White/Black";
+    ret[0].u.choices.choicekws = ":black:white";
+    ret[0].u.choices.selected = ui->click_mode;
+
+    ret[1].name = NULL;
+    ret[1].type = C_END;
+
+    return ret;
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void set_prefs(game_ui *ui, const config_item *cfg)
 {
+    ui->click_mode = cfg[0].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1115,13 +1133,15 @@ struct game_drawstate {
     long *todraw;
 };
 
-static DRAGMODE get_dragmode(int button, int cell, bool swapped) {
+static DRAGMODE get_dragmode(int button, int cell, const game_ui *ui, bool swapped) {
     if (button == LEFT_DRAG) button = LEFT_BUTTON;
     if (button == RIGHT_DRAG) button = RIGHT_BUTTON;
-    if (button == LEFT_BUTTON && cell == 0) return BLACK;
-    if (button == LEFT_BUTTON && cell == 1) return WHITE;
-    if (button == RIGHT_BUTTON && cell == 0) return WHITE;
-    if (button == RIGHT_BUTTON && cell == -1) return BLACK;
+    if (button == LEFT_BUTTON && cell == 0) return (ui->click_mode == 0) ? BLACK : WHITE;
+    if (button == LEFT_BUTTON && cell == 1) return (ui->click_mode == 0) ? WHITE : CLEAR;
+    if (button == LEFT_BUTTON && cell == -1) return (ui->click_mode == 0) ? CLEAR : BLACK;
+    if (button == RIGHT_BUTTON && cell == 0) return (ui->click_mode == 0) ? WHITE : BLACK;
+    if (button == RIGHT_BUTTON && cell == 1) return (ui->click_mode == 0) ? CLEAR : WHITE;
+    if (button == RIGHT_BUTTON && cell == -1) return (ui->click_mode == 0) ? BLACK : CLEAR;
     return CLEAR;
 }
 
@@ -1134,44 +1154,51 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     x = FROMCOORD(x);
     y = FROMCOORD(y);
 
-    if (x < 0 || y < 0 || x >= w || y >= h) {
-        ui->is_drag = false;
-        ui->dx = ui->dy = -1;
-        memset(ui->seln, false, w*h);
-        return UI_UPDATE;
-    }
-
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
-        ui->mode = get_dragmode(button, state->soln[y*w+x], swapped);
+        if (x < 0 || y < 0 || x >= w || y >= h) {
+            ui->is_drag = false;
+            ui->dx = ui->dy = -1;
+            memset(ui->seln, false, (unsigned int)(w*h));
+            return MOVE_UI_UPDATE;
+        }
+        ui->mode = get_dragmode(button, state->soln[y*w+x], ui, swapped);
         ui->is_drag = true;
         ui->dx = x; ui->dy = y;
         memset(ui->seln, false, w*h);
         ui->seln[y*w+x] = true;
-        return UI_UPDATE;
-    } else if (button == LEFT_DRAG || button == RIGHT_DRAG) {
+        return MOVE_UI_UPDATE;
+    } else if ((button == LEFT_DRAG || button == RIGHT_DRAG) &&
+               (x >= 0 && y >= 0 && x < w && y < h)) {
         if (!ui->is_drag) {
             ui->is_drag = true;
-            ui->mode = get_dragmode(button, state->soln[y*w+x], swapped);
+            ui->dx = x; ui->dy = y;
+            memset(ui->seln, false, w*h);
+            ui->seln[y*w+x] = true;
+            ui->mode = get_dragmode(button, state->soln[y*w+x], ui, swapped);
+            return MOVE_UI_UPDATE;
         }
         if (x != ui->dx || y != ui->dy) {
             if (!ui->seln[y*w+x]) {
-                if (((ui->mode == BLACK || ui->mode == WHITE) && state->soln[y*w+x] == 0) ||
-                     (ui->mode == CLEAR && state->soln[y*w+x] != 0)) {
+                if ((ui->mode == BLACK && state->soln[y*w+x] != 1) ||
+                    (ui->mode == WHITE && state->soln[y*w+x] != -1) ||
+                    (ui->mode == CLEAR && state->soln[y*w+x] != 0)) {
                      ui->seln[y*w+x] = true;
                      ui->dx = x; ui->dy = y;
-                     return UI_UPDATE;
+                     return MOVE_UI_UPDATE;
                 }
             } else if (ui->seln[ui->dy*w+ui->dx]){
-                if (((ui->mode == BLACK || ui->mode == WHITE) && state->soln[ui->dy*w+ui->dx] == 0) ||
-                     (ui->mode == CLEAR && state->soln[ui->dy*w+ui->dx] != 0)) {
+                if ((ui->mode == BLACK && state->soln[ui->dy*w+ui->dx] != 1) ||
+                    (ui->mode == WHITE && state->soln[ui->dy*w+ui->dx] != -1) ||
+                    (ui->mode == CLEAR && state->soln[ui->dy*w+ui->dx] != 0)) {
                      ui->seln[ui->dy*w+ui->dx] = false;
                      ui->dx = x; ui->dy = y;
-                     return UI_UPDATE;
+                     return MOVE_UI_UPDATE;
                 }
             }
             return NULL;
         }
-    } else if (button == LEFT_RELEASE || button == RIGHT_RELEASE) {
+    } else if (button == LEFT_RELEASE || button == RIGHT_RELEASE ||
+               x < 0 || y < 0 || x >= w || y >= h) {
         int i, tmplen, buflen, bufsize;
         char *buf;
         const char *sep;
@@ -1202,25 +1229,26 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
         ui->is_drag = false;
         ui->dx = ui->dy = -1;
-        memset(ui->seln, false, w*h);
+        memset(ui->seln, false, (unsigned int)(w*h));
 
         if (buflen == 0) {
             sfree(buf);
-            return UI_UPDATE;          /* drag was terminated */
+            return MOVE_UI_UPDATE;          /* drag was terminated */
         } else {
             buf[buflen] = '\0';
             return buf;
         }
     }
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->p.w, h = state->p.h;
     char c;
     int x, y, n;
     game_state *ret = dup_game(state);
+    ret->used_solve = ret->completed = false;
     while (*move) {
         c = *move;
         if (c == 'S') {
@@ -1247,12 +1275,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         }
     }
 
-    /*
-     * We never clear the `completed' flag, but we must always
-     * re-run the completion check because it also highlights
-     * errors in the grid.
-     */
-    ret->completed = check_completed_creek(w, h, ret->clues->clues, ret->soln, ret->errors, ret->clues->tmpdsf) || ret->completed;
+    ret->completed = check_completed_creek(w, h, ret->clues->clues, ret->soln, ret->errors, ret->clues->tmpdsf);
     return ret;
 }
 
@@ -1261,7 +1284,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* fool the macros */
     struct dummy { int tilesize; } dummy, *ds = &dummy;
@@ -1398,6 +1421,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int w = state->p.w, h = state->p.h, W = w+1, H = h+1;
     int x, y;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     for (y = -1; y <= h; y++) {
         for (x = -1; x <= w; x++) {
@@ -1471,11 +1500,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame creek
 #endif
@@ -1489,7 +1513,7 @@ static const char rules[] = "You have a grid of squares, and some circles with c
 const struct game thegame = {
     "Creek", "games.creek", "creek", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL,  /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1502,13 +1526,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILESIZE, game_compute_size, game_set_size,
@@ -1518,12 +1544,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                             /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,                                 /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

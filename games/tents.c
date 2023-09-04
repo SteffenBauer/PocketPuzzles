@@ -974,172 +974,172 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
      */
 
     if (params->diff > DIFF_EASY && params->w <= 4 && params->h <= 4)
-    params->diff = DIFF_EASY;      /* downgrade to prevent tight loop */
+        params->diff = DIFF_EASY;      /* downgrade to prevent tight loop */
 
     while (1) {
-    /*
-     * Make a list of grid squares which we'll permute as we pick
-     * the tent locations.
-         *
-         * We'll also need to index all the potential tree squares,
-         * i.e. the ones adjacent to the tents.
-     */
-    for (i = 0; i < w*h; i++) {
-        order[i] = i;
-        treemap[i] = -1;
-        }
-
-    /*
-     * Place tents at random without making any two adjacent.
-     */
-    memset(grid, BLANK, w*h);
-    j = ntrees;
-        nr = 0;
-        /* Loop end condition: either j==0 (we've placed all the
-         * tents), or the number of grid squares we have yet to try
-         * is too few to fit the remaining tents into. */
-    for (i = 0; j > 0 && i+j <= w*h; i++) {
-            int which, x, y, d, tmp;
-        int dy, dx;
-            bool ok = true;
-
-            which = i + random_upto(rs, w*h - i);
-            tmp = order[which];
-            order[which] = order[i];
-            order[i] = tmp;
-
-        x = order[i] % w;
-            y = order[i] / w;
-
-        for (dy = -1; dy <= +1; dy++)
-        for (dx = -1; dx <= +1; dx++)
-            if (x+dx >= 0 && x+dx < w &&
-            y+dy >= 0 && y+dy < h &&
-            grid[(y+dy)*w+(x+dx)] == TENT)
-            ok = false;
-
-        if (ok) {
-        grid[order[i]] = TENT;
-                for (d = 1; d < MAXDIR; d++) {
-                    int x2 = x + dx(d), y2 = y + dy(d);
-                    if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h &&
-                        treemap[y2*w+x2] == -1) {
-                        treemap[y2*w+x2] = nr++;
-                    }
-                }
-        j--;
-        }
-    }
-    if (j > 0)
-        continue;               /* couldn't place all the tents */
-
-    /*
-     * Build up the graph for matching.c.
-     */
-        adjptr = adjdata;
-        nl = 0;
-    for (i = 0; i < w*h; i++) {
-        if (grid[i] == TENT) {
-                int d, x = i % w, y = i / w;
-                adjlists[nl] = adjptr;
-                for (d = 1; d < MAXDIR; d++) {
-                    int x2 = x + dx(d), y2 = y + dy(d);
-                    if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h) {
-                        assert(treemap[y2*w+x2] != -1);
-                        *adjptr++ = treemap[y2*w+x2];
+        /*
+         * Make a list of grid squares which we'll permute as we pick
+         * the tent locations.
+             *
+             * We'll also need to index all the potential tree squares,
+             * i.e. the ones adjacent to the tents.
+         */
+        for (i = 0; i < w*h; i++) {
+            order[i] = i;
+            treemap[i] = -1;
             }
-        }
-                adjsizes[nl] = adjptr - adjlists[nl];
-                nl++;
-        }
-    }
-
-    /*
-     * Call the matching algorithm to actually place the trees.
-     */
-    j = matching(ntrees, nr, adjlists, adjsizes, rs, NULL, outr);
-
-    if (j < ntrees)
-        continue;               /* couldn't place all the trees */
-
-    /*
-     * Fill in the trees in the grid, by cross-referencing treemap
-     * (which maps a grid square to its index as known to
-     * matching()) against the output from matching().
-         *
-         * Note that for these purposes we don't actually care _which_
-         * tent each potential tree square is assigned to - we only
-         * care whether it was assigned to any tent at all, in order
-         * to decide whether to put a tree in it.
-     */
-    for (i = 0; i < w*h; i++)
-            if (treemap[i] != -1 && outr[treemap[i]] != -1)
-        grid[i] = TREE;
-
-    /*
-     * I think it looks ugly if there isn't at least one of
-     * _something_ (tent or tree) in each row and each column
-     * of the grid. This doesn't give any information away
-     * since a completely empty row/column is instantly obvious
-     * from the clues (it has no trees and a zero).
-     */
-    for (i = 0; i < w; i++) {
-        for (j = 0; j < h; j++) {
-        if (grid[j*w+i] != BLANK)
-            break;           /* found something in this column */
-        }
-        if (j == h)
-        break;               /* found empty column */
-    }
-    if (i < w)
-        continue;               /* a column was empty */
-
-    for (j = 0; j < h; j++) {
-        for (i = 0; i < w; i++) {
-        if (grid[j*w+i] != BLANK)
-            break;           /* found something in this row */
-        }
-        if (i == w)
-        break;               /* found empty row */
-    }
-    if (j < h)
-        continue;               /* a row was empty */
-
-    /*
-     * Now set up the numbers round the edge.
-     */
-    for (i = 0; i < w; i++) {
-        int n = 0;
-        for (j = 0; j < h; j++)
-        if (grid[j*w+i] == TENT)
-            n++;
-        numbers[i] = n;
-    }
-    for (i = 0; i < h; i++) {
-        int n = 0;
-        for (j = 0; j < w; j++)
-        if (grid[i*w+j] == TENT)
-            n++;
-        numbers[w+i] = n;
-    }
-
-    /*
-     * And now actually solve the puzzle, to see whether it's
-     * unique and has the required difficulty.
-     */
-        for (i = 0; i < w*h; i++)
-            puzzle[i] = grid[i] == TREE ? TREE : BLANK;
-    i = tents_solve(w, h, puzzle, numbers, soln, sc, params->diff-1);
-    j = tents_solve(w, h, puzzle, numbers, soln, sc, params->diff);
 
         /*
-         * We expect solving with difficulty params->diff to have
-         * succeeded (otherwise the problem is too hard), and
-         * solving with diff-1 to have failed (otherwise it's too
-         * easy).
+         * Place tents at random without making any two adjacent.
          */
-    if (i == 2 && j == 1)
-        break;
+        memset(grid, BLANK, (unsigned int)(w*h));
+        j = ntrees;
+            nr = 0;
+            /* Loop end condition: either j==0 (we've placed all the
+             * tents), or the number of grid squares we have yet to try
+             * is too few to fit the remaining tents into. */
+        for (i = 0; j > 0 && i+j <= w*h; i++) {
+                int which, x, y, d, tmp;
+            int dy, dx;
+                bool ok = true;
+
+                which = i + random_upto(rs, w*h - i);
+                tmp = order[which];
+                order[which] = order[i];
+                order[i] = tmp;
+
+            x = order[i] % w;
+                y = order[i] / w;
+
+            for (dy = -1; dy <= +1; dy++)
+            for (dx = -1; dx <= +1; dx++)
+                if (x+dx >= 0 && x+dx < w &&
+                y+dy >= 0 && y+dy < h &&
+                grid[(y+dy)*w+(x+dx)] == TENT)
+                ok = false;
+
+            if (ok) {
+            grid[order[i]] = TENT;
+                    for (d = 1; d < MAXDIR; d++) {
+                        int x2 = x + dx(d), y2 = y + dy(d);
+                        if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h &&
+                            treemap[y2*w+x2] == -1) {
+                            treemap[y2*w+x2] = nr++;
+                        }
+                    }
+            j--;
+            }
+        }
+        if (j > 0)
+            continue;               /* couldn't place all the tents */
+
+        /*
+         * Build up the graph for matching.c.
+         */
+            adjptr = adjdata;
+            nl = 0;
+        for (i = 0; i < w*h; i++) {
+            if (grid[i] == TENT) {
+                    int d, x = i % w, y = i / w;
+                    adjlists[nl] = adjptr;
+                    for (d = 1; d < MAXDIR; d++) {
+                        int x2 = x + dx(d), y2 = y + dy(d);
+                        if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h) {
+                            assert(treemap[y2*w+x2] != -1);
+                            *adjptr++ = treemap[y2*w+x2];
+                }
+            }
+                    adjsizes[nl] = adjptr - adjlists[nl];
+                    nl++;
+            }
+        }
+
+        /*
+         * Call the matching algorithm to actually place the trees.
+         */
+        j = matching(ntrees, nr, adjlists, adjsizes, rs, NULL, outr);
+
+        if (j < ntrees)
+            continue;               /* couldn't place all the trees */
+
+        /*
+         * Fill in the trees in the grid, by cross-referencing treemap
+         * (which maps a grid square to its index as known to
+         * matching()) against the output from matching().
+             *
+             * Note that for these purposes we don't actually care _which_
+             * tent each potential tree square is assigned to - we only
+             * care whether it was assigned to any tent at all, in order
+             * to decide whether to put a tree in it.
+         */
+        for (i = 0; i < w*h; i++)
+                if (treemap[i] != -1 && outr[treemap[i]] != -1)
+            grid[i] = TREE;
+
+        /*
+         * I think it looks ugly if there isn't at least one of
+         * _something_ (tent or tree) in each row and each column
+         * of the grid. This doesn't give any information away
+         * since a completely empty row/column is instantly obvious
+         * from the clues (it has no trees and a zero).
+         */
+        for (i = 0; i < w; i++) {
+            for (j = 0; j < h; j++) {
+            if (grid[j*w+i] != BLANK)
+                break;           /* found something in this column */
+            }
+            if (j == h)
+            break;               /* found empty column */
+        }
+        if (i < w)
+            continue;               /* a column was empty */
+
+        for (j = 0; j < h; j++) {
+            for (i = 0; i < w; i++) {
+            if (grid[j*w+i] != BLANK)
+                break;           /* found something in this row */
+            }
+            if (i == w)
+            break;               /* found empty row */
+        }
+        if (j < h)
+            continue;               /* a row was empty */
+
+        /*
+         * Now set up the numbers round the edge.
+         */
+        for (i = 0; i < w; i++) {
+            int n = 0;
+            for (j = 0; j < h; j++)
+            if (grid[j*w+i] == TENT)
+                n++;
+            numbers[i] = n;
+        }
+        for (i = 0; i < h; i++) {
+            int n = 0;
+            for (j = 0; j < w; j++)
+            if (grid[i*w+j] == TENT)
+                n++;
+            numbers[w+i] = n;
+        }
+
+        /*
+         * And now actually solve the puzzle, to see whether it's
+         * unique and has the required difficulty.
+         */
+            for (i = 0; i < w*h; i++)
+                puzzle[i] = grid[i] == TREE ? TREE : BLANK;
+        i = tents_solve(w, h, puzzle, numbers, soln, sc, params->diff-1);
+        j = tents_solve(w, h, puzzle, numbers, soln, sc, params->diff);
+
+            /*
+             * We expect solving with difficulty params->diff to have
+             * succeeded (otherwise the problem is too hard), and
+             * solving with diff-1 to have failed (otherwise it's too
+             * easy).
+             */
+        if (i == 2 && j == 1)
+            break;
     }
 
     /*
@@ -1193,6 +1193,21 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
     return ret;
 }
 
+/*
+ * Grid description format:
+ * 
+ * _ = tree
+ * a = 1 BLANK then TREE
+ * ...
+ * y = 25 BLANKs then TREE
+ * z = 25 BLANKs
+ * ! = set previous square to TENT
+ * - = set previous square to NONTENT
+ *
+ * Last character must be one that would insert a tree as the first
+ * square after the grid.
+ */
+ 
 static const char *validate_desc(const game_params *params, const char *desc)
 {
     int w = params->w, h = params->h;
@@ -1200,15 +1215,16 @@ static const char *validate_desc(const game_params *params, const char *desc)
 
     area = 0;
     while (*desc && *desc != ',') {
-    if (*desc == '_')
+        if (*desc == '_')
             area++;
-    else if (*desc >= 'a' && *desc < 'z')
+        else if (*desc >= 'a' && *desc < 'z')
             area += *desc - 'a' + 2;
-    else if (*desc == 'z')
+        else if (*desc == 'z')
             area += 25;
-        else if (*desc == '!' || *desc == '-')
-            /* do nothing */;
-        else
+        else if (*desc == '!' || *desc == '-') {
+            if (area == 0 || area > w * h)
+                return "Tent or non-tent placed off the grid";
+        } else
             return "Invalid character in grid specification";
 
     desc++;
@@ -1400,15 +1416,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -1500,7 +1507,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->dsy = ui->dey = y;
         ui->drag_ok = true;
         ui->cdisp = false;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if ((IS_MOUSE_DRAG(button) || IS_MOUSE_RELEASE(button)) &&
@@ -1532,14 +1539,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
 
         if (IS_MOUSE_DRAG(button))
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
 
         /*
          * The drag has been released. Enact it.
          */
         if (!ui->drag_ok) {
             ui->drag_button = -1;
-            return UI_UPDATE;          /* drag was just cancelled */
+            return MOVE_UI_UPDATE;          /* drag was just cancelled */
         }
 
         xmin = min(ui->dsx, ui->dex);
@@ -1577,23 +1584,24 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         if (buflen == 0) {
             sfree(buf);
-            return UI_UPDATE;          /* drag was terminated */
+            return MOVE_UI_UPDATE;          /* drag was terminated */
         } else {
             buf[buflen] = '\0';
             return buf;
         }
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->p.w, h = state->p.h;
     char c;
     int x, y, m, n, i, j, pos;
     game_state *ret = dup_game(state);
 
+    ret->used_solve = false;
     while (*move) {
         c = *move;
         if (c == 'S') {
@@ -1643,11 +1651,10 @@ static game_state *execute_move(const game_state *state, const char *move)
     /*
      * Check for completion.
      */
+    ret->completed = false;
     for (i = n = m = 0; i < w*h; i++) {
-        if (ret->grid[i] == TENT)
-            n++;
-        else if (ret->grid[i] == TREE)
-            m++;
+        if (ret->grid[i] == TENT)       n++;
+        else if (ret->grid[i] == TREE)  m++;
     }
     if (n == m) {
         int *gridids, *adjdata, **adjlists, *adjsizes, *adjptr;
@@ -1657,22 +1664,22 @@ static game_state *execute_move(const game_state *state, const char *move)
          * precondition for the game being complete. Now check that
          * the numbers add up.
          */
-    for (i = 0; i < w; i++) {
-        n = 0;
-        for (j = 0; j < h; j++)
-        if (ret->grid[j*w+i] == TENT)
-            n++;
-        if (ret->numbers->numbers[i] != n)
-                goto completion_check_done;
-    }
-    for (i = 0; i < h; i++) {
+        for (i = 0; i < w; i++) {
             n = 0;
-        for (j = 0; j < w; j++)
-        if (ret->grid[i*w+j] == TENT)
-            n++;
-        if (ret->numbers->numbers[w+i] != n)
+            for (j = 0; j < h; j++)
+                if (ret->grid[j*w+i] == TENT)
+                    n++;
+            if (ret->numbers->numbers[i] != n)
                 goto completion_check_done;
-    }
+        }
+        for (i = 0; i < h; i++) {
+            n = 0;
+            for (j = 0; j < w; j++)
+                if (ret->grid[i*w+j] == TENT)
+                    n++;
+            if (ret->numbers->numbers[w+i] != n)
+                goto completion_check_done;
+        }
         /*
          * Also, check that no two tents are adjacent.
          */
@@ -1738,9 +1745,9 @@ static game_state *execute_move(const game_state *state, const char *move)
                      * neighbours of any square in numerically
                      * increasing order.
                      */
-            for (d = 1; d < MAXDIR; d++) {
-            int x2 = x + dx(d), y2 = y + dy(d);
-            if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h &&
+                    for (d = 1; d < MAXDIR; d++) {
+                        int x2 = x + dx(d), y2 = y + dy(d);
+                        if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h &&
                             ret->grid[y2*w+x2] == TENT) {
                             *adjptr++ = gridids[y2*w+x2];
                         }
@@ -1748,7 +1755,7 @@ static game_state *execute_move(const game_state *state, const char *move)
                     adjsizes[treeid] = adjptr - adjlists[treeid];
                 }
 
-    n = matching(m, m, adjlists, adjsizes, NULL, NULL, NULL);
+        n = matching(m, m, adjlists, adjsizes, NULL, NULL, NULL);
 
         sfree(gridids);
         sfree(adjdata);
@@ -1773,7 +1780,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* fool the macros */
     struct dummy { int tilesize; } dummy, *ds = &dummy;
@@ -1861,7 +1868,8 @@ static int *find_errors(const game_state *state, char *grid)
 {
     int w = state->p.w, h = state->p.h;
     int *ret = snewn(w*h + w + h, int);
-    int *tmp = snewn(w*h*2, int), *dsf = tmp + w*h;
+    int *tmp = snewn(w*h, int);
+    DSF *dsf;
     int x, y;
 
     /*
@@ -2078,7 +2086,7 @@ static int *find_errors(const game_state *state, char *grid)
      * all the tents in any component which has a smaller tree
      * count.
      */
-    dsf_init(dsf, w*h);
+    dsf = dsf_new(w*h);
     /* Construct the equivalence classes. */
     for (y = 0; y < h; y++) {
     for (x = 0; x < w-1; x++) {
@@ -2121,7 +2129,7 @@ static int *find_errors(const game_state *state, char *grid)
      * start of the game, before the user had done anything wrong!)
      */
 #define TENT(x) ((x)==TENT || (x)==BLANK)
-    dsf_init(dsf, w*h);
+    dsf_reinit(dsf);
     /* Construct the equivalence classes. */
     for (y = 0; y < h; y++) {
     for (x = 0; x < w-1; x++) {
@@ -2157,6 +2165,7 @@ static int *find_errors(const game_state *state, char *grid)
 #undef TENT
 
     sfree(tmp);
+    dsf_free(dsf);
     return ret;
 }
 
@@ -2277,8 +2286,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds,
  */
 static void int_redraw(drawing *dr, game_drawstate *ds,
                        const game_state *oldstate, const game_state *state,
-                       int dir, const game_ui *ui,
-               float animtime)
+                       int dir, const game_ui *ui)
 {
     int w = state->p.w, h = state->p.h;
     int x, y;
@@ -2288,8 +2296,8 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
     int *errors;
 
     if (ui) {
-      if (ui->cdisp) { cx = ui->cx; cy = ui->cy; }
-      if (cx != ds->cx || cy != ds->cy) cmoved = true;
+        if (ui->cdisp) { cx = ui->cx; cy = ui->cy; }
+        if (cx != ds->cx || cy != ds->cy) cmoved = true;
     }
 
     if (!ds->started) {
@@ -2398,7 +2406,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime)
 {
-    int_redraw(dr, ds, oldstate, state, dir, ui, animtime);
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
+    int_redraw(dr, ds, oldstate, state, dir, ui);
 }
 
 static float game_anim_length(const game_state *oldstate,
@@ -2418,11 +2433,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame tents
 #endif
@@ -2437,7 +2447,7 @@ static const char rules[] = "You have a grid of squares, some of which contain t
 const struct game thegame = {
     "Tents", "games.tents", "tents", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -2450,13 +2460,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILESIZE, game_compute_size, game_set_size,
@@ -2466,12 +2478,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,               /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

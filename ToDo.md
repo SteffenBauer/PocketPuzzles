@@ -40,7 +40,7 @@
 - [ ] Check draw update efficiency in all games
 - [ ] Check all games for memory leaks
 - [ ] General settings (show/hide statusbar, orientation, chooser style, color/grey mode)
-- [ ] Configurable game specific UI settings (short/long click action, helper buttons, classic/one-click entry)
+- [X] Configurable game specific UI settings (short/long click action, helper buttons, classic/one-click entry)
 - [ ] Information screen explaining game controls
 - [ ] Color mode
 - [ ] Screen orientation handling
@@ -114,6 +114,7 @@
 - [X] Sticks: Implement dragging
 - [X] Filling: Drag already placed/fixed numbers
 - [X] Walls: Add dragging
+- [X] Net: Add "Lock" button
 - [ ] Rome: Dragging
 - [ ] Galaxies: Rework right-drag / arrow handling
 - [ ] Loopy: Fix polygon error fill in Penrose grids
@@ -171,19 +172,19 @@
 
 #### Game specific UI settings
 
-- [ ] Bricks: Short-click, black or white
-- [ ] Bridges: 'Show Grid' button
-- [ ] Clusters: Short-click, black or white
-- [ ] Creek: Short-click, black or white
-- [ ] Map: Pencil fill, all or possible only
-- [ ] Mines: Short-click, flag or reveal
+- [X] Bricks: Short-click, black or white
+- [X] Bridges: 'Show Grid' button
+- [X] Clusters: Short-click, black or white
+- [X] Creek: Short-click, black or white
+- [X] Map: Show pencil button; Pencil fill, all or possible only
+- [X] Mines: Short-click, flag or reveal
 - [ ] Mosaic: Short-click, black or white
 - [ ] Pattern: Short-click, black or white
-- [ ] Range: Short-click, block or empty
-- [ ] Singles: Short-click, black or circle
-- [ ] Signpost: Long-click, Show incoming arrows or not
-- [ ] Slant: Short-click, left-upper or right-upper line
-- [ ] Unruly: Short-click, black or white
+- [X] Range: Short-click, block or empty; Show Hint button
+- [X] Signpost: Long-click, Show incoming arrows or not
+- [X] Singles: Short-click, black or circle; show black numbers
+- [X] Slant: Show errors; show filled cells; Short-click, left-upper or right-upper line
+- [X] Unruly: Show errors; Short-click, black or white
 - [ ] Games with one-click: on/off
 - [ ] Games with 'Fill pencil marks' button: visible/hidden
 - [ ] Games with Pencil mark indicator: Flip on swap button

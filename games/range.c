@@ -1161,6 +1161,8 @@ static game_state *new_game(midend *me, const game_params *params,
 struct game_ui {
     puzzle_size r, c; /* cursor position */
     bool cursor_show;
+    int swap_buttons;
+    bool hint_button;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1168,6 +1170,8 @@ static game_ui *new_ui(const game_state *state)
     struct game_ui *ui = snew(game_ui);
     ui->r = ui->c = 0;
     ui->cursor_show = false;
+    ui->swap_buttons = 0;
+    ui->hint_button = false;
     return ui;
 }
 
@@ -1176,13 +1180,34 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static config_item *get_prefs(game_ui *ui)
 {
-    return NULL;
+    config_item *ret;
+
+    ret = snewn(3, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Fill/dot:Dot/Fill";
+    ret[0].u.choices.choicekws = ":fill:dot";
+    ret[0].u.choices.selected = ui->swap_buttons;
+
+    ret[1].name = "Show Hint button";
+    ret[1].kw = "hint-button";
+    ret[1].type = C_BOOLEAN;
+    ret[1].u.boolean.bval = ui->hint_button;
+
+    ret[2].name = NULL;
+    ret[2].type = C_END;
+
+    return ret;
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void set_prefs(game_ui *ui, const config_item *cfg)
 {
+    ui->swap_buttons = cfg[0].u.choices.selected;
+    ui->hint_button = cfg[1].u.boolean.bval;
 }
 
 typedef struct drawcell {
@@ -1219,8 +1244,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
 
     switch (button) {
-      case   LEFT_BUTTON: action = backwards; break;
-      case  RIGHT_BUTTON: action =  forwards; break;
+      case   LEFT_BUTTON: action = ui->swap_buttons == 0 ? backwards : forwards; break;
+      case  RIGHT_BUTTON: action = ui->swap_buttons == 0 ? forwards : backwards; break;
       case 'h': case 'H' : action =      hint; break;
     }
 
@@ -1261,13 +1286,13 @@ static char *interpret_move(const game_state *state, game_ui *ui,
       case EMPTY: return nfmtstr(40, "B,%d,%d", r, c);
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
 static bool find_errors(const game_state *state, bool *report)
 {
     int const w = state->params.w, h = state->params.h, n = w * h;
-    int *dsf;
+    DSF *dsf;
 
     int r, c, i;
 
@@ -1322,7 +1347,7 @@ static bool find_errors(const game_state *state, bool *report)
     /*
      * Check that all the white cells form a single connected component.
      */
-    dsf = snew_dsf(n);
+    dsf = dsf_new(n);
     for (r = 0; r < h-1; ++r)
         for (c = 0; c < w; ++c)
             if (state->grid[r*w+c] != BLACK &&
@@ -1333,11 +1358,12 @@ static bool find_errors(const game_state *state, bool *report)
             if (state->grid[r*w+c] != BLACK &&
                 state->grid[r*w+(c+1)] != BLACK)
                 dsf_merge(dsf, r*w+c, r*w+(c+1));
-    if (nblack + dsf_size(dsf, any_white_cell) < n) {
+    if (any_white_cell != -1 &&
+        nblack + dsf_size(dsf, any_white_cell) < n) {
         int biggest, canonical;
 
         if (!report) {
-            sfree(dsf);
+            dsf_free(dsf);
             goto found_error;
         }
 
@@ -1362,7 +1388,7 @@ static bool find_errors(const game_state *state, bool *report)
             if (state->grid[i] != BLACK && dsf_canonify(dsf, i) != canonical)
                 report[i] = true;
     }
-    sfree(dsf);
+    dsf_free(dsf);
 
     free_game(dup);
     return false; /* if report != NULL, this is ignored */
@@ -1372,7 +1398,7 @@ found_error:
     return true;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     signed int r, c, nchars, ntok;
     signed char what_to_do;
@@ -1381,6 +1407,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     assert (move);
 
     ret = dup_game(state);
+    ret->has_cheated = false;
 
     if (*move == 'S') {
         ++move;
@@ -1402,7 +1429,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         }
     }
 
-    if (!ret->was_solved)
+    if (!ret->has_cheated)
         ret->was_solved = !find_errors(ret, NULL);
 
     return ret;
@@ -1410,6 +1437,22 @@ static game_state *execute_move(const game_state *state, const char *move)
 failure:
     free_game(ret);
     return NULL;
+}
+
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    if (!ui->hint_button) {
+        *nkeys = 0;
+        return NULL;
+    }
+
+    key_label *keys = snewn(1, key_label);
+    *nkeys = 1;
+
+    keys[0].button = 'H';
+    keys[0].label = "Hint";
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1455,7 +1498,7 @@ enum {
 };
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     *x = (1 + params->w) * tilesize;
     *y = (1 + params->h) * tilesize;
@@ -1538,9 +1581,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int const w = state->params.w, h = state->params.h, n = w * h;
 
     int r, c, i;
-
+    char buf[48];
     bool *errors = snewn(n, bool);
     memset(errors, 0, n * sizeof (bool));
+    sprintf(buf, "%s",
+            state->has_cheated ? "Auto-solved." :
+            state->was_solved  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     find_errors(state, errors);
 
     assert (oldstate == NULL); /* only happens if animating moves */
@@ -1594,12 +1642,6 @@ static void draw_cell(drawing *draw, game_drawstate *ds, int r, int c,
     draw_update(draw, x, y, ts + 1, ts + 1);
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    puts("warning: game_timing_state was called (this shouldn't happen)");
-    return false; /* the (non-existing) timer should not be running */
-}
-
 #ifdef COMBINED
 #define thegame range
 #endif
@@ -1614,7 +1656,7 @@ static const char rules[] = "You have a grid of squares; some squares contain nu
 struct game const thegame = {
     "Range", "games.range", "range", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1627,13 +1669,15 @@ struct game const thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
-    NULL, /* game_request_keys */
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
+    game_request_keys,
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -1643,12 +1687,11 @@ struct game const thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false, /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON, /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

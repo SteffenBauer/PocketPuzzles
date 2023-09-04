@@ -315,7 +315,8 @@ static game_state *dup_game(const game_state *state)
     memcpy(ret->nums, state->nums, o2 * sizeof(digit));
     memcpy(ret->hints, state->hints, o3);
     memcpy(ret->flags, state->flags, o2 * sizeof(unsigned long));
-
+    ret->completed = state->completed;
+    ret->cheated = state->cheated;
     return ret;
 }
 
@@ -1272,27 +1273,6 @@ fail:
     return NULL;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    int order = params->order;
-    char off = (order > 9) ? '0' : '1';
-    key_label *keys = snewn(order + 2, key_label);
-    *nkeys = order + 2;
-
-    for(i = 0; i < order; i++) {
-        if (i==10) off = 'a'-10;
-        keys[i].button = i + off;
-        keys[i].label = NULL;
-    }
-    keys[order].button = '\b';
-    keys[order].label = NULL;
-    keys[order+1].button = '+';
-    keys[order+1].label = "Add";
-
-    return keys;
-}
-
 static game_state *new_game(midend *me, const game_params *params,
                             const char *desc)
 {
@@ -1365,13 +1345,25 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
 {
-    return NULL;
-}
+    int i;
+    int order = params->order;
+    char off = (order > 9) ? '0' : '1';
+    key_label *keys = snewn(order + 2, key_label);
+    *nkeys = order + 2;
 
-static void decode_ui(game_ui *ui, const char *encoding)
-{
+    for(i = 0; i < order; i++) {
+        if (i==10) off = 'a'-10;
+        keys[i].button = i + off;
+        keys[i].label = NULL;
+    }
+    keys[order].button = '\b';
+    keys[order].label = NULL;
+    keys[order+1].button = '+';
+    keys[order+1].label = "Add";
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1386,9 +1378,11 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
     }
 }
 
-static bool is_key_highlighted(const game_ui *ui, char c) {
-    if (c == '\b' && ui->hhint == 0) return true;
-    return ((c-'0') == ui->hhint);
+static const char *current_key_label(const game_ui *ui,
+                                     const game_state *state, int button){
+    if (button == '\b') return (ui->hhint == 0) ? "H" : "E";
+    if ((button < '0') || (button > '9')) return "";
+    return ((button-'0') == ui->hhint) ? "H" : "E";
 }
 
 struct game_drawstate {
@@ -1419,7 +1413,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         if (((button == LEFT_RELEASE && !swapped) || 
              (button == LEFT_BUTTON && swapped)) &&
-             (!ui->hdrag && (ui->hhint >= 0))) {
+             (!ui->hdrag && (ui->hhint >= 0)) &&
+             !(GRID(state, flags, x, y) & F_IMMUTABLE)) {
             sprintf(buf, "R%d,%d,%d", x, y, ui->hhint);
             return dupstr(buf);
         }
@@ -1445,7 +1440,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             }
             ui->hcursor = false;
             ui->hdrag = false;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
         else if (button == RIGHT_BUTTON) {
             /* pencil highlighting for non-filled squares */
@@ -1467,7 +1462,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hcursor = false;
             ui->hhint = -1;
             ui->hdrag = false;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
         else if (button == LEFT_DRAG) {
             ui->hdrag = true;
@@ -1478,7 +1473,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->hcursor = false;
         ui->hhint = -1;
         ui->hdrag = false;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     n = c2n(button, state->order);
@@ -1500,7 +1495,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (!ui->hshow && n >= 0 && n <= ds->order) {
         if (ui->hhint == n) ui->hhint = -1;
         else ui->hhint = n;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (button == 'H' || button == 'h')
@@ -1508,10 +1503,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (button == '+')
         return dupstr("M");
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     game_state *ret = NULL;
     int x, y, n, i, rc;
@@ -1527,10 +1522,8 @@ static game_state *execute_move(const game_state *state, const char *move)
             HINT(ret, x, y, n-1) = !HINT(ret, x, y, n-1);
         else {
             GRID(ret, nums, x, y) = GRID(ret, nums, x, y) == n ? 0 : n;
-
-            /* real change to grid; check for completion */
-            if (!ret->completed && check_complete(ret->nums, ret, true) > 0)
-                ret->completed = true;
+            ret->completed = check_complete(ret->nums, ret, true) > 0;
+            ret->cheated = false;
         }
         return ret;
     } else if (move[0] == 'S') {
@@ -1584,7 +1577,7 @@ badmove:
 #define DRAW_SIZE (TILE_SIZE*ds->order + GAP_SIZE*(ds->order-1) + BORDER*2)
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize, order; } ads, *ds = &ads;
@@ -1900,6 +1893,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y, i;
     bool hchanged = false, stale;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     if (ds->hx != ui->hx || ds->hy != ui->hy ||
         ds->hshow != ui->hshow || ds->hpencil != ui->hpencil)
         hchanged = true;
@@ -1965,11 +1965,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame unequal
 #endif
@@ -1984,7 +1979,7 @@ static const char rules[] = "Fill a latin square such that the given clues are s
 const struct game thegame = {
     "Unequal", "games.unequal", "unequal", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1997,13 +1992,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
+    current_key_label,
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -2013,12 +2010,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    is_key_highlighted,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,  /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

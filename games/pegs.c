@@ -88,8 +88,8 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
     *ret = pegs_presets[i];
 
     strcpy(str, pegs_titletypes[ret->type]);
-    if (ret->type == TYPE_RANDOM)
-    sprintf(str + strlen(str), " %dx%d", ret->w, ret->h);
+    if (ret->type == TYPE_CROSS || ret->type == TYPE_RANDOM)
+        sprintf(str + strlen(str), " %dx%d", ret->w, ret->h);
 
     *name = dupstr(str);
     *params = ret;
@@ -181,18 +181,40 @@ static const char *validate_params(const game_params *params, bool full)
 {
     if (full && (params->w <= 3 || params->h <= 3))
         return "Width and height must both be greater than three";
-    if (full && (params->w > 16 || params->h > 16))
+    if (params->w < 1 || params->h < 1)
+        return "Width and height must both be at least one";
+    if (params->w > 16 || params->h > 16)
         return "Width and height must both not be greater than 16";
 
     /*
-     * It might be possible to implement generalisations of Cross
-     * and Octagon, but only if I can find a proof that they're all
-     * soluble. For the moment, therefore, I'm going to disallow
-     * them at any size other than the standard one.
+     * At http://www.gibell.net/pegsolitaire/GenCross/GenCrossBoards0.html
+     * George I. Bell asserts that various generalised cross-shaped
+     * boards are soluble starting (and finishing) with the centre
+     * hole.  We permit the symmetric ones.  Bell's notation for each
+     * soluble board is listed.
      */
-    if (full && (params->type == TYPE_CROSS || params->type == TYPE_OCTAGON)) {
-    if (params->w != 7 || params->h != 7)
-        return "This board type is only supported at 7x7";
+    if (full && params->type == TYPE_CROSS) {
+        if (!((params->w == 9 && params->h == 5) || /* (3,1,3,1) */
+              (params->w == 5 && params->h == 9) || /* (1,3,1,3) */
+              (params->w == 9 && params->h == 9) || /* (3,3,3,3) */
+              (params->w == 7 && params->h == 5) || /* (2,1,2,1) */
+              (params->w == 5 && params->h == 7) || /* (1,2,1,2) */
+              (params->w == 9 && params->h == 7) || /* (3,2,3,2) */
+              (params->w == 7 && params->h == 9) || /* (2,3,2,3) */
+              (params->w == 7 && params->h == 7)))  /* (2,2,2,2) */
+            return "This board type is only supported at "
+                "5x7, 5x9, 7x7, 7x9, and 9x9";
+    }
+
+    /*
+     * It might be possible to implement generalisations of
+     * Octagon, but only if I can find a proof that they're all
+     * soluble. For the moment, therefore, I'm going to disallow
+     * it at any size other than the standard one.
+     */
+    if (full && params->type == TYPE_OCTAGON) {
+        if (params->w != 7 || params->h != 7)
+            return "This board type is only supported at 7x7";
     }
     return NULL;
 }
@@ -239,17 +261,25 @@ static int movecmp(void *av, void *bv)
     struct move *a = (struct move *)av;
     struct move *b = (struct move *)bv;
 
-    if (a->y < b->y)        return -1;
-    else if (a->y > b->y)   return +1;
+    if (a->y < b->y)
+        return -1;
+    else if (a->y > b->y)
+        return +1;
 
-    if (a->x < b->x)        return -1;
-    else if (a->x > b->x)   return +1;
+    if (a->x < b->x)
+        return -1;
+    else if (a->x > b->x)
+        return +1;
 
-    if (a->dy < b->dy)      return -1;
-    else if (a->dy > b->dy) return +1;
+    if (a->dy < b->dy)
+        return -1;
+    else if (a->dy > b->dy)
+        return +1;
 
-    if (a->dx < b->dx)      return -1;
-    else if (a->dx > b->dx) return +1;
+    if (a->dx < b->dx)
+        return -1;
+    else if (a->dx > b->dx)
+        return +1;
 
     return 0;
 }
@@ -259,8 +289,10 @@ static int movecmpcost(void *av, void *bv)
     struct move *a = (struct move *)av;
     struct move *b = (struct move *)bv;
 
-    if (a->cost < b->cost)      return -1;
-    else if (a->cost > b->cost) return +1;
+    if (a->cost < b->cost)
+        return -1;
+    else if (a->cost > b->cost)
+        return +1;
 
     return movecmp(av, bv);
 }
@@ -501,8 +533,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     grid = snewn(w*h, unsigned char);
     if (params->type == TYPE_RANDOM) {
         pegs_generate(grid, w, h, rs);
-    } 
-    else {
+    } else {
         int x, y, cx, cy, v;
 
         for (y = 0; y < h; y++)
@@ -650,12 +681,23 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
 static const char *validate_desc(const game_params *params, const char *desc)
 {
-    int len = params->w * params->h;
+    int len, i, npeg = 0, nhole = 0;
+
+    len = params->w * params->h;
 
     if (len != strlen(desc))
         return "Game description is wrong length";
     if (len != strspn(desc, "PHO"))
         return "Invalid character in game description";
+    for (i = 0; i < len; i++) {
+        npeg += desc[i] == 'P';
+        nhole += desc[i] == 'H';
+    }
+    /* The minimal soluble game has two pegs and a hole: "3x1:PPH". */
+    if (npeg < 2)
+        return "Too few pegs in game description";
+    if (nhole < 1)
+        return "Too few holes in game description";
 
     return NULL;
 }
@@ -673,8 +715,7 @@ static game_state *new_game(midend *me, const game_params *params,
     state->grid = snewn(w*h, unsigned char);
     for (i = 0; i < w*h; i++)
     state->grid[i] = (desc[i] == 'P' ? GRID_PEG :
-                      desc[i] == 'H' ? GRID_HOLE :
-                                       GRID_OBST);
+                      desc[i] == 'H' ? GRID_HOLE : GRID_OBST);
 
     return state;
 }
@@ -697,12 +738,6 @@ static void free_game(game_state *state)
 {
     sfree(state->grid);
     sfree(state);
-}
-
-static char *solve_game(const game_state *state, const game_state *currstate,
-                        const char *aux, const char **error)
-{
-    return NULL;
 }
 
 struct game_ui {
@@ -736,15 +771,6 @@ found:
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
-}
-
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -785,12 +811,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (tx >= 0 && tx < w && ty >= 0 && ty < h) {
             if (ui->cur_visible && ui->cur_x == tx && ui->cur_y == ty) {
                 ui->cur_visible = false;
-                return UI_UPDATE;
+                return MOVE_UI_UPDATE;
             }
             if (state->grid[ty*w+tx] == GRID_PEG) {
                 ui->cur_x = tx; ui->cur_y = ty;
                 ui->cur_visible = true;
-                return UI_UPDATE;
+                return MOVE_UI_UPDATE;
             }
             if (ui->cur_visible == true) {
                 int mx, my;
@@ -808,7 +834,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                     sprintf(buf, "%d,%d-%d,%d", ui->cur_x, ui->cur_y, tx, ty);
                     return dupstr(buf);
                 }
-                return UI_UPDATE;
+                return MOVE_UI_UPDATE;
             }
         }
     } 
@@ -818,40 +844,40 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     else if (button == LEFT_RELEASE) {
     
     }
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->w, h = state->h;
     int sx, sy, tx, ty;
     game_state *ret;
 
     if (sscanf(move, "%d,%d-%d,%d", &sx, &sy, &tx, &ty) == 4) {
-    int mx, my, dx, dy;
+        int mx, my, dx, dy;
 
-    if (sx < 0 || sx >= w || sy < 0 || sy >= h)
-        return NULL;           /* source out of range */
-    if (tx < 0 || tx >= w || ty < 0 || ty >= h)
-        return NULL;           /* target out of range */
+        if (sx < 0 || sx >= w || sy < 0 || sy >= h)
+            return NULL;           /* source out of range */
+        if (tx < 0 || tx >= w || ty < 0 || ty >= h)
+            return NULL;           /* target out of range */
 
-    dx = tx - sx;
-    dy = ty - sy;
-    if (max(abs(dx),abs(dy)) != 2 || min(abs(dx),abs(dy)) != 0)
-        return NULL;           /* move length was wrong */
-    mx = sx + dx/2;
-    my = sy + dy/2;
+        dx = tx - sx;
+        dy = ty - sy;
+        if (max(abs(dx),abs(dy)) != 2 || min(abs(dx),abs(dy)) != 0)
+            return NULL;           /* move length was wrong */
+        mx = sx + dx/2;
+        my = sy + dy/2;
 
-    if (state->grid[sy*w+sx] != GRID_PEG ||
-        state->grid[my*w+mx] != GRID_PEG ||
-        state->grid[ty*w+tx] != GRID_HOLE)
-        return NULL;           /* grid contents were invalid */
+        if (state->grid[sy*w+sx] != GRID_PEG ||
+            state->grid[my*w+mx] != GRID_PEG ||
+            state->grid[ty*w+tx] != GRID_HOLE)
+            return NULL;           /* grid contents were invalid */
 
-    ret = dup_game(state);
-    ret->grid[sy*w+sx] = GRID_HOLE;
-    ret->grid[my*w+mx] = GRID_HOLE;
-    ret->grid[ty*w+tx] = GRID_PEG;
-
+        ret = dup_game(state);
+        ret->grid[sy*w+sx] = GRID_HOLE;
+        ret->grid[my*w+mx] = GRID_HOLE;
+        ret->grid[ty*w+tx] = GRID_PEG;
+        ret->completed = false;
         /*
          * Opinion varies on whether getting to a single peg counts as
          * completing the game, or whether that peg has to be at a
@@ -867,7 +893,7 @@ static game_state *execute_move(const game_state *state, const char *move)
                 ret->completed = true;
         }
 
-    return ret;
+        return ret;
     }
     return NULL;
 }
@@ -877,7 +903,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -983,6 +1009,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int w = state->w, h = state->h;
     int x, y;
     int bgcolour;
+    char buf[48];
+
+    sprintf(buf, "%s", state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     bgcolour = COL_BACKGROUND;
 
@@ -1126,12 +1156,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
-
 #ifdef COMBINED
 #define thegame pegs
 #endif
@@ -1143,7 +1167,7 @@ static const char rules[] = "A number of pegs are placed in holes on a board. Yo
 const struct game thegame = {
     "Pegs", "games.pegs", "pegs", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL,  /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1155,14 +1179,16 @@ const struct game thegame = {
     new_game,
     dup_game,
     free_game,
-    false, solve_game,
-    false, NULL, NULL,
+    false, NULL, /* solve_game */
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -1172,12 +1198,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
-    false, game_timing_state,
-    0,                       /* flags */
+    false, false, NULL, NULL, /* print_size, print */
+    true,                     /* wants_statusbar */
+    false, NULL,              /* timing_state */
+    0,                        /* flags */
 };
 

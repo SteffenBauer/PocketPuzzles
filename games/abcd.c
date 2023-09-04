@@ -323,27 +323,6 @@ static game_state *blank_state(int w, int h, int n, bool diag)
     return ret;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    int n = params->n;
-
-    key_label *keys = snewn(n + 2, key_label);
-    *nkeys = n + 2;
-
-    for (i = 0; i < n; i++)
-    {
-        keys[i].button = 'A' + i;
-        keys[i].label = NULL;
-    }
-    keys[n].button = '\b';
-    keys[n].label = NULL;
-    keys[n+1].button = '+';
-    keys[n+1].label = "Add";
-
-    return keys;
-}
-
 static game_state *new_game(midend *me, const game_params *params, const char *desc)
 {
     int w = params->w;
@@ -1054,8 +1033,30 @@ static char *encode_ui(const game_ui *ui)
     return NULL;
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void decode_ui(game_ui *ui, const char *encoding,
+                      const game_state *state)
 {
+}
+
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    int i;
+    int n = params->n;
+
+    key_label *keys = snewn(n + 2, key_label);
+    *nkeys = n + 2;
+
+    for (i = 0; i < n; i++)
+    {
+        keys[i].button = 'A' + i;
+        keys[i].label = NULL;
+    }
+    keys[n].button = '\b';
+    keys[n].label = NULL;
+    keys[n+1].button = '+';
+    keys[n+1].label = "Add";
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1077,9 +1078,11 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
         ui->hshow = false;
 }
 
-static bool is_key_highlighted(const game_ui *ui, char c) {
-    if (c == '\b' && ui->hhint == EMPTY) return true;
-    return ((c-'A') == ui->hhint);
+static const char *current_key_label(const game_ui *ui,
+                                     const game_state *state, int button){
+    if (button == '\b') return (ui->hhint == EMPTY) ? "H" : "E";
+    if ((button < 'A') || (button > 'I')) return "";
+    return ((button-'A') == ui->hhint) ? "H" : "E";
 }
 
 #define FD_CURSOR        1
@@ -1169,7 +1172,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
                 ui->hdrag = false;
             }
             ui->hcursor = false;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
         /* Select square for marking */
         else if (button == RIGHT_BUTTON) {
@@ -1196,7 +1199,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             
             ui->hcursor = false;
             ui->hhint = -1;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
         else if (button == LEFT_DRAG) {
             ui->hdrag = true;
@@ -1211,7 +1214,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
         ui->hcursor = false;
         ui->hhint = -1;
         ui->hdrag = false;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     /* Enter or remove letter */
@@ -1226,7 +1229,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
         
         /* When in pencil mode, filled in squares cannot be changed */
         if (ui->hpencil && state->grid[hy*w+hx] != EMPTY)
-            return NULL;
+            return MOVE_NO_EFFECT;
         
         /* TODO Prevent operations which do nothing */
         
@@ -1247,7 +1250,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
         if (button == '\b') n = EMPTY;
         if (ui->hhint == n) ui->hhint = -1;
         else ui->hhint = n;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     /* Fill the board with marks */
@@ -1271,10 +1274,10 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             return dupstr("M");
     }
     
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->w;
     int h = state->h;
@@ -1329,9 +1332,8 @@ static game_state *execute_move(const game_state *state, const char *move)
                 ret->grid[y*w+x] = ret->grid[y*w+x] == i ? EMPTY : i;
             
             /* Check if the puzzle has been completed */
-            if (!ret->completed && abcd_validate_puzzle(ret) == 0)
-                ret->completed = true;
-            
+            ret->completed = abcd_validate_puzzle(ret) == 0;
+            ret->cheated = false;
             return ret;
         }
     }
@@ -1360,7 +1362,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                  int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     int w = params->w;
     int h = params->h;
@@ -1665,7 +1667,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     int tx, ty, fs, bgcol;
     char buf[80];
     bool dirty;
-    
+
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     if (!ds->initial)
     {
         int rx = (w+n) * TILE_SIZE + (TILE_SIZE*3/4);
@@ -1828,11 +1835,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame abcd
 #endif
@@ -1846,7 +1848,7 @@ static const char rules[] = "Fill the grid with the given letters, in such a way
 const struct game thegame = {
     "ABCD", NULL, NULL, rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1859,13 +1861,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
     encode_ui,
     decode_ui,
     game_request_keys,
     game_changed_state,
+    current_key_label,
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -1875,12 +1879,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    is_key_highlighted,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false, /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON, /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

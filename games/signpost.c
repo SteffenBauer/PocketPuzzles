@@ -13,7 +13,6 @@
 
 #define PREFERRED_TILE_SIZE 64
 #define TILE_SIZE (ds->tilesize)
-/* #define BLITTER_SIZE TILE_SIZE */
 #define BORDER    (TILE_SIZE / 2)
 
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
@@ -50,7 +49,7 @@ struct game_state {
     int *nums;                  /* numbers, size n */
     unsigned int *flags;        /* flags, size n */
     int *next, *prev;           /* links to other cell indexes, size n (-1 absent) */
-    int *dsf;                   /* connects regions with a dsf. */
+    DSF *dsf;                   /* connects regions with a dsf. */
     int *numsi;                 /* for each number, which index is it in? (-1 absent) */
 };
 
@@ -161,7 +160,7 @@ static bool isvalidmove(const game_state *state, bool clever,
 
     /* can't create a new connection between cells in the same region
      * as that would create a loop. */
-    if (dsf_canonify(state->dsf, from) == dsf_canonify(state->dsf, to))
+    if (dsf_equivalent(state->dsf, from, to))
         return false;
 
     /* if both cells are actual numbers, can't drag if we're not
@@ -200,7 +199,7 @@ static void strip_nums(game_state *state) {
     memset(state->next, -1, state->n*sizeof(int));
     memset(state->prev, -1, state->n*sizeof(int));
     memset(state->numsi, -1, (state->n+1)*sizeof(int));
-    dsf_init(state->dsf, state->n);
+    dsf_reinit(state->dsf);
 }
 
 static bool check_nums(game_state *orig, game_state *copy, bool only_immutable)
@@ -379,7 +378,7 @@ static game_state *blank_game(int w, int h)
     state->flags = snewn(state->n, unsigned int);
     state->next  = snewn(state->n, int);
     state->prev  = snewn(state->n, int);
-    state->dsf = snew_dsf(state->n);
+    state->dsf = dsf_new(state->n);
     state->numsi  = snewn(state->n+1, int);
 
     blank_game_into(state);
@@ -400,7 +399,7 @@ static void dup_game_to(game_state *to, const game_state *from)
     memcpy(to->next, from->next, to->n*sizeof(int));
     memcpy(to->prev, from->prev, to->n*sizeof(int));
 
-    memcpy(to->dsf, from->dsf, to->n*sizeof(int));
+    dsf_copy(to->dsf, from->dsf);
     memcpy(to->numsi, from->numsi, (to->n+1)*sizeof(int));
 }
 
@@ -418,7 +417,7 @@ static void free_game(game_state *state)
     sfree(state->flags);
     sfree(state->next);
     sfree(state->prev);
-    sfree(state->dsf);
+    dsf_free(state->dsf);
     sfree(state->numsi);
     sfree(state);
 }
@@ -883,7 +882,7 @@ static void connect_numbers(game_state *state)
 {
     int i, di, dni;
 
-    dsf_init(state->dsf, state->n);
+    dsf_reinit(state->dsf);
     for (i = 0; i < state->n; i++) {
         if (state->next[i] != -1) {
             assert(state->prev[state->next[i]] == i);
@@ -899,8 +898,8 @@ static void connect_numbers(game_state *state)
 
 static int compare_heads(const void *a, const void *b)
 {
-    struct head_meta *ha = (struct head_meta *)a;
-    struct head_meta *hb = (struct head_meta *)b;
+    const struct head_meta *ha = (const struct head_meta *)a;
+    const struct head_meta *hb = (const struct head_meta *)b;
 
     /* Heads with preferred colours first... */
     if (ha->preference && !hb->preference) return -1;
@@ -1222,7 +1221,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
 
 struct game_ui {
-    bool dragging, drag_is_from, do_highlight;
+    bool dragging, drag_is_from, show_highlight, do_highlight;
     int sx, sy;         /* grid coords of start cell */
     int dx, dy;         /* pixel coords of drag posn */
 };
@@ -1236,7 +1235,9 @@ static game_ui *new_ui(const game_state *state)
 
     ui->dragging = false;
     ui->drag_is_from = false;
-    ui->do_highlight = false;
+    ui->show_highlight = false;
+    ui->do_highlight = true;
+
     ui->sx = ui->sy = ui->dx = ui->dy = 0;
 
     return ui;
@@ -1247,13 +1248,26 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static config_item *get_prefs(game_ui *ui)
 {
-    return NULL;
+    config_item *ret;
+
+    ret = snewn(2, config_item);
+
+    ret[0].name = "Long-click highlights in-pointing arrows";
+    ret[0].kw = "do-highlight";
+    ret[0].type = C_BOOLEAN;
+    ret[0].u.boolean.bval = ui->do_highlight;
+
+    ret[1].name = NULL;
+    ret[1].type = C_END;
+
+    return ret;
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void set_prefs(game_ui *ui, const config_item *cfg)
 {
+    ui->do_highlight = cfg[0].u.boolean.bval;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1283,21 +1297,21 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (!INGRID(state, x, y)) return NULL;
         ui->dragging = true;
         ui->drag_is_from = true;
-        ui->do_highlight = (button == RIGHT_BUTTON);
+        ui->show_highlight = (button == RIGHT_BUTTON) && (ui->do_highlight);
         ui->sx = x;
         ui->sy = y;
         ui->dx = mx;
         ui->dy = my;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     } else if (IS_MOUSE_RELEASE(button) && ui->dragging) {
         ui->dragging = false;
-        ui->do_highlight = false;
-        if (ui->sx == x && ui->sy == y) return UI_UPDATE; /* single click */
+        ui->show_highlight = false;
+        if (ui->sx == x && ui->sy == y) return MOVE_UI_UPDATE; /* single click */
 
         if (!INGRID(state, x, y)) {
             int si = ui->sy*w+ui->sx;
             if (state->prev[si] == -1 && state->next[si] == -1)
-                return UI_UPDATE;
+                return MOVE_UI_UPDATE;
             sprintf(buf, "%c%d,%d",
                     (int)(ui->drag_is_from ? 'C' : 'X'), ui->sx, ui->sy);
             return dupstr(buf);
@@ -1305,17 +1319,17 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         if (ui->drag_is_from) {
             if (!isvalidmove(state, false, ui->sx, ui->sy, x, y))
-                return UI_UPDATE;
+                return MOVE_UI_UPDATE;
             sprintf(buf, "L%d,%d-%d,%d", ui->sx, ui->sy, x, y);
         } else {
             if (!isvalidmove(state, false, x, y, ui->sx, ui->sy))
-                return UI_UPDATE;
+                return MOVE_UI_UPDATE;
             sprintf(buf, "L%d,%d-%d,%d", x, y, ui->sx, ui->sy);
         }
         return dupstr(buf);
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
 static void unlink_cell(game_state *state, int si)
@@ -1330,7 +1344,7 @@ static void unlink_cell(game_state *state, int si)
     }
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     game_state *ret = NULL;
     int sx, sy, ex, ey, si, ei, w = state->w;
@@ -1359,7 +1373,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         if (!isvalidmove(state, false, sx, sy, ex, ey)) return NULL;
 
         ret = dup_game(state);
-
+        ret->used_solve = false;
         si = sy*w+sx; ei = ey*w+ex;
         makelink(ret, si, ei);
     } else if (sscanf(move, "%c%d,%d", &c, &sx, &sy) == 3) {
@@ -1372,7 +1386,7 @@ static game_state *execute_move(const game_state *state, const char *move)
             return NULL;
 
         ret = dup_game(state);
-
+        ret->used_solve = false;
         sset = state->nums[si] / (state->n+1);
         if (c == 'C' || (c == 'X' && sset == 0)) {
             /* Unlink the single cell we dragged from the board. */
@@ -1396,7 +1410,7 @@ static game_state *execute_move(const game_state *state, const char *move)
     }
     if (ret) {
         update_numbers(ret);
-        if (check_completion(ret, true)) ret->completed = true;
+        ret->completed = check_completion(ret, true);
     }
 
     return ret;
@@ -1407,7 +1421,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize, order; } ads, *ds = &ads;
@@ -1682,6 +1696,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     bool force = false;
     unsigned int f;
     game_state *postdrop = NULL;
+    char buf[48];
+
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+    
     xd = FROMCOORD(ui->dx); yd = FROMCOORD(ui->dy);
 
     /* If an in-progress drag would make a valid move if finished, we
@@ -1693,7 +1715,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         char *movestr = interpret_move(state, &uicopy, ds, ui->dx, ui->dy, LEFT_RELEASE, false);
 
         if (movestr != NULL && strcmp(movestr, "") != 0) {
-            postdrop = execute_move(state, movestr);
+            postdrop = execute_move(state, NULL, movestr);
             sfree(movestr);
 
             state = postdrop;
@@ -1712,7 +1734,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             f = 0;
             dirp = -1;
 
-            if (ui->dragging && ui->do_highlight) {
+            if (ui->dragging && ui->show_highlight) {
                 if (x == ui->sx && y == ui->sy)
                     f |= F_DRAG_SRC;
                 else if (ui->drag_is_from && 
@@ -1772,11 +1794,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame signpost
 #endif
@@ -1789,7 +1806,7 @@ static const char rules[] = "You have a grid of squares; each square (except the
 const struct game thegame = {
     "Signpost", "games.signpost", "signpost", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1802,13 +1819,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -1818,12 +1837,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                 /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,       /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

@@ -268,6 +268,8 @@ static const char *validate_params(const game_params *params, bool full)
     if (params->h < 5) return "Height must be at least five";
     if (params->w > 10) return "Width must be at most 10";
     if (params->h > 10) return "Height must be at most 10";
+    if (params->difficulty >= DIFF_TRICKY && params->w + params->h < 11)
+        return "Width or height must be at least six for Tricky";
     if (params->difficulty < 0 || params->difficulty >= DIFFCOUNT)
         return "Unknown difficulty level";
 
@@ -283,7 +285,8 @@ static int pearl_solve(int w, int h, char *clues, char *result,
 {
     int W = 2*w+1, H = 2*h+1;
     short *workspace;
-    int *dsf, *dsfsize;
+    DSF *dsf;
+    int *dsfsize;
     int x, y, b, d;
     int ret = -1;
 
@@ -336,7 +339,7 @@ static int pearl_solve(int w, int h, char *clues, char *result,
      * We maintain a dsf of connected squares, together with a
      * count of the size of each equivalence class.
      */
-    dsf = snewn(w*h, int);
+    dsf = dsf_new(w*h);
     dsfsize = snewn(w*h, int);
 
     /*
@@ -579,9 +582,9 @@ static int pearl_solve(int w, int h, char *clues, char *result,
     {
         int nonblanks, loopclass;
 
-        dsf_init(dsf, w*h);
+        dsf_reinit(dsf);
         for (x = 0; x < w*h; x++)
-        dsfsize[x] = 1;
+            dsfsize[x] = 1;
 
         /*
          * First go through the edge entries and update the dsf
@@ -846,10 +849,39 @@ cleanup:
                if (ret == 1) assert(b < 0xD); /* we should have had a break by now */
             }
         }
+
+        /*
+         * Ensure we haven't left the _data structure_ inconsistent,
+         * regardless of the consistency of the _puzzle_. In
+         * particular, we should never have marked one square as
+         * linked to its neighbour if the neighbour is not
+         * reciprocally linked back to the original square.
+         *
+         * This can happen if we get part way through solving an
+         * impossible puzzle and then give up trying to make further
+         * progress. So here we fix it up to avoid confusing the rest
+         * of the game.
+         */
+        for (y = 0; y < h; y++) {
+            for (x = 0; x < w; x++) {
+                for (d = 1; d <= 8; d += d) {
+                    int nx = x + DX(d), ny = y + DY(d);
+                    int rlink;
+                    if (0 <= nx && nx < w && 0 <= ny && ny < h)
+                        rlink = result[ny*w+nx] & F(d);
+                    else
+                        rlink = 0;     /* off-board squares don't link back */
+
+                    /* If other square doesn't link to us, don't link to it */
+                    if (!rlink)
+                        result[y*w+x] &= ~d;
+                }
+            }
+        }
     }
 
     sfree(dsfsize);
-    sfree(dsf);
+    dsf_free(dsf);
     sfree(workspace);
     assert(ret >= 0);
     return ret;
@@ -937,9 +969,9 @@ static int pearl_loopgen_bias(void *vctx, char *board, int face)
              * to reprocess the edges for this boundary.
              */
             if (oldface == c || newface == c) {
-                grid_face *f = &g->faces[face];
+                grid_face *f = g->faces[face];
                 for (k = 0; k < f->order; k++)
-                    tdq_add(b->edges_todo, f->edges[k] - g->edges);
+                    tdq_add(b->edges_todo, f->edges[k]->index);
             }
         }
     }
@@ -955,15 +987,15 @@ static int pearl_loopgen_bias(void *vctx, char *board, int face)
          * the vertextypes_todo list.
          */
         while ((j = tdq_remove(b->edges_todo)) >= 0) {
-            grid_edge *e = &g->edges[j];
-            int fc1 = e->face1 ? board[e->face1 - g->faces] : FACE_BLACK;
-            int fc2 = e->face2 ? board[e->face2 - g->faces] : FACE_BLACK;
+            grid_edge *e = g->edges[j];
+            int fc1 = e->face1 ? board[e->face1->index] : FACE_BLACK;
+            int fc2 = e->face2 ? board[e->face2->index] : FACE_BLACK;
             bool oldedge = b->edges[j];
             bool newedge = (fc1==c) ^ (fc2==c);
             if (oldedge != newedge) {
                 b->edges[j] = newedge;
-                tdq_add(b->vertextypes_todo, e->dot1 - g->dots);
-                tdq_add(b->vertextypes_todo, e->dot2 - g->dots);
+                tdq_add(b->vertextypes_todo, e->dot1->index);
+                tdq_add(b->vertextypes_todo, e->dot2->index);
             }
         }
 
@@ -978,7 +1010,7 @@ static int pearl_loopgen_bias(void *vctx, char *board, int face)
          * old neighbours.
          */
         while ((j = tdq_remove(b->vertextypes_todo)) >= 0) {
-            grid_dot *d = &g->dots[j];
+            grid_dot *d = g->dots[j];
             int neighbours[2], type = 0, n = 0;
             
             for (k = 0; k < d->order; k++) {
@@ -986,10 +1018,10 @@ static int pearl_loopgen_bias(void *vctx, char *board, int face)
                 grid_dot *d2 = (e->dot1 == d ? e->dot2 : e->dot1);
                 /* dir == 0,1,2,3 for an edge going L,U,R,D */
                 int dir = (d->y == d2->y) + 2*(d->x+d->y > d2->x+d2->y);
-                int ei = e - g->edges;
+                int ei = e->index;
                 if (b->edges[ei]) {
                     type |= 1 << dir;
-                    neighbours[n] = d2 - g->dots; 
+                    neighbours[n] = d2->index; 
                     n++;
                 }
             }
@@ -1098,7 +1130,7 @@ static void pearl_loopgen(int w, int h, char *lines, random_state *rs)
     }
 
     for (i = 0; i < g->num_edges; i++) {
-        grid_edge *e = g->edges + i;
+        grid_edge *e = g->edges[i];
         enum face_colour c1 = FACE_COLOUR(e->face1);
         enum face_colour c2 = FACE_COLOUR(e->face2);
         assert(c1 != FACE_GREY);
@@ -1487,29 +1519,35 @@ static char nbits[16] = { 0, 1, 1, 2,
 
 #define ERROR_CLUE 16
 
-static void dsf_update_completion(game_state *state, int ax, int ay, char dir,
-                                 int *dsf)
+/* Returns false if the state is invalid. */
+static bool dsf_update_completion(game_state *state, int ax, int ay, char dir,
+                                 DSF *dsf)
 {
     int w = state->shared->w /*, h = state->shared->h */;
     int ac = ay*w+ax, bx, by, bc;
 
-    if (!(state->lines[ac] & dir)) return; /* no link */
+    if (!(state->lines[ac] & dir)) return true; /* no link */
     bx = ax + DX(dir); by = ay + DY(dir);
 
-    assert(INGRID(state, bx, by)); /* should not have a link off grid */
+    if (!INGRID(state, bx, by))
+        return false; /* should not have a link off grid */
 
     bc = by*w+bx;
-    assert(state->lines[bc] & F(dir)); /* should have reciprocal link */
-    if (!(state->lines[bc] & F(dir))) return;
+    if (!(state->lines[bc] & F(dir)))
+        return false; /* should have reciprocal link */
+    if (!(state->lines[bc] & F(dir))) return true;
 
     dsf_merge(dsf, ac, bc);
+    return true;
 }
 
-static void check_completion(game_state *state, bool mark)
+/* Returns false if the state is invalid. */
+static bool check_completion(game_state *state, bool mark)
 {
     int w = state->shared->w, h = state->shared->h, x, y, i, d;
     bool had_error = false;
-    int *dsf, *component_state;
+    DSF *dsf;
+    int *component_state;
     int nsilly, nloop, npath, largest_comp, largest_size, total_pathsize;
     enum { COMP_NONE, COMP_LOOP, COMP_PATH, COMP_SILLY, COMP_EMPTY };
 
@@ -1528,13 +1566,16 @@ static void check_completion(game_state *state, bool mark)
      * same reasons, since Loopy and Pearl have basically the same
      * form of expected solution.
      */
-    dsf = snew_dsf(w*h);
+    dsf = dsf_new(w*h);
 
     /* Build the dsf. */
     for (x = 0; x < w; x++) {
         for (y = 0; y < h; y++) {
-            dsf_update_completion(state, x, y, R, dsf);
-            dsf_update_completion(state, x, y, D, dsf);
+            if (!dsf_update_completion(state, x, y, R, dsf) ||
+                !dsf_update_completion(state, x, y, D, dsf)) {
+                dsf_free(dsf);
+                return false;
+            }
         }
     }
 
@@ -1615,7 +1656,7 @@ static void check_completion(game_state *state, bool mark)
      * part of a single loop, for which our counter variables
      * nsilly,nloop,npath are enough. */
     sfree(component_state);
-    sfree(dsf);
+    dsf_free(dsf);
 
     /*
      * Check that no clues are contradicted. This code is similar to
@@ -1689,6 +1730,7 @@ static void check_completion(game_state *state, bool mark)
         if (!had_error)
             state->completed = true;
     }
+    return true;
 }
 
 /* completion check:
@@ -1789,15 +1831,6 @@ static void free_ui(game_ui *ui)
 {
     sfree(ui->dragcoords);
     sfree(ui);
-}
-
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -2006,11 +2039,11 @@ static char *mark_in_direction(const game_state *state, int x, int y, int dir,
 
     char ch = primary ? 'F' : 'M', *other;
 
-    if (!INGRID(state, x, y) || !INGRID(state, x2, y2)) return UI_UPDATE;
+    if (!INGRID(state, x, y) || !INGRID(state, x2, y2)) return MOVE_UI_UPDATE;
 
     /* disallow laying a mark over a line, or vice versa. */
     other = primary ? state->marks : state->lines;
-    if (other[y*w+x] & dir || other[y2*w+x2] & dir2) return UI_UPDATE;
+    if (other[y*w+x] & dir || other[y2*w+x2] & dir2) return MOVE_UI_UPDATE;
     
     sprintf(buf, "%c%d,%d,%d;%c%d,%d,%d", ch, dir, x, y, ch, dir2, x2, y2);
     return dupstr(buf);
@@ -2024,12 +2057,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int x, int y, int button, bool swapped)
 {
-    int w = state->shared->w, h = state->shared->h /*, sz = state->shared->sz */;
+    int w = state->shared->w /*, h = state->shared->h, sz = state->shared->sz */;
     int gx = FROMCOORD(x), gy = FROMCOORD(y), i;
     bool release = false;
     char tmpbuf[80];
 
-    bool shift = button & MOD_SHFT, control = button & MOD_CTRL;
     button &= ~MOD_MASK;
 
     if (IS_MOUSE_DOWN(button)) {
@@ -2044,57 +2076,19 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->dragcoords[0] = gy * w + gx;
         ui->ndragcoords = 0;           /* will be 1 once drag is confirmed */
 
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (button == LEFT_DRAG && ui->ndragcoords >= 0) {
         update_ui_drag(state, ui, gx, gy);
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (IS_MOUSE_RELEASE(button)) release = true;
 
-    if (IS_CURSOR_MOVE(button)) {
-    if (!ui->cursor_active) {
-        ui->cursor_active = true;
-    } else if (control || shift) {
-        char *move;
-        if (ui->ndragcoords > 0) return NULL;
-        ui->ndragcoords = -1;
-        move = mark_in_direction(state, ui->curx, ui->cury,
-                     KEY_DIRECTION(button), control, tmpbuf);
-        if (control && !shift && *move)
-        move_cursor(button, &ui->curx, &ui->cury, w, h, false);
-        return move;
-    } else {
-        move_cursor(button, &ui->curx, &ui->cury, w, h, false);
-        if (ui->ndragcoords >= 0)
-        update_ui_drag(state, ui, ui->curx, ui->cury);
-    }
-    return UI_UPDATE;
-    }
-
-    if (IS_CURSOR_SELECT(button)) {
-    if (!ui->cursor_active) {
-        ui->cursor_active = true;
-        return UI_UPDATE;
-    } else if (button == CURSOR_SELECT) {
-        if (ui->ndragcoords == -1) {
-        ui->ndragcoords = 0;
-        ui->dragcoords[0] = ui->cury * w + ui->curx;
-        ui->clickx = CENTERED_COORD(ui->curx);
-        ui->clicky = CENTERED_COORD(ui->cury);
-        return UI_UPDATE;
-        } else release = true;
-    } else if (button == CURSOR_SELECT2 && ui->ndragcoords >= 0) {
-        ui->ndragcoords = -1;
-        return UI_UPDATE;
-    }
-    }
-
     if (button == 27 || button == '\b') {
         ui->ndragcoords = -1;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
     if (release) {
@@ -2126,7 +2120,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
             ui->ndragcoords = -1;
 
-            return buf ? buf : UI_UPDATE;
+            return buf ? buf : MOVE_UI_UPDATE;
         } else if (ui->ndragcoords == 0) {
             /* Click (or tiny drag). Work out which edge we were
              * closest to. */
@@ -2147,12 +2141,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             cx = CENTERED_COORD(gx);
             cy = CENTERED_COORD(gy);
 
-            if (!INGRID(state, gx, gy)) return UI_UPDATE;
+            if (!INGRID(state, gx, gy)) return MOVE_UI_UPDATE;
 
             if (max(abs(x-cx),abs(y-cy)) < TILE_SIZE/4) {
                 /* TODO closer to centre of grid: process as a cell click not an edge click. */
 
-                return UI_UPDATE;
+                return MOVE_UI_UPDATE;
             } else {
         int direction;
                 if (abs(x-cx) < abs(y-cy)) {
@@ -2171,18 +2165,17 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (button == 'H' || button == 'h')
         return dupstr("H");
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->shared->w, h = state->shared->h;
     char c;
     int x, y, l, n;
     game_state *ret = dup_game(state);
 
-    debug(("move: %s\n", move));
-
+    ret->used_solve = ret->completed = false;
     while (*move) {
         c = *move;
         if (c == 'S') {
@@ -2248,7 +2241,7 @@ badmove:
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int halfsz; } ads, *ds = &ads;
@@ -2430,6 +2423,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int w = state->shared->w, h = state->shared->h, sz = state->shared->sz;
     int x, y;
     bool force = false;
+    char buf[48];
+
+    sprintf(buf, "%s",
+            state->used_solve ? "Auto-solved." :
+            state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (!ds->started) {
         if (get_gui_style() == GUI_MASYU) {
@@ -2501,13 +2500,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
-
-
 #ifdef COMBINED
 #define thegame pearl
 #endif
@@ -2521,7 +2513,7 @@ static const char rules[] = "You have a grid of squares. Your job is to draw lin
 const struct game thegame = {
     "Pearl", "games.pearl", "pearl", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -2534,13 +2526,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -2550,12 +2544,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,                       /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

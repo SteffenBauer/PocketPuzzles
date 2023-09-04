@@ -1084,7 +1084,7 @@ static char boats_validate_gridclues(const game_state *state, int *errs)
     return ret;
 }
 
-static char boats_check_dsf(game_state *state, int *dsf, int *fleetcount)
+static char boats_check_dsf(game_state *state, DSF *dsf, int *fleetcount)
 {
     /* 
      * Build a dsf of all unfinished boats. Finished boats, water and empty
@@ -1099,7 +1099,7 @@ static char boats_check_dsf(game_state *state, int *dsf, int *fleetcount)
     char ret = STATUS_COMPLETE;
     
     memcpy(tempfleet, fleetcount, sizeof(int)*state->fleet);
-    dsf_init(dsf, (w*h)+1);
+    dsf_reinit(dsf);
     for(y = 0; y < h; y++)
     for(x = 0; x < w; x++)
     {
@@ -1153,7 +1153,7 @@ static char boats_check_dsf(game_state *state, int *dsf, int *fleetcount)
     return ret;
 }
 
-static char boats_validate_full_state(game_state *state, int *blankcounts, int *shipcounts, int *fleetcount, int *dsf)
+static char boats_validate_full_state(game_state *state, int *blankcounts, int *shipcounts, int *fleetcount, DSF *dsf)
 {
     /*
      * Check if the current state is complete, incomplete, or contains errors.
@@ -1586,7 +1586,7 @@ static int boats_solver_centers_normal(game_state *state, int *shipcounts)
     return ret;
 }
 
-static int boats_solver_min_expand_dsf_forward(game_state *state, int *fleetcount, int *dsf,
+static int boats_solver_min_expand_dsf_forward(game_state *state, int *fleetcount, DSF *dsf,
         int sx, int sy, int d, int ship)
 {
     /*
@@ -1621,7 +1621,7 @@ static int boats_solver_min_expand_dsf_forward(game_state *state, int *fleetcoun
     return 0;
 }
 
-static int boats_solver_min_expand_dsf_back(game_state *state, int *fleetcount, int *dsf,
+static int boats_solver_min_expand_dsf_back(game_state *state, int *fleetcount, DSF *dsf,
         int d, int ship)
 {
     /*
@@ -1656,7 +1656,7 @@ static int boats_solver_min_expand_dsf_back(game_state *state, int *fleetcount, 
     return 0;
 }
 
-static int boats_solver_min_expand_dsf(game_state *state, int *fleetcount, int *dsf)
+static int boats_solver_min_expand_dsf(game_state *state, int *fleetcount, DSF *dsf)
 {
     /*
      * See if an unfinished boat needs to expand in the last possible direction.
@@ -1686,7 +1686,7 @@ static int boats_solver_min_expand_dsf(game_state *state, int *fleetcount, int *
     return 0;
 }
 
-static int boats_solver_max_expand_dsf(game_state *state, int *fleetcount, int *dsf)
+static int boats_solver_max_expand_dsf(game_state *state, int *fleetcount, DSF *dsf)
 {
     /* 
      * See if an unfinished boat becomes too large when expanding into
@@ -2276,7 +2276,7 @@ static int boats_solve_game(game_state *state, int maxdiff)
 
     struct boats_run *runs = NULL;
     char *tmpgrid = NULL;
-    int *dsf = NULL;
+    DSF *dsf = NULL;
     int runcount = 0;
     int *borderclues = NULL;
     int diff = DIFF_EASY;
@@ -2300,7 +2300,7 @@ static int boats_solve_game(game_state *state, int maxdiff)
     {
         runs = snewn(w*h*2, struct boats_run);
         
-        dsf = snewn((w*h)+1, int);
+        dsf = dsf_new((w*h)+1);
     }
     
     for(i = 0; i < w+h && !hasnoclue; i++)
@@ -2418,7 +2418,7 @@ static int boats_solve_game(game_state *state, int maxdiff)
     sfree(runs);
     sfree(tmpgrid);
     sfree(borderclues);
-    sfree(dsf);
+    dsf_free(dsf);
     
     return diff;
 }
@@ -2850,15 +2850,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -2965,7 +2956,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             ui->dsy = ui->dey = gy;
             ui->cursor = false;
             
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         } else {
             if (gy >= h && gx >= w) pos = -1;
             else if (gy > h+1 || gx > w+1) pos = -1;
@@ -3020,20 +3011,20 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
                 return dupstr(buf);
             }
         }
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
     
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int sx, sy, ex, ey, x, y, pos;
     int w = state->w;
     int h = state->h;
     char from, to;
     game_state *ret;
-    
+
     if(move[0] == 'P' && sscanf(move+1, "%d,%d,%d,%d,%c,%c", &sx, &sy, &ex, &ey, &from, &to) == 6) {
         ret = dup_game(state);
         
@@ -3053,9 +3044,8 @@ static game_state *execute_move(const game_state *state, const char *move)
         }
         
         boats_adjust_ships(ret);
-        if(boats_validate_state(ret) == STATUS_COMPLETE)
-            ret->completed = true;
-        
+        ret->completed = boats_validate_state(ret) == STATUS_COMPLETE;
+        ret->cheated = false;
         return ret;
     }
     
@@ -3075,18 +3065,13 @@ static game_state *execute_move(const game_state *state, const char *move)
             ret->grid[i] = (*p == 'B' ? SHIP_VAGUE : *p == 'W' ? WATER : EMPTY);
             p++;
         }
-        
         boats_adjust_ships(ret);
-        
-        if(boats_validate_state(ret) == STATUS_COMPLETE)
-            ret->completed = true;
-        
+        ret->completed = boats_validate_state(ret) == STATUS_COMPLETE;
         /* 
          * If the solve move did not actually finish the grid,
          * do not set the cheated flag.
          */
         ret->cheated = ret->completed;
-        
         return ret;
     }
     else if (move[0] == 'D' && sscanf(move+1, "%d", &pos) == 1) {
@@ -3390,6 +3375,11 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     char ship;
     bool redraw = ds->redraw;
 
+    sprintf(buf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     boats_count_ships(state, NULL, NULL, ds->border);
     boats_check_fleet(state, ds->fleetcount, ds->gridfs);
     
@@ -3562,7 +3552,7 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
 }
 
 static void game_compute_size(const game_params *params, int tilesize,
-                  int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     int fh;
     *x = (params->w+2) * tilesize;
@@ -3590,11 +3580,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame boats
 #endif
@@ -3608,7 +3593,7 @@ static const char rules[] = "Place the given fleet of ships into the grid, in su
 const struct game thegame = {
     "Boats", NULL, NULL, rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL,  /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -3621,13 +3606,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     32, game_compute_size, game_set_size,
@@ -3637,12 +3624,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
-    false, game_timing_state,
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
     REQUIRE_RBUTTON, /* flags */
 };
 

@@ -20,7 +20,7 @@
  *     + while I'm revamping this area, filling in the _last_
  *       number in a nearly-full row or column should certainly be
  *       permitted even at the lowest difficulty level.
- *     + also Owen noticed that `Basic' grids requiring numeric
+ *     + also Alex noticed that `Basic' grids requiring numeric
  *       elimination are actually very hard, so I wonder if a
  *       difficulty gradation between that and positional-
  *       elimination-only might be in order
@@ -1916,7 +1916,8 @@ static void solver(int cr, struct block_structure *blocks,
     for (y = 0; y < cr; y++)
     for (b = 0; b < cr; b++)
     for (n = 1; n <= cr; n++) {
-                if (usage->row[y*cr+n-1] || usage->blk[b*cr+n-1])
+                if (usage->row[y*cr+n-1] ||
+                    usage->blk[b*cr+n-1])
                     continue;
                 for (i = 0; i < cr; i++) {
                     scratch->indexlist[i] = cubepos(i, y, n);
@@ -2244,6 +2245,7 @@ static void solver(int cr, struct block_structure *blocks,
     sfree(usage->row);
     sfree(usage->col);
     sfree(usage->blk);
+    sfree(usage->diag);
     if (usage->kblocks) {
     free_block_structure(usage->kblocks);
     free_block_structure(usage->extra_cages);
@@ -2575,6 +2577,7 @@ static bool gridgen(int cr, struct block_structure *blocks,
     sfree(usage->blk);
     sfree(usage->col);
     sfree(usage->row);
+    sfree(usage->diag);
     sfree(usage);
 
     return ret;
@@ -2706,7 +2709,7 @@ static bool check_valid(int cr, struct block_structure *blocks,
      * Check that each diagonal contains precisely one of everything.
      */
     if (xtype) {
-        memset(used, 0, cr * sizeof(bool));
+        memset(used, 0, (unsigned int)cr * sizeof(bool));
     for (i = 0; i < cr; i++)
         if (grid[diag0(i)] > 0 && grid[diag0(i)] <= cr)
             used[grid[diag0(i)]-1] = true;
@@ -2716,7 +2719,7 @@ static bool check_valid(int cr, struct block_structure *blocks,
             return false;
         }
 
-    memset(used, 0, cr * sizeof(bool));
+    memset(used, 0, (unsigned int)cr * sizeof(bool));
     for (i = 0; i < cr; i++)
         if (grid[diag1(i)] > 0 && grid[diag1(i)] <= cr)
         used[grid[diag1(i)]-1] = true;
@@ -2828,7 +2831,7 @@ static char *encode_solve_move(int cr, digit *grid)
     return ret;
 }
 
-static void dsf_to_blocks(int *dsf, struct block_structure *blocks,
+static void dsf_to_blocks(DSF *dsf, struct block_structure *blocks,
               int min_expected, int max_expected)
 {
     int cr = blocks->c * blocks->r, area = cr * cr;
@@ -3219,29 +3222,6 @@ static struct block_structure *gen_killer_cages(int cr, random_state *rs,
     return b;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    int cr = params->c * params->r;
-    key_label *keys = snewn(cr+3, key_label);
-    *nkeys = cr + 3;
-
-    for (i = 0; i < cr; i++) {
-        if (i<9) keys[i].button = '1' + i;
-        else keys[i].button = 'a' + i - 9;
-
-        keys[i].label = NULL;
-    }
-    keys[cr].button = '\b';
-    keys[cr].label = NULL;
-    keys[cr+1].button = '+';
-    keys[cr+1].label = NULL;
-    keys[cr+2].button = '-';
-    keys[cr+2].label = NULL;
-
-    return keys;
-}
-
 static char *new_game_desc(const game_params *params, random_state *rs,
                char **aux, bool interactive)
 {
@@ -3263,10 +3243,11 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      * the puzzle size: all 2x2 puzzles appear to be Trivial
      * (DIFF_BLOCK) so we cannot hold out for even a Basic
      * (DIFF_SIMPLE) one.
+     * Jigsaw puzzles of size 2 and 3 are also all trivial.
      */
     dlev.maxdiff = params->diff;
     dlev.maxkdiff = params->kdiff;
-    if (c == 2 && r == 2)
+    if ((c == 2 && r == 2) || (r == 1 && c < 4))
         dlev.maxdiff = DIFF_BLOCK;
 
     grid = snewn(area, digit);
@@ -3289,11 +3270,11 @@ static char *new_game_desc(const game_params *params, random_state *rs,
          * constructing the block structure.
          */
         if (r == 1) {               /* jigsaw mode */
-            int *dsf = divvy_rectangle(cr, cr, cr, rs);
+            DSF *dsf = divvy_rectangle(cr, cr, cr, rs);
 
-            dsf_to_blocks (dsf, blocks, cr, cr);
+            dsf_to_blocks(dsf, blocks, cr, cr);
 
-            sfree(dsf);
+            dsf_free(dsf);
         } else {               /* basic Sudoku mode */
             for (y = 0; y < cr; y++)
             for (x = 0; x < cr; x++)
@@ -3513,14 +3494,14 @@ static const char *spec_to_grid(const char *desc, digit *grid, int area)
  * end of the block spec, and return an error string or NULL if everything
  * is OK. The DSF is stored in *PDSF.
  */
-static const char *spec_to_dsf(const char **pdesc, int **pdsf,
+static const char *spec_to_dsf(const char **pdesc, DSF **pdsf,
                                int cr, int area)
 {
     const char *desc = *pdesc;
     int pos = 0;
-    int *dsf;
+    DSF *dsf;
 
-    *pdsf = dsf = snew_dsf(area);
+    *pdsf = dsf = dsf_new(area);
 
     while (*desc && *desc != ',') {
     int c;
@@ -3531,7 +3512,7 @@ static const char *spec_to_dsf(const char **pdesc, int **pdsf,
     else if (*desc >= 'a' && *desc <= 'z')
         c = *desc - 'a' + 1;
     else {
-        sfree(dsf);
+        dsf_free(dsf);
         return "Invalid character in game description";
     }
     desc++;
@@ -3546,9 +3527,9 @@ static const char *spec_to_dsf(const char **pdesc, int **pdsf,
          * side of it.
          */
         if (pos >= 2*cr*(cr-1)) {
-                sfree(dsf);
-                return "Too much data in block structure specification";
-            }
+            dsf_free(dsf);
+            return "Too much data in block structure specification";
+        }
 
         if (pos < cr*(cr-1)) {
         int y = pos/(cr-1);
@@ -3576,8 +3557,8 @@ static const char *spec_to_dsf(const char **pdesc, int **pdsf,
      * edge at the end.
      */
     if (pos != 2*cr*(cr-1)+1) {
-    sfree(dsf);
-    return "Not enough data in block structure specification";
+        dsf_free(dsf);
+        return "Not enough data in block structure specification";
     }
 
     return NULL;
@@ -3618,11 +3599,11 @@ static const char *validate_block_desc(const char **pdesc, int cr, int area,
                                        int min_nr_squares, int max_nr_squares)
 {
     const char *err;
-    int *dsf;
+    DSF *dsf;
 
     err = spec_to_dsf(pdesc, &dsf, cr, area);
     if (err) {
-    return err;
+        return err;
     }
 
     if (min_nr_squares == max_nr_squares) {
@@ -3647,7 +3628,7 @@ static const char *validate_block_desc(const char **pdesc, int cr, int area,
         if (canons[c] == j) {
             counts[c]++;
             if (counts[c] > max_nr_squares) {
-            sfree(dsf);
+            dsf_free(dsf);
             sfree(canons);
             sfree(counts);
             return "A jigsaw block is too big";
@@ -3657,7 +3638,7 @@ static const char *validate_block_desc(const char **pdesc, int cr, int area,
 
         if (c == ncanons) {
         if (ncanons >= max_nr_blocks) {
-            sfree(dsf);
+            dsf_free(dsf);
             sfree(canons);
             sfree(counts);
             return "Too many distinct jigsaw blocks";
@@ -3669,14 +3650,14 @@ static const char *validate_block_desc(const char **pdesc, int cr, int area,
     }
 
     if (ncanons < min_nr_blocks) {
-        sfree(dsf);
+        dsf_free(dsf);
         sfree(canons);
         sfree(counts);
         return "Not enough distinct jigsaw blocks";
     }
     for (c = 0; c < ncanons; c++) {
         if (counts[c] < min_nr_squares) {
-        sfree(dsf);
+        dsf_free(dsf);
         sfree(canons);
         sfree(counts);
         return "A jigsaw block is too small";
@@ -3686,7 +3667,7 @@ static const char *validate_block_desc(const char **pdesc, int cr, int area,
     sfree(counts);
     }
 
-    sfree(dsf);
+    dsf_free(dsf);
     return NULL;
 }
 
@@ -3774,13 +3755,13 @@ static game_state *new_game(midend *me, const game_params *params,
 
     if (r == 1) {
         const char *err;
-        int *dsf;
+        DSF *dsf;
         assert(*desc == ',');
         desc++;
         err = spec_to_dsf(&desc, &dsf, cr, area);
         assert(err == NULL);
         dsf_to_blocks(dsf, state->blocks, cr, cr);
-        sfree(dsf);
+        dsf_free(dsf);
     } else {
         int x, y;
 
@@ -3792,13 +3773,13 @@ static game_state *new_game(midend *me, const game_params *params,
 
     if (params->killer) {
         const char *err;
-        int *dsf;
+        DSF *dsf;
         assert(*desc == ',');
         desc++;
         err = spec_to_dsf(&desc, &dsf, cr, area);
         assert(err == NULL);
         dsf_to_blocks(dsf, state->kblocks, cr, area);
-        sfree(dsf);
+        dsf_free(dsf);
         make_blocks_from_whichblock(state->kblocks);
 
         assert(*desc == ',');
@@ -3967,13 +3948,27 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
 {
-    return NULL;
-}
+    int i;
+    int cr = params->c * params->r;
+    key_label *keys = snewn(cr+3, key_label);
+    *nkeys = cr + 3;
 
-static void decode_ui(game_ui *ui, const char *encoding)
-{
+    for (i = 0; i < cr; i++) {
+        if (i<9) keys[i].button = '1' + i;
+        else keys[i].button = 'a' + i - 9;
+
+        keys[i].label = NULL;
+    }
+    keys[cr].button = '\b';
+    keys[cr].label = NULL;
+    keys[cr+1].button = '+';
+    keys[cr+1].label = NULL;
+    keys[cr+2].button = '-';
+    keys[cr+2].label = NULL;
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -3992,9 +3987,11 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
     }
 }
 
-static bool is_key_highlighted(const game_ui *ui, char c) {
-    if (c == '\b' && ui->hhint == 0) return true;
-    return ((c-'0') == ui->hhint);
+static const char *current_key_label(const game_ui *ui,
+                                     const game_state *state, int button){
+    if (button == '\b') return (ui->hhint == 0) ? "H" : "E";
+    if ((button < '0') || (button > '9')) return "";
+    return ((button-'0') == ui->hhint) ? "H" : "E";
 }
 
 struct game_drawstate {
@@ -4022,20 +4019,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     tx = (x + TILE_SIZE - BORDER) / TILE_SIZE - 1;
     ty = (y + TILE_SIZE - BORDER) / TILE_SIZE - 1;
 
-    if ((tx < 0 || tx >= cr || ty < 0 || ty >= cr) &&
-        ((button == LEFT_RELEASE && !swapped) || 
-         (button == LEFT_BUTTON && swapped))) {
-        if (fixed_entry) {
-            ui->hshow = false;
-            sprintf(buf, "Y");
-            return dupstr(buf);
-        }
-    }
-
     if (tx >= 0 && tx < cr && ty >= 0 && ty < cr) {
         if (((button == LEFT_RELEASE && !swapped) || 
              (button == LEFT_BUTTON && swapped)) &&
-             (!ui->hdrag && ui->hhint >= 0)) {
+             (!ui->hdrag && ui->hhint >= 0) &&
+             (!state->immutable[ty*cr+tx] || fixed_entry)) {
             sprintf(buf, "%c%d,%d,%d", fixed_entry ? 'F' : 'R', tx, ty, ui->hhint);
             return dupstr(buf);
         }
@@ -4055,7 +4043,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hpencil = false;
             }
             ui->hcursor = false;
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         }
         else if (button == RIGHT_BUTTON) {
             if (fixed_entry) return NULL;
@@ -4082,17 +4070,20 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->hcursor = false;
             ui->hhint = -1;
             ui->hdrag = false;
-            return UI_UPDATE;
-        }
-        else if (button == LEFT_DRAG) {
-            ui->hdrag = true;
+            return MOVE_UI_UPDATE;
         }
     } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         ui->hshow = false;
         ui->hpencil = false;
         ui->hhint = -1;
         ui->hdrag = false;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
+    }
+
+    if (fixed_entry && (button == '+' || button == '-')) {
+        ui->hshow = false;
+        sprintf(buf, "Y");
+        return dupstr(buf);
     }
 
     if (!fixed_entry && button == '+') { sprintf(buf,"+"); return dupstr(buf); }
@@ -4133,12 +4124,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (button == '\b') n = 0;
         if (ui->hhint == n) ui->hhint = -1;
         else ui->hhint = n;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
     if (button == 'M' || button == 'm')
         return dupstr("M");
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
 static bool check_hint(const game_state *state, int x, int y, int n) {
@@ -4178,7 +4169,7 @@ static bool check_hint(const game_state *state, int x, int y, int n) {
     return check;
 }
 
-static game_state *execute_move(const game_state *from, const char *move)
+static game_state *execute_move(const game_state *from, const game_ui *ui, const char *move)
 {
     int cr = from->cr;
     game_state *ret;
@@ -4228,7 +4219,7 @@ static game_state *execute_move(const game_state *from, const char *move)
 
             if (!*p || ret->grid[n] < 1 || ret->grid[n] > cr) {
                 free_game(ret);
-            return NULL;
+                return NULL;
             }
 
             while (*p && isdigit((unsigned char)*p)) p++;
@@ -4254,20 +4245,19 @@ static game_state *execute_move(const game_state *from, const char *move)
              * We've made a real change to the grid. Check to see
              * if the game has been completed.
              */
-            if (!ret->completed && check_valid(
+            ret->cheated = false;
+            ret->completed = check_valid(
                     cr, ret->blocks, ret->kblocks, ret->kgrid,
-                    ret->xtype, ret->grid)) {
-                ret->completed = true;
-            }
+                    ret->xtype, ret->grid);
         }
         return ret;
     } else if (move[0] == 'M') {
-    /*
-     * Fill in absolutely all pencil marks in unfilled squares,
-     * for those who like to play by the rigorous approach of
-     * starting off in that state and eliminating things.
-     */
-    ret = dup_game(from);
+        /*
+         * Fill in absolutely all pencil marks in unfilled squares,
+         * for those who like to play by the rigorous approach of
+         * starting off in that state and eliminating things.
+         */
+        ret = dup_game(from);
         for (y = 0; y < cr; y++) {
             for (x = 0; x < cr; x++) {
                 if (!ret->grid[y*cr+x]) {
@@ -4277,9 +4267,9 @@ static game_state *execute_move(const game_state *from, const char *move)
                 }
             }
         }
-    return ret;
+        return ret;
     } else
-    return NULL;               /* couldn't parse move string */
+        return NULL;               /* couldn't parse move string */
 }
 
 /* ----------------------------------------------------------------------
@@ -4290,7 +4280,7 @@ static game_state *execute_move(const game_state *from, const char *move)
 #define GETTILESIZE(cr, w) ( (double)(w-1) / (double)(cr+1) )
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -4594,7 +4584,7 @@ static void draw_number(drawing *dr, game_drawstate *ds,
                 fw = (pr - pl) / (float)pw;
                 fh = (pb - pt) / (float)ph;
                 fs = min(fw, fh);
-                if (fs > bestsize) {
+                if (fs >= bestsize) {
                     bestsize = fs;
                     pbest = pw;
                 }
@@ -4661,6 +4651,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int cr = state->cr;
     int x, y;
+
+    char buf[64];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+            state->manual && !state->fixed ? "Enter numbers; click + or - button when finished" :
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, buf);
 
     if (!ds->started) {
     /*
@@ -4786,13 +4784,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    if (state->completed)
-    return false;
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame solo
 #endif
@@ -4801,14 +4792,14 @@ static const char rules[] = "In this game, generally known as ’Sudoku’, each
 "You are given some of the numbers as clues; your aim is to place the rest of the numbers correctly. This puzzle contains some additional special modes:\n\n"
 "- 'X': Each of the square's two main diagonals contains only one occurrence of each digit.\n"
 "- 'Jigsaw': The sub-blocks are arbitrary shapes.\n"
-"- 'Killer': The grid is divided into ‘cages’, and for each cage the the sum of all the digits in that cage must be the given number. No digit may appear more than once within a cage, even if the cage crosses the boundaries of existing regions.\n"
-"- 'Manual': The game starts with an empty grid, where you can enter numbers taken from newspaper sudokus or other sources. When finished, click the border outside the grid to fix the numbers in place, then the puzzle is ready to play.\n\n"
+"- 'Killer': The grid is divided into ‘cages’, and for each cage the sum of all the digits in that cage must be the given number. No digit may appear more than once within a cage, even if the cage crosses the boundaries of existing regions.\n"
+"- 'Manual': The game starts with an empty grid, where you can enter numbers taken from newspaper sudokus or other sources. When finished, click the + or - button to fix the numbers in place, then the puzzle is ready to play.\n\n"
 "This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
     "Solo", "games.solo", "solo", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -4821,13 +4812,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     game_request_keys,
     game_changed_state,
+    current_key_label,
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -4837,12 +4830,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    is_key_highlighted,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,  /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

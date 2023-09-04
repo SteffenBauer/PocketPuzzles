@@ -171,7 +171,7 @@ static void free_params(game_params *params)
 static game_params *dup_params(const game_params *params)
 {
     game_params *ret = snew(game_params);
-    *ret = *params;		       /* structure copy */
+    *ret = *params;            /* structure copy */
     return ret;
 }
 
@@ -185,7 +185,7 @@ static void decode_params(game_params *ret, char const *string)
     if (*p == 'x') {
         p++;
         ret->h = atoi(p);
-	while (*p && isdigit((unsigned char)*p)) p++;
+        while (*p && isdigit((unsigned char)*p)) p++;
     }
     if (*p == 'd') {
         ret->diff = DIFF_MAX; /* which is invalid */
@@ -252,7 +252,7 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 2 || params->h < 2)
-	return "Width and height must be at least two";
+        return "Width and height must be at least two";
     if (params->w > 16 || params->h > 16)
         return "Width and height must be at most 16";
     if (full) {
@@ -375,7 +375,7 @@ static char *generate_desc(game_state *state, bool issolve)
 /* --- Useful game functions (completion, etc.) --- */
 
 
-static void connect_if_same(game_state *state, int *dsf, int i1, int i2)
+static void connect_if_same(game_state *state, DSF *dsf, int i1, int i2)
 {
     int c1, c2;
 
@@ -387,13 +387,13 @@ static void connect_if_same(game_state *state, int *dsf, int i1, int i2)
     dsf_merge(dsf, c1, c2);
 }
 
-static void connect_dsf(game_state *state, int *dsf)
+static void connect_dsf(game_state *state, DSF *dsf)
 {
     int x, y, i;
 
     /* Construct a dsf array for connected blocks; connections
      * tracked to right and down. */
-    dsf_init(dsf, state->n);
+    dsf_reinit(dsf);
     for (x = 0; x < state->w; x++) {
         for (y = 0; y < state->h; y++) {
             i = y*state->w + x;
@@ -452,7 +452,7 @@ static int check_rowcol(game_state *state, int starti, int di, int sz, unsigned 
 
 static bool check_complete(game_state *state, unsigned flags)
 {
-    int *dsf = snewn(state->n, int);
+    DSF *dsf = dsf_new(state->n);
     int x, y, i, error = 0, nwhite, w = state->w, h = state->h;
 
     if (flags & CC_MARK_ERRORS) {
@@ -501,7 +501,7 @@ static bool check_complete(game_state *state, unsigned flags)
                 int size = dsf_size(dsf, i);
                 if (largest < size) {
                     largest = size;
-                    canonical = i;
+                    canonical = dsf_canonify(dsf, i);
                 }
             }
 
@@ -516,7 +516,7 @@ static bool check_complete(game_state *state, unsigned flags)
         }
     }
 
-    sfree(dsf);
+    dsf_free(dsf);
     return !(error > 0);
 }
 
@@ -1260,9 +1260,10 @@ found:
     return j;
 }
 
-static char *new_game_desc(const game_params *params, random_state *rs,
-			   char **aux, bool interactive)
+static char *new_game_desc(const game_params *params_orig, random_state *rs,
+                           char **aux, bool interactive)
 {
+    game_params *params = dup_params(params_orig);
     game_state *state = blank_game(params->w, params->h);
     game_state *tosolve = blank_game(params->w, params->h);
     int i, j, *scratch, *rownums, *colnums, x, y, ntries;
@@ -1270,6 +1271,12 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     char *ret;
     digit *latin;
     struct solver_state *ss = solver_state_new(state);
+
+    /* Downgrade difficulty to Easy for puzzles so tiny that they aren't
+     * possible to generate at Tricky. These are 2x2, 2x3 and 3x3, i.e.
+     * any puzzle that doesn't have one dimension at least 4. */
+    if ((w < 4 || h < 4) && params->diff > DIFF_EASY)
+        params->diff = DIFF_EASY;
 
     scratch = snewn(state->n, int);
     rownums = snewn(h*o, int);
@@ -1361,6 +1368,7 @@ randomise:
 
     free_game(tosolve);
     free_game(state);
+    free_params(params);
     solver_state_free(ss);
     sfree(scratch);
     sfree(rownums);
@@ -1391,6 +1399,7 @@ static game_state *new_game(midend *me, const game_params *params,
 
 struct game_ui {
     int cx, cy;
+    int swap_buttons;
     bool cshow, show_black_nums;
 };
 
@@ -1400,6 +1409,7 @@ static game_ui *new_ui(const game_state *state)
 
     ui->cx = ui->cy = 0;
     ui->cshow = false;
+    ui->swap_buttons = 0;
     ui->show_black_nums = true;
 
     return ui;
@@ -1410,13 +1420,34 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
+static config_item *get_prefs(game_ui *ui)
 {
-    return NULL;
+    config_item *ret;
+
+    ret = snewn(3, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Fill/Circle:Circle/Fill";
+    ret[0].u.choices.choicekws = ":fill:dot";
+    ret[0].u.choices.selected = ui->swap_buttons;
+
+    ret[1].name = "Show numbers on black squares";
+    ret[1].kw = "show-black-nums";
+    ret[1].type = C_BOOLEAN;
+    ret[1].u.boolean.bval = ui->show_black_nums;
+
+    ret[2].name = NULL;
+    ret[2].type = C_END;
+
+    return ret;
 }
 
-static void decode_ui(game_ui *ui, const char *encoding)
+static void set_prefs(game_ui *ui, const config_item *cfg)
 {
+    ui->swap_buttons = cfg[0].u.choices.selected;
+    ui->show_black_nums = cfg[1].u.boolean.bval;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1449,36 +1480,21 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     int i, x = FROMCOORD(mx), y = FROMCOORD(my);
     enum { NONE, TOGGLE_BLACK, TOGGLE_CIRCLE, UI } action = NONE;
 
-    if (IS_CURSOR_MOVE(button)) {
-        move_cursor(button, &ui->cx, &ui->cy, state->w, state->h, true);
-        ui->cshow = true;
-        action = UI;
-    } else if (IS_CURSOR_SELECT(button)) {
-        x = ui->cx; y = ui->cy;
-        if (!ui->cshow) {
-            action = UI;
-            ui->cshow = true;
-        }
-        if (button == CURSOR_SELECT) {
-            action = TOGGLE_BLACK;
-        } else if (button == CURSOR_SELECT2) {
-            action = TOGGLE_CIRCLE;
-        }
-    } else if (IS_MOUSE_DOWN(button)) {
+    if (IS_MOUSE_DOWN(button)) {
         if (ui->cshow) {
             ui->cshow = false;
             action = UI;
         }
         if (!INGRID(state, x, y)) {
-            ui->show_black_nums = !ui->show_black_nums;
-            action = UI; /* this wants to be a per-game option. */
+            action = NONE;
         } else if (button == LEFT_BUTTON) {
-            action = TOGGLE_BLACK;
+            action = (ui->swap_buttons == 0) ? TOGGLE_BLACK : TOGGLE_CIRCLE;
         } else if (button == RIGHT_BUTTON) {
-            action = TOGGLE_CIRCLE;
+            action = (ui->swap_buttons == 0) ? TOGGLE_CIRCLE : TOGGLE_BLACK;
         }
     }
-    if (action == UI) return UI_UPDATE;
+    if (action == NONE) return MOVE_NO_EFFECT;
+    if (action == UI) return MOVE_UI_UPDATE;
 
     if (action == TOGGLE_BLACK || action == TOGGLE_CIRCLE) {
         i = y * state->w + x;
@@ -1490,16 +1506,15 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return dupstr(buf);
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     game_state *ret = dup_game(state);
     int x, y, i, n;
 
-    debug(("move: %s\n", move));
-
+    ret->used_solve = false;
     while (*move) {
         char c = *move;
         if (c == 'B' || c == 'C' || c == 'E') {
@@ -1526,7 +1541,7 @@ static game_state *execute_move(const game_state *state, const char *move)
         else if (*move)
             goto badmove;
     }
-    if (check_complete(ret, CC_MARK_ERRORS)) ret->completed = true;
+    ret->completed = check_complete(ret, CC_MARK_ERRORS);
     return ret;
 
 badmove:
@@ -1539,7 +1554,7 @@ badmove:
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     /* Ick: fake up `ds->tilesize' for macro expansion purposes */
     struct { int tilesize; } ads, *ds = &ads;
@@ -1656,6 +1671,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int x, y, i;
     unsigned int f;
 
+    char buf[48];
+    /* Draw status bar */
+    sprintf(buf, "%s",
+        state->used_solve ? "Auto-solved." :
+        state->completed  ? "COMPLETED!" : "");
+    status_bar(dr, buf);
+
     if (!ds->started) {
         int wsz = TILE_SIZE * state->w + 2 * BORDER;
         int hsz = TILE_SIZE * state->h + 2 * BORDER;
@@ -1708,11 +1730,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame singles
 #endif
@@ -1726,7 +1743,7 @@ static const char rules[] = "You have a grid of white squares, all of which cont
 const struct game thegame = {
     "Singles", "games.singles", "singles", rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1739,13 +1756,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     PREFERRED_TILE_SIZE, game_compute_size, game_set_size,
@@ -1755,12 +1774,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,			       /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON,		       /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

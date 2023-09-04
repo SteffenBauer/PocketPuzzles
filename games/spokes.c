@@ -456,7 +456,7 @@ struct spokes_scratch {
     int *lines;
     int *marked;
     
-    int *dsf;
+    DSF *dsf;
     int *open;
 };
 
@@ -500,7 +500,7 @@ static void spokes_solver_recount(const game_state *state, struct spokes_scratch
         }
     }
     
-    dsf_init(solver->dsf, w*h);
+    dsf_reinit(solver->dsf);
     
     /* If the top-left square is empty, connect it to the first non-empty square. */
     if(!state->numbers[0])
@@ -675,7 +675,7 @@ static struct spokes_scratch *spokes_new_scratch(const game_state *state)
     solver->nodes = snewn(w*h, int);
     solver->lines = snewn(w*h, int);
     solver->marked = snewn(w*h, int);
-    solver->dsf = snewn(w*h, int);
+    solver->dsf = dsf_new(w*h);
     solver->open = snewn(w*h, int);
 
     return solver;
@@ -686,7 +686,7 @@ static void spokes_free_scratch(struct spokes_scratch *solver)
     sfree(solver->nodes);
     sfree(solver->lines);
     sfree(solver->marked);
-    sfree(solver->dsf);
+    dsf_free(solver->dsf);
     sfree(solver->open);
     sfree(solver);
 }
@@ -1026,15 +1026,6 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
-static char *encode_ui(const game_ui *ui)
-{
-    return NULL;
-}
-
-static void decode_ui(game_ui *ui, const char *encoding)
-{
-}
-
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -1106,7 +1097,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->drag_end = -1;
         else
             ui->drag_end = y*w+x;
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
     if(button == LEFT_RELEASE || button == RIGHT_RELEASE)
     {
@@ -1122,7 +1113,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if(drag != DRAG_NONE)
     {
         if(from == -1 || to == -1)
-            return UI_UPDATE;
+            return MOVE_UI_UPDATE;
         
         char buf[80];
         int old, new;
@@ -1157,58 +1148,47 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             
             return dupstr(buf);
         }
-        return UI_UPDATE;
+        return MOVE_UI_UPDATE;
     }
 
-    return NULL;
+    return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     const char *p = move;
-    game_state *ret = NULL;
     int i, j, d, s;
     bool cheated = false;
-    
-    while(*p)
-    {
-        if(*p == 'S')
-        {
-            if(!ret) ret = dup_game(state);
-            
-            for(i = 0; i < (ret->w * ret->h); i++)
-            {
+    game_state *ret = dup_game(state);
+
+    while(*p) {
+        if(*p == 'S') {
+            for(i = 0; i < (ret->w * ret->h); i++) {
                 if(ret->spokes[i] == 0) continue;
-                for(j = 0; j < 4; j++)
-                {
+                for(j = 0; j < 4; j++) {
                     if(GET_SPOKE(ret->spokes[i], j) != SPOKE_HIDDEN)
                         spokes_place(ret, i, j, SPOKE_EMPTY);
                 }
             }
-            
             cheated = true;
         }
-        
-        else if(sscanf(p, "%d,%d,%d", &i, &d, &s) == 3)
-        {
+        else if(sscanf(p, "%d,%d,%d", &i, &d, &s) == 3) {
             if(d < 0 || d > 7 || s < 0 || s > 3) break;
-            
-            if(!ret) ret = dup_game(state);
-            
             if(GET_SPOKE(ret->spokes[i], d) != SPOKE_HIDDEN)
                 spokes_place(ret, i, d, s);
         }
-        while(*p && *p++ != ';');
+        else {
+            free_game(ret);
+            return NULL;
+        }
+
+        while (*p && *p != ';')  p++;
+        if (*p == ';') p++;
     }
     
-    if(ret && spokes_validate(ret, NULL) == STATUS_VALID)
-        ret->completed = true;
-    else
-        /* Don't mark a game as cheated if the solver didn't complete the grid */
-        cheated = false;
-    
-    if(cheated) ret->cheated = true;
-    
+    ret->completed = spokes_validate(ret, NULL) == STATUS_VALID;
+    ret->cheated = cheated;
+
     return ret;
 }
 
@@ -1217,7 +1197,7 @@ static game_state *execute_move(const game_state *state, const char *move)
  */
 
 static void game_compute_size(const game_params *params, int tilesize,
-                              int *x, int *y)
+                              const game_ui *ui, int *x, int *y)
 {
     *x = (params->w) * tilesize;
     *y = (params->h) * tilesize;
@@ -1318,13 +1298,20 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int tilesize = ds->tilesize;
     int i, x, y, d, tx, ty, tx2, ty2, connected, color;
     char buf[2];
+    char statusbuf[48];
     int fill, border, txt, lines;
     bool error_disconnected, error_number, is_holding, is_done;
     buf[1] = '\0';
 
     double thick = (tilesize <= 80 ? 2 : 4);
     float radius = tilesize/3.5F;
-    
+
+    /* Draw status bar */
+    sprintf(statusbuf, "%s",
+            state->cheated   ? "Auto-solved." :
+            state->completed ? "COMPLETED!" : "");
+    status_bar(dr, statusbuf);
+
     spokes_solver_recount(state, ds->scratch, true);
     spokes_find_isolated(state, ds->scratch);
     
@@ -1476,11 +1463,6 @@ static int game_status(const game_state *state)
     return state->completed ? +1 : 0;
 }
 
-static bool game_timing_state(const game_state *state, game_ui *ui)
-{
-    return true;
-}
-
 #ifdef COMBINED
 #define thegame spokes
 #endif
@@ -1494,7 +1476,7 @@ static const char rules[] = "Connect all hubs using horizontal, vertical and dia
 const struct game thegame = {
     "Spokes", NULL, NULL, rules,
     default_params,
-    game_fetch_preset, NULL,
+    game_fetch_preset, NULL, /* preset_menu */
     decode_params,
     encode_params,
     free_params,
@@ -1507,13 +1489,15 @@ const struct game thegame = {
     dup_game,
     free_game,
     true, solve_game,
-    false, NULL, NULL,
+    false, NULL, NULL, /* can_format_as_text_now, text_format */
+    false, NULL, NULL, /* get_prefs, set_prefs */
     new_ui,
     free_ui,
-    encode_ui,
-    decode_ui,
+    NULL, /* encode_ui */
+    NULL, /* decode_ui */
     NULL, /* game_request_keys */
     game_changed_state,
+    NULL, /* current_key_label */
     interpret_move,
     execute_move,
     72, game_compute_size, game_set_size,
@@ -1523,12 +1507,11 @@ const struct game thegame = {
     game_redraw,
     game_anim_length,
     game_flash_length,
-    NULL,
-    NULL,
+    NULL,  /* game_get_cursor_location */
     game_status,
-    false, false, NULL, NULL,
-    false,                   /* wants_statusbar */
-    false, game_timing_state,
-    REQUIRE_RBUTTON, /* flags */
+    false, false, NULL, NULL,  /* print_size, print */
+    true,                      /* wants_statusbar */
+    false, NULL,               /* timing_state */
+    REQUIRE_RBUTTON,           /* flags */
 };
 

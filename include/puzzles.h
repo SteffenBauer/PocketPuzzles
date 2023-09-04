@@ -18,6 +18,9 @@
 #define STR_INT(x) #x
 #define STR(x) STR_INT(x)
 
+/* An upper bound on the length of sprintf'ed integers (signed or unsigned). */
+#define MAX_DIGITS(x) (sizeof(x) * CHAR_BIT / 3 + 2)
+
 /* NB not perfect because they evaluate arguments multiple times. */
 #ifndef max
 #define max(x,y) ( (x)>(y) ? (x) : (y) )
@@ -83,14 +86,6 @@ enum {
 #define REQUIRE_NUMPAD ( 1 << 11 )
 /* end of `flags' word definitions */
 
-#ifdef _WIN32_WCE
-  /* Pocket PC devices have small, portrait screen that requires more vivid colours */
-  #define SMALL_SCREEN
-  #define PORTRAIT_SCREEN
-  #define VIVID_COLOURS
-  #define STYLUS_BASED
-#endif
-
 #define IGNOREARG(x) ( (x) = (x) )
 
 typedef struct frontend frontend;
@@ -134,8 +129,13 @@ typedef struct psdata psdata;
  */
 enum { C_STRING, C_CHOICES, C_BOOLEAN, C_END };
 struct config_item {
-    /* Not dynamically allocated */
+    /* Not dynamically allocated: the GUI display name for the option */
     const char *name;
+    /* Not dynamically allocated: the keyword identifier for the
+     * option. Only examined in the case where this structure is being
+     * used for options that appear in config files, i.e. the
+     * get_prefs method fills this in but configure does not. */
+    const char *kw;
     /* Value from the above C_* enum */
     int type;
     union {
@@ -152,6 +152,13 @@ struct config_item {
              * options `Foo', `Bar' and `Baz'.
              */
             const char *choicenames;
+            /*
+             * choicekws is non-NULL, not dynamically allocated, and
+             * contains a parallel list of keyword strings used to
+             * represent the enumeration in config files. As with 'kw'
+             * above, this is only expected to be set by get_prefs.
+             */
+            const char *choicekws;
             /*
              * Indicates the chosen index from the options in
              * choicenames. In the above example, 0==Foo, 1==Bar and
@@ -225,9 +232,10 @@ game_params *preset_menu_lookup_by_id(struct preset_menu *menu, int id);
 typedef struct key_label {
     /* What should be displayed to the user by the frontend. Backends
      * can set this field to NULL and have it filled in by the midend
-     * with a generic label. Dynamically allocated, but frontends
-     * should probably use free_keys() to free instead. */
-    char *label;
+     * with an empty string.
+     PocketPuzzles: label is ignored by frontend, so just don't bother.
+      */
+    const char *label;
     int button; /* passed to midend_process_key when button is pressed */
 } key_label;
 
@@ -310,14 +318,16 @@ void midend_free(midend *me);
 const game *midend_which_game(midend *me);
 void midend_set_params(midend *me, game_params *params);
 game_params *midend_get_params(midend *me);
-void midend_size(midend *me, int *x, int *y, bool user_size);
+void midend_size(midend *me, int *x, int *y, bool user_size,
+                 double device_pixel_ratio);
 void midend_reset_tilesize(midend *me);
 void midend_new_game(midend *me);
 void midend_restart_game(midend *me);
 void midend_stop_anim(midend *me);
-bool midend_process_key(midend *me, int x, int y, int button, bool swapped);
+enum { PKR_QUIT = 0, PKR_SOME_EFFECT, PKR_NO_EFFECT, PKR_UNUSED };
+int midend_process_key(midend *me, int x, int y, int button, bool swapped);
 key_label *midend_request_keys(midend *me, int *nkeys);
-bool midend_is_key_highlighted(midend *me, char c);
+const char *midend_current_key_label(midend *me, int button);
 void midend_force_redraw(midend *me);
 void midend_redraw(midend *me);
 float *midend_colours(midend *me, int *ncolours);
@@ -326,7 +336,7 @@ void midend_timer(midend *me, float tplus);
 struct preset_menu *midend_get_presets(midend *me, int *id_limit);
 int midend_which_preset(midend *me);
 bool midend_wants_statusbar(midend *me);
-enum { CFG_SETTINGS, CFG_SEED, CFG_DESC, CFG_FRONTEND_SPECIFIC };
+enum { CFG_SETTINGS, CFG_SEED, CFG_DESC, CFG_PREFS, CFG_FRONTEND_SPECIFIC };
 config_item *midend_get_config(midend *me, int which, char **wintitle);
 const char *midend_set_config(midend *me, int which, config_item *cfg);
 const char *midend_game_id(midend *me, const char *id);
@@ -347,6 +357,11 @@ void midend_serialise(midend *me,
 const char *midend_deserialise(midend *me,
                                bool (*read)(void *ctx, void *buf, int len),
                                void *rctx);
+const char *midend_load_prefs(
+    midend *me, bool (*read)(void *ctx, void *buf, int len), void *rctx);
+void midend_save_prefs(midend *me,
+                       void (*write)(void *ctx, const void *buf, int len),
+                       void *wctx);
 const char *identify_game(char **name,
                           bool (*read)(void *ctx, void *buf, int len),
                           void *rctx);
@@ -379,12 +394,22 @@ void free_cfg(config_item *cfg);
 void free_keys(key_label *keys, int nkeys);
 void obfuscate_bitmap(unsigned char *bmp, int bits, bool decode);
 char *fgetline(FILE *fp);
+char *make_prefs_path(const char *dir, const char *sep,
+                      const game *game, const char *suffix);
+int n_times_root_k(int n, int k);
 
 /* allocates output each time. len is always in bytes of binary data.
  * May assert (or just go wrong) if lengths are unchecked. */
 char *bin2hex(const unsigned char *in, int inlen);
 unsigned char *hex2bin(const char *in, int outlen);
 
+/* Returns 0 or 1 if the environment variable is set, or dflt if not.
+ * dflt may be a third value if it needs to be. */
+int getenv_bool(const char *name, int dflt);
+
+/* Mixes two colours in specified proportions. */
+void colour_mix(const float src1[3], const float src2[3], float p,
+                float dst[3]);
 /* Sets (and possibly dims) background from frontend default colour,
  * and auto-generates highlight and lowlight colours too. */
 void game_mkhighlight(frontend *fe, float *ret,
@@ -397,14 +422,15 @@ void game_mkhighlight_specific(frontend *fe, float *ret,
 /* Randomly shuffles an array of items. */
 void shuffle(void *array, int nelts, int eltsize, random_state *rs);
 
-/* Draw a rectangle outline, using the drawing API's draw_line. */
+/* Draw a rectangle outline, using the drawing API's draw_polygon. */
 void draw_rect_outline(drawing *dr, int x, int y, int w, int h,
                        int colour);
 
 /* Draw a set of rectangle corners (e.g. for a cursor display). */
 void draw_rect_corners(drawing *dr, int cx, int cy, int r, int col);
 
-void move_cursor(int button, int *x, int *y, int maxw, int maxh, bool wrap);
+char *move_cursor(int button, int *x, int *y, int maxw, int maxh, bool wrap,
+                  bool *visible);
 
 /* Used in netslide.c and sixteen.c for cursor movement around edge. */
 int c2pos(int w, int h, int cx, int cy);
@@ -429,25 +455,39 @@ char *button2label(int button);
 /*
  * dsf.c
  */
-int *snew_dsf(int size);
+typedef struct DSF DSF;
+DSF *dsf_new(int size);
+void dsf_free(DSF *dsf);
 
-void print_dsf(int *dsf, int size);
+void dsf_copy(DSF *to, DSF *from);
 
-/* Return the canonical element of the equivalence class containing element
- * val.  If 'inverse' is non-NULL, this function will put into it a flag
- * indicating whether the canonical element is inverse to val. */
-int edsf_canonify(int *dsf, int val, bool *inverse);
-int dsf_canonify(int *dsf, int val);
-int dsf_size(int *dsf, int val);
+/* Basic dsf operations, return the canonical element of a class,
+ * check if two elements are in the same class, and return the size of
+ * a class. These work on all types of dsf. */
+int dsf_canonify(DSF *dsf, int n);
+bool dsf_equivalent(DSF *dsf, int n1, int n2);
+int dsf_size(DSF *dsf, int n);
 
-/* Allow the caller to specify that two elements should be in the same
- * equivalence class.  If 'inverse' is true, the elements are actually opposite
- * to one another in some sense.  This function will fail an assertion if the
- * caller gives it self-contradictory data, ie if two elements are claimed to
- * be both opposite and non-opposite. */
-void edsf_merge(int *dsf, int v1, int v2, bool inverse);
-void dsf_merge(int *dsf, int v1, int v2);
-void dsf_init(int *dsf, int len);
+/* Merge two elements and their classes. Not legal on a flip dsf. */
+void dsf_merge(DSF *dsf, int n1, int n2);
+
+/* Special dsf that tracks the minimal element of every equivalence
+ * class, and a function to query it. */
+DSF *dsf_new_min(int size);
+int dsf_minimal(DSF *dsf, int n);
+
+/* Special dsf that tracks whether pairs of elements in the same class
+ * have flipped sense relative to each other. Merge function takes an
+ * argument saying whether n1 and n2 are opposite to each other;
+ * canonify function will report whether n is opposite to the returned
+ * element. */
+DSF *dsf_new_flip(int size);
+void dsf_merge_flip(DSF *dsf, int n1, int n2, bool flip);
+int dsf_canonify_flip(DSF *dsf, int n, bool *flip);
+
+/* Reinitialise a dsf to the starting 'all elements distinct' state. */
+void dsf_reinit(DSF *dsf);
+
 
 /*
  * tdq.c
@@ -508,7 +548,7 @@ void random_free(random_state *state);
 char *random_state_encode(random_state *state);
 random_state *random_state_decode(const char *input);
 /* random.c also exports SHA, which occasionally comes in useful. */
-#if __STDC_VERSION__ >= 199901L
+#if HAVE_STDINT_H
 #include <stdint.h>
 typedef uint32_t uint32;
 #elif UINT_MAX >= 4294967295L
@@ -533,7 +573,7 @@ void SHA_Simple(const void *p, int len, unsigned char *output);
 document *document_new(int pw, int ph, float userscale);
 void document_free(document *doc);
 void document_add_puzzle(document *doc, const game *game, game_params *par,
-             game_state *st, game_state *st2);
+             game_ui *ui, game_state *st, game_state *st2);
 int document_npages(const document *doc);
 void document_begin(const document *doc, drawing *dr);
 void document_end(const document *doc, drawing *dr);
@@ -565,7 +605,9 @@ void free_combi(combi_ctx *combi);
  * divvy.c
  */
 /* divides w*h rectangle into pieces of size k. Returns w*h dsf. */
-int *divvy_rectangle(int w, int h, int k, random_state *rs);
+DSF *divvy_rectangle(int w, int h, int k, random_state *rs);
+/* Same, but only tries once, and may fail. (Exposed for test program.) */
+DSF *divvy_rectangle_attempt(int w, int h, int k, random_state *rs);
 
 /*
  * findloop.c
@@ -663,19 +705,25 @@ struct game {
     bool can_format_as_text_ever;
     bool (*can_format_as_text_now)(const game_params *params);
     char *(*text_format)(const game_state *state);
+    bool has_preferences;
+    config_item *(*get_prefs)(game_ui *ui);
+    void (*set_prefs)(game_ui *ui, const config_item *cfg);
     game_ui *(*new_ui)(const game_state *state);
     void (*free_ui)(game_ui *ui);
     char *(*encode_ui)(const game_ui *ui);
-    void (*decode_ui)(game_ui *ui, const char *encoding);
-    key_label *(*request_keys)(const game_params *params, int *nkeys);
+    void (*decode_ui)(game_ui *ui, const char *encoding,
+                      const game_state *state);
+    key_label *(*request_keys)(const game_params *params, const game_ui *ui, int *nkeys);
     void (*changed_state)(game_ui *ui, const game_state *oldstate,
                           const game_state *newstate);
+    const char *(*current_key_label)(const game_ui *ui,
+                                     const game_state *state, int button);
     char *(*interpret_move)(const game_state *state, game_ui *ui,
                             const game_drawstate *ds, int x, int y, int button, bool swapped);
-    game_state *(*execute_move)(const game_state *state, const char *move);
+    game_state *(*execute_move)(const game_state *state, const game_ui *ui, const char *move);
     int preferred_tilesize;
     void (*compute_size)(const game_params *params, int tilesize,
-                         int *x, int *y);
+                         const game_ui *ui, int *x, int *y);
     void (*set_size)(drawing *dr, game_drawstate *ds,
              const game_params *params, int tilesize);
     float *(*colours)(frontend *fe, int *ncolours);
@@ -693,11 +741,12 @@ struct game {
                                 const game_state *state,
                                 const game_params *params,
                                 int *x, int *y, int *w, int *h);
-    bool (*is_key_highlighted)(const game_ui *ui, char c);
     int (*status)(const game_state *state);
     bool can_print, can_print_in_colour;
-    void (*print_size)(const game_params *params, float *x, float *y);
-    void (*print)(drawing *dr, const game_state *state, int tilesize);
+    void (*print_size)(const game_params *params, const game_ui *ui,
+                       float *x, float *y);
+    void (*print)(drawing *dr, const game_state *state, const game_ui *ui,
+                  int tilesize);
     bool wants_statusbar;
     bool is_timed;
     bool (*timing_state)(const game_state *state, game_ui *ui);
@@ -758,12 +807,20 @@ extern const game thegame;
 #endif
 
 /*
- * Special string value to return from interpret_move in the case
- * where the game UI has been updated but no actual move is being
- * appended to the undo chain. Must be declared as a non-const char,
- * but should never actually be modified by anyone.
+ * Special string values to return from interpret_move.
+ *
+ * MOVE_UI_UPDATE is for the case where the game UI has been updated
+ * but no actual move is being appended to the undo chain.
+ *
+ * MOVE_NO_EFFECT is for when the key was understood by the puzzle,
+ * but it happens that there isn't effect, not even a UI change.
+ *
+ * MOVE_UNUSED is for keys that the puzzle has no use for at all.
+ *
+ * Each must be declared as a non-const char, but should never
+ * actually be modified by anyone.
  */
-extern char UI_UPDATE[];
+extern char MOVE_UI_UPDATE[], MOVE_NO_EFFECT[], MOVE_UNUSED[];
 
 /* A little bit of help to lazy developers */
 #define DEFAULT_STATUSBAR_TEXT "Use status_bar() to fill this in."
