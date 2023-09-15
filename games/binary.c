@@ -15,8 +15,9 @@
 
 #include "puzzles.h"
 
-#define PREFERRED_TILE_SIZE 44
+#define PREFERRED_TILE_SIZE 48
 #define TILE_SIZE (ds->tilesize)
+#define DRAG_THRESHOLD 48
 #define BORDER    (TILE_SIZE / 2)
 #define HIGHLIGHT_WIDTH (TILE_SIZE / 10)
 #define COORD(x)  ( (x) * TILE_SIZE + BORDER )
@@ -98,7 +99,6 @@ struct game_state {
     struct game_state_shared *shared;
     unsigned char *tiles;
     int score;
-    bool lost;
     bool won;
     bool finished;
 };
@@ -233,9 +233,9 @@ static game_params *custom_params(const config_item *cfg) {
 
 static const char *validate_params(const game_params *params, bool full) {
     if (params->w < 2 || params->h < 2)
-        return "Width and height must both be at least three";
-    if (params->w > 8 || params->h > 8)
-        return "Width and height must both be at most 8";
+        return "Width and height must both be at least two";
+    if (params->w > 9 || params->h > 9)
+        return "Width and height must both be at most 9";
     if (params->goal < GOAL_32 || params->goal > GOAL_8192)
         return "Invalid goal number";
     if (params->mode == MODE_HEX)
@@ -354,9 +354,8 @@ static game_state *new_game(midend *me, const game_params *params,
     int i, wh;
     game_state *state = snew(game_state);
     state->score = 0;
-    state->lost = state->won = state->finished = false;
+    state->won = state->finished = false;
 
-    printf("Create new shared state\n");
     state->shared = snew(struct game_state_shared);
     state->shared->refcount = 1;
 
@@ -389,7 +388,6 @@ static game_state *dup_game(const game_state *state) {
     int wh;
     game_state *ret = snew(game_state);
     ret->score = state->score;
-    ret->lost = state->lost;
     ret->won = state->won;
     ret->finished = state->finished;
     ret->shared = state->shared;
@@ -407,7 +405,6 @@ static void free_game(game_state *state) {
         if (state->shared->rs)
             random_free(state->shared->rs);
         sfree(state->shared);
-        printf("Free shared state\n");
     }
     sfree(state->tiles);
     sfree(state);
@@ -415,11 +412,13 @@ static void free_game(game_state *state) {
 
 struct game_ui {
     int background;
+    int x, y;
 };
 
 static game_ui *new_ui(const game_state *state) {
     game_ui *ui = snew(game_ui);
     ui->background = BACKGROUND_EMPTY;
+    ui->x = ui->y = -1;
     return ui;
 }
 
@@ -455,10 +454,12 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate) {
 }
 
-static void compress_line(unsigned char *line, int length) {
+static int compress_line(unsigned char *line, int length) {
     int i,j;
     unsigned char t;
+    int linescore;
 
+    linescore = 0;
     for (i=1;i<length;i++) {
         if (line[i] == 0)
             continue;
@@ -471,6 +472,7 @@ static void compress_line(unsigned char *line, int length) {
             }
             if (line[j] == t) {
                 line[j] += 1;
+                linescore += POWER[line[j]];
                 break;
             }
             if (j<(length-1) && line[j] != 0) {
@@ -479,27 +481,30 @@ static void compress_line(unsigned char *line, int length) {
             }
         }
     }
+    return linescore;
 }
 
 static void move_board(game_state *state, char direction) {
     unsigned char *line, *p;
     int w = state->shared->w, h = state->shared->h;
     int x,y;
+    int movescore;
 
+    movescore = 0;
     if (direction == 'L' || direction == 'R') {
         line = snewn(w, unsigned char);
         for (y=0;y<h;y++) {
             if (direction == 'L') {
                 for (x=0,p=line;x<w;x++)
                     *p++ = state->tiles[x+y*w];
-                compress_line(line, w);
+                movescore += compress_line(line, w);
                 for (x=0,p=line;x<w;x++)
                     state->tiles[x+y*w] = *p++;
             }
             else {
                 for (x=w-1,p=line;x>=0;x--)
                     *p++ = state->tiles[x+y*w];
-                compress_line(line, w);
+                movescore += compress_line(line, w);
                 for (x=w-1,p=line;x>=0;x--)
                     state->tiles[x+y*w] = *p++;
             }
@@ -512,20 +517,21 @@ static void move_board(game_state *state, char direction) {
             if (direction == 'U') {
                 for (y=0,p=line;y<h;y++)
                     *p++ = state->tiles[x+y*w];
-                compress_line(line, h);
+                movescore += compress_line(line, h);
                 for (y=0,p=line;y<h;y++)
                     state->tiles[x+y*w] = *p++;
             }
             else {
                 for (y=h-1,p=line;y>=0;y--)
                     *p++ = state->tiles[x+y*w];
-                compress_line(line, h);
+                movescore += compress_line(line, h);
                 for (y=h-1,p=line;y>=0;y--)
                     state->tiles[x+y*w] = *p++;
             }
         }
         sfree(line);
     }
+    state->score += movescore;
 }
 
 static bool check_change(const game_state *state, char direction) {
@@ -538,7 +544,7 @@ static bool check_change(const game_state *state, char direction) {
             result = true;
             break;
         }
-    sfree(test);
+    free_game(test);
     return result;
 }
 
@@ -577,40 +583,41 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int x, int y, int button, bool swapped) {
     char buf[80];
-    int nx, ny;
+    int nx, ny, dx, dy;
+    char move;
+    int w = state->shared->w, h = state->shared->h;
 
     if (state->finished)
         return MOVE_NO_EFFECT;
 
+    nx = FROMCOORD(x);
+    ny = FROMCOORD(y);
+    move = 'N';
+
     if (button == LEFT_BUTTON) {
-        nx = FROMCOORD(x);
-        ny = FROMCOORD(y);
-        if (nx < 0) {
-            if (!check_change(state, 'L'))
-                return MOVE_NO_EFFECT;
-            sprintf(buf, "L");
-            return dupstr(buf);
-        }
-        if (nx >= state->shared->w) {
-            if (!check_change(state, 'R'))
-                return MOVE_NO_EFFECT;
-            sprintf(buf, "R");
-            return dupstr(buf);
-        }
-        if (ny < 0) {
-            if (!check_change(state, 'U'))
-                return MOVE_NO_EFFECT;
-            sprintf(buf, "U");
-            return dupstr(buf);
-        }
-        if (ny >= state->shared->w) {
-            if (!check_change(state, 'D'))
-                return MOVE_NO_EFFECT;
-            sprintf(buf, "D");
-            return dupstr(buf);
-        }
+        ui->x = x;
+        ui->y = y;
     }
-    return MOVE_UNUSED;
+    if (button == LEFT_RELEASE) {
+        dx = x - ui->x;
+        dy = y - ui->y;
+        if ((nx < 0) || ((dx < -DRAG_THRESHOLD) && (abs(dx) > 2*abs(dy))))
+            move = 'L';
+        else if ((nx >= w) || ((dx > DRAG_THRESHOLD) && (abs(dx) > 2*abs(dy))))
+            move = 'R';
+        else if ((ny < 0) || ((dy < -DRAG_THRESHOLD) && (abs(dy) > 2*abs(dx))))
+            move = 'U';
+        else if ((ny >= h) || ((dy > DRAG_THRESHOLD) && (abs(dy) > 2*abs(dx))))
+            move = 'D';
+        ui->x = ui->y = -1;
+    }
+    if (move == 'N')
+        return MOVE_UNUSED;
+
+    if (!check_change(state, move))
+        return MOVE_NO_EFFECT;
+    sprintf(buf, "%c", move);
+    return dupstr(buf);
 }
 
 static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move) {
@@ -620,8 +627,8 @@ static game_state *execute_move(const game_state *state, const game_ui *ui, cons
         ret = dup_game(state);
         move_board(ret, move[0]);
         add_new_number(ret->shared->rs, ret->tiles, w*h);
-        if (!moves_possible(ret)) ret->lost = ret->finished = true;
         if (goal_reached(ret)) ret->won = true;
+        if (!moves_possible(ret)) ret->finished = true;
         if (highest_reached(ret)) ret->finished = true;
         return ret;
     }
@@ -769,10 +776,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
     ds->started = true;
     sprintf(statusbuf,
-            "%sScore %d", state->lost ? "NO MORE MOVES " :
-                          state->finished ? "HIGHEST NUMBER REACHED " :
+            "%s%sGoal %s Score %d",
                           state->won  ? "WON! " : "",
-                          state->score);
+                          state->finished ? "NO MORE MOVES " : "",
+                          binary_goalnames[state->shared->goal], state->score);
     status_bar(dr, statusbuf);
 }
 
@@ -801,8 +808,12 @@ static int game_status(const game_state *state) {
 #define thegame binary
 #endif
 
-static const char rules[] = "2048";
-
+static const char rules[] = "You have a grid with tiles, numbered with powers of two.\n\n"
+"A turn is to move the tiles in one of the four directions, where they will move until they hit the border or another tile. "
+"When a tile hits one with the same number, both merge to the next power of two. "
+"After a move, a new tile is added randomly to the grid.\n\n"
+"The game is won when the goal number is reached (default 2048). The game is lost when no more valid moves are possible.\n\n"
+"This game, usually known under the name '2048', was implemented by Steffen Bauer";
 
 const struct game thegame = {
     "Binary", "games.binary", "binary", rules,
