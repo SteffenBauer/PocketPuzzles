@@ -48,6 +48,7 @@ struct paramparams {
     int pfontsize;
 
     midend *me;
+    int ptype;    /* Parameters or Settings */
     char *title;
 } pa;
 
@@ -82,6 +83,7 @@ void paramPrev();
 void paramNext();
 
 extern void gameStartNewGame();
+extern void gamePrepareFrontend();
 extern void gameScreenShow();
 
 #endif

@@ -1161,6 +1161,8 @@ static game_state *new_game(midend *me, const game_params *params,
 struct game_ui {
     puzzle_size r, c; /* cursor position */
     bool cursor_show;
+    int swap_buttons;
+    bool hint_button;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1168,12 +1170,44 @@ static game_ui *new_ui(const game_state *state)
     struct game_ui *ui = snew(game_ui);
     ui->r = ui->c = 0;
     ui->cursor_show = false;
+    ui->swap_buttons = 0;
+    ui->hint_button = false;
     return ui;
 }
 
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(3, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Fill/dot:Dot/Fill";
+    ret[0].u.choices.choicekws = ":fill:dot";
+    ret[0].u.choices.selected = ui->swap_buttons;
+
+    ret[1].name = "Show Hint button";
+    ret[1].kw = "hint-button";
+    ret[1].type = C_BOOLEAN;
+    ret[1].u.boolean.bval = ui->hint_button;
+
+    ret[2].name = NULL;
+    ret[2].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->swap_buttons = cfg[0].u.choices.selected;
+    ui->hint_button = cfg[1].u.boolean.bval;
 }
 
 typedef struct drawcell {
@@ -1210,8 +1244,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
 
     switch (button) {
-      case   LEFT_BUTTON: action = backwards; break;
-      case  RIGHT_BUTTON: action =  forwards; break;
+      case   LEFT_BUTTON: action = ui->swap_buttons == 0 ? backwards : forwards; break;
+      case  RIGHT_BUTTON: action = ui->swap_buttons == 0 ? forwards : backwards; break;
       case 'h': case 'H' : action =      hint; break;
     }
 
@@ -1364,7 +1398,7 @@ found_error:
     return true;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     signed int r, c, nchars, ntok;
     signed char what_to_do;
@@ -1403,6 +1437,22 @@ static game_state *execute_move(const game_state *state, const char *move)
 failure:
     free_game(ret);
     return NULL;
+}
+
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    if (!ui->hint_button) {
+        *nkeys = 0;
+        return NULL;
+    }
+
+    key_label *keys = snewn(1, key_label);
+    *nkeys = 1;
+
+    keys[0].button = 'H';
+    keys[0].label = "Hint";
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1620,12 +1670,12 @@ struct game const thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */
     NULL, /* decode_ui */
-    NULL, /* game_request_keys */
+    game_request_keys,
     game_changed_state,
     NULL, /* current_key_label */
     interpret_move,

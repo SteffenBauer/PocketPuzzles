@@ -61,7 +61,7 @@ bool verbose = false;
  */
 #define DIFFLIST(A) \
     A(EASY,Easy,e) \
-    A(HARD,Hard,h)
+    A(TRICKY,Tricky,t)
 #define ENUM(upper,title,lower) DIFF_ ## upper,
 #define TITLE(upper,title,lower) #title,
 #define ENCODE(upper,title,lower) #lower
@@ -106,13 +106,13 @@ static game_params *default_params(void)
 
 static const struct game_params slant_presets[] = {
     {5, 5, DIFF_EASY},
-    {5, 5, DIFF_HARD},
+    {5, 5, DIFF_TRICKY},
     {8, 8, DIFF_EASY},
-    {8, 8, DIFF_HARD},
+    {8, 8, DIFF_TRICKY},
     {10, 10, DIFF_EASY},
-    {10, 10, DIFF_HARD},
+    {10, 10, DIFF_TRICKY},
     {12, 12, DIFF_EASY},
-    {12, 12, DIFF_HARD},
+    {12, 12, DIFF_TRICKY},
 };
 
 static bool game_fetch_preset(int i, char **name, game_params **params)
@@ -148,6 +148,7 @@ static game_params *dup_params(const game_params *params)
 static void decode_params(game_params *ret, char const *string)
 {
     ret->w = ret->h = atoi(string);
+    ret->diff = DIFF_EASY;
     while (*string && isdigit((unsigned char)*string)) string++;
     if (*string == 'x') {
         string++;
@@ -221,7 +222,7 @@ static const char *validate_params(const game_params *params, bool full)
      * generator is actually capable of handling even zero grid
      * dimensions without crashing. Puzzles with a zero-area grid
      * are a bit boring, though, because they're already solved :-)
-     * And puzzles with a dimension of 1 can't be made Hard, which
+     * And puzzles with a dimension of 1 can't be made tricky, which
      * means the simplest thing is to forbid them altogether.
      */
 
@@ -1113,7 +1114,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     /*
      * Remove as many clues as possible while retaining solubility.
      *
-     * In DIFF_HARD mode, we prioritise the removal of obvious
+     * In DIFF_TRICKY mode, we prioritise the removal of obvious
      * starting points (4s, 0s, border 2s and corner 1s), on
      * the grounds that having as few of these as possible
      * seems like a good thing. In particular, we can often get
@@ -1486,7 +1487,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     struct solver_scratch *sc = new_scratch(w, h);
     soln = snewn(w*h, signed char);
     bs = -1;
-    ret = slant_solve(w, h, state->clues->clues, soln, sc, DIFF_HARD);
+    ret = slant_solve(w, h, state->clues->clues, soln, sc, DIFF_TRICKY);
     free_scratch(sc);
     if (ret != 1) {
         sfree(soln);
@@ -1529,17 +1530,59 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 }
 
 struct game_ui {
+     bool swap_buttons;
+     bool show_filled;
+     bool show_errors;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
     game_ui *ui = snew(game_ui);
+    ui->swap_buttons = false;
+    ui->show_filled = false;
+    ui->show_errors = true;
     return ui;
 }
 
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(4, config_item);
+
+    ret[0].name = "Short/Long click actions";
+    ret[0].kw = "short-long";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Short \\, Long /:Short /, Long \\";
+    ret[0].u.choices.choicekws = ":\\:/";
+    ret[0].u.choices.selected = ui->swap_buttons;
+
+    ret[1].name = "Shade filled cells";
+    ret[1].kw = "show-filled";
+    ret[1].type = C_BOOLEAN;
+    ret[1].u.boolean.bval = ui->show_filled;
+
+    ret[2].name = "Show errors";
+    ret[2].kw = "show-errors";
+    ret[2].type = C_BOOLEAN;
+    ret[2].u.boolean.bval = ui->show_errors;
+
+    ret[3].name = NULL;
+    ret[3].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->swap_buttons = cfg[0].u.choices.selected;
+    ui->show_filled = cfg[1].u.boolean.bval;
+    ui->show_errors = cfg[2].u.boolean.bval;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1592,7 +1635,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     enum { CLOCKWISE, ANTICLOCKWISE, NONE } action = NONE;
 
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
-        action = (button == LEFT_BUTTON) ? CLOCKWISE : ANTICLOCKWISE;
+        action = ((button == LEFT_BUTTON && !ui->swap_buttons) ||
+                  (button == RIGHT_BUTTON && ui->swap_buttons)) ? CLOCKWISE : ANTICLOCKWISE;
 
         x = FROMCOORD(x);
         y = FROMCOORD(y);
@@ -1624,7 +1668,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->p.w, h = state->p.h;
     char c;
@@ -1725,12 +1769,12 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
     sfree(ds);
 }
 
-static void draw_clue(drawing *dr, game_drawstate *ds,
+static void draw_clue(drawing *dr, game_drawstate *ds, const game_ui *ui,
               int x, int y, long v, bool err, int bg, int colour)
 {
     char p[2];
-    int ccol = colour >= 0 ? colour : err ? COL_ERROR : COL_BACKGROUND;
-    int tcol = colour >= 0 ? colour : err ? COL_BACKGROUND : COL_INK;
+    int ccol = colour >= 0 ? colour : (ui->show_errors && err) ? COL_ERROR : COL_BACKGROUND;
+    int tcol = colour >= 0 ? colour : (ui->show_errors && err) ? COL_BACKGROUND : COL_INK;
 
     if (v < 0)
     return;
@@ -1742,19 +1786,52 @@ static void draw_clue(drawing *dr, game_drawstate *ds,
           CLUE_TEXTSIZE, ALIGN_VCENTRE|ALIGN_HCENTRE, tcol, p);
 }
 
-static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
+static void draw_slash(drawing *dr, game_drawstate *ds, const game_ui *ui,
+                       int x, int y, long v, int colour) {
+    int i, w, h, x1, x2, y1, y2;
+    int STEP=15;
+    float ws, hs;
+
+    if (v & BACKSLASH) {
+        x1 = COORD(x)+1;
+        y1 = COORD(y)+1;
+        x2 = COORD(x+1);
+        y2 = COORD(y+1);
+    }
+    else {
+        x1 = COORD(x+1);
+        y1 = COORD(y)+1;
+        x2 = COORD(x)+1;
+        y2 = COORD(y+1);
+    }
+    if (ui->show_errors && (v & ERRSLASH)) {
+        w = x2-x1;
+        h = y2-y1;
+        ws = ((float)w/(float)STEP);
+        hs = ((float)h/(float)STEP);
+        for (i=0;i<STEP;i+=2) {
+            draw_thick_line(dr, 5.0, x1+ i   *ws, y1+ i   * hs, x1+(i+1)*ws, y1+(i+1)*hs, colour);
+            draw_thick_line(dr, 5.0, x1+(i+1)*ws, y1+(i+1)* hs, x1+(i+2)*ws, y1+(i+2)*hs, COL_BACKGROUND);
+        }
+    }
+    else {
+        draw_thick_line(dr, 5.0, x1, y1, x2, y2, colour);
+    }
+}
+
+static void draw_tile(drawing *dr, game_drawstate *ds, const game_ui *ui, game_clues *clues,
               int x, int y, long v)
 {
     int w = clues->w, h = clues->h, W = w+1 /*, H = h+1 */;
     int chesscolour = (x ^ y) & 1;
+    int bgcol = COL_BACKGROUND;
     int fscol = chesscolour ? COL_SLANT2 : COL_SLANT1;
     int bscol = chesscolour ? COL_SLANT1 : COL_SLANT2;
+    if (ui->show_filled && !(ui->show_errors && (v & ERRSLASH)) && (v & (BACKSLASH | FORWSLASH)))
+        bgcol = COL_FILLEDSQUARE;
 
     clip(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
-
-    draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE,
-              (v & ERRSLASH) ? COL_ERROR :
-          (v & (BACKSLASH | FORWSLASH)) ? COL_FILLEDSQUARE : COL_BACKGROUND);
+    draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE, bgcol);
 
     /*
      * Draw the grid lines.
@@ -1778,55 +1855,21 @@ static void draw_tile(drawing *dr, game_drawstate *ds, game_clues *clues,
 
     /*
      * Draw the slash.
-     * TODO Don't color background on error, draw dotted line
      */
-    if (v & BACKSLASH) {
-        int scol = bscol;
-        draw_line(dr, COORD(x), COORD(y), COORD(x+1), COORD(y+1), scol);
-        draw_line(dr, COORD(x)+1, COORD(y), COORD(x+1), COORD(y+1)-1,
-              scol);
-        draw_line(dr, COORD(x), COORD(y)+1, COORD(x+1)-1, COORD(y+1),
-              scol);
-    } else if (v & FORWSLASH) {
-        int scol = fscol;
-        draw_line(dr, COORD(x+1), COORD(y), COORD(x), COORD(y+1), scol);
-        draw_line(dr, COORD(x+1)-1, COORD(y), COORD(x), COORD(y+1)-1,
-              scol);
-        draw_line(dr, COORD(x+1), COORD(y)+1, COORD(x)+1, COORD(y+1),
-              scol);
-    }
-
-    /*
-     * Draw dots on the grid corners that appear if a slash is in a
-     * neighbouring cell.
-     */
-    if (v & (L_T | BACKSLASH))
-    draw_rect(dr, COORD(x), COORD(y)+1, 1, 1,
-                  (v & ERR_L_T ? COL_ERROR : bscol));
-    if (v & (L_B | FORWSLASH))
-    draw_rect(dr, COORD(x), COORD(y+1)-1, 1, 1,
-                  (v & ERR_L_B ? COL_ERROR : fscol));
-    if (v & (T_L | BACKSLASH))
-    draw_rect(dr, COORD(x)+1, COORD(y), 1, 1,
-                  (v & ERR_T_L ? COL_ERROR : bscol));
-    if (v & (T_R | FORWSLASH))
-    draw_rect(dr, COORD(x+1)-1, COORD(y), 1, 1,
-                  (v & ERR_T_R ? COL_ERROR : fscol));
-    if (v & (C_TL | BACKSLASH))
-    draw_rect(dr, COORD(x), COORD(y), 1, 1,
-                  (v & ERR_C_TL ? COL_ERROR : bscol));
+    if ((v & BACKSLASH) || (v & FORWSLASH))
+        draw_slash(dr, ds, ui, x, y, v, (v & BACKSLASH) ? bscol : fscol);
 
     /*
      * And finally the clues at the corners.
      */
     if (x >= 0 && y >= 0)
-        draw_clue(dr, ds, x, y, clues->clues[y*W+x], v & ERR_TL, -1, -1);
+        draw_clue(dr, ds, ui, x, y, clues->clues[y*W+x], v & ERR_TL, -1, -1);
     if (x < w && y >= 0)
-        draw_clue(dr, ds, x+1, y, clues->clues[y*W+(x+1)], v & ERR_TR, -1, -1);
+        draw_clue(dr, ds, ui, x+1, y, clues->clues[y*W+(x+1)], v & ERR_TR, -1, -1);
     if (x >= 0 && y < h)
-        draw_clue(dr, ds, x, y+1, clues->clues[(y+1)*W+x], v & ERR_BL, -1, -1);
+        draw_clue(dr, ds, ui, x, y+1, clues->clues[(y+1)*W+x], v & ERR_BL, -1, -1);
     if (x < w && y < h)
-        draw_clue(dr, ds, x+1, y+1, clues->clues[(y+1)*W+(x+1)], v & ERR_BR,
+        draw_clue(dr, ds, ui, x+1, y+1, clues->clues[(y+1)*W+(x+1)], v & ERR_BR,
           -1, -1);
 
     unclip(dr);
@@ -1901,7 +1944,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (y = -1; y <= h; y++) {
     for (x = -1; x <= w; x++) {
         if (ds->todraw[(y+1)*(w+2)+(x+1)] != ds->grid[(y+1)*(w+2)+(x+1)]) {
-            draw_tile(dr, ds, state->clues, x, y, ds->todraw[(y+1)*(w+2)+(x+1)]);
+            draw_tile(dr, ds, ui, state->clues, x, y, ds->todraw[(y+1)*(w+2)+(x+1)]);
             ds->grid[(y+1)*(w+2)+(x+1)] = ds->todraw[(y+1)*(w+2)+(x+1)];
         }
     }
@@ -1951,7 +1994,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */

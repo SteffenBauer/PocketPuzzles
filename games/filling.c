@@ -1173,27 +1173,6 @@ static const char *validate_desc(const game_params *params, const char *desc)
     return (area < sz) ? "Not enough data to fill grid" : NULL;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    key_label *keys = snewn(10, key_label);
-    const int w = params->w;
-    const int h = params->h;
-    int maxkey = (w == 2 && h == 2 ? 3 : max(w, h));
-    if (maxkey > 9) maxkey = 9;
-
-    *nkeys = maxkey+1;
-
-    for(i = 0; i < maxkey; ++i) {
-        keys[i].button = '1' + i;
-        keys[i].label = NULL;
-    }
-    keys[i].button = '\b';
-    keys[i].label = NULL;
-
-    return keys;
-}
-
 static game_state *new_game(midend *me, const game_params *params,
                             const char *desc)
 {
@@ -1292,6 +1271,27 @@ static void free_ui(game_ui *ui) {
     if (ui->sel)
         sfree(ui->sel);
     sfree(ui);
+}
+
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    int i;
+    key_label *keys = snewn(10, key_label);
+    const int w = params->w;
+    const int h = params->h;
+    int maxkey = (w == 2 && h == 2 ? 3 : max(w, h));
+    if (maxkey > 9) maxkey = 9;
+
+    *nkeys = maxkey+1;
+
+    for(i = 0; i < maxkey; ++i) {
+        keys[i].button = '1' + i;
+        keys[i].label = NULL;
+    }
+    keys[i].button = '\b';
+    keys[i].label = NULL;
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1416,7 +1416,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return move ? move : MOVE_UI_UPDATE;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     game_state *new_state = NULL;
     const int sz = state->shared->params.w * state->shared->params.h;

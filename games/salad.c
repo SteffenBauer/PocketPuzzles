@@ -943,40 +943,6 @@ static int salad_solve(game_state *state, int maxdiff)
     return 1;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    int n = params->nums;
-    int addkeys = params->mode == GAMEMODE_LETTERS ? 3 : 4;
-    char base = params->mode == GAMEMODE_LETTERS ? 'A' : '1';
-
-    key_label *keys = snewn(n + addkeys, key_label);
-    *nkeys = n + addkeys;
-
-    for (i = 0; i < n; i++)
-    {
-        keys[i].button = base + i;
-        keys[i].label = NULL;
-    }
-    keys[n].button = 'X';
-    keys[n].label = "None";
-    if (params->mode == GAMEMODE_LETTERS) {
-        keys[n+1].button = '\b';
-        keys[n+1].label = NULL;
-        keys[n+2].button = '+';
-        keys[n+2].label = "Add";
-    }
-    else {
-        keys[n+1].button = 'O';
-        keys[n+1].label = "Any";
-        keys[n+2].button = '\b';
-        keys[n+2].label = NULL;
-        keys[n+3].button = '+';
-        keys[n+3].label = "Add";
-    }
-    return keys;
-}
-
 static game_state *new_game(midend *me, const game_params *params, const char *desc)
 {
     char *fail;
@@ -1311,6 +1277,40 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    int i;
+    int n = params->nums;
+    int addkeys = params->mode == GAMEMODE_LETTERS ? 3 : 4;
+    char base = params->mode == GAMEMODE_LETTERS ? 'A' : '1';
+
+    key_label *keys = snewn(n + addkeys, key_label);
+    *nkeys = n + addkeys;
+
+    for (i = 0; i < n; i++)
+    {
+        keys[i].button = base + i;
+        keys[i].label = NULL;
+    }
+    keys[n].button = 'X';
+    keys[n].label = "None";
+    if (params->mode == GAMEMODE_LETTERS) {
+        keys[n+1].button = '\b';
+        keys[n+1].label = NULL;
+        keys[n+2].button = '+';
+        keys[n+2].label = "Add";
+    }
+    else {
+        keys[n+1].button = 'O';
+        keys[n+1].label = "Any";
+        keys[n+2].button = '\b';
+        keys[n+2].label = NULL;
+        keys[n+3].button = '+';
+        keys[n+3].label = "Add";
+    }
+    return keys;
+}
+
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -1522,7 +1522,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     game_state *ret = NULL;
     int o = state->params->order;

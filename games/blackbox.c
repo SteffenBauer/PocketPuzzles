@@ -966,7 +966,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return dupstr(buf);
 }
 
-static game_state *execute_move(const game_state *from, const char *move)
+static game_state *execute_move(const game_state *from, const game_ui *ui, const char *move)
 {
     game_state *ret = dup_game(from);
     int gx = -1, gy = -1, rangeno = -1;
