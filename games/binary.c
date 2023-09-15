@@ -15,7 +15,7 @@
 
 #include "puzzles.h"
 
-#define PREFERRED_TILE_SIZE 48
+#define PREFERRED_TILE_SIZE 44
 #define TILE_SIZE (ds->tilesize)
 #define BORDER    (TILE_SIZE / 2)
 #define HIGHLIGHT_WIDTH (TILE_SIZE / 10)
@@ -24,7 +24,7 @@
 
 #define X(state, i) ( (i) % (state)->w )
 #define Y(state, i) ( (i) / (state)->w )
-#define C(state, x, y) ( (y) * (state)->w + (x) )
+#define C(state, x, y) ( (y) * (state)->shared->w + (x) )
 
 enum {
     COL_BACKGROUND,
@@ -33,6 +33,12 @@ enum {
     COL_HIGHLIGHT,
     COL_LOWLIGHT,
     NCOLOURS
+};
+
+enum {
+    BACKGROUND_EMPTY,
+    BACKGROUND_CHESS,
+    BACKGROUND_LINES
 };
 
 struct game_params {
@@ -80,11 +86,17 @@ const int POWER[] = {
 };
 #define MAXPOWER 0x0f
 
-struct game_state {
+struct game_state_shared {
+    int refcount;
     int w, h;
-    unsigned char *tiles;
     int goal;
     int mode;
+    random_state *rs;
+};
+
+struct game_state {
+    struct game_state_shared *shared;
+    unsigned char *tiles;
     int score;
     bool lost;
     bool won;
@@ -95,7 +107,7 @@ static game_params *default_params(void) {
     game_params *ret = snew(game_params);
 
     ret->w = 4;
-    ret->h = 5;
+    ret->h = 4;
     ret->goal = GOAL_2048;
     ret->mode = MODE_RECT;
 
@@ -220,7 +232,7 @@ static game_params *custom_params(const config_item *cfg) {
 }
 
 static const char *validate_params(const game_params *params, bool full) {
-    if (params->w < 3 || params->h < 3)
+    if (params->w < 2 || params->h < 2)
         return "Width and height must both be at least three";
     if (params->w > 8 || params->h > 8)
         return "Width and height must both be at most 8";
@@ -231,20 +243,6 @@ static const char *validate_params(const game_params *params, bool full) {
     if (params->mode < MODE_RECT || params->mode > MODE_HEX)
         return "Invalid grid type";
     return NULL;
-}
-
-static void print_grid(unsigned char *grid, int w, int h) {
-    int x,y;
-    for (y=0;y<h;y++) {
-        for (x=0;x<w;x++) {
-            if (grid[x+y*w] == 0)
-                printf("    . ");
-            else
-                printf("%5d ", POWER[grid[x+y*w]]);
-        }
-        printf("\n");
-    }
-    printf("\n");
 }
 
 static int find_empty_cell(random_state *rs, unsigned char *grid, int size) {
@@ -264,27 +262,34 @@ static int find_empty_cell(random_state *rs, unsigned char *grid, int size) {
     return found;
 }
 
+static bool add_new_number(random_state *rs, unsigned char *grid, int size) {
+    int tofill;
+    tofill = find_empty_cell(rs, grid, size);
+    if (tofill >= 0) {
+        grid[tofill] = random_upto(rs, 10) == 0 ? 2 : 1;
+        return true;
+    }
+    return false;
+}
+
 static char *new_game_desc(const game_params *params, random_state *rs,
                            char **aux, bool interactive) {
     int w = params->w, h = params->h;
-    int W = w+1, H = h+1;
     char *p;
     char *desc;
-    int tofill, run, i;
+    int run, i;
     unsigned char *grid;
+    char *rsdesc;
 
     grid = snewn(w*h, unsigned char);
     memset(grid, 0, w*h*sizeof(unsigned char));
 
-    tofill = find_empty_cell(rs, grid, w*h);
-    if (tofill >= 0)
-        grid[tofill] = random_upto(rs, 10) == 0 ? 2 : 1;
+    add_new_number(rs, grid, w*h);
+    add_new_number(rs, grid, w*h);
 
-    tofill = find_empty_cell(rs, grid, w*h);
-    if (tofill >= 0)
-        grid[tofill] = random_upto(rs, 10) == 0 ? 2 : 1;
+    rsdesc = random_state_encode(rs);
 
-    desc = snewn(W*H, char);
+    desc = snewn(w*h+strlen(rsdesc)+2, char);
     p = desc;
 
     run = 0;
@@ -311,9 +316,13 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     }
     if(run)
         *p++ = 'a' + run-1;
-
+    *p++ = ',';
+    for (i=0;i<strlen(rsdesc);i++)
+        *p++ = rsdesc[i];
     *p++ = '\0';
+
     desc = sresize(desc, p - desc, char);
+    sfree(rsdesc);
     sfree(grid);
     return desc;
 }
@@ -323,7 +332,7 @@ static const char *validate_desc(const game_params *params, const char *desc) {
     int i = 0;
     const char *p = desc;
 
-    while (*p) {
+    while (*p != ',') {
         if(*p >= 'a' && *p <= 'z')
             i += ((*p) - 'a') + 1;
         else if (*p >= '1' && *p <= '9')
@@ -344,20 +353,24 @@ static game_state *new_game(midend *me, const game_params *params,
                             const char *desc) {
     int i, wh;
     game_state *state = snew(game_state);
-
-    state->w = params->w;
-    state->h = params->h;
-    state->goal = params->goal;
-    state->mode = params->mode;
     state->score = 0;
     state->lost = state->won = state->finished = false;
 
-    wh = state->w * state->h;
+    printf("Create new shared state\n");
+    state->shared = snew(struct game_state_shared);
+    state->shared->refcount = 1;
+
+    state->shared->w = params->w;
+    state->shared->h = params->h;
+    state->shared->goal = params->goal;
+    state->shared->mode = params->mode;
+
+    wh = state->shared->w * state->shared->h;
     state->tiles = snewn(wh, unsigned char);
     memset(state->tiles, 0, wh*sizeof(unsigned char));
     const char *p = desc;
     i = 0;
-    while(*p) {
+    while(*p != ',') {
         if(*p >= 'a' && *p <= 'z')
             i += ((*p++) - 'a') + 1;
         else if (*p >= '1' && *p <= '9')
@@ -366,6 +379,8 @@ static game_state *new_game(midend *me, const game_params *params,
             state->tiles[i++] = 10 + (*p++) - 'A';
         else p++;
     }
+    p++;
+    state->shared->rs = random_state_decode(p);
 
     return state;
 }
@@ -373,17 +388,14 @@ static game_state *new_game(midend *me, const game_params *params,
 static game_state *dup_game(const game_state *state) {
     int wh;
     game_state *ret = snew(game_state);
-
-    ret->w = state->w;
-    ret->h = state->h;
-    ret->goal = state->goal;
-    ret->mode = state->mode;
     ret->score = state->score;
     ret->lost = state->lost;
     ret->won = state->won;
     ret->finished = state->finished;
+    ret->shared = state->shared;
+    ret->shared->refcount++;
 
-    wh = state->w * state->h;
+    wh = state->shared->w * state->shared->h;
     ret->tiles = snewn(wh, unsigned char);
     memcpy(ret->tiles, state->tiles, wh*sizeof(unsigned char));
 
@@ -391,15 +403,52 @@ static game_state *dup_game(const game_state *state) {
 }
 
 static void free_game(game_state *state) {
+    if (--state->shared->refcount <= 0) {
+        if (state->shared->rs)
+            random_free(state->shared->rs);
+        sfree(state->shared);
+        printf("Free shared state\n");
+    }
     sfree(state->tiles);
     sfree(state);
 }
 
+struct game_ui {
+    int background;
+};
+
 static game_ui *new_ui(const game_state *state) {
-    return NULL;
+    game_ui *ui = snew(game_ui);
+    ui->background = BACKGROUND_EMPTY;
+    return ui;
 }
 
 static void free_ui(game_ui *ui) {
+    sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(2, config_item);
+
+    ret[0].name = "Game background";
+    ret[0].kw = "background";
+    ret[0].type = C_CHOICES;
+    ret[0].u.choices.choicenames = ":Empty:Chessboard:Lines";
+    ret[0].u.choices.choicekws = ":empty:chess:lines";
+    ret[0].u.choices.selected = ui->background;
+
+    ret[1].name = NULL;
+    ret[1].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->background = cfg[0].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -425,19 +474,17 @@ static void compress_line(unsigned char *line, int length) {
                 break;
             }
             if (j<(length-1) && line[j] != 0) {
-                line[j] = t;
+                line[j+1] = t;
                 break;
             }
         }
     }
 }
 
-static game_state *move_board(const game_state *state, char direction) {
-    game_state *ret;
+static void move_board(game_state *state, char direction) {
     unsigned char *line, *p;
-    int w = state->w, h = state->h;
+    int w = state->shared->w, h = state->shared->h;
     int x,y;
-    ret = dup_game(state);
 
     if (direction == 'L' || direction == 'R') {
         line = snewn(w, unsigned char);
@@ -447,14 +494,14 @@ static game_state *move_board(const game_state *state, char direction) {
                     *p++ = state->tiles[x+y*w];
                 compress_line(line, w);
                 for (x=0,p=line;x<w;x++)
-                    ret->tiles[x+y*w] = *p++;
+                    state->tiles[x+y*w] = *p++;
             }
             else {
                 for (x=w-1,p=line;x>=0;x--)
                     *p++ = state->tiles[x+y*w];
                 compress_line(line, w);
                 for (x=w-1,p=line;x>=0;x--)
-                    ret->tiles[x+y*w] = *p++;
+                    state->tiles[x+y*w] = *p++;
             }
         }
         sfree(line);
@@ -467,21 +514,57 @@ static game_state *move_board(const game_state *state, char direction) {
                     *p++ = state->tiles[x+y*w];
                 compress_line(line, h);
                 for (y=0,p=line;y<h;y++)
-                    ret->tiles[x+y*w] = *p++;
+                    state->tiles[x+y*w] = *p++;
             }
             else {
                 for (y=h-1,p=line;y>=0;y--)
                     *p++ = state->tiles[x+y*w];
                 compress_line(line, h);
                 for (y=h-1,p=line;y>=0;y--)
-                    ret->tiles[x+y*w] = *p++;
+                    state->tiles[x+y*w] = *p++;
             }
         }
         sfree(line);
     }
-    return ret;
 }
 
+static bool check_change(const game_state *state, char direction) {
+    int i, w = state->shared->w, h = state->shared->h;
+    bool result = false;
+    game_state *test = dup_game(state);
+    move_board(test, direction);
+    for (i=0;i<w*h;i++)
+        if (test->tiles[i] != state->tiles[i]) {
+            result = true;
+            break;
+        }
+    sfree(test);
+    return result;
+}
+
+static bool moves_possible(const game_state *state) {
+    if (check_change(state, 'L')) return true;
+    if (check_change(state, 'R')) return true;
+    if (check_change(state, 'U')) return true;
+    if (check_change(state, 'D')) return true;
+    return false;
+}
+
+static bool goal_reached(const game_state *state) {
+    int i, w = state->shared->w, h = state->shared->h;
+    for (i=0;i<w*h;i++)
+        if (state->tiles[i] >= state->shared->goal + 5)
+            return true;
+    return false;
+}
+
+static bool highest_reached(const game_state *state) {
+    int i, w = state->shared->w, h = state->shared->h;
+    for (i=0;i<w*h;i++)
+        if (state->tiles[i] >= 0x0f)
+            return true;
+    return false;
+}
 
 struct game_drawstate {
     bool started;
@@ -494,24 +577,37 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int x, int y, int button, bool swapped) {
     char buf[80];
+    int nx, ny;
 
     if (state->finished)
         return MOVE_NO_EFFECT;
 
-    if (IS_CURSOR_MOVE(button)) {
-        switch (button) {
-            case CURSOR_UP:
-                sprintf(buf, "U");
-                return dupstr(buf);
-            case CURSOR_DOWN:
-                sprintf(buf, "D");
-                return dupstr(buf);
-            case CURSOR_LEFT:
-                sprintf(buf, "L");
-                return dupstr(buf);
-            case CURSOR_RIGHT:
-                sprintf(buf, "R");
-                return dupstr(buf);
+    if (button == LEFT_BUTTON) {
+        nx = FROMCOORD(x);
+        ny = FROMCOORD(y);
+        if (nx < 0) {
+            if (!check_change(state, 'L'))
+                return MOVE_NO_EFFECT;
+            sprintf(buf, "L");
+            return dupstr(buf);
+        }
+        if (nx >= state->shared->w) {
+            if (!check_change(state, 'R'))
+                return MOVE_NO_EFFECT;
+            sprintf(buf, "R");
+            return dupstr(buf);
+        }
+        if (ny < 0) {
+            if (!check_change(state, 'U'))
+                return MOVE_NO_EFFECT;
+            sprintf(buf, "U");
+            return dupstr(buf);
+        }
+        if (ny >= state->shared->w) {
+            if (!check_change(state, 'D'))
+                return MOVE_NO_EFFECT;
+            sprintf(buf, "D");
+            return dupstr(buf);
         }
     }
     return MOVE_UNUSED;
@@ -519,9 +615,14 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
 static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move) {
     game_state *ret = NULL;
+    int w = state->shared->w, h = state->shared->h;
     if (move) {
-        ret = move_board(state, move[0]);
-        print_grid(ret->tiles, ret->w, ret->h);
+        ret = dup_game(state);
+        move_board(ret, move[0]);
+        add_new_number(ret->shared->rs, ret->tiles, w*h);
+        if (!moves_possible(ret)) ret->lost = ret->finished = true;
+        if (goal_reached(ret)) ret->won = true;
+        if (highest_reached(ret)) ret->finished = true;
         return ret;
     }
     return NULL;
@@ -551,11 +652,11 @@ static float *game_colours(frontend *fe, int *ncolours) {
     int i;
 
     for (i = 0; i < 3; i++) {
-        ret[COL_BACKGROUND * 3 + i] = 1.0;
-        ret[COL_BOARD      * 3 + i] = 0.9;
-        ret[COL_HIGHLIGHT  * 3 + i] = 0.75;
-        ret[COL_LOWLIGHT   * 3 + i] = 0.25;
-        ret[COL_TEXT       * 3 + i] = 0.0;
+        ret[COL_BACKGROUND * 3 + i] = 1.0f;
+        ret[COL_BOARD      * 3 + i] = 0.9f;
+        ret[COL_HIGHLIGHT  * 3 + i] = 0.75f;
+        ret[COL_LOWLIGHT   * 3 + i] = 0.25f;
+        ret[COL_TEXT       * 3 + i] = 0.0f;
     }
     *ncolours = NCOLOURS;
 
@@ -568,8 +669,8 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state) 
 
     ds->started = false;
     ds->tilesize = 0;
-    ds->w = state->w;
-    ds->h = state->h;
+    ds->w = state->shared->w;
+    ds->h = state->shared->h;
     ds->tiles = snewn(ds->w*ds->h, unsigned char);
     for (i = 0; i < ds->w*ds->h; i++)
         ds->tiles[i] = 0;
@@ -582,15 +683,20 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds) {
     sfree(ds);
 }
 
-static void draw_cell(drawing *dr, game_drawstate *ds, const game_state *state,
+static void draw_cell(drawing *dr, game_drawstate *ds, const game_ui *ui, const game_state *state,
                       int x, int y, unsigned char tile, int colour)
 {
     if (tile == 0) {
         draw_rect(dr, x, y, TILE_SIZE, TILE_SIZE,
-                  colour);
+                  ui->background == BACKGROUND_CHESS ? colour : COL_BACKGROUND);
+        if (ui->background == BACKGROUND_LINES) {
+            draw_rect(dr, x+TILE_SIZE-2, y, 2, TILE_SIZE, COL_TEXT);
+            draw_rect(dr, x, y+TILE_SIZE-2, TILE_SIZE, 2, COL_TEXT);
+        }
     } else {
         int coords[6];
         char str[40];
+        int textsize;
 
         coords[0] = x + TILE_SIZE - 1;
         coords[1] = y + TILE_SIZE - 1;
@@ -609,8 +715,11 @@ static void draw_cell(drawing *dr, game_drawstate *ds, const game_state *state,
                   COL_BACKGROUND);
 
         sprintf(str, "%d", POWER[tile]);
+        textsize = (tile >= state->shared->goal+5) ? 
+                        (tile < 10) ? TILE_SIZE/3 : TILE_SIZE/4
+                    :   (tile < 10) ? TILE_SIZE/4 : TILE_SIZE/5;
         draw_text(dr, x + TILE_SIZE/2, y + TILE_SIZE/2,
-                  FONT_VARIABLE, tile < 10 ? TILE_SIZE/3 : TILE_SIZE/4, ALIGN_VCENTRE | ALIGN_HCENTRE,
+                  FONT_VARIABLE, textsize, ALIGN_VCENTRE | ALIGN_HCENTRE,
                   COL_TEXT, str);
     }
     draw_update(dr, x, y, TILE_SIZE, TILE_SIZE);
@@ -620,7 +729,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         const game_state *oldstate, const game_state *state,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime) {
-    int i;
+    int i, w = state->shared->w, h = state->shared->h;
     char statusbuf[256];
 
     if (!ds->started) {
@@ -629,14 +738,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         /*
          * Recessed area containing the whole puzzle.
          */
-        coords[0] = COORD(state->w) + HIGHLIGHT_WIDTH - 1;
-        coords[1] = COORD(state->h) + HIGHLIGHT_WIDTH - 1;
-        coords[2] = COORD(state->w) + HIGHLIGHT_WIDTH - 1;
+        coords[0] = COORD(w) + HIGHLIGHT_WIDTH - 1;
+        coords[1] = COORD(h) + HIGHLIGHT_WIDTH - 1;
+        coords[2] = COORD(w) + HIGHLIGHT_WIDTH - 1;
         coords[3] = COORD(0) - HIGHLIGHT_WIDTH;
         coords[4] = coords[2] - TILE_SIZE;
         coords[5] = coords[3] + TILE_SIZE;
         coords[8] = COORD(0) - HIGHLIGHT_WIDTH;
-        coords[9] = COORD(state->h) + HIGHLIGHT_WIDTH - 1;
+        coords[9] = COORD(h) + HIGHLIGHT_WIDTH - 1;
         coords[6] = coords[8] + TILE_SIZE;
         coords[7] = coords[9] - TILE_SIZE;
         draw_polygon(dr, coords, 5, COL_HIGHLIGHT, COL_HIGHLIGHT);
@@ -647,13 +756,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
     }
 
-    for (i = 0; i < state->w*state->h; i++) {
+    for (i = 0; i < w*h; i++) {
         int t, x, y;
         t = state->tiles[i];
         if (!ds->started || (t != ds->tiles[i])) {
-            x = COORD(X(state, i));
-            y = COORD(Y(state, i));
-            draw_cell(dr, ds, state, x, y, t, ((i/state->w)+(i%state->w))%2 ? COL_BACKGROUND : COL_BOARD);
+            x = COORD(i%w);
+            y = COORD(i/w);
+            draw_cell(dr, ds, ui, state, x, y, t, ((i/w)+(i%w))%2 ? COL_BACKGROUND : COL_BOARD);
             ds->tiles[i] = t;
         }
     }
@@ -712,7 +821,7 @@ const struct game thegame = {
     free_game,
     false, NULL, /* solve */
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */
