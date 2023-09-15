@@ -27,10 +27,12 @@ void free_cfg(config_item *cfg)
 
 void free_keys(key_label *keys, int nkeys)
 {
+/*
     int i;
 
     for(i = 0; i < nkeys; i++)
-        sfree(keys[i].label);
+        sfree(keys[i].label); 
+*/
     sfree(keys);
 }
 

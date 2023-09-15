@@ -1221,7 +1221,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
 
 struct game_ui {
-    bool dragging, drag_is_from, do_highlight;
+    bool dragging, drag_is_from, show_highlight, do_highlight;
     int sx, sy;         /* grid coords of start cell */
     int dx, dy;         /* pixel coords of drag posn */
 };
@@ -1235,7 +1235,9 @@ static game_ui *new_ui(const game_state *state)
 
     ui->dragging = false;
     ui->drag_is_from = false;
-    ui->do_highlight = false;
+    ui->show_highlight = false;
+    ui->do_highlight = true;
+
     ui->sx = ui->sy = ui->dx = ui->dy = 0;
 
     return ui;
@@ -1244,6 +1246,28 @@ static game_ui *new_ui(const game_state *state)
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(2, config_item);
+
+    ret[0].name = "Long-click highlights in-pointing arrows";
+    ret[0].kw = "do-highlight";
+    ret[0].type = C_BOOLEAN;
+    ret[0].u.boolean.bval = ui->do_highlight;
+
+    ret[1].name = NULL;
+    ret[1].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->do_highlight = cfg[0].u.boolean.bval;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1273,7 +1297,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         if (!INGRID(state, x, y)) return NULL;
         ui->dragging = true;
         ui->drag_is_from = true;
-        ui->do_highlight = (button == RIGHT_BUTTON);
+        ui->show_highlight = (button == RIGHT_BUTTON) && (ui->do_highlight);
         ui->sx = x;
         ui->sy = y;
         ui->dx = mx;
@@ -1281,7 +1305,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         return MOVE_UI_UPDATE;
     } else if (IS_MOUSE_RELEASE(button) && ui->dragging) {
         ui->dragging = false;
-        ui->do_highlight = false;
+        ui->show_highlight = false;
         if (ui->sx == x && ui->sy == y) return MOVE_UI_UPDATE; /* single click */
 
         if (!INGRID(state, x, y)) {
@@ -1320,7 +1344,7 @@ static void unlink_cell(game_state *state, int si)
     }
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     game_state *ret = NULL;
     int sx, sy, ex, ey, si, ei, w = state->w;
@@ -1691,7 +1715,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         char *movestr = interpret_move(state, &uicopy, ds, ui->dx, ui->dy, LEFT_RELEASE, false);
 
         if (movestr != NULL && strcmp(movestr, "") != 0) {
-            postdrop = execute_move(state, movestr);
+            postdrop = execute_move(state, NULL, movestr);
             sfree(movestr);
 
             state = postdrop;
@@ -1710,7 +1734,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             f = 0;
             dirp = -1;
 
-            if (ui->dragging && ui->do_highlight) {
+            if (ui->dragging && ui->show_highlight) {
                 if (x == ui->sx && y == ui->sy)
                     f |= F_DRAG_SRC;
                 else if (ui->drag_is_from && 
@@ -1796,7 +1820,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */

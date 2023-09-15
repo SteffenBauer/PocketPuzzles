@@ -1663,17 +1663,6 @@ static const char *validate_desc(const game_params *params, const char *desc)
     return NULL;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    key_label *keys = snewn(1, key_label);
-    *nkeys = 1;
-
-    keys[0].button = '+';
-    keys[0].label = "Add";
-
-    return keys;
-}
-
 static game_state *new_game(midend *me, const game_params *params,
                             const char *desc)
 {
@@ -2124,6 +2113,8 @@ struct game_ui {
     int highlight_region;
     int cur_x, cur_y, cur_lastmove;
     bool cur_visible, cur_moved;
+    bool marks_button;
+    int marks_action;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -2137,12 +2128,61 @@ static game_ui *new_ui(const game_state *state)
     ui->cur_visible = false;
     ui->cur_moved = false;
     ui->cur_lastmove = 0;
+    ui->marks_button = true;
+    ui->marks_action = 1;
     return ui;
 }
 
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    if (!ui->marks_button) {
+        *nkeys = 0;
+        return NULL;
+    }
+
+    key_label *keys = snewn(1, key_label);
+    *nkeys = 1;
+
+    keys[0].button = '+';
+    keys[0].label = "Add";
+
+    return keys;
+}
+
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(3, config_item);
+
+    ret[0].name = "Show fill marks button";
+    ret[0].kw = "hint-button";
+    ret[0].type = C_BOOLEAN;
+    ret[0].u.boolean.bval = ui->marks_button;
+
+    ret[1].name = "Fill marks button action";
+    ret[1].kw = "marks-action";
+    ret[1].type = C_CHOICES;
+    ret[1].u.choices.choicenames = ":All marks:Possible marks only";
+    ret[1].u.choices.choicekws = ":all:possible";
+    ret[1].u.choices.selected = ui->marks_action;
+
+    ret[2].name = NULL;
+    ret[2].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->marks_button = cfg[0].u.boolean.bval;
+    ui->marks_action = cfg[1].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -2323,7 +2363,7 @@ drag_dropped:
 
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int n = state->p.n;
     game_state *ret = dup_game(state);
@@ -2333,14 +2373,15 @@ static game_state *execute_move(const game_state *state, const char *move)
         for (i = 0; i < ret->map->n; i++) {
             if (ret->colouring[i] == -1) {
                 ret->pencil[i] = 15;
-                for (j = graph_vertex_start(state->map->graph, state->map->n,
-                         state->map->ngraph, i);
-                     (j < state->map->ngraph) && 
-                     (state->map->graph[j] < state->map->n*(i+1));
-                     j++) {
-                    k = state->map->graph[j] - i*state->map->n;
-                    if (ret->colouring[k] >= 0)
-                        ret->pencil[i] &= ~(1 << ret->colouring[k]);
+                if (ui && ui->marks_action == 1)
+                    for (j = graph_vertex_start(state->map->graph, state->map->n,
+                             state->map->ngraph, i);
+                         (j < state->map->ngraph) && 
+                         (state->map->graph[j] < state->map->n*(i+1));
+                         j++) {
+                        k = state->map->graph[j] - i*state->map->n;
+                        if (ret->colouring[k] >= 0)
+                            ret->pencil[i] &= ~(1 << ret->colouring[k]);
                 }
             }
         }
@@ -2929,7 +2970,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */

@@ -1061,27 +1061,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
  * User Interface *
  * ************** */
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    int n = params->o;
-
-    key_label *keys = snewn(n + 2, key_label);
-    *nkeys = n + 2;
-
-    for (i = 0; i < n; i++)
-    {
-        keys[i].button = '1' + i;
-        keys[i].label = NULL;
-    }
-    keys[n].button = '\b';
-    keys[n].label = NULL;
-    keys[n+1].button = '+';
-    keys[n+1].label = "Add";
-
-    return keys;
-}
-
 struct game_ui
 {
     int hx, hy;
@@ -1104,6 +1083,27 @@ static game_ui *new_ui(const game_state *state)
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    int i;
+    int n = params->o;
+
+    key_label *keys = snewn(n + 2, key_label);
+    *nkeys = n + 2;
+
+    for (i = 0; i < n; i++)
+    {
+        keys[i].button = '1' + i;
+        keys[i].label = NULL;
+    }
+    keys[n].button = '\b';
+    keys[n].label = NULL;
+    keys[n+1].button = '+';
+    keys[n+1].label = "Add";
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1284,7 +1284,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *oldstate, const char *move)
+static game_state *execute_move(const game_state *oldstate, const game_ui *ui, const char *move)
 {
     int o = oldstate->o;
     int x, y;

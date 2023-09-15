@@ -323,27 +323,6 @@ static game_state *blank_state(int w, int h, int n, bool diag)
     return ret;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    int n = params->n;
-
-    key_label *keys = snewn(n + 2, key_label);
-    *nkeys = n + 2;
-
-    for (i = 0; i < n; i++)
-    {
-        keys[i].button = 'A' + i;
-        keys[i].label = NULL;
-    }
-    keys[n].button = '\b';
-    keys[n].label = NULL;
-    keys[n+1].button = '+';
-    keys[n+1].label = "Add";
-
-    return keys;
-}
-
 static game_state *new_game(midend *me, const game_params *params, const char *desc)
 {
     int w = params->w;
@@ -1059,6 +1038,27 @@ static void decode_ui(game_ui *ui, const char *encoding,
 {
 }
 
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    int i;
+    int n = params->n;
+
+    key_label *keys = snewn(n + 2, key_label);
+    *nkeys = n + 2;
+
+    for (i = 0; i < n; i++)
+    {
+        keys[i].button = 'A' + i;
+        keys[i].label = NULL;
+    }
+    keys[n].button = '\b';
+    keys[n].label = NULL;
+    keys[n+1].button = '+';
+    keys[n+1].label = "Add";
+
+    return keys;
+}
+
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                             const game_state *newstate)
 {
@@ -1277,7 +1277,7 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
     return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int w = state->w;
     int h = state->h;

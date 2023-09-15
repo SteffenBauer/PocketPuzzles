@@ -2007,21 +2007,6 @@ static bool alloc_try_hard(struct alloc_scratch *as, random_state *rs)
     return ok;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    int n = params->n + 1;
-    key_label *keys = snewn(n, key_label);
-    *nkeys = n;
-
-    for (i = 0; i < n; i++) {
-        keys[i].button = (i<=9) ? ('0' + i) : ('a' + i - 10);
-        keys[i].label = NULL;
-    }
-
-    return keys;
-}
-
 static char *new_game_desc(const game_params *params, random_state *rs,
                char **aux, bool interactive)
 {
@@ -2459,6 +2444,21 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    int i;
+    int n = params->n + 1;
+    key_label *keys = snewn(n, key_label);
+    *nkeys = n;
+
+    for (i = 0; i < n; i++) {
+        keys[i].button = (i<=9) ? ('0' + i) : ('a' + i - 10);
+        keys[i].label = NULL;
+    }
+
+    return keys;
+}
+
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -2560,7 +2560,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     return MOVE_UNUSED;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int n = state->params.n, w = n+2, h = n+1, wh = w*h;
     int d1, d2, d3, p;

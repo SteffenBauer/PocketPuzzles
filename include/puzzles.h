@@ -232,9 +232,10 @@ game_params *preset_menu_lookup_by_id(struct preset_menu *menu, int id);
 typedef struct key_label {
     /* What should be displayed to the user by the frontend. Backends
      * can set this field to NULL and have it filled in by the midend
-     * with a generic label. Dynamically allocated, but frontends
-     * should probably use free_keys() to free instead. */
-    char *label;
+     * with an empty string.
+     PocketPuzzles: label is ignored by frontend, so just don't bother.
+      */
+    const char *label;
     int button; /* passed to midend_process_key when button is pressed */
 } key_label;
 
@@ -712,14 +713,14 @@ struct game {
     char *(*encode_ui)(const game_ui *ui);
     void (*decode_ui)(game_ui *ui, const char *encoding,
                       const game_state *state);
-    key_label *(*request_keys)(const game_params *params, int *nkeys);
+    key_label *(*request_keys)(const game_params *params, const game_ui *ui, int *nkeys);
     void (*changed_state)(game_ui *ui, const game_state *oldstate,
                           const game_state *newstate);
     const char *(*current_key_label)(const game_ui *ui,
                                      const game_state *state, int button);
     char *(*interpret_move)(const game_state *state, game_ui *ui,
                             const game_drawstate *ds, int x, int y, int button, bool swapped);
-    game_state *(*execute_move)(const game_state *state, const char *move);
+    game_state *(*execute_move)(const game_state *state, const game_ui *ui, const char *move);
     int preferred_tilesize;
     void (*compute_size)(const game_params *params, int tilesize,
                          const game_ui *ui, int *x, int *y);

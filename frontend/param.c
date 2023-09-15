@@ -132,10 +132,13 @@ void paramPrev() { }
 
 static void paramSubmitParams() {
     const char *reply;
-    reply = midend_set_config(pa.me, CFG_SETTINGS, pa.cfg);
+    reply = midend_set_config(pa.me, pa.ptype, pa.cfg);
     if (reply == NULL) {
         paramFree();
-        gameStartNewGame();
+        if (pa.ptype == CFG_SETTINGS)
+            gameStartNewGame();
+        else if (pa.ptype == CFG_PREFS)
+            gamePrepareFrontend();
         switchToGameScreen();
     }
     else {
@@ -328,12 +331,13 @@ static void paramFree() {
     if (pa.cfg != NULL) free_cfg(pa.cfg);
 }
 
-void paramPrepare(midend *me) {
+void paramPrepare(midend *me, int ptype) {
     int n, i, j;
 
     pa.me = me;
+    pa.ptype = ptype;
 
-    pa.cfg = midend_get_config(pa.me, CFG_SETTINGS, &pa.title);
+    pa.cfg = midend_get_config(pa.me, pa.ptype, &pa.title);
     pa.paramlayout = getLayout(LAYOUT_BUTTONBAR); 
 
     for (pa.numParams = 0;

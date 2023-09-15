@@ -1592,21 +1592,6 @@ static const char *validate_desc(const game_params *params, const char *desc)
     return NULL;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    key_label *keys = snewn(2, key_label);
-    *nkeys = 2;
-
-    keys[0].button = 'J';
-    keys[0].label = "Shuffle";
-
-    keys[1].button = 'L';
-    keys[1].label = "Lock";
-
-    return keys;
-}
-
-
 /* ----------------------------------------------------------------------
  * Construct an initial game state, given a description and parameters.
  */
@@ -2021,6 +2006,20 @@ static void decode_ui(game_ui *ui, const char *encoding, const game_state *state
        &ui->org_x, &ui->org_y, &ui->cx, &ui->cy);
 }
 
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    key_label *keys = snewn(2, key_label);
+    *nkeys = 2;
+
+    keys[0].button = 'J';
+    keys[0].label = "Shuffle";
+
+    keys[1].button = 'L';
+    keys[1].label = "Lock";
+
+    return keys;
+}
+
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate) {
 }
@@ -2155,7 +2154,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     }
 }
 
-static game_state *execute_move(const game_state *from, const char *move)
+static game_state *execute_move(const game_state *from, const game_ui *ui, const char *move)
 {
     game_state *ret;
     int tx = -1, ty = -1, n, orig;

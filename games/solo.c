@@ -3222,29 +3222,6 @@ static struct block_structure *gen_killer_cages(int cr, random_state *rs,
     return b;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    int i;
-    int cr = params->c * params->r;
-    key_label *keys = snewn(cr+3, key_label);
-    *nkeys = cr + 3;
-
-    for (i = 0; i < cr; i++) {
-        if (i<9) keys[i].button = '1' + i;
-        else keys[i].button = 'a' + i - 9;
-
-        keys[i].label = NULL;
-    }
-    keys[cr].button = '\b';
-    keys[cr].label = NULL;
-    keys[cr+1].button = '+';
-    keys[cr+1].label = NULL;
-    keys[cr+2].button = '-';
-    keys[cr+2].label = NULL;
-
-    return keys;
-}
-
 static char *new_game_desc(const game_params *params, random_state *rs,
                char **aux, bool interactive)
 {
@@ -3971,6 +3948,29 @@ static void free_ui(game_ui *ui)
     sfree(ui);
 }
 
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    int i;
+    int cr = params->c * params->r;
+    key_label *keys = snewn(cr+3, key_label);
+    *nkeys = cr + 3;
+
+    for (i = 0; i < cr; i++) {
+        if (i<9) keys[i].button = '1' + i;
+        else keys[i].button = 'a' + i - 9;
+
+        keys[i].label = NULL;
+    }
+    keys[cr].button = '\b';
+    keys[cr].label = NULL;
+    keys[cr+1].button = '+';
+    keys[cr+1].label = NULL;
+    keys[cr+2].button = '-';
+    keys[cr+2].label = NULL;
+
+    return keys;
+}
+
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
@@ -4169,7 +4169,7 @@ static bool check_hint(const game_state *state, int x, int y, int n) {
     return check;
 }
 
-static game_state *execute_move(const game_state *from, const char *move)
+static game_state *execute_move(const game_state *from, const game_ui *ui, const char *move)
 {
     int cr = from->cr;
     game_state *ret;

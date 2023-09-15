@@ -1103,7 +1103,7 @@ static void update_board_state_around(game_state *state, int x, int y)
     }
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     game_state *new_state = dup_game(state);
     int i = 0, x = -1, y = -1, clues_left = 0;

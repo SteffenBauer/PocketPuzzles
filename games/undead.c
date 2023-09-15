@@ -1789,20 +1789,6 @@ static void num2grid(int num, int width, int height, int *x, int *y) {
     return;
 }
 
-static key_label *game_request_keys(const game_params *params, int *nkeys)
-{
-    key_label *keys = snewn(5, key_label);
-    *nkeys = 5;
-
-    keys[0].button = 'G';  keys[0].label = "Ghost";
-    keys[1].button = 'V';  keys[1].label = "Vampire";
-    keys[2].button = 'Z';  keys[2].label = "Zombie";
-    keys[3].button = '\b'; keys[3].label = NULL;
-    keys[4].button = '+';  keys[4].label = NULL;
-
-    return keys;
-}
-
 static game_state *new_game(midend *me, const game_params *params,
                             const char *desc)
 {
@@ -2036,6 +2022,20 @@ static game_ui *new_ui(const game_state *state)
 static void free_ui(game_ui *ui) {
     sfree(ui);
     return;
+}
+
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    key_label *keys = snewn(5, key_label);
+    *nkeys = 5;
+
+    keys[0].button = 'G';  keys[0].label = "Ghost";
+    keys[1].button = 'V';  keys[1].label = "Vampire";
+    keys[2].button = 'Z';  keys[2].label = "Zombie";
+    keys[3].button = '\b'; keys[3].label = NULL;
+    keys[4].button = '+';  keys[4].label = NULL;
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -2412,7 +2412,7 @@ static bool check_path_solution(game_state *state, int p) {
     return correct;
 }
 
-static game_state *execute_move(const game_state *state, const char *move)
+static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     int x,y,n,p,i;
     char c;
