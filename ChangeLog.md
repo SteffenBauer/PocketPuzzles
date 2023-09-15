@@ -1,6 +1,11 @@
 ## ChangeLog
 
-## 0.8.0
+## 0.8.1 Nightly
+
+### Added
+* New game: *Binary*, implementation of '2048'
+
+## 0.8.0 - 2023/08/31
 
 ### Added
 * Game UI settings now configurable, for games indicated in ToDo.md
