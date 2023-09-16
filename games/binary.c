@@ -25,7 +25,7 @@
 
 #define X(state, i) ( (i) % (state)->w )
 #define Y(state, i) ( (i) / (state)->w )
-#define C(state, x, y) ( (y) * (state)->shared->w + (x) )
+#define C(state, x, y) ( (y) * (state)->w + (x) )
 
 enum {
     COL_BACKGROUND,
@@ -87,20 +87,15 @@ const int POWER[] = {
 };
 #define MAXPOWER 0x0f
 
-struct game_state_shared {
-    int refcount;
+struct game_state {
     int w, h;
     int goal;
     int mode;
-    random_state *rs;
-};
-
-struct game_state {
-    struct game_state_shared *shared;
-    unsigned char *tiles;
     int score;
     bool won;
     bool finished;
+    unsigned char *tiles;
+    random_state *rs;
 };
 
 static game_params *default_params(void) {
@@ -353,18 +348,14 @@ static game_state *new_game(midend *me, const game_params *params,
                             const char *desc) {
     int i, wh;
     game_state *state = snew(game_state);
+    state->w = params->w;
+    state->h = params->h;
+    state->goal = params->goal;
+    state->mode = params->mode;
     state->score = 0;
     state->won = state->finished = false;
 
-    state->shared = snew(struct game_state_shared);
-    state->shared->refcount = 1;
-
-    state->shared->w = params->w;
-    state->shared->h = params->h;
-    state->shared->goal = params->goal;
-    state->shared->mode = params->mode;
-
-    wh = state->shared->w * state->shared->h;
+    wh = state->w * state->h;
     state->tiles = snewn(wh, unsigned char);
     memset(state->tiles, 0, wh*sizeof(unsigned char));
     const char *p = desc;
@@ -379,21 +370,23 @@ static game_state *new_game(midend *me, const game_params *params,
         else p++;
     }
     p++;
-    state->shared->rs = random_state_decode(p);
+    state->rs = random_state_decode(p);
 
     return state;
 }
 
 static game_state *dup_game(const game_state *state) {
     int wh;
+    wh = state->w * state->h;
     game_state *ret = snew(game_state);
+    ret->w = state->w;
+    ret->h = state->h;
+    ret->goal = state->goal;
+    ret->mode = state->mode;
     ret->score = state->score;
     ret->won = state->won;
     ret->finished = state->finished;
-    ret->shared = state->shared;
-    ret->shared->refcount++;
-
-    wh = state->shared->w * state->shared->h;
+    ret->rs = random_copy(state->rs);
     ret->tiles = snewn(wh, unsigned char);
     memcpy(ret->tiles, state->tiles, wh*sizeof(unsigned char));
 
@@ -401,11 +394,7 @@ static game_state *dup_game(const game_state *state) {
 }
 
 static void free_game(game_state *state) {
-    if (--state->shared->refcount <= 0) {
-        if (state->shared->rs)
-            random_free(state->shared->rs);
-        sfree(state->shared);
-    }
+    random_free(state->rs);
     sfree(state->tiles);
     sfree(state);
 }
@@ -496,7 +485,7 @@ static int compress_line(unsigned char *line, int length) {
 
 static void move_board(game_state *state, char direction) {
     unsigned char *line, *p;
-    int w = state->shared->w, h = state->shared->h;
+    int w = state->w, h = state->h;
     int x,y;
     int movescore;
 
@@ -545,7 +534,7 @@ static void move_board(game_state *state, char direction) {
 }
 
 static bool check_change(const game_state *state, char direction) {
-    int i, w = state->shared->w, h = state->shared->h;
+    int i, w = state->w, h = state->h;
     bool result = false;
     game_state *test = dup_game(state);
     move_board(test, direction);
@@ -567,15 +556,15 @@ static bool moves_possible(const game_state *state) {
 }
 
 static bool goal_reached(const game_state *state) {
-    int i, w = state->shared->w, h = state->shared->h;
+    int i, w = state->w, h = state->h;
     for (i=0;i<w*h;i++)
-        if (state->tiles[i] >= state->shared->goal + 5)
+        if (state->tiles[i] >= state->goal + 5)
             return true;
     return false;
 }
 
 static bool highest_reached(const game_state *state) {
-    int i, w = state->shared->w, h = state->shared->h;
+    int i, w = state->w, h = state->h;
     for (i=0;i<w*h;i++)
         if (state->tiles[i] >= 0x0f)
             return true;
@@ -595,7 +584,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     char buf[80];
     int dx, dy, xr, yr, c1, c2;
     char move;
-    int w = state->shared->w, h = state->shared->h;
+    int w = state->w, h = state->h;
 
     if (state->finished)
         return MOVE_NO_EFFECT;
@@ -647,11 +636,11 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
 static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move) {
     game_state *ret = NULL;
-    int w = state->shared->w, h = state->shared->h;
+    int w = state->w, h = state->h;
     if (move) {
         ret = dup_game(state);
         move_board(ret, move[0]);
-        add_new_number(ret->shared->rs, ret->tiles, w*h);
+        add_new_number(ret->rs, ret->tiles, w*h);
         if (goal_reached(ret)) ret->won = true;
         if (!moves_possible(ret)) ret->finished = true;
         if (highest_reached(ret)) ret->finished = true;
@@ -701,8 +690,8 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state) 
 
     ds->started = false;
     ds->tilesize = 0;
-    ds->w = state->shared->w;
-    ds->h = state->shared->h;
+    ds->w = state->w;
+    ds->h = state->h;
     ds->tiles = snewn(ds->w*ds->h, unsigned char);
     for (i = 0; i < ds->w*ds->h; i++)
         ds->tiles[i] = 0;
@@ -747,7 +736,7 @@ static void draw_cell(drawing *dr, game_drawstate *ds, const game_ui *ui, const 
                   state->finished ? COL_BOARD : COL_BACKGROUND);
 
         sprintf(str, "%d", POWER[tile]);
-        textsize = (tile >= state->shared->goal+5) ? 
+        textsize = (tile >= state->goal+5) ?
                         (tile < 10) ? TILE_SIZE/3 : TILE_SIZE/4
                     :   (tile < 10) ? TILE_SIZE/4 : TILE_SIZE/5;
         draw_text(dr, x + TILE_SIZE/2, y + TILE_SIZE/2,
@@ -761,7 +750,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                         const game_state *oldstate, const game_state *state,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime) {
-    int i, w = state->shared->w, h = state->shared->h;
+    int i, w = state->w, h = state->h;
     char statusbuf[256];
 
     if (!ds->started) {
@@ -804,7 +793,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             "%s%sGoal %s Score %d",
                           state->won  ? "WON! " : "",
                           state->finished ? "NO MORE MOVES " : "",
-                          binary_goalnames[state->shared->goal], state->score);
+                          binary_goalnames[state->goal], state->score);
     status_bar(dr, statusbuf);
 }
 
