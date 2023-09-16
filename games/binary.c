@@ -412,12 +412,14 @@ static void free_game(game_state *state) {
 
 struct game_ui {
     int background;
+    int inputtype;
     int x, y;
 };
 
 static game_ui *new_ui(const game_state *state) {
     game_ui *ui = snew(game_ui);
     ui->background = BACKGROUND_EMPTY;
+    ui->inputtype = 0;
     ui->x = ui->y = -1;
     return ui;
 }
@@ -430,7 +432,7 @@ static config_item *get_prefs(game_ui *ui)
 {
     config_item *ret;
 
-    ret = snewn(2, config_item);
+    ret = snewn(3, config_item);
 
     ret[0].name = "Game background";
     ret[0].kw = "background";
@@ -439,8 +441,15 @@ static config_item *get_prefs(game_ui *ui)
     ret[0].u.choices.choicekws = ":empty:chess:lines";
     ret[0].u.choices.selected = ui->background;
 
-    ret[1].name = NULL;
-    ret[1].type = C_END;
+    ret[1].name = "Input method";
+    ret[1].kw = "input";
+    ret[1].type = C_CHOICES;
+    ret[1].u.choices.choicenames = ":Tap:Swipe";
+    ret[1].u.choices.choicekws = ":tap:swipe";
+    ret[1].u.choices.selected = ui->inputtype;
+
+    ret[2].name = NULL;
+    ret[2].type = C_END;
 
     return ret;
 }
@@ -448,6 +457,7 @@ static config_item *get_prefs(game_ui *ui)
 static void set_prefs(game_ui *ui, const config_item *cfg)
 {
     ui->background = cfg[0].u.choices.selected;
+    ui->inputtype = cfg[1].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -583,32 +593,47 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int x, int y, int button, bool swapped) {
     char buf[80];
-    int nx, ny, dx, dy;
+    int dx, dy, xr, yr, c1, c2;
     char move;
     int w = state->shared->w, h = state->shared->h;
 
     if (state->finished)
         return MOVE_NO_EFFECT;
 
-    nx = FROMCOORD(x);
-    ny = FROMCOORD(y);
+    xr = 2*BORDER+w*TILE_SIZE;
+    yr = 2*BORDER+h*TILE_SIZE;
+
     move = 'N';
 
     if (button == LEFT_BUTTON) {
         ui->x = x;
         ui->y = y;
+        if (ui->inputtype == 0) {
+            c1 = xr*y-yr*x;
+            c2 = xr*(y-yr)+yr*x;
+            if ((c1 > 0) && (c2 < 0))
+                move = 'L';
+            else if ((c1 < 0) && (c2 > 0))
+                move = 'R';
+            else if ((c1 < 0) && (c2 < 0))
+                move = 'U';
+            else if ((c1 > 0) && (c2 > 0))
+                move = 'D';
+        }
     }
     if (button == LEFT_RELEASE) {
         dx = x - ui->x;
         dy = y - ui->y;
-        if ((nx < 0) || ((dx < -DRAG_THRESHOLD) && (abs(dx) > 2*abs(dy))))
-            move = 'L';
-        else if ((nx >= w) || ((dx > DRAG_THRESHOLD) && (abs(dx) > 2*abs(dy))))
-            move = 'R';
-        else if ((ny < 0) || ((dy < -DRAG_THRESHOLD) && (abs(dy) > 2*abs(dx))))
-            move = 'U';
-        else if ((ny >= h) || ((dy > DRAG_THRESHOLD) && (abs(dy) > 2*abs(dx))))
-            move = 'D';
+        if (ui->inputtype == 1) {
+            if ((dx < -DRAG_THRESHOLD) && (abs(dx) > 2*abs(dy)))
+                move = 'L';
+            else if ((dx > DRAG_THRESHOLD) && (abs(dx) > 2*abs(dy)))
+                move = 'R';
+            else if ((dy < -DRAG_THRESHOLD) && (abs(dy) > 2*abs(dx)))
+                move = 'U';
+            else if ((dy > DRAG_THRESHOLD) && (abs(dy) > 2*abs(dx)))
+                move = 'D';
+        }
         ui->x = ui->y = -1;
     }
     if (move == 'N')
@@ -660,7 +685,7 @@ static float *game_colours(frontend *fe, int *ncolours) {
 
     for (i = 0; i < 3; i++) {
         ret[COL_BACKGROUND * 3 + i] = 1.0f;
-        ret[COL_BOARD      * 3 + i] = 0.9f;
+        ret[COL_BOARD      * 3 + i] = 0.5f;
         ret[COL_HIGHLIGHT  * 3 + i] = 0.75f;
         ret[COL_LOWLIGHT   * 3 + i] = 0.25f;
         ret[COL_TEXT       * 3 + i] = 0.0f;
@@ -719,7 +744,7 @@ static void draw_cell(drawing *dr, game_drawstate *ds, const game_ui *ui, const 
 
         draw_rect(dr, x + HIGHLIGHT_WIDTH, y + HIGHLIGHT_WIDTH,
                   TILE_SIZE - 2*HIGHLIGHT_WIDTH, TILE_SIZE - 2*HIGHLIGHT_WIDTH,
-                  COL_BACKGROUND);
+                  state->finished ? COL_BOARD : COL_BACKGROUND);
 
         sprintf(str, "%d", POWER[tile]);
         textsize = (tile >= state->shared->goal+5) ? 
@@ -727,7 +752,7 @@ static void draw_cell(drawing *dr, game_drawstate *ds, const game_ui *ui, const 
                     :   (tile < 10) ? TILE_SIZE/4 : TILE_SIZE/5;
         draw_text(dr, x + TILE_SIZE/2, y + TILE_SIZE/2,
                   FONT_VARIABLE, textsize, ALIGN_VCENTRE | ALIGN_HCENTRE,
-                  COL_TEXT, str);
+                  state->finished ? COL_HIGHLIGHT : COL_TEXT, str);
     }
     draw_update(dr, x, y, TILE_SIZE, TILE_SIZE);
 }
@@ -766,7 +791,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (i = 0; i < w*h; i++) {
         int t, x, y;
         t = state->tiles[i];
-        if (!ds->started || (t != ds->tiles[i])) {
+        if (!ds->started || state->finished || (t != ds->tiles[i])) {
             x = COORD(i%w);
             y = COORD(i/w);
             draw_cell(dr, ds, ui, state, x, y, t, ((i/w)+(i%w))%2 ? COL_BACKGROUND : COL_BOARD);
