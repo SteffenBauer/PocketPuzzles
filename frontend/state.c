@@ -21,7 +21,7 @@ int configLen() {
     return count;
 }
 
-void configAddItem(char *key, char *value) {
+void configAddItem(const char *key, const char *value) {
     dict_t *ptr;
     dict_t *new;
     configDelItem(key);
@@ -53,7 +53,7 @@ void configDel() {
     }
 }
 
-char *configGetItem(char *key) {
+char *configGetItem(const char *key) {
     dict_t *ptr;
     for (ptr = config; ptr != NULL; ptr = ptr->next) {
         if (strcmp(ptr->key, key) == 0) {
@@ -63,7 +63,7 @@ char *configGetItem(char *key) {
     return NULL;
 }
 
-void configDelItem(char *key) {
+void configDelItem(const char *key) {
     dict_t *ptr, *prev;
     ptr = config;
     prev = NULL;
@@ -104,17 +104,20 @@ void configLoad() {
   size_t buflen = 65536;
   size_t linelen;
   char *buf;
-  char key[256];
+  char *value;
+  char *key;
   FILE *fp;
 
   buf = smalloc(buflen);
+  key = snewn(256, char);
+  value = snewn(256, char);
   fp = fopen(configFileName, "r");
   if (fp != NULL) {
     while(getline(&buf, &buflen, fp) != EOF) {
       linelen = strlen(buf);
       if (linelen > 0) {
-        char value[linelen];
-        sscanf(buf, "%s %s", &key, &value);
+        value = sresize(value, linelen, char);
+        sscanf(buf, "%s %s", key, value);
         if ((strncmp("params_",   key, 7) == 0) ||
             (strncmp("savegame",  key, 8) == 0) ||
             (strncmp("favorite_", key, 9) == 0) ||
@@ -125,6 +128,8 @@ void configLoad() {
     }
     fclose(fp);
   }
+  sfree(value);
+  sfree(key);
   sfree(buf);
 }
 
@@ -136,7 +141,7 @@ static void serialiseWriteCallback(void *ctx, const void *buf, int len)
     new_len = ser->len + len;
     if (new_len > ser->pos) {
         ser->pos = new_len + new_len / 4 + 1024;
-        ser->buf = sresize(ser->buf, ser->pos, char);
+        ser->buf = sresize(ser->buf, ser->pos, unsigned char);
     }
     memcpy(ser->buf + ser->len, buf, len);
     ser->len = new_len;
