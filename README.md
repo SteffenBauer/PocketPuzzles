@@ -57,14 +57,10 @@ Install Docker from https://docs.docker.com and start it.
 Then run
 
 ```bash
-docker run --rm -it \
-	--mount type=bind,source="$(pwd)",target=/project \
-	5keeve/pocketbook-sdk:6.3.0-b288-v1
-mkdir build
-cd build
-cmake ..
-cmake --build .
+DOCKER_BUILDKIT=1 docker build --no-cache --output ./app/ .
 ```
+
+The app will be saved as `./app/SGTPuzzles.app`
 
 ### Development history
 
