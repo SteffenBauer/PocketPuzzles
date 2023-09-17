@@ -14,7 +14,7 @@ CFLAGS := -O2 -Wall -Wno-deprecated-declarations -g -I./ -I../include/ `$(GTK_CO
 XLIBS = `$(GTK_CONFIG) --libs` -lm
 ULIBS = -lm
 
-all: abcd ascent blackbox boats bricks bridges clusters creek crossnum cube \
+all: abcd ascent binary blackbox boats bricks bridges clusters creek crossnum cube \
 		dominosa fifteen filling flip flood galaxies guess inertia keen lightup \
 		loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs \
 		range rect rome salad samegame signpost singles sixteen slant solo \
@@ -33,6 +33,12 @@ ascent: ascent.o no-icon.o drawing.o gtk.o malloc.o \
 	$(CC) -o $@ ascent.o no-icon.o drawing.o gtk.o malloc.o \
 		matching.o midend.o misc.o printing.o ps.o random.o \
 		version.o  $(XLFLAGS) $(XLIBS)
+
+binary: drawing.o binary.o no-icon.o gtk.o malloc.o \
+		midend.o misc.o printing.o ps.o random.o version.o
+	$(CC) -o $@ drawing.o binary.o no-icon.o gtk.o malloc.o \
+		midend.o misc.o printing.o ps.o random.o version.o  \
+		$(XLFLAGS) $(XLIBS)
 
 blackbox: blackbox.o no-icon.o drawing.o gtk.o malloc.o \
 		midend.o misc.o printing.o ps.o random.o version.o
@@ -355,6 +361,8 @@ abcd.o: ../games/abcd.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 ascent.o: ../games/ascent.c ../include/puzzles.h ../include/matching.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
+binary.o: ../games/binary.c ../include/puzzles.h
+	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 blackbox.o: ../games/blackbox.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 boats.o: ../games/boats.c ../include/puzzles.h
@@ -505,5 +513,5 @@ version.o: ../utils/version.c ../include/version.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o abcd ascent blackbox boats bricks bridges clusters creek crossnum cube dominosa fifteen filling flip flood galaxies guess inertia keen lightup loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs range rect rome salad samegame signpost singles sixteen slant solo spokes sticks tents towers tracks twiddle undead unequal unruly untangle walls
+	rm -f *.o abcd ascent binary blackbox boats bricks bridges clusters creek crossnum cube dominosa fifteen filling flip flood galaxies guess inertia keen lightup loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs range rect rome salad samegame signpost singles sixteen slant solo spokes sticks tents towers tracks twiddle undead unequal unruly untangle walls
 
