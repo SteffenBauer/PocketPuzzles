@@ -15,7 +15,7 @@ typedef struct dict_t_struct {
 static dict_t *config = NULL;
 
 struct serialise_buf {
-    char *buf;
+    unsigned char *buf;
     int len, pos;
 } game_save;
 
@@ -25,10 +25,10 @@ struct savefile_write {
 };
 
 int configLen();
-void configAddItem(char *key, char *value);
+void configAddItem(const char *key, const char *value);
 void configDel();
-char *configGetItem(char *key);
-void configDelItem(char *key);
+char *configGetItem(const char *key);
+void configDelItem(const char *key);
 void configSave();
 void configLoad();
 

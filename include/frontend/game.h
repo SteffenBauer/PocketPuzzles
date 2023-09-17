@@ -148,7 +148,7 @@ void gameNext();
 
 void gameSerialise();
 extern void stateSerialise(midend *me);
-extern void configAddItem(char *key, char *value);
+extern void configAddItem(const char *key, const char *value);
 
 extern void paramPrepare(midend *me, int ptype);
 
