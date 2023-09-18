@@ -4,6 +4,7 @@ COPY . /project/
 
 RUN cd /project \
  && mkdir -p build \
+ && ./makeinstructions.pl \
  && cd build \
  && cmake .. \
  && cmake --build . \
@@ -12,3 +13,4 @@ RUN cd /project \
 FROM scratch AS exporter
 
 COPY --from=builder /project/build/SGTPuzzles.app ./
+COPY --from=builder /project/build/*.epub ./
