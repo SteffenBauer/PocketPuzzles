@@ -62,6 +62,9 @@ DOCKER_BUILDKIT=1 docker build --no-cache --output ./app/ .
 
 The app will be saved as `./app/SGTPuzzles.app`
 
+Additionally a `Pocket Puzzles.epub` is generated, containing
+all the puzzle's rules.
+
 ### Development history
 
 **Changelog after Beta release** see [ChangeLog.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/ChangeLog.md)
