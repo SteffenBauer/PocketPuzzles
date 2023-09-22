@@ -573,6 +573,7 @@ static bool highest_reached(const game_state *state) {
 
 struct game_drawstate {
     bool started;
+    bool finished;
     int tilesize;
     int w, h;
     unsigned char *tiles;
@@ -689,6 +690,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state) 
     int i;
 
     ds->started = false;
+    ds->finished = false;
     ds->tilesize = 0;
     ds->w = state->w;
     ds->h = state->h;
@@ -780,7 +782,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (i = 0; i < w*h; i++) {
         int t, x, y;
         t = state->tiles[i];
-        if (!ds->started || state->finished || (t != ds->tiles[i])) {
+        if (!ds->started || (state->finished != ds->finished) || (t != ds->tiles[i])) {
             x = COORD(i%w);
             y = COORD(i/w);
             draw_cell(dr, ds, ui, state, x, y, t, ((i/w)+(i%w))%2 ? COL_BACKGROUND : COL_BOARD);
@@ -789,6 +791,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     }
 
     ds->started = true;
+    ds->finished = state->finished;
     sprintf(statusbuf,
             "%s%sGoal %s Score %d",
                           state->won  ? "WON! " : "",

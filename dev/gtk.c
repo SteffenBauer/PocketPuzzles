@@ -3015,8 +3015,10 @@ static void load_prefs(frontend *fe)
     if (!path)
         return;
     FILE *fp = fopen(path, "r");
-    if (!fp)
+    if (!fp) {
+        sfree(path);
         return;
+    }
     const char *err = midend_load_prefs(fe->me, savefile_read, fp);
     fclose(fp);
     if (err)
