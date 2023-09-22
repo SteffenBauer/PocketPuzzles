@@ -36,7 +36,7 @@
 #include "puzzles.h"
 #include "tree234.h"
 
-#define CIRCLE_RADIUS 18
+#define CIRCLE_RADIUS ((ds->tilesize)/8)
 #define DRAG_THRESHOLD (CIRCLE_RADIUS * 3)
 #define PREFERRED_TILESIZE 64
 
@@ -78,6 +78,11 @@ struct graph {
     tree234 *edges;               /* stores `edge' structures */
 };
 
+struct solution {
+    int refcount;
+    point *soln;
+};
+
 struct game_state {
     game_params params;
     int w, h;                   /* extent of coordinate system only */
@@ -85,7 +90,8 @@ struct game_state {
     int *crosses;               /* mark edges which are crossed */
     int ncrosses;               /* number of crossed edges */
     struct graph *graph;
-    bool completed, cheated, just_solved;
+    struct solution *solution;
+    bool completed, autosolve;
 };
 
 static int edgecmpC(const void *av, const void *bv)
@@ -801,7 +807,11 @@ static game_state *new_game(midend *me, const game_params *params,
     state->graph = snew(struct graph);
     state->graph->refcount = 1;
     state->graph->edges = newtree234(edgecmp);
-    state->completed = state->cheated = state->just_solved = false;
+    state->solution = snew(struct solution);
+    state->solution->refcount = 1;
+    state->solution->soln = snewn(n, point);
+
+    state->completed = state->autosolve = false;
 
     while (*desc) {
         a = atoi(desc);
@@ -837,9 +847,10 @@ static game_state *dup_game(const game_state *state)
     memcpy(ret->pts, state->pts, n * sizeof(point));
     ret->graph = state->graph;
     ret->graph->refcount++;
+    ret->solution = state->solution;
+    ret->solution->refcount++;
     ret->completed = state->completed;
-    ret->cheated = state->cheated;
-    ret->just_solved = state->just_solved;
+    ret->autosolve = state->autosolve;
     ret->crosses = snewn(count234(ret->graph->edges), int);
     memcpy(ret->crosses, state->crosses, count234(ret->graph->edges) * sizeof(int));
 
@@ -849,12 +860,17 @@ static game_state *dup_game(const game_state *state)
 static void free_game(game_state *state)
 {
     if (--state->graph->refcount <= 0) {
-    edge *e;
-    while ((e = delpos234(state->graph->edges, 0)) != NULL)
-        sfree(e);
-    freetree234(state->graph->edges);
-    sfree(state->graph);
+        edge *e;
+        while ((e = delpos234(state->graph->edges, 0)) != NULL)
+            sfree(e);
+        freetree234(state->graph->edges);
+        sfree(state->graph);
     }
+    if (--state->solution->refcount <= 0) {
+        sfree(state->solution->soln);
+        sfree(state->solution);
+    }
+    sfree(state->crosses);
     sfree(state->pts);
     sfree(state);
 }
@@ -871,8 +887,8 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     int retlen, retsize;
 
     if (!aux) {
-    *error = "Solution not known for this puzzle";
-    return NULL;
+        *error = "Solution not known for this puzzle";
+        return NULL;
     }
 
     /*
@@ -883,7 +899,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     for (i = 0; i < n; i++) {
         int p, k;
         long x, y, d;
-    int ret = sscanf(aux, ";P%d:%ld,%ld/%ld%n", &p, &x, &y, &d, &k);
+        int ret = sscanf(aux, ";P%d:%ld,%ld/%ld%n", &p, &x, &y, &d, &k);
         if (ret != 4 || p != i) {
             *error = "Internal error: aux_info badly formatted";
             sfree(pts);
@@ -999,7 +1015,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
         strcpy(ret + retlen, buf);
         retlen += extra;
     }
-
     sfree(pts);
 
     return ret;
@@ -1038,6 +1053,7 @@ struct game_drawstate {
     long tilesize;
     int bg, dragpoint;
     long *x, *y;
+    long hx, hy;
 };
 
 static char *interpret_move(const game_state *state, game_ui *ui,
@@ -1047,39 +1063,38 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     int n = state->params.n;
 
     if (IS_MOUSE_DOWN(button)) {
-    int i, best;
+        int i, best;
         long bestd;
 
-    /*
-     * Begin drag. We drag the vertex _nearest_ to the pointer,
-     * just in case one is nearly on top of another and we want
-     * to drag the latter. However, we drag nothing at all if
-     * the nearest vertex is outside DRAG_THRESHOLD.
-     */
-    best = -1;
-    bestd = 0;
+        /*
+         * Begin drag. We drag the vertex _nearest_ to the pointer,
+         * just in case one is nearly on top of another and we want
+         * to drag the latter. However, we drag nothing at all if
+         * the nearest vertex is outside DRAG_THRESHOLD.
+         */
+        best = -1;
+        bestd = 0;
 
-    for (i = 0; i < n; i++) {
-        long px = state->pts[i].x * ds->tilesize / state->pts[i].d;
-        long py = state->pts[i].y * ds->tilesize / state->pts[i].d;
-        long dx = px - x;
-        long dy = py - y;
-        long d = dx*dx + dy*dy;
+        for (i = 0; i < n; i++) {
+            long px = state->pts[i].x * ds->tilesize / state->pts[i].d;
+            long py = state->pts[i].y * ds->tilesize / state->pts[i].d;
+            long dx = px - x;
+            long dy = py - y;
+            long d = dx*dx + dy*dy;
 
-        if (best == -1 || bestd > d) {
-        best = i;
-        bestd = d;
+            if (best == -1 || bestd > d) {
+            best = i;
+            bestd = d;
+            }
         }
-    }
 
-    if (bestd <= DRAG_THRESHOLD * DRAG_THRESHOLD) {
-        ui->dragpoint = best;
-        ui->newpoint.x = state->pts[best].x * ds->tilesize / state->pts[best].d;
-        ui->newpoint.y = state->pts[best].y * ds->tilesize / state->pts[best].d;
-        ui->newpoint.d = ds->tilesize;
-        return MOVE_UI_UPDATE;
-    }
-
+        if (bestd <= DRAG_THRESHOLD * DRAG_THRESHOLD) {
+            ui->dragpoint = best;
+            ui->newpoint.x = state->pts[best].x * ds->tilesize / state->pts[best].d;
+            ui->newpoint.y = state->pts[best].y * ds->tilesize / state->pts[best].d;
+            ui->newpoint.d = ds->tilesize;
+            return MOVE_UI_UPDATE;
+        }
     } else if (IS_MOUSE_DRAG(button) && ui->dragpoint >= 0) {
         ui->newpoint.x = x;
         ui->newpoint.y = y;
@@ -1091,20 +1106,20 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         ui->dragpoint = -1;           /* terminate drag, no matter what */
 
-    /*
-     * First, see if we're within range. The user can cancel a
-     * drag by dragging the point right off the window.
-     */
+        /*
+         * First, see if we're within range. The user can cancel a
+         * drag by dragging the point right off the window.
+         */
         if (ui->newpoint.x < 0 ||
             ui->newpoint.x >= (long)state->w*ui->newpoint.d ||
             ui->newpoint.y < 0 ||
             ui->newpoint.y >= (long)state->h*ui->newpoint.d)
             return MOVE_UI_UPDATE;
 
-    /*
-     * We aren't cancelling the drag. Construct a move string
-     * indicating where this point is going to.
-     */
+        /*
+         * We aren't cancelling the drag. Construct a move string
+         * indicating where this point is going to.
+         */
         sprintf(buf, "P%d:%ld,%ld/%ld", p, ui->newpoint.x, ui->newpoint.y, ui->newpoint.d);
         ui->just_dragged = true;
         return dupstr(buf);
@@ -1118,23 +1133,30 @@ static game_state *execute_move(const game_state *state, const game_ui *ui, cons
     int n = state->params.n;
     int p, k;
     long x, y, d;
+    bool save_soln = false;
     game_state *ret = dup_game(state);
 
-    ret->cheated = ret->just_solved = false;
 
     while (*move) {
         if (*move == 'S') {
             move++;
             if (*move == ';') move++;
-            ret->cheated = ret->just_solved = true;
+            save_soln = true;
+            ret->autosolve = true;
         }
         if (*move == 'P' &&
             sscanf(move+1, "%d:%ld,%ld/%ld%n", &p, &x, &y, &d, &k) == 4 &&
             p >= 0 && p < n && d > 0) {
-            ret->pts[p].x = x;
-            ret->pts[p].y = y;
-            ret->pts[p].d = d;
-
+            if (save_soln) {
+                ret->solution->soln[p].x = x;
+                ret->solution->soln[p].y = y;
+                ret->solution->soln[p].d = d;
+            }
+            else {
+                ret->pts[p].x = x;
+                ret->pts[p].y = y;
+                ret->pts[p].d = d;
+            }
             move += k+1;
             if (*move == ';') move++;
         } else {
@@ -1195,7 +1217,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
         ds->x[i] = ds->y[i] = -1;
     ds->bg = -1;
     ds->dragpoint = -1;
-
+    ds->hx = ds->hy = -1;
     return ds;
 }
 
@@ -1230,10 +1252,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
     char buf[48];
     /* Draw status bar */
-    sprintf(buf, "Crossed lines: %d%s",
+    sprintf(buf, "Crossed lines: %d%s%s",
             state->ncrosses,
-            state->cheated   ? "    Auto-solved." :
-            state->completed ? "    COMPLETED!" : "");
+            state->autosolve ? " Auto-solve" : "",
+            state->completed ? " COMPLETED!" : "");
     status_bar(dr, buf);
 
     /*
@@ -1255,6 +1277,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * points for this redraw.
      */
     points_moved = false;
+    ds->hx = ds->hy = -1;
     for (i = 0; i < state->params.n; i++) {
         point p = state->pts[i];
         long x, y;
@@ -1270,6 +1293,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         if (ds->x[i] != x || ds->y[i] != y)
             points_moved = true;
+
+        if (state->autosolve && ui->dragpoint == i) {
+            point s = state->solution->soln[i];
+            ds->hx = s.x * ds->tilesize / s.d;
+            ds->hy = s.y * ds->tilesize / s.d;
+        }
 
         ds->x[i] = x;
         ds->y[i] = y;
@@ -1323,6 +1352,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             }
         }
     }
+    if (ds->hx >= 0 && ds->hy >= 0) {
+        draw_circle(dr, ds->hx, ds->hy, 15*CIRCLE_RADIUS/10, COL_OUTLINE, COL_OUTLINE);
+        draw_circle(dr, ds->hx, ds->hy, 12*CIRCLE_RADIUS/10, COL_BACKGROUND, COL_OUTLINE);
+        draw_circle(dr, ds->hx, ds->hy, 9*CIRCLE_RADIUS/10, COL_OUTLINE, COL_OUTLINE);
+        draw_circle(dr, ds->hx, ds->hy, 6*CIRCLE_RADIUS/10, COL_BACKGROUND, COL_OUTLINE);
+        draw_circle(dr, ds->hx, ds->hy, 3*CIRCLE_RADIUS/10, COL_OUTLINE, COL_OUTLINE);
+    }
     draw_update(dr, 0, 0, w, h);
     unclip(dr);
 }
@@ -1349,7 +1385,8 @@ static int game_status(const game_state *state)
 #endif
 
 static const char rules[] = "You are given a number of points, some of which have lines drawn between them. You can move the points about arbitrarily; your aim is to position the points so that no line crosses another.\n\n"
-"Crossing lines are drawn in a light shade, non-crossing lines in thick black shade.\n\n\n"
+"Crossing lines are drawn in a light shade, non-crossing lines in thick black shade.\n\n"
+"When 'Show solution' is selected, clicking a point will show its solution target.\n\n\n"
 "This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {

@@ -115,13 +115,13 @@
 - [X] Filling: Drag already placed/fixed numbers
 - [X] Walls: Add dragging
 - [X] Net: Add "Lock" button
+- [X] Untangle: More informative 'show solution'
 - [ ] Rome: Dragging
 - [ ] Galaxies: Rework right-drag / arrow handling
-- [ ] Loopy: Fix polygon error fill in Penrose grids
 - [ ] Mathrax: Deactivate useless 'recursive' game difficulty
 - [ ] Map: Optimize redraw of area hint marks
 - [ ] Mosaic: Undo of whole drag sequence
-- [ ] Netslide: Remove animation. Thicker lines.
+- [ ] Netslide: Activate game; Remove animation. Thicker lines.
 - [ ] Pearl: Better error display for error line
 - [ ] Pearl: "No line" on right click instead of release
 - [ ] Slant: 'Hard' game difficulty (backtracking)
