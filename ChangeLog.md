@@ -4,7 +4,10 @@
 
 ### Added
 * New game: *Binary*, implementation of '2048'
-* *Untangle*: Show solution target points when selecting "Show solution"
+* *Untangle*: *Hint* button to show a hint when clicking a point
+
+### Fixed
+* Several compile warnings
 
 ## 0.8.0 - 2023/08/31
 
