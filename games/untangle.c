@@ -80,7 +80,7 @@ struct graph {
 
 struct solution {
     int refcount;
-    point *soln;
+    char *aux;
 };
 
 struct game_state {
@@ -100,13 +100,13 @@ static int edgecmpC(const void *av, const void *bv)
     const edge *b = (const edge *)bv;
 
     if (a->a < b->a)
-    return -1;
+        return -1;
     else if (a->a > b->a)
-    return +1;
+        return +1;
     else if (a->b < b->b)
-    return -1;
+        return -1;
     else if (a->b > b->b)
-    return +1;
+        return +1;
     return 0;
 }
 
@@ -508,12 +508,12 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     pts = snewn(n, point);
     tmp = snewn(w*h, long);
     for (i = 0; i < w*h; i++)
-    tmp[i] = i;
+        tmp[i] = i;
     shuffle(tmp, w*h, sizeof(*tmp), rs);
     for (i = 0; i < n; i++) {
-    pts[i].x = tmp[i] % w;
-    pts[i].y = tmp[i] / w;
-    pts[i].d = 1;
+        pts[i].x = tmp[i] % w;
+        pts[i].y = tmp[i] / w;
+        pts[i].d = 1;
     }
     sfree(tmp);
 
@@ -532,92 +532,92 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     vs = snewn(n, vertex);
     vertices = newtree234(vertcmp);
     for (i = 0; i < n; i++) {
-    v = vs + i;
-    v->param = 0;               /* in this tree, param is the degree */
-    v->vindex = i;
-    add234(vertices, v);
+        v = vs + i;
+        v->param = 0;               /* in this tree, param is the degree */
+        v->vindex = i;
+        add234(vertices, v);
     }
     edges = newtree234(edgecmp);
     vlist = snewn(n, vertex);
     while (1) {
         bool added = false;
 
-    for (i = 0; i < n; i++) {
-        v = index234(vertices, i);
-        j = v->vindex;
+        for (i = 0; i < n; i++) {
+            v = index234(vertices, i);
+            j = v->vindex;
 
-        if (v->param >= MAXDEGREE)
-        break;               /* nothing left to add! */
-
-        /*
-         * Sort the other vertices into order of their distance
-         * from this one. Don't bother looking below i, because
-         * we've already tried those edges the other way round.
-         * Also here we rule out target vertices with too high
-         * a degree, and (of course) ones to which we already
-         * have an edge.
-         */
-        m = 0;
-        for (k = i+1; k < n; k++) {
-        vertex *kv = index234(vertices, k);
-        int ki = kv->vindex;
-        int dx, dy;
-
-        if (kv->param >= MAXDEGREE || isedge(edges, ki, j))
-            continue;
-
-        vlist[m].vindex = ki;
-        dx = pts[ki].x - pts[j].x;
-        dy = pts[ki].y - pts[j].y;
-        vlist[m].param = dx*dx + dy*dy;
-        m++;
-        }
-
-        qsort(vlist, m, sizeof(*vlist), vertcmpC);
-
-        for (k = 0; k < m; k++) {
-            int p;
-            int ki = vlist[k].vindex;
+            if (v->param >= MAXDEGREE)
+                break;               /* nothing left to add! */
 
             /*
-             * Check to see whether this edge intersects any
-             * existing edge or point.
+             * Sort the other vertices into order of their distance
+             * from this one. Don't bother looking below i, because
+             * we've already tried those edges the other way round.
+             * Also here we rule out target vertices with too high
+             * a degree, and (of course) ones to which we already
+             * have an edge.
              */
-            for (p = 0; p < n; p++)
-                if (p != ki && p != j && cross(pts[ki], pts[j],
-                               pts[p], pts[p]))
-                break;
-            if (p < n)
-                continue;
-            for (p = 0; (e = index234(edges, p)) != NULL; p++)
-                if (e->a != ki && e->a != j &&
-                e->b != ki && e->b != j &&
-                cross(pts[ki], pts[j], pts[e->a], pts[e->b]))
-                break;
-            if (e)
-                continue;
+            m = 0;
+            for (k = i+1; k < n; k++) {
+                vertex *kv = index234(vertices, k);
+                int ki = kv->vindex;
+                int dx, dy;
 
-            /*
-             * We're done! Add this edge, modify the degrees of
-             * the two vertices involved, and break.
-             */
-            addedge(edges, j, ki);
-            added = true;
-            del234(vertices, vs+j);
-            vs[j].param++;
-            add234(vertices, vs+j);
-            del234(vertices, vs+ki);
-            vs[ki].param++;
-            add234(vertices, vs+ki);
-            break;
+                if (kv->param >= MAXDEGREE || isedge(edges, ki, j))
+                    continue;
+
+                vlist[m].vindex = ki;
+                dx = pts[ki].x - pts[j].x;
+                dy = pts[ki].y - pts[j].y;
+                vlist[m].param = dx*dx + dy*dy;
+                m++;
+            }
+
+            qsort(vlist, m, sizeof(*vlist), vertcmpC);
+
+            for (k = 0; k < m; k++) {
+                int p;
+                int ki = vlist[k].vindex;
+
+                /*
+                 * Check to see whether this edge intersects any
+                 * existing edge or point.
+                 */
+                for (p = 0; p < n; p++)
+                    if (p != ki && p != j && cross(pts[ki], pts[j],
+                                   pts[p], pts[p]))
+                    break;
+                if (p < n)
+                    continue;
+                for (p = 0; (e = index234(edges, p)) != NULL; p++)
+                    if (e->a != ki && e->a != j &&
+                    e->b != ki && e->b != j &&
+                    cross(pts[ki], pts[j], pts[e->a], pts[e->b]))
+                    break;
+                if (e)
+                    continue;
+
+                /*
+                 * We're done! Add this edge, modify the degrees of
+                 * the two vertices involved, and break.
+                 */
+                addedge(edges, j, ki);
+                added = true;
+                del234(vertices, vs+j);
+                vs[j].param++;
+                add234(vertices, vs+j);
+                del234(vertices, vs+ki);
+                vs[ki].param++;
+                add234(vertices, vs+ki);
+                break;
+            }
+
+            if (k < m)
+                break;
         }
 
-        if (k < m)
-        break;
-    }
-
-    if (!added)
-        break;               /* we're done. */
+        if (!added)
+            break;               /* we're done. */
     }
 
     /*
@@ -627,25 +627,25 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      */
     tmp = snewn(n, long);
     for (i = 0; i < n; i++)
-    tmp[i] = i;
+        tmp[i] = i;
     pts2 = snewn(n, point);
     make_circle(pts2, n, w);
     while (1) {
-    shuffle(tmp, n, sizeof(*tmp), rs);
-    for (i = 0; (e = index234(edges, i)) != NULL; i++) {
-        for (j = i+1; (e2 = index234(edges, j)) != NULL; j++) {
-        if (e2->a == e->a || e2->a == e->b ||
-            e2->b == e->a || e2->b == e->b)
-            continue;
-        if (cross(pts2[tmp[e2->a]], pts2[tmp[e2->b]],
-              pts2[tmp[e->a]], pts2[tmp[e->b]]))
-            break;
+        shuffle(tmp, n, sizeof(*tmp), rs);
+        for (i = 0; (e = index234(edges, i)) != NULL; i++) {
+            for (j = i+1; (e2 = index234(edges, j)) != NULL; j++) {
+                if (e2->a == e->a || e2->a == e->b ||
+                    e2->b == e->a || e2->b == e->b)
+                    continue;
+                if (cross(pts2[tmp[e2->a]], pts2[tmp[e2->b]],
+                      pts2[tmp[e->a]], pts2[tmp[e->b]]))
+                    break;
+            }
+            if (e2)
+                break;
         }
-        if (e2)
-        break;
-    }
-    if (e)
-        break;               /* we've found a crossing */
+        if (e)
+            break;               /* we've found a crossing */
     }
 
     /*
@@ -692,7 +692,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     {
     char buf[80];
     char *auxstr;
-    int auxlen;
+    int auxlen, retlen;
 
     auxlen = 2;               /* leading 'S' and trailing '\0' */
     for (i = 0; i < n; i++) {
@@ -716,6 +716,10 @@ static char *new_game_desc(const game_params *params, random_state *rs,
              pts2[i].x, pts2[i].y, pts2[i].d);
     assert(k < auxlen);
     *aux = auxstr;
+    retlen = strlen(ret);
+    ret = sresize(ret, retlen + 2 + strlen(auxstr), char);
+    ret[retlen] = ';';
+    strcpy(ret+retlen+1, auxstr);
     }
     sfree(pts2);
 
@@ -727,13 +731,12 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     sfree(e);
     freetree234(edges);
     sfree(pts);
-
     return ret;
 }
 
 static const char *validate_desc(const game_params *params, const char *desc)
 {
-    int a, b;
+    int a, b, i;
 
     while (*desc) {
         a = atoi(desc);
@@ -748,12 +751,30 @@ static const char *validate_desc(const game_params *params, const char *desc)
             return "Number out of range in game description";
         while (*desc && isdigit((unsigned char)*desc)) desc++;
         if (*desc) {
+            if (*desc == ';') { /* AUX info follows */
+                desc++;
+                break;
+            }
             if (*desc != ',')
-            return "Expected ',' after number in game description";
+                return "Expected ',' after number in game description";
             desc++;               /* eat comma */
         }
         if (a == b)
           return "Node linked to itself in game description";
+    }
+
+    if (*desc) {
+        if (*desc != 'S')
+            return "Missing 'S' to start aux part in game description";
+        desc++;
+        for (i = 0; i < params->n; i++) {
+            int p, k;
+            long x, y, d;
+            int ret = sscanf(desc, ";P%d:%ld,%ld/%ld%n", &p, &x, &y, &d, &k);
+            if (ret != 4 || p != i)
+                return "Internal error: aux_info badly formatted";
+            desc += k;
+        }
     }
 
     return NULL;
@@ -799,6 +820,7 @@ static game_state *new_game(midend *me, const game_params *params,
     int n = params->n;
     game_state *state = snew(game_state);
     int a, b;
+    char *p;
 
     state->params = *params;
     state->w = state->h = COORDLIMIT(n);
@@ -809,7 +831,6 @@ static game_state *new_game(midend *me, const game_params *params,
     state->graph->edges = newtree234(edgecmp);
     state->solution = snew(struct solution);
     state->solution->refcount = 1;
-    state->solution->soln = snewn(n, point);
 
     state->completed = state->autosolve = false;
 
@@ -822,12 +843,21 @@ static game_state *new_game(midend *me, const game_params *params,
         b = atoi(desc);
         assert(b >= 0 && b < params->n);
         while (*desc && isdigit((unsigned char)*desc)) desc++;
+        if (*desc && *desc == ';') {
+            desc++;               /* eat semicolon */
+            break;
+        }
         if (*desc) {
             assert(*desc == ',');
             desc++;               /* eat comma */
         }
         addedge(state->graph->edges, a, b);
     }
+    state->solution->aux = snewn(strlen(desc)+1, char);
+    p = state->solution->aux;
+    while (*desc)
+        *p++ = *desc++;
+    *p = '\0';
 
     state->crosses = snewn(count234(state->graph->edges), int);
     mark_crossings(state);           /* sets up `crosses' and `completed' */
@@ -867,7 +897,7 @@ static void free_game(game_state *state)
         sfree(state->graph);
     }
     if (--state->solution->refcount <= 0) {
-        sfree(state->solution->soln);
+        sfree(state->solution->aux);
         sfree(state->solution);
     }
     sfree(state->crosses);
@@ -875,9 +905,9 @@ static void free_game(game_state *state)
     sfree(state);
 }
 
-static char *solve_game(const game_state *state, const game_state *currstate,
-                        const char *aux, const char **error)
-{
+
+static char *get_solve_str(const game_state *state, const game_state *currstate,
+                        const char *aux, const char **error) {
     int n = state->params.n;
     int matrix[4];
     point *pts;
@@ -1016,8 +1046,13 @@ static char *solve_game(const game_state *state, const game_state *currstate,
         retlen += extra;
     }
     sfree(pts);
-
     return ret;
+}
+
+static char *solve_game(const game_state *state, const game_state *currstate,
+                        const char *aux, const char **error)
+{
+    return get_solve_str(state, currstate, aux, error);
 }
 
 struct game_ui {
@@ -1026,6 +1061,9 @@ struct game_ui {
     bool just_dragged;                 /* reset in game_changed_state */
     bool just_moved;                   /* _set_ in game_changed_state */
     float anim_length;
+    bool hint_button;
+    bool hint_mode;
+    point hintpoint;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1033,12 +1071,55 @@ static game_ui *new_ui(const game_state *state)
     game_ui *ui = snew(game_ui);
     ui->dragpoint = -1;
     ui->just_moved = ui->just_dragged = false;
+    ui->hint_button = false;
+    ui->hint_mode = false;
+    ui->hintpoint.x = -1;
+    ui->hintpoint.y = -1;
+    ui->hintpoint.d = -1;
     return ui;
 }
 
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(2, config_item);
+
+    ret[0].name = "Show Hint button";
+    ret[0].kw = "hint-button";
+    ret[0].type = C_BOOLEAN;
+    ret[0].u.boolean.bval = ui->hint_button;
+
+    ret[1].name = NULL;
+    ret[1].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->hint_button = cfg[0].u.boolean.bval;
+}
+
+static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
+{
+    if (!ui->hint_button) {
+        *nkeys = 0;
+        return NULL;
+    }
+
+    key_label *keys = snewn(1, key_label);
+    *nkeys = 1;
+
+    keys[0].button = 'H';
+    keys[0].label = "Hint";
+
+    return keys;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1049,12 +1130,56 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
     ui->just_dragged = false;
 }
 
+static const char *current_key_label(const game_ui *ui,
+                                     const game_state *state, int button) {
+    if (button == 'H') return ui->hint_mode ? "H" : "E";
+    return "";
+}
+
 struct game_drawstate {
     long tilesize;
     int bg, dragpoint;
     long *x, *y;
     long hx, hy;
 };
+
+static void get_hintpoint(const game_state *state, game_ui *ui) {
+    int n = state->params.n;
+    char *aux;
+    const char *error;
+    char *move;
+    int p, k;
+    long x, y, d;
+    error = NULL;
+
+    ui->hintpoint.x = -1;
+    ui->hintpoint.y = -1;
+    ui->hintpoint.d = -1;
+
+    aux = get_solve_str(state, state, state->solution->aux, &error);
+    move = aux;
+
+    while (*move) {
+        if (*move == 'S') {
+            move++;
+            if (*move == ';') move++;
+        }
+        if (*move == 'P' &&
+            sscanf(move+1, "%d:%ld,%ld/%ld%n", &p, &x, &y, &d, &k) == 4 &&
+                p >= 0 && p < n && d > 0) {
+            if (p == ui->dragpoint) {
+                ui->hintpoint.x = x;
+                ui->hintpoint.y = y;
+                ui->hintpoint.d = d;
+                break;
+            }
+            move += k+1;
+            if (*move == ';') move++;
+        }
+    }
+    sfree(aux);
+    return;
+}
 
 static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
@@ -1083,8 +1208,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             long d = dx*dx + dy*dy;
 
             if (best == -1 || bestd > d) {
-            best = i;
-            bestd = d;
+                best = i;
+                bestd = d;
             }
         }
 
@@ -1093,18 +1218,25 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             ui->newpoint.x = state->pts[best].x * ds->tilesize / state->pts[best].d;
             ui->newpoint.y = state->pts[best].y * ds->tilesize / state->pts[best].d;
             ui->newpoint.d = ds->tilesize;
+
+            if (ui->hint_mode)
+                get_hintpoint(state, ui);
+
             return MOVE_UI_UPDATE;
         }
     } else if (IS_MOUSE_DRAG(button) && ui->dragpoint >= 0) {
         ui->newpoint.x = x;
         ui->newpoint.y = y;
         ui->newpoint.d = ds->tilesize;
-        return NULL; /* Deactivate inter-drag drawing for eInk */
+        return MOVE_NO_EFFECT; /* Deactivate inter-drag drawing for eInk */
     } else if (IS_MOUSE_RELEASE(button) && ui->dragpoint >= 0) {
         int p = ui->dragpoint;
         char buf[80];
 
         ui->dragpoint = -1;           /* terminate drag, no matter what */
+        ui->hintpoint.x = -1;
+        ui->hintpoint.y = -1;
+        ui->hintpoint.d = -1;
 
         /*
          * First, see if we're within range. The user can cancel a
@@ -1124,6 +1256,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->just_dragged = true;
         return dupstr(buf);
     }
+    else if (button == 'h' || button == 'H') {
+        ui->hint_mode = !ui->hint_mode;
+        return MOVE_UI_UPDATE;
+    }
 
     return MOVE_UNUSED;
 }
@@ -1133,30 +1269,20 @@ static game_state *execute_move(const game_state *state, const game_ui *ui, cons
     int n = state->params.n;
     int p, k;
     long x, y, d;
-    bool save_soln = false;
     game_state *ret = dup_game(state);
-
 
     while (*move) {
         if (*move == 'S') {
             move++;
             if (*move == ';') move++;
-            save_soln = true;
             ret->autosolve = true;
         }
         if (*move == 'P' &&
             sscanf(move+1, "%d:%ld,%ld/%ld%n", &p, &x, &y, &d, &k) == 4 &&
-            p >= 0 && p < n && d > 0) {
-            if (save_soln) {
-                ret->solution->soln[p].x = x;
-                ret->solution->soln[p].y = y;
-                ret->solution->soln[p].d = d;
-            }
-            else {
-                ret->pts[p].x = x;
-                ret->pts[p].y = y;
-                ret->pts[p].d = d;
-            }
+                p >= 0 && p < n && d > 0) {
+            ret->pts[p].x = x;
+            ret->pts[p].y = y;
+            ret->pts[p].d = d;
             move += k+1;
             if (*move == ';') move++;
         } else {
@@ -1250,7 +1376,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int bg;
     bool points_moved;
 
-    char buf[48];
+    char buf[64];
     /* Draw status bar */
     sprintf(buf, "Crossed lines: %d%s%s",
             state->ncrosses,
@@ -1294,10 +1420,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         if (ds->x[i] != x || ds->y[i] != y)
             points_moved = true;
 
-        if (state->autosolve && ui->dragpoint == i) {
-            point s = state->solution->soln[i];
-            ds->hx = s.x * ds->tilesize / s.d;
-            ds->hy = s.y * ds->tilesize / s.d;
+        if (ui->hintpoint.d != -1) {
+            ds->hx = ui->hintpoint.x * ds->tilesize / ui->hintpoint.d;
+            ds->hy = ui->hintpoint.y * ds->tilesize / ui->hintpoint.d;
         }
 
         ds->x[i] = x;
@@ -1386,7 +1511,7 @@ static int game_status(const game_state *state)
 
 static const char rules[] = "You are given a number of points, some of which have lines drawn between them. You can move the points about arbitrarily; your aim is to position the points so that no line crosses another.\n\n"
 "Crossing lines are drawn in a light shade, non-crossing lines in thick black shade.\n\n"
-"When 'Show solution' is selected, clicking a point will show its solution target.\n\n\n"
+"You can add a 'Hint button' in the game settings. Activated hint mode will show the solution target when clicking a point.\n\n\n"
 "This puzzle was implemented by Simon Tatham.";
 
 const struct game thegame = {
@@ -1406,14 +1531,14 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs, */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */
     NULL, /* decode_ui */
-    NULL, /* game_request_keys */
+    game_request_keys,
     game_changed_state,
-    NULL, /* current_key_label */
+    current_key_label,
     interpret_move,
     execute_move,
     PREFERRED_TILESIZE, game_compute_size, game_set_size,

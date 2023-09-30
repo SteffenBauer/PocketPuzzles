@@ -115,7 +115,7 @@
 - [X] Filling: Drag already placed/fixed numbers
 - [X] Walls: Add dragging
 - [X] Net: Add "Lock" button
-- [X] Untangle: More informative 'show solution'
+- [X] Untangle: Hint mechanism
 - [ ] Rome: Dragging
 - [ ] Galaxies: Rework right-drag / arrow handling
 - [ ] Mathrax: Deactivate useless 'recursive' game difficulty
