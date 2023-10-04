@@ -87,8 +87,8 @@ void button_to_tapped(BUTTON *button, bool update);
 void button_to_cleared(BUTTON *button, bool update);
 void activate_button(BUTTON *button);
 void deactivate_button(BUTTON *button);
-static void draw_buttonchar(BUTTON *button);
-static void add_favoritestar(BUTTON *button);
+void draw_buttonchar(BUTTON *button);
+void add_favoritestar(BUTTON *button);
 
 int init_tap_x;
 int init_tap_y;

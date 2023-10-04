@@ -556,10 +556,8 @@ static bool isball(game_state *state, int gx, int gy, int direction, int lookwhe
 static int fire_laser_internal(game_state *state, int x, int y, int direction)
 {
     int unused, lno;
-    bool tmp;
 
-    tmp = grid2range(state, x, y, &lno);
-    assert(tmp);
+    grid2range(state, x, y, &lno);
 
     /* deal with strange initial reflection rules (that stop
      * you turning down the laser range) */
@@ -585,8 +583,7 @@ static int fire_laser_internal(game_state *state, int x, int y, int direction)
         if (grid2range(state, x, y, &unused)) {
             int exitno;
 
-        tmp = grid2range(state, x, y, &exitno);
-        assert(tmp);
+        grid2range(state, x, y, &exitno);
 
         return (lno == exitno ? LASER_REFLECT : exitno);
         }
@@ -620,10 +617,9 @@ static int fire_laser_internal(game_state *state, int x, int y, int direction)
 static int laser_exit(game_state *state, int entryno)
 {
     int x, y, direction;
-    bool tmp;
+    x = y = direction = 0;
 
-    tmp = range2grid(state, entryno, &x, &y, &direction);
-    assert(tmp);
+    range2grid(state, entryno, &x, &y, &direction);
 
     return fire_laser_internal(state, x, y, direction);
 }
@@ -631,23 +627,21 @@ static int laser_exit(game_state *state, int entryno)
 static void fire_laser(game_state *state, int entryno)
 {
     int exitno, x, y, direction;
-    bool tmp;
+    x = y = direction = 0;
 
-    tmp = range2grid(state, entryno, &x, &y, &direction);
-    assert(tmp);
+    range2grid(state, entryno, &x, &y, &direction);
 
     exitno = fire_laser_internal(state, x, y, direction);
 
     if (exitno == LASER_HIT || exitno == LASER_REFLECT) {
-    GRID(state, x, y) = state->exits[entryno] = exitno;
+        GRID(state, x, y) = state->exits[entryno] = exitno;
     } else {
-    int newno = state->laserno++;
-    int xend, yend, unused;
-    tmp = range2grid(state, exitno, &xend, &yend, &unused);
-    assert(tmp);
-    GRID(state, x, y) = GRID(state, xend, yend) = newno;
-    state->exits[entryno] = exitno;
-    state->exits[exitno] = entryno;
+        int newno = state->laserno++;
+        int xend, yend, unused;
+        range2grid(state, exitno, &xend, &yend, &unused);
+        GRID(state, x, y) = GRID(state, xend, yend) = newno;
+        state->exits[entryno] = exitno;
+        state->exits[exitno] = entryno;
     }
 }
 
@@ -660,7 +654,6 @@ static int check_guesses(game_state *state, bool cagey)
 {
     game_state *solution, *guesses;
     int i, x, y, n, unused, tmp;
-    bool tmpb;
     int ret = 0;
 
     if (cagey) {
@@ -763,8 +756,7 @@ static int check_guesses(game_state *state, bool cagey)
 
     /* clear out the lasers of solution */
     for (i = 0; i < solution->nlasers; i++) {
-        tmpb = range2grid(solution, i, &x, &y, &unused);
-        assert(tmpb);
+        range2grid(solution, i, &x, &y, &unused);
         GRID(solution, x, y) = 0;
         solution->exits[i] = LASER_EMPTY;
     }
@@ -794,8 +786,7 @@ static int check_guesses(game_state *state, bool cagey)
     /* check each game_state's laser against the other; if any differ, return 0 */
     ret = 1;
     for (i = 0; i < solution->nlasers; i++) {
-        tmpb = range2grid(solution, i, &x, &y, &unused);
-        assert(tmpb);
+        range2grid(solution, i, &x, &y, &unused);
 
         if (solution->exits[i] != guesses->exits[i]) {
             /* If the original state didn't have this shot fired,
@@ -809,8 +800,7 @@ static int check_guesses(game_state *state, bool cagey)
                 else {
                     /* add a new shot, incrementing state's laser count. */
                     int ex, ey, newno = state->laserno++;
-                    tmpb = range2grid(state, state->exits[i], &ex, &ey, &unused);
-                    assert(tmpb);
+                    range2grid(state, state->exits[i], &ex, &ey, &unused);
                     GRID(state, x, y) = newno;
                     GRID(state, ex, ey) = newno;
                 }
@@ -1233,11 +1223,10 @@ static void draw_laser_tile(drawing *dr, const game_state *gs,
 {
     int gx, gy, dx, dy, unused;
     int wrong, omitted, laserval;
-    bool tmp, reflect, hit;
+    bool reflect, hit;
     unsigned int gs_tile, ds_tile, exitno;
 
-    tmp = range2grid(gs, lno, &gx, &gy, &unused);
-    assert(tmp);
+    range2grid(gs, lno, &gx, &gy, &unused);
     gs_tile = GRID(gs, gx, gy);
     ds_tile = GRID(ds, gx, gy);
     dx = TODRAW(gx);

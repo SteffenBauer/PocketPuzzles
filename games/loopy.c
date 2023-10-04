@@ -1019,7 +1019,7 @@ static int face_order(const game_state* state, int face, char line_type)
 static bool dot_setall(solver_state *sstate, int dot,
                        char old_type, char new_type)
 {
-    bool retval = false, r;
+    bool retval = false;
     game_state *state = sstate->state;
     grid *g;
     grid_dot *d;
@@ -1034,8 +1034,7 @@ static bool dot_setall(solver_state *sstate, int dot,
     for (i = 0; i < d->order; i++) {
         int line_index = d->edges[i]->index;
         if (state->lines[line_index] == old_type) {
-            r = solver_set_line(sstate, line_index, new_type);
-            assert(r);
+            solver_set_line(sstate, line_index, new_type);
             retval = true;
         }
     }
@@ -1046,7 +1045,7 @@ static bool dot_setall(solver_state *sstate, int dot,
 static bool face_setall(solver_state *sstate, int face,
                         char old_type, char new_type)
 {
-    bool retval = false, r;
+    bool retval = false;
     game_state *state = sstate->state;
     grid *g;
     grid_face *f;
@@ -1061,8 +1060,7 @@ static bool face_setall(solver_state *sstate, int face,
     for (i = 0; i < f->order; i++) {
         int line_index = f->edges[i]->index;
         if (state->lines[line_index] == old_type) {
-            r = solver_set_line(sstate, line_index, new_type);
-            assert(r);
+            solver_set_line(sstate, line_index, new_type);
             retval = true;
         }
     }
@@ -1909,8 +1907,7 @@ static int trivial_deductions(solver_state *sstate)
             for (j = 0; j < f->order; j++) {
                 e = f->edges[j]->index;
                 if (state->lines[e] == LINE_UNKNOWN && e != e1 && e != e2) {
-                    bool r = solver_set_line(sstate, e, LINE_YES);
-                    assert(r);
+                    solver_set_line(sstate, e, LINE_YES);
                     diff = min(diff, DIFF_EASY);
                 }
             }

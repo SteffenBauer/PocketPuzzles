@@ -906,21 +906,21 @@ static game_state *new_game(midend *me, const game_params *params,
     v = 0;
     for (i = 0; i < state->grid->nsquares; i++) {
         if (j == 8) {
-        v = *p++;
-        if (v >= '0' && v <= '9')
-            v -= '0';
-        else if (v >= 'A' && v <= 'F')
-            v -= 'A' - 10;
-        else if (v >= 'a' && v <= 'f')
-            v -= 'a' - 10;
-        else
-            break;
+            v = *p++;
+            if (v >= '0' && v <= '9')
+                v -= '0';
+            else if (v >= 'A' && v <= 'F')
+                v -= 'A' - 10;
+            else if (v >= 'a' && v <= 'f')
+                v -= 'a' - 10;
+            else
+                break;
         }
         if (v & j)
-        SET_SQUARE(state, i, true);
+            SET_SQUARE(state, i, true);
         j >>= 1;
         if (j == 0)
-        j = 8;
+            j = 8;
     }
 
     if (*p == ',')
@@ -937,10 +937,8 @@ static game_state *new_game(midend *me, const game_params *params,
      */
     {
         int pkey[4];
-        bool ret;
 
-        ret = align_poly(state->solid, &state->grid->squares[state->current], pkey);
-        assert(ret);
+        align_poly(state->solid, &state->grid->squares[state->current], pkey);
 
         state->dpkey[0] = state->spkey[0] = pkey[0];
         state->dpkey[1] = state->spkey[0] = pkey[1];
@@ -1397,11 +1395,8 @@ static game_state *execute_move(const game_state *from, const game_ui *ui, const
      */
     {
         int pkey[4];
-        bool success;
 
-        success = align_poly(ret->solid, &ret->grid->squares[ret->current], pkey);
-        assert(success);
-
+        align_poly(ret->solid, &ret->grid->squares[ret->current], pkey);
         ret->dpkey[0] = pkey[0];
         ret->dpkey[1] = pkey[1];
         ret->dgkey[0] = 0;

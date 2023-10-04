@@ -320,7 +320,6 @@ void gameMenuHandler(int index) {
 
 void typeMenuHandler(int index) {
     typeMenu_selectedIndex = index;
-    char buf[256];
     int currentindex = midend_which_preset(me);
 
     button_to_normal(&fe->gameButton[fe->btnTypeIDX], true);
@@ -602,6 +601,8 @@ void gameRelease(int x, int y) {
                     case ACTION_SWAP:
                         fe->swapped = !fe->swapped;
                         break;
+                    default:
+                        break;
                 }
             }
         }
@@ -728,8 +729,6 @@ static void checkGameEnd() {
 }
 
 void gamePrepareFrontend() {
-    char buf[256];
-
     fe->current_pointer = 0;
     fe->pointerdown_x = 0;
     fe->pointerdown_y = 0;
@@ -788,7 +787,6 @@ static BUTTON gameGetButton(const char *gameName, char key) {
 }
 
 static LAYOUTTYPE gameGetLayout() {
-    bool wants_statusbar;
     int i, addkeys, nkeys = 0;
     struct key_label *keys;
 

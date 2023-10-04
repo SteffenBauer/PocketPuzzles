@@ -363,12 +363,11 @@ static void update_moves(unsigned char *grid, int w, int h, int x, int y,
             m = NULL;
         }
         if (!m) {
-            struct move *m, *m2;
+            struct move *m;
             m = snew(struct move);
             *m = move;
-            m2 = add234(trees->bymove, m);
-            m2 = add234(trees->bycost, m);
-            assert(m2 == m);
+            add234(trees->bymove, m);
+            add234(trees->bycost, m);
 #ifdef GENERATION_DIAGNOSTICS
             printf("adding %d%+d,%d%+d at cost %d\n",
                move.x, move.dx, move.y, move.dy, move.cost);

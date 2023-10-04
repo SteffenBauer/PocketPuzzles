@@ -16,7 +16,7 @@ The unfinished puzzles from the official collection (*Group*, *Slide*, *Sokoban*
 
 ### Compatibility
 
-Tested only on the **PocketBook Touch HD 3**, because that is the device I own. Should principally work on all devices with firmware 5 or higher.
+Tested only on the **PocketBook Touch HD 3**, because that is the device I own. Should work on all devices with firmware 5 or higher.
 
 I received reports that the app works with these devices:
 
@@ -34,7 +34,7 @@ The app seems to work also on *Vivlio* devices, for further details see [this bl
 
 I'm interested in reports from more devices; especially how it looks like on color screen and on devices with screen resolution different than the Touch HD 3. When submitting an issue, please provide relevant screenshots.
 
-### Binary app
+### Binary app ready to install
 
 See here [release/README.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/README.md) for already compiled app files ready for installation on a PocketBook Firmware 5 and higher device.
 

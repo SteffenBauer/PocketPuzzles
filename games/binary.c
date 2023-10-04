@@ -433,8 +433,8 @@ static config_item *get_prefs(game_ui *ui)
     ret[1].name = "Input method";
     ret[1].kw = "input";
     ret[1].type = C_CHOICES;
-    ret[1].u.choices.choicenames = ":Tap:Swipe";
-    ret[1].u.choices.choicekws = ":tap:swipe";
+    ret[1].u.choices.choicenames = ":Swipe:Tap";
+    ret[1].u.choices.choicekws = ":swipe:tap";
     ret[1].u.choices.selected = ui->inputtype;
 
     ret[2].name = NULL;
@@ -598,7 +598,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (button == LEFT_BUTTON) {
         ui->x = x;
         ui->y = y;
-        if (ui->inputtype == 0) {
+        if (ui->inputtype == 1) {
             c1 = xr*y-yr*x;
             c2 = xr*(y-yr)+yr*x;
             if ((c1 > 0) && (c2 < 0))
@@ -614,7 +614,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (button == LEFT_RELEASE) {
         dx = x - ui->x;
         dy = y - ui->y;
-        if (ui->inputtype == 1) {
+        if (ui->inputtype == 0) {
             if ((dx < -DRAG_THRESHOLD) && (abs(dx) > 2*abs(dy)))
                 move = 'L';
             else if ((dx > DRAG_THRESHOLD) && (abs(dx) > 2*abs(dy)))

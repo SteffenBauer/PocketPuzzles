@@ -1085,9 +1085,6 @@ static bool check_errors(const game_state *state, bool *errors)
     digit *grid = state->grid;
     int i, x, y;
     bool errs = false;
-    int tmp[32];
-
-    assert(w < lenof(tmp));
 
     if (errors)
     for (i = 0; i < A; i++)

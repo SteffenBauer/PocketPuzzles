@@ -25,7 +25,7 @@ extern ibitmap game_abcd, game_ascent, game_binary, game_blackbox, game_boats, g
                game_tracks, game_twiddle, game_undead, game_unequal, game_unruly, 
                game_untangle, game_walls;
 
-static GAMEINFO mygames[] = {
+static const GAMEINFO mygames[] = {
     { &game_abcd,     &abcd},
     { &game_ascent,   &ascent},
     { &game_binary,   &binary},

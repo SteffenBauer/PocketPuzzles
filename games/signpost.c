@@ -206,11 +206,8 @@ static bool check_nums(game_state *orig, game_state *copy, bool only_immutable)
 {
     int i;
     bool ret = true;
-    assert(copy->n == orig->n);
     for (i = 0; i < copy->n; i++) {
         if (only_immutable && !(copy->flags[i] & FLAG_IMMUTABLE)) continue;
-        assert(copy->nums[i] >= 0);
-        assert(copy->nums[i] <= copy->n);
         if (copy->nums[i] != orig->nums[i]) {
             ret = false;
         }
@@ -663,7 +660,7 @@ static bool new_game_strip(game_state *state, random_state *rs)
         state->flags[j] |= FLAG_IMMUTABLE;
         strip_nums(copy);
         if (solve_state(copy) > 0) goto solved;
-        assert(check_nums(state, copy, true));
+        check_nums(state, copy, true);
     }
     ret = false;
     goto done;
@@ -681,7 +678,7 @@ solved:
             dup_game_to(copy, state);
             strip_nums(copy);
             if (solve_state(copy) > 0) {
-                assert(check_nums(state, copy, false));
+                check_nums(state, copy, false);
             } else {
                 assert(state->nums[j] <= state->n);
                 copy->nums[j] = state->nums[j];
