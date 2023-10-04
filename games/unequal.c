@@ -999,8 +999,7 @@ static void game_strip(game_state *new, int *scratch, digit *latin,
         gg_solved++;
         if (solver_state(copy, difficulty) != 1) {
             /* put clue back, we can't solve without it. */
-            bool ret = gg_place_clue(new, scratch[i], latin, false);
-            assert(ret);
+            gg_place_clue(new, scratch[i], latin, false);
         }
     }
     free_game(copy);
@@ -1509,7 +1508,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 static game_state *execute_move(const game_state *state, const game_ui *ui, const char *move)
 {
     game_state *ret = NULL;
-    int x, y, n, i, rc;
+    int x, y, n, i;
 
     if ((move[0] == 'P' || move[0] == 'R') &&
         sscanf(move+1, "%d,%d,%d", &x, &y, &n) == 3 &&
@@ -1541,8 +1540,7 @@ static game_state *execute_move(const game_state *state, const game_ui *ui, cons
             p++;
         }
         if (*p) goto badmove;
-        rc = check_complete(ret->nums, ret, true);
-    assert(rc > 0);
+        check_complete(ret->nums, ret, true);
         return ret;
     } else if (move[0] == 'M') {
         ret = dup_game(state);

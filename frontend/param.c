@@ -80,6 +80,8 @@ void paramRelease(int x, int y) {
                         paramFree();
                         switchToGameScreen();
                         return;
+                    default:
+                        break;
                 }
             }
         }
@@ -203,7 +205,7 @@ static void paramDrawPanel(bool inverse) {
 }
 
 static void paramDrawParams() {
-    int i, xn, xi, y, c;
+    int i, xn, xi, y;
     xn = pa.paramlayout.menubtn_size/2;
     xi = ScreenWidth() - 3*pa.paramlayout.menubtn_size - 20;
     for (i=0;i<pa.numParams;i++) {
@@ -332,7 +334,7 @@ static void paramFree() {
 }
 
 void paramPrepare(midend *me, int ptype) {
-    int n, i, j;
+    int n, i;
 
     pa.me = me;
     pa.ptype = ptype;
@@ -355,11 +357,11 @@ void paramPrepare(midend *me, int ptype) {
                 pa.paramItem[i].item.n.decrease = (BUTTON) { true, BTN_ITEM,
                   ScreenWidth() - 4*pa.paramlayout.menubtn_size - 20, pa.paramItem[i].y, 
                   pa.paramlayout.menubtn_size, 0,
-                  ACTION_CTRL, ' ', &cfg_decr, &cfg_decr_tap, NULL};
+                  ACTION_CTRL, {' '}, &cfg_decr, &cfg_decr_tap, NULL};
                 pa.paramItem[i].item.n.increase = (BUTTON) { true, BTN_ITEM,
                   ScreenWidth() - 2*pa.paramlayout.menubtn_size - 20, pa.paramItem[i].y, 
                   pa.paramlayout.menubtn_size, 0,
-                  ACTION_CTRL, ' ', &cfg_incr, &cfg_incr_tap, NULL};
+                  ACTION_CTRL, {' '}, &cfg_incr, &cfg_incr_tap, NULL};
                 break;
             case C_CHOICES:
                 n = paramGetChoicesNum(i);
@@ -371,7 +373,7 @@ void paramPrepare(midend *me, int ptype) {
                 pa.paramItem[i].item.b.indicator = (BUTTON) { true, BTN_ITEM,
                   ScreenWidth() - 3*pa.paramlayout.menubtn_size - 20, pa.paramItem[i].y, 
                   pa.paramlayout.menubtn_size, 0,
-                  ACTION_SWAP, ' ', pa.cfg[i].u.boolean.bval ? &cfg_yes : &cfg_no, NULL, NULL};
+                  ACTION_SWAP, {' '}, pa.cfg[i].u.boolean.bval ? &cfg_yes : &cfg_no, NULL, NULL};
                 break;
         }
     }
@@ -382,7 +384,7 @@ void paramPrepare(midend *me, int ptype) {
         pa.paramlayout.menubtn_size/4,
         pa.paramlayout.menu.starty,
         pa.paramlayout.menubtn_size, 0, 
-        ACTION_BACK, ' ', &icon_back, &icon_back_tap, NULL};
+        ACTION_BACK, {' '}, &icon_back, &icon_back_tap, NULL};
 }
 
 void paramScreenShow() {

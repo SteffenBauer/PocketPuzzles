@@ -1163,9 +1163,7 @@ static const char *validate_desc(const game_params *params, const char *desc)
     else if (*desc >= '0' && *desc <= m) ++area;
     else {
         static char s[] =  "Invalid character '%""' in game description";
-        int n = sprintf(s, "Invalid character '%1c' in game description",
-                *desc);
-        assert(n + 1 <= lenof(s)); /* +1 for the terminating NUL */
+        sprintf(s, "Invalid character '%1c' in game description", *desc);
         return s;
     }
     if (area > sz) return "Too much data to fit in grid";

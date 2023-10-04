@@ -43,7 +43,7 @@ void button_to_tapped(BUTTON *button, bool update) {
     }
     if (update) PartialUpdate(button->posx, button->posy, button->size, button->size);
 }
-static void draw_buttonchar(BUTTON *button) {
+void draw_buttonchar(BUTTON *button) {
     ifont *font; char buf[2];
     buf[0] = button->actionParm.c; buf[1] = '\0';
     font = OpenFont("LiberationMono-Bold", button->size/2, 0);
@@ -52,7 +52,7 @@ static void draw_buttonchar(BUTTON *button) {
     DrawTextRect(button->posx, button->posy, button->size, button->size, buf, ALIGN_CENTER | VALIGN_MIDDLE);
     CloseFont(font);
 }
-static void add_favoritestar(BUTTON *button) {
+void add_favoritestar(BUTTON *button) {
     if (button->type == BTN_FAVORITE) {
         int offset = 2*button->size/3;
         int size = button->size/3;

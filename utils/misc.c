@@ -256,6 +256,7 @@ void game_mkhighlight_specific(frontend *fe, float *ret,
      * to white.
      */
     const float k = sqrt(3)/6.0F;
+    db = dw = 1.0F;
     if (lowlight >= 0) {
         db = colour_distance(&ret[background*3], black);
         if (db < k) {

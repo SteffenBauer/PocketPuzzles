@@ -905,7 +905,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
      * extend the tour to take in an as yet uncollected gem.
      */
     while (1) {
-    int target, n1, n2, bestdist, extralen, targetpos;
+    int target, n1, n2, bestdist, extralen;
 
 #ifdef TSP_DIAGNOSTICS
     printf("circuit is");
@@ -1125,9 +1125,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
      * Find the shortest-path routes to and from the target,
      * and write them into the circuit.
      */
-    targetpos = n1 + dist2[circuit[n1]];
-    assert(targetpos - dist2[circuit[n1]] == n1);
-    assert(targetpos + dist[circuit[n2]] == n2);
     for (pass = 0; pass < 2; pass++) {
         int dir = (pass == 0 ? -1 : +1);
         int *ep = (pass == 0 ? backedges : edges);

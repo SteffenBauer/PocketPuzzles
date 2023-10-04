@@ -12,6 +12,7 @@
 
 const char *configFileName = STATEPATH "/sgtpuzzles.cfg";
 /* const char *configFileName = STATEPATH "/sgtpuzzlesdev.cfg"; */
+static dict_t *config = NULL;
 
 int configLen() {
     int count = 0;

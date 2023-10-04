@@ -3754,12 +3754,10 @@ static game_state *new_game(midend *me, const game_params *params,
             state->immutable[i] = true;
 
     if (r == 1) {
-        const char *err;
         DSF *dsf;
         assert(*desc == ',');
         desc++;
-        err = spec_to_dsf(&desc, &dsf, cr, area);
-        assert(err == NULL);
+        spec_to_dsf(&desc, &dsf, cr, area);
         dsf_to_blocks(dsf, state->blocks, cr, cr);
         dsf_free(dsf);
     } else {
@@ -3772,12 +3770,10 @@ static game_state *new_game(midend *me, const game_params *params,
     make_blocks_from_whichblock(state->blocks);
 
     if (params->killer) {
-        const char *err;
         DSF *dsf;
         assert(*desc == ',');
         desc++;
-        err = spec_to_dsf(&desc, &dsf, cr, area);
-        assert(err == NULL);
+        spec_to_dsf(&desc, &dsf, cr, area);
         dsf_to_blocks(dsf, state->kblocks, cr, area);
         dsf_free(dsf);
         make_blocks_from_whichblock(state->kblocks);
