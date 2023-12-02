@@ -205,7 +205,7 @@ static config_item *game_configure(const game_params *params)
     ret[1].u.string.sval = dupstr(buf);
 
     ret[2].name = "Mines";
-    ret[2].type = C_STRING;
+    ret[2].type = C_STRING_MORE;
     sprintf(buf, "%d", params->n);
     ret[2].u.string.sval = dupstr(buf);
 

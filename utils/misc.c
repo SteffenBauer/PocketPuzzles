@@ -20,7 +20,7 @@ void free_cfg(config_item *cfg)
     config_item *i;
 
     for (i = cfg; i->type != C_END; i++)
-        if (i->type == C_STRING)
+        if ((i->type == C_STRING) || (i->type == C_STRING_MORE))
             sfree(i->u.string.sval);
     sfree(cfg);
 }
