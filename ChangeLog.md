@@ -5,7 +5,7 @@
 ### Added
 * New game: *Binary*, implementation of '2048'
 * *Untangle*: *Hint* button to show a hint when clicking a point
-* *Mines* Buttons to adjust mines number in fives in parameter screen
+* *Mines*, *Map*, *Sixteen*, *Untangle*: Buttons to adjust parameters in number of fives
 
 ### Fixed
 * Several compile warnings
