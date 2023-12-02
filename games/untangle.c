@@ -179,7 +179,7 @@ static config_item *game_configure(const game_params *params)
     ret = snewn(3, config_item);
 
     ret[0].name = "Number of points";
-    ret[0].type = C_STRING;
+    ret[0].type = C_STRING_MORE;
     sprintf(buf, "%d", params->n);
     ret[0].u.string.sval = dupstr(buf);
 

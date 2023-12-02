@@ -38,7 +38,6 @@ struct paramparams {
     struct layout paramlayout; 
     
     int numParamButtons;
-    bool moreButtons;
     BUTTON *paramButton;
 
     int numParams;
