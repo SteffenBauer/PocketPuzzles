@@ -127,7 +127,7 @@ typedef struct psdata psdata;
  * Structure used to pass configuration data between frontend and
  * game
  */
-enum { C_STRING, C_CHOICES, C_BOOLEAN, C_END };
+enum { C_STRING, C_STRING_MORE, C_CHOICES, C_BOOLEAN, C_END };
 struct config_item {
     /* Not dynamically allocated: the GUI display name for the option */
     const char *name;
@@ -139,7 +139,7 @@ struct config_item {
     /* Value from the above C_* enum */
     int type;
     union {
-        struct { /* if type == C_STRING */
+        struct { /* if type == C_STRING || C_STRING_MORE */
             /* Always dynamically allocated and non-NULL */
             char *sval;
         } string;

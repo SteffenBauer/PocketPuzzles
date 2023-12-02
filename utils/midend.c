@@ -2936,6 +2936,7 @@ static void midend_serialise_prefs(
             else
                 write(wctx, "false", 5);
             break;
+          case C_STRING_MORE:
           case C_STRING: {
             const char *p = it->u.string.sval;
             while (*p) {
@@ -3104,6 +3105,7 @@ static const char *midend_deserialise_prefs(
                 goto out;
             }
             break;
+          case C_STRING_MORE:
           case C_STRING:
             sfree(it->u.string.sval);
             it->u.string.sval = buf->data;

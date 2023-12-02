@@ -1967,7 +1967,7 @@ static void editbox_changed(GtkEditable *ed, gpointer data)
 {
     config_item *i = (config_item *)data;
 
-    assert(i->type == C_STRING);
+    assert((i->type == C_STRING) || (i->type == C_STRING_MORE));
     sfree(i->u.string.sval);
     i->u.string.sval = dupstr(gtk_entry_get_text(GTK_ENTRY(ed)));
 }
@@ -2054,6 +2054,7 @@ static bool get_config(frontend *fe, int which)
 
 	switch (i->type) {
 	  case C_STRING:
+	  case C_STRING_MORE:
 	    /*
 	     * Edit box with a label beside it.
 	     */
