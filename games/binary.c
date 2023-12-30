@@ -204,13 +204,14 @@ static config_item *game_configure(const game_params *params) {
     ret[2].u.choices.choicenames = GOALCONFIG;
     ret[2].u.choices.selected = params->goal;
 
+/*
     ret[3].name = "Grid type";
     ret[3].type = C_CHOICES;
     ret[3].u.choices.choicenames = MODECONFIG;
     ret[3].u.choices.selected = params->mode;
-
-    ret[4].name = NULL;
-    ret[4].type = C_END;
+*/
+    ret[3].name = NULL;
+    ret[3].type = C_END;
 
     return ret;
 }
@@ -221,7 +222,7 @@ static game_params *custom_params(const config_item *cfg) {
     ret->w = atoi(cfg[0].u.string.sval);
     ret->h = atoi(cfg[1].u.string.sval);
     ret->goal = cfg[2].u.choices.selected;
-    ret->mode = cfg[3].u.choices.selected;
+    ret->mode = 0; /* cfg[3].u.choices.selected; */
 
     return ret;
 }
