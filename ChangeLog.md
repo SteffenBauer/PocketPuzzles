@@ -1,6 +1,6 @@
 ## ChangeLog
 
-## 0.8.1 Nightly
+## 0.8.1 - 2023/12/30
 
 ### Added
 * New game: *Binary*, implementation of '2048'
