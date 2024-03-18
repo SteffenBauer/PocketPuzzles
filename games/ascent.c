@@ -1491,8 +1491,7 @@ static char ascent_add_edges(struct solver_scratch *scratch, number *grid,
 
     while(attempts < MAX_ATTEMPTS)
     {
-        int total = matching_with_scratch(mscratch, aw*ah, w*h, adjlists, adjsizes, rs, match, NULL);
-        assert(total > 0);
+        matching_with_scratch(mscratch, aw*ah, w*h, adjlists, adjsizes, rs, match, NULL);
 
         memcpy(scratch->grid, grid, w*h*sizeof(number));
         

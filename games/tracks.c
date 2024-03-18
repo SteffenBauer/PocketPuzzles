@@ -437,7 +437,7 @@ static bool check_completion(game_state *state, bool mark);
 
 static void lay_path(game_state *state, random_state *rs)
 {
-    int px, py, w=state->p.w, h=state->p.h;
+    int px, py, h=state->p.h;
     unsigned int d;
 
 start:
@@ -457,8 +457,6 @@ start:
         px += DX(d);
         py += DY(d);
     }
-    /* double-check we got to the right place */
-    assert(px >= 0 && px < w && py == h);
 
     state->numbers->col_s = px;
 }

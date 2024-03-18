@@ -1,9 +1,14 @@
 ## ChangeLog
 
-## 0.8.1 Nightly
+## 0.8.1 - 2023/12/30
 
 ### Added
 * New game: *Binary*, implementation of '2048'
+* *Untangle*: *Hint* button to show a hint when clicking a point
+* *Mines*, *Map*, *Sixteen*, *Untangle*: Buttons to adjust parameters in number of fives
+
+### Fixed
+* Several compile warnings
 
 ## 0.8.0 - 2023/08/31
 

@@ -5,8 +5,10 @@
 bool paramInitialized;
 
 struct item_number {
+    BUTTON decrease_more;
     BUTTON decrease;
     BUTTON increase;
+    BUTTON increase_more;
 };
 
 struct item_choice {
@@ -52,7 +54,10 @@ struct paramparams {
     char *title;
 } pa;
 
-extern ibitmap cfg_yes, cfg_no, cfg_incr, cfg_incr_tap, cfg_decr, cfg_decr_tap,
+extern ibitmap cfg_yes, cfg_no, cfg_incr, cfg_incr_tap,
+               cfg_decr, cfg_decr_tap,
+               cfg_incr_more, cfg_incr_more_tap,
+               cfg_decr_more, cfg_decr_more_tap,
                icon_back, icon_back_tap, cfg_difficulty;
 
 static bool coord_in_choice(int x, int y, int i);
@@ -61,8 +66,8 @@ static void choice_to_tapped(int i);
 
 static void paramSubmitParams();
 static void paramSetItemNum(int i, int n);
-static void paramDecreaseItem(int i);
-static void paramIncreaseItem(int i);
+static void paramDecreaseItem(int i, int a);
+static void paramIncreaseItem(int i, int a);
 static void paramSwapItem(int i);
 
 static void paramDrawMenu();

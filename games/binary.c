@@ -204,13 +204,14 @@ static config_item *game_configure(const game_params *params) {
     ret[2].u.choices.choicenames = GOALCONFIG;
     ret[2].u.choices.selected = params->goal;
 
+/*
     ret[3].name = "Grid type";
     ret[3].type = C_CHOICES;
     ret[3].u.choices.choicenames = MODECONFIG;
     ret[3].u.choices.selected = params->mode;
-
-    ret[4].name = NULL;
-    ret[4].type = C_END;
+*/
+    ret[3].name = NULL;
+    ret[3].type = C_END;
 
     return ret;
 }
@@ -221,7 +222,7 @@ static game_params *custom_params(const config_item *cfg) {
     ret->w = atoi(cfg[0].u.string.sval);
     ret->h = atoi(cfg[1].u.string.sval);
     ret->goal = cfg[2].u.choices.selected;
-    ret->mode = cfg[3].u.choices.selected;
+    ret->mode = 0; /* cfg[3].u.choices.selected; */
 
     return ret;
 }
@@ -433,8 +434,8 @@ static config_item *get_prefs(game_ui *ui)
     ret[1].name = "Input method";
     ret[1].kw = "input";
     ret[1].type = C_CHOICES;
-    ret[1].u.choices.choicenames = ":Tap:Swipe";
-    ret[1].u.choices.choicekws = ":tap:swipe";
+    ret[1].u.choices.choicenames = ":Swipe:Tap";
+    ret[1].u.choices.choicekws = ":swipe:tap";
     ret[1].u.choices.selected = ui->inputtype;
 
     ret[2].name = NULL;
@@ -573,6 +574,7 @@ static bool highest_reached(const game_state *state) {
 
 struct game_drawstate {
     bool started;
+    bool finished;
     int tilesize;
     int w, h;
     unsigned char *tiles;
@@ -597,7 +599,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (button == LEFT_BUTTON) {
         ui->x = x;
         ui->y = y;
-        if (ui->inputtype == 0) {
+        if (ui->inputtype == 1) {
             c1 = xr*y-yr*x;
             c2 = xr*(y-yr)+yr*x;
             if ((c1 > 0) && (c2 < 0))
@@ -613,7 +615,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (button == LEFT_RELEASE) {
         dx = x - ui->x;
         dy = y - ui->y;
-        if (ui->inputtype == 1) {
+        if (ui->inputtype == 0) {
             if ((dx < -DRAG_THRESHOLD) && (abs(dx) > 2*abs(dy)))
                 move = 'L';
             else if ((dx > DRAG_THRESHOLD) && (abs(dx) > 2*abs(dy)))
@@ -689,6 +691,7 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state) 
     int i;
 
     ds->started = false;
+    ds->finished = false;
     ds->tilesize = 0;
     ds->w = state->w;
     ds->h = state->h;
@@ -780,7 +783,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (i = 0; i < w*h; i++) {
         int t, x, y;
         t = state->tiles[i];
-        if (!ds->started || state->finished || (t != ds->tiles[i])) {
+        if (!ds->started || (state->finished != ds->finished) || (t != ds->tiles[i])) {
             x = COORD(i%w);
             y = COORD(i/w);
             draw_cell(dr, ds, ui, state, x, y, t, ((i/w)+(i%w))%2 ? COL_BACKGROUND : COL_BOARD);
@@ -789,6 +792,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     }
 
     ds->started = true;
+    ds->finished = state->finished;
     sprintf(statusbuf,
             "%s%sGoal %s Score %d",
                           state->won  ? "WON! " : "",

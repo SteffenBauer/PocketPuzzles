@@ -20,7 +20,7 @@ void free_cfg(config_item *cfg)
     config_item *i;
 
     for (i = cfg; i->type != C_END; i++)
-        if (i->type == C_STRING)
+        if ((i->type == C_STRING) || (i->type == C_STRING_MORE))
             sfree(i->u.string.sval);
     sfree(cfg);
 }
@@ -256,6 +256,7 @@ void game_mkhighlight_specific(frontend *fe, float *ret,
      * to white.
      */
     const float k = sqrt(3)/6.0F;
+    db = dw = 1.0F;
     if (lowlight >= 0) {
         db = colour_distance(&ret[background*3], black);
         if (db < k) {

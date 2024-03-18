@@ -190,7 +190,7 @@ static config_item *game_configure(const game_params *params)
     ret[1].u.string.sval = dupstr(buf);
 
     ret[2].name = "Regions";
-    ret[2].type = C_STRING;
+    ret[2].type = C_STRING_MORE;
     sprintf(buf, "%d", params->n);
     ret[2].u.string.sval = dupstr(buf);
 
@@ -754,7 +754,6 @@ static void fourcolour(int *graph, int n, int ngraph, int *colouring,
 {
     int *scratch;
     int i;
-    bool retd;
 
     /*
      * For each vertex and each colour, we store the number of
@@ -763,16 +762,15 @@ static void fourcolour(int *graph, int n, int ngraph, int *colouring,
      */
     scratch = snewn(n * FIVE, int);
     for (i = 0; i < n * FIVE; i++)
-    scratch[i] = (i % FIVE == FOUR ? FOUR : 0);
+        scratch[i] = (i % FIVE == FOUR ? FOUR : 0);
 
     /*
      * Clear the colouring to start with.
      */
     for (i = 0; i < n; i++)
-    colouring[i] = -1;
+        colouring[i] = -1;
 
-    retd = fourcolour_recurse(graph, n, ngraph, colouring, scratch, rs);
-    assert(retd);                 /* by the Four Colour Theorem :-) */
+    fourcolour_recurse(graph, n, ngraph, colouring, scratch, rs);
 
     sfree(scratch);
 }
@@ -906,12 +904,10 @@ static int map_solver(struct solver_scratch *sc,
 
         if ((p & (p-1)) == 0) {    /* p is a power of two */
             int c;
-            bool ret;
             for (c = 0; c < FOUR; c++)
                 if (p == (1 << c))
                     break;
-            assert(c < FOUR);
-            ret = place_colour(sc, colouring, i, c);
+            place_colour(sc, colouring, i, c);
             /*
              * place_colour() can only fail if colour c was not
              * even a _possibility_ for region i, and we're
@@ -920,7 +916,6 @@ static int map_solver(struct solver_scratch *sc,
              * here rather than having to return a nice
              * friendly error code.
              */
-            assert(ret);
             done_something = true;
         }
     }
@@ -1693,17 +1688,13 @@ static game_state *new_game(midend *me, const game_params *params,
 
     p = desc;
 
-    {
-    const char *ret;
-    ret = parse_edge_list(params, &p, state->map->map);
-    assert(!ret);
-    }
+    parse_edge_list(params, &p, state->map->map);
 
     /*
      * Set up the other three quadrants in `map'.
      */
     for (i = wh; i < 4*wh; i++)
-    state->map->map[i] = state->map->map[i % wh];
+        state->map->map[i] = state->map->map[i % wh];
 
     assert(*p == ',');
     p++;

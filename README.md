@@ -16,25 +16,28 @@ The unfinished puzzles from the official collection (*Group*, *Slide*, *Sokoban*
 
 ### Compatibility
 
-Tested only on the **PocketBook Touch HD 3**, because that is the device I own. Should principally work on all devices with firmware 5 or higher.
+Tested only on the **PocketBook Touch HD 3**, because that is the device I own. Should work on all devices with firmware 5 or higher.
 
 I received reports that the app works with these devices:
 
 * PB632  - Touch HD 3
 * PB631  - Touch HD / Touch HD 2
 * PB740  - InkPad 3
-* PB633  - Pocketbook Color
+* PB633  - Pocketbook Color (see note 2 below)
 * PB1040 - InkPad X
 * PB626  - Touch Lux 3 (see note below)
 * PB628  - Touch Lux 5 (see note below)
+* PB743  - InkPad Color 3 (see notes below)
 
 The app seems to work also on *Vivlio* devices, for further details see [this blog entry](https://www.liseuses.net/50-jeux-video-liseuse-vivlio-pocketbook/) (in french language)
 
 **Please note** The app is developed for a device with screen resolution of 1072 x 1448 pixels. The app should be scaling according to the available resolution, but might have issues displaying certain UI elements on devices with a different resolution.
 
+**Also note** The app doesn't use color mode and the code was modified to substitute colors with greyscale and textures; color devices will run in greyscale mode (usually higher resolution than color)
+
 I'm interested in reports from more devices; especially how it looks like on color screen and on devices with screen resolution different than the Touch HD 3. When submitting an issue, please provide relevant screenshots.
 
-### Binary app
+### Binary app ready to install
 
 See here [release/README.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/README.md) for already compiled app files ready for installation on a PocketBook Firmware 5 and higher device.
 

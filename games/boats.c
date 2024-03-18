@@ -1233,11 +1233,8 @@ static int boats_solver_place_ship(game_state *state, int x, int y)
      */
     
     int w = state->w;
-    int h = state->h;
     int ret = 0;
-    
-    assert(x >= 0 && x < w && y >= 0 && y < h);
-    
+
     if(state->grid[y*w+x] == WATER)
     {
         ret++;
@@ -1253,7 +1250,7 @@ static int boats_solver_place_ship(game_state *state, int x, int y)
         ret += boats_solver_place_water(state, x-1, y+1);
         ret += boats_solver_place_water(state, x+1, y+1);
     }
-    
+
     return ret;
 }
 

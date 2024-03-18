@@ -44,6 +44,11 @@ void paramTap(int x, int y) {
     }
     for (i=0;i<pa.numParams;i++) {
         switch(pa.paramItem[i].type) {
+            case C_STRING_MORE:
+                if (coord_in_button(x, y, &pa.paramItem[i].item.n.decrease_more))
+                    button_to_tapped(&pa.paramItem[i].item.n.decrease_more, false);
+                if (coord_in_button(x, y, &pa.paramItem[i].item.n.increase_more))
+                    button_to_tapped(&pa.paramItem[i].item.n.increase_more, false);
             case C_STRING:
                 if (coord_in_button(x, y, &pa.paramItem[i].item.n.decrease))
                     button_to_tapped(&pa.paramItem[i].item.n.decrease, false);
@@ -80,22 +85,35 @@ void paramRelease(int x, int y) {
                         paramFree();
                         switchToGameScreen();
                         return;
+                    default:
+                        break;
                 }
             }
         }
     }
     for (i=0;i<pa.numParams;i++) {
         switch(pa.paramItem[i].type) {
+            case C_STRING_MORE:
+                if (release_button(init_tap_x, init_tap_y, &pa.paramItem[i].item.n.decrease_more)) {
+                    button_to_normal(&pa.paramItem[i].item.n.decrease_more, false);
+                    if (release_button(x, y, &pa.paramItem[i].item.n.decrease_more))
+                        paramDecreaseItem(i, 5);
+                }
+                if (release_button(init_tap_x, init_tap_y, &pa.paramItem[i].item.n.increase_more)) {
+                    button_to_normal(&pa.paramItem[i].item.n.increase_more, false);
+                    if (release_button(x, y, &pa.paramItem[i].item.n.increase_more))
+                        paramIncreaseItem(i, 5);
+                }
             case C_STRING:
                 if (release_button(init_tap_x, init_tap_y, &pa.paramItem[i].item.n.decrease)) {
                     button_to_normal(&pa.paramItem[i].item.n.decrease, false);
                     if (release_button(x, y, &pa.paramItem[i].item.n.decrease))
-                        paramDecreaseItem(i);
+                        paramDecreaseItem(i, 1);
                 }
                 if (release_button(init_tap_x, init_tap_y, &pa.paramItem[i].item.n.increase)) {
                     button_to_normal(&pa.paramItem[i].item.n.increase, false);
                     if (release_button(x, y, &pa.paramItem[i].item.n.increase))
-                        paramIncreaseItem(i);
+                        paramIncreaseItem(i, 1);
                 }
                 break;
             case C_CHOICES:
@@ -158,17 +176,18 @@ static void paramSetItemNum(int i, int n) {
     DrawTextRect(x, y, pa.paramlayout.menubtn_size, pa.pfontsize, pa.cfg[i].u.string.sval, ALIGN_CENTER);
 }
 
-static void paramDecreaseItem(int i) {
+static void paramDecreaseItem(int i, int a) {
     int n;
     n = atoi(pa.cfg[i].u.string.sval);
-    if (n>0) n--;
+    n -= a;
+    if (n<0) n = 0;
     paramSetItemNum(i, n);
 }
 
-static void paramIncreaseItem(int i) {
+static void paramIncreaseItem(int i, int a) {
     int n;
     n = atoi(pa.cfg[i].u.string.sval);
-    n++;
+    n += a;
     paramSetItemNum(i, n);
 }
 
@@ -203,7 +222,7 @@ static void paramDrawPanel(bool inverse) {
 }
 
 static void paramDrawParams() {
-    int i, xn, xi, y, c;
+    int i, xn, xi, y;
     xn = pa.paramlayout.menubtn_size/2;
     xi = ScreenWidth() - 3*pa.paramlayout.menubtn_size - 20;
     for (i=0;i<pa.numParams;i++) {
@@ -213,10 +232,13 @@ static void paramDrawParams() {
         y = pa.paramItem[i].y+pa.paramlayout.menubtn_size/2-(pa.pfontsize/2);
         DrawTextRect(xn, y, ScreenWidth()-2*xn, pa.pfontsize, pa.cfg[i].name, ALIGN_LEFT);
         switch(pa.paramItem[i].type) {
+            case C_STRING_MORE:
+                button_to_normal(&pa.paramItem[i].item.n.decrease_more, false);
+                button_to_normal(&pa.paramItem[i].item.n.increase_more, false);
             case C_STRING:
                 button_to_normal(&pa.paramItem[i].item.n.decrease, false);
-                DrawTextRect(xi, y, pa.paramlayout.menubtn_size, pa.pfontsize, pa.cfg[i].u.string.sval, ALIGN_CENTER);
                 button_to_normal(&pa.paramItem[i].item.n.increase, false);
+                DrawTextRect(xi, y, pa.paramlayout.menubtn_size, pa.pfontsize, pa.cfg[i].u.string.sval, ALIGN_CENTER);
                 break;
             case C_CHOICES:
                 choice_to_normal(i);
@@ -332,7 +354,7 @@ static void paramFree() {
 }
 
 void paramPrepare(midend *me, int ptype) {
-    int n, i, j;
+    int n, i;
 
     pa.me = me;
     pa.ptype = ptype;
@@ -351,15 +373,24 @@ void paramPrepare(midend *me, int ptype) {
         pa.paramItem[i].y = pa.paramlayout.maincanvas.starty +
                             i*(pa.paramlayout.menubtn_size+3);
         switch (pa.paramItem[i].type) {
+            case C_STRING_MORE:
+                pa.paramItem[i].item.n.decrease_more = (BUTTON) { true, BTN_ITEM,
+                  ScreenWidth() - 5*pa.paramlayout.menubtn_size - 20, pa.paramItem[i].y,
+                  pa.paramlayout.menubtn_size, 0,
+                  ACTION_CTRL, {' '}, &cfg_decr_more, &cfg_decr_more_tap, NULL};
+                pa.paramItem[i].item.n.increase_more = (BUTTON) { true, BTN_ITEM,
+                  ScreenWidth() - 1*pa.paramlayout.menubtn_size - 20, pa.paramItem[i].y,
+                  pa.paramlayout.menubtn_size, 0,
+                  ACTION_CTRL, {' '}, &cfg_incr_more, &cfg_incr_more_tap, NULL};
             case C_STRING:
                 pa.paramItem[i].item.n.decrease = (BUTTON) { true, BTN_ITEM,
-                  ScreenWidth() - 4*pa.paramlayout.menubtn_size - 20, pa.paramItem[i].y, 
+                  ScreenWidth() - 4*pa.paramlayout.menubtn_size - 20, pa.paramItem[i].y,
                   pa.paramlayout.menubtn_size, 0,
-                  ACTION_CTRL, ' ', &cfg_decr, &cfg_decr_tap, NULL};
+                  ACTION_CTRL, {' '}, &cfg_decr, &cfg_decr_tap, NULL};
                 pa.paramItem[i].item.n.increase = (BUTTON) { true, BTN_ITEM,
-                  ScreenWidth() - 2*pa.paramlayout.menubtn_size - 20, pa.paramItem[i].y, 
+                  ScreenWidth() - 2*pa.paramlayout.menubtn_size - 20, pa.paramItem[i].y,
                   pa.paramlayout.menubtn_size, 0,
-                  ACTION_CTRL, ' ', &cfg_incr, &cfg_incr_tap, NULL};
+                  ACTION_CTRL, {' '}, &cfg_incr, &cfg_incr_tap, NULL};
                 break;
             case C_CHOICES:
                 n = paramGetChoicesNum(i);
@@ -369,9 +400,9 @@ void paramPrepare(midend *me, int ptype) {
                 break;
             case C_BOOLEAN:
                 pa.paramItem[i].item.b.indicator = (BUTTON) { true, BTN_ITEM,
-                  ScreenWidth() - 3*pa.paramlayout.menubtn_size - 20, pa.paramItem[i].y, 
+                  ScreenWidth() - 3*pa.paramlayout.menubtn_size - 20, pa.paramItem[i].y,
                   pa.paramlayout.menubtn_size, 0,
-                  ACTION_SWAP, ' ', pa.cfg[i].u.boolean.bval ? &cfg_yes : &cfg_no, NULL, NULL};
+                  ACTION_SWAP, {' '}, pa.cfg[i].u.boolean.bval ? &cfg_yes : &cfg_no, NULL, NULL};
                 break;
         }
     }
@@ -382,7 +413,7 @@ void paramPrepare(midend *me, int ptype) {
         pa.paramlayout.menubtn_size/4,
         pa.paramlayout.menu.starty,
         pa.paramlayout.menubtn_size, 0, 
-        ACTION_BACK, ' ', &icon_back, &icon_back_tap, NULL};
+        ACTION_BACK, {' '}, &icon_back, &icon_back_tap, NULL};
 }
 
 void paramScreenShow() {

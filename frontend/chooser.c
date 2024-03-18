@@ -113,6 +113,8 @@ void chooserRelease(int x, int y) {
                         gameStartNewGame();
                         switchToGameScreen();
                         break;
+                    default:
+                        break;
                 }
             }
         }
@@ -237,20 +239,20 @@ static void chooserSetupButtons() {
             true, BTN_CTRL, 
             pos, ca.chooserlayout.buttonpanel.starty +ca.chooserlayout.control_size/4, 
             ca.chooserlayout.control_size/2, n, 
-            ACTION_SWITCH, 0x00, &bt_page, &bt_page_select, NULL};
+            ACTION_SWITCH, {0x00}, &bt_page, &bt_page_select, NULL};
     }
 
     ca.chooserButton[ca.btnHomeIDX = i++] = (BUTTON){ true,  BTN_MENU, 
         ca.chooserlayout.menubtn_size/4,
         ca.chooserlayout.menu.starty,
         ca.chooserlayout.menubtn_size, 0, 
-        ACTION_HOME, ' ', &icon_home, &icon_home_tap, NULL};
+        ACTION_HOME, {' '}, &icon_home, &icon_home_tap, NULL};
 
     ca.chooserButton[ca.btnMenuIDX = i++] = (BUTTON){ true,  BTN_MENU, 
         ScreenWidth() - (10*ca.chooserlayout.menubtn_size)/8,
         ca.chooserlayout.menu.starty,
         ca.chooserlayout.menubtn_size, 0,
-        ACTION_MENU, ' ', &icon_menu, &icon_menu_tap, NULL};
+        ACTION_MENU, {' '}, &icon_menu, &icon_menu_tap, NULL};
 }
 
 void chooserRefreshCanvas() {

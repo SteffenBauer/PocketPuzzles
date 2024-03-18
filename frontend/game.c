@@ -320,7 +320,6 @@ void gameMenuHandler(int index) {
 
 void typeMenuHandler(int index) {
     typeMenu_selectedIndex = index;
-    char buf[256];
     int currentindex = midend_which_preset(me);
 
     button_to_normal(&fe->gameButton[fe->btnTypeIDX], true);
@@ -602,6 +601,8 @@ void gameRelease(int x, int y) {
                     case ACTION_SWAP:
                         fe->swapped = !fe->swapped;
                         break;
+                    default:
+                        break;
                 }
             }
         }
@@ -728,8 +729,6 @@ static void checkGameEnd() {
 }
 
 void gamePrepareFrontend() {
-    char buf[256];
-
     fe->current_pointer = 0;
     fe->pointerdown_x = 0;
     fe->pointerdown_y = 0;
@@ -773,21 +772,21 @@ static BUTTON gameGetButton(const char *gameName, char key) {
     else if (key == '+')  return btn_add;
     else if (key == '-')  return btn_remove;
 
-    else if (key == 'H' && strcmp(gameName, "Range")==0)   return btn_hint;
-    else if (key == 'O' && strcmp(gameName, "Salad")==0)   return btn_salad_o;
-    else if (key == 'X' && strcmp(gameName, "Salad")==0)   return btn_salad_x;
-    else if (key == 'J' && strcmp(gameName, "Net")==0)     return btn_net_shuffle;
-    else if (key == 'L' && strcmp(gameName, "Net")==0)     return btn_net_lock;
-    else if (key == 'G' && strcmp(gameName, "Bridges")==0) return btn_bridges_g;
-    else if (key == 'T' && strcmp(gameName, "Rome")==0)    return btn_rome_n;
-    else if (key == 'W' && strcmp(gameName, "Rome")==0)    return btn_rome_w;
-    else if (key == 'E' && strcmp(gameName, "Rome")==0)    return btn_rome_e;
-    else if (key == 'D' && strcmp(gameName, "Rome")==0)    return btn_rome_s;
+    else if (key == 'H' && strcmp(gameName, "Range")==0)    return btn_hint;
+    else if (key == 'H' && strcmp(gameName, "Untangle")==0) return btn_hint;
+    else if (key == 'O' && strcmp(gameName, "Salad")==0)    return btn_salad_o;
+    else if (key == 'X' && strcmp(gameName, "Salad")==0)    return btn_salad_x;
+    else if (key == 'J' && strcmp(gameName, "Net")==0)      return btn_net_shuffle;
+    else if (key == 'L' && strcmp(gameName, "Net")==0)      return btn_net_lock;
+    else if (key == 'G' && strcmp(gameName, "Bridges")==0)  return btn_bridges_g;
+    else if (key == 'T' && strcmp(gameName, "Rome")==0)     return btn_rome_n;
+    else if (key == 'W' && strcmp(gameName, "Rome")==0)     return btn_rome_w;
+    else if (key == 'E' && strcmp(gameName, "Rome")==0)     return btn_rome_e;
+    else if (key == 'D' && strcmp(gameName, "Rome")==0)     return btn_rome_s;
     return btn_null;
 }
 
 static LAYOUTTYPE gameGetLayout() {
-    bool wants_statusbar;
     int i, addkeys, nkeys = 0;
     struct key_label *keys;
 

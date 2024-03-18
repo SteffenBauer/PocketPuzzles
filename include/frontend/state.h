@@ -12,8 +12,6 @@ typedef struct dict_t_struct {
     struct dict_t_struct *next;
 } dict_t;
 
-static dict_t *config = NULL;
-
 struct serialise_buf {
     unsigned char *buf;
     int len, pos;
