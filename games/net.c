@@ -2049,7 +2049,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         NONE, ROTATE_LEFT, ROTATE_RIGHT, TOGGLE_LOCK, JUMBLE
     } action;
 
-    button &= ~MOD_MASK;
+    button = STRIP_BUTTON_MODIFIERS(button);
     nullret = NULL;
     action = NONE;
 

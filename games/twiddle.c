@@ -216,6 +216,8 @@ static const char *validate_params(const game_params *params, bool full)
         return "Width must be at most 12";
     if (params->h > 12)
         return "Height must be at most 12";
+    if (params->movetarget < 0)
+        return "Number of shuffling moves may not be negative";
     return NULL;
 }
 

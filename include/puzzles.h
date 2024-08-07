@@ -72,6 +72,7 @@ enum {
                             (m) == CURSOR_RIGHT || (m) == CURSOR_LEFT )
 #define IS_CURSOR_SELECT(m) ( (m) == CURSOR_SELECT || (m) == CURSOR_SELECT2)
 #define IS_UI_FAKE_KEY(m) ( (m) > UI_LOWER_BOUND && (m) < UI_UPPER_BOUND )
+#define STRIP_BUTTON_MODIFIERS(m) ( (unsigned)(m) & ~MOD_MASK )
 
 /*
  * Flags in the back end's `flags' word.
@@ -451,6 +452,12 @@ void copy_left_justified(char *buf, size_t sz, const char *str);
    whenever a `label' field returned by the request_keys() game
    function is NULL. Dynamically allocated, to be freed by caller. */
 char *button2label(int button);
+
+/* Swap two regions of memory. The two regions must not
+ * overlap. (Note: the natural name for this might be "memswap", but
+ * the mem* namespace is reserved for future expansion by the C99
+ * standard per clause 7.26.11.1.) */
+void swap_regions(void *av, void *bv, size_t size);
 
 /*
  * dsf.c

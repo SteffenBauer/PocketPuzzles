@@ -1711,7 +1711,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     int tx, ty;
     char buf[80];
 
-    button &= ~MOD_MASK;
+    button = STRIP_BUTTON_MODIFIERS(button);
 
     tx = FROMCOORD(x);
     ty = FROMCOORD(y);

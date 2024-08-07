@@ -1451,7 +1451,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     int w2 = state->w2, h2 = state->h2;
 
-    button &= ~MOD_MASK;
+    button = STRIP_BUTTON_MODIFIERS(button);
 
     if (ox < (ds->tilesize / 2) || gx >= w2 ||
         oy < (ds->tilesize / 2) || gy >= h2)

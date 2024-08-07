@@ -1486,7 +1486,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     int w = state->p.w, h = state->p.h;
     char tmpbuf[80];
 
-    button &= ~MOD_MASK;
+    button = STRIP_BUTTON_MODIFIERS(button);
 
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         x = FROMCOORD(x);
