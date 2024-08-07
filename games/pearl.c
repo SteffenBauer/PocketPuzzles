@@ -2062,7 +2062,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     bool release = false;
     char tmpbuf[80];
 
-    button &= ~MOD_MASK;
+    button = STRIP_BUTTON_MODIFIERS(button);
 
     if (IS_MOUSE_DOWN(button)) {
     ui->cursor_active = false;

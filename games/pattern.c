@@ -175,6 +175,8 @@ static const char *validate_params(const game_params *params, bool full)
         return "Width and height must both be greater than zero";
     if (params->w > 16 || params->h > 16)
         return "Width and height must both be not greather than 16";
+    if (params->w * params->h < 2)
+        return "Grid must contain at least two squares";
     return NULL;
 }
 
@@ -1169,7 +1171,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                             const game_drawstate *ds,
                             int x, int y, int button, bool swapped)
 {
-    button &= ~MOD_MASK;
+    button = STRIP_BUTTON_MODIFIERS(button);
 
     x = FROMCOORD(state->common->w, x);
     y = FROMCOORD(state->common->h, y);

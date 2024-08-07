@@ -1,5 +1,10 @@
 ## ChangeLog
 
+## 0.8.2 nightly
+
+### Changed
+* Sync with upstream refactorings
+
 ## 0.8.1 - 2023/12/30
 
 ### Added

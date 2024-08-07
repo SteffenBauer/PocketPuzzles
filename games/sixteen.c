@@ -169,8 +169,9 @@ static game_params *custom_params(const config_item *cfg)
 static const char *validate_params(const game_params *params, bool full)
 {
     if (params->w < 2 || params->h < 2)
-    return "Width and height must both be at least two";
-
+        return "Width and height must both be at least two";
+    if (params->movetarget < 0)
+        return "Number of shuffling moves may not be negative";
     return NULL;
 }
 
@@ -550,7 +551,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     int cx = -1, cy = -1, dx, dy;
     char buf[80];
 
-    button &= ~MOD_MASK;
+    button = STRIP_BUTTON_MODIFIERS(button);
 
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         cx = FROMCOORD(x);

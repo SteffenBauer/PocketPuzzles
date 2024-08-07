@@ -1403,7 +1403,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     int x = FROMCOORD(ox), y = FROMCOORD(oy), n;
     char buf[80];
 
-    button &= ~MOD_MASK;
+    button = STRIP_BUTTON_MODIFIERS(button);
 
     if (x >= 0 && x < ds->order && y >= 0 && y < ds->order) {
 

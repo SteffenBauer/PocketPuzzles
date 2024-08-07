@@ -189,6 +189,8 @@ static const char *validate_params(const game_params *params, bool full)
         return "Width and height must both be at least two";
     if (params->w > 16 || params->h > 16)
         return "Widths and heights greater than 16 are not supported";
+    if (params->minballs < 1)
+        return "Number of balls must be at least one";
     if (params->minballs >= params->w * params->h)
         return "Too many balls to fit in grid";
     return NULL;

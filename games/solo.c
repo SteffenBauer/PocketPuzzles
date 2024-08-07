@@ -4010,7 +4010,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     char buf[80];
     bool fixed_entry = state->manual && !state->fixed;
 
-    button &= ~MOD_MASK;
+    button = STRIP_BUTTON_MODIFIERS(button);
 
     tx = (x + TILE_SIZE - BORDER) / TILE_SIZE - 1;
     ty = (y + TILE_SIZE - BORDER) / TILE_SIZE - 1;
