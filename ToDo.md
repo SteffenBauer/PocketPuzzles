@@ -43,6 +43,7 @@
 - [X] Configurable game specific UI settings (short/long click action, helper buttons, classic/one-click entry)
 - [ ] Information screen explaining game controls
 - [ ] Color mode
+- [X] Dark mode support
 - [ ] Screen orientation handling
 - [ ] Generate separate documentation eBook
 
@@ -189,4 +190,23 @@
 - [ ] Games with 'Fill pencil marks' button: visible/hidden
 - [ ] Games with Pencil mark indicator: Flip on swap button
 - [ ] Games with pencil marks: Fixed / Floating arrangement
+
+#### Dark mode specific UI tweaks
+
+- [ ] Binary: Border & tiles 3D effect
+- [ ] Bricks: Cell colors
+- [ ] Clusters: Cell colors
+- [ ] Creek: Cell colors
+- [ ] Fifteen: Border & tiles 3D effect
+- [ ] Inertia: 3D effect of blocked cells
+- [ ] Mines: Border & Cells 3D effect
+- [ ] Mosaic: Cell colors
+- [ ] Pattern: Cell colors
+- [ ] Pearl: Hint colors
+- [ ] SameGame: Border 3D effect
+- [ ] Sixteen: Border & tiles 3D effect
+- [ ] Twiddle: Border & tiles 3D effect
+- [ ] Undead: Monster icons
+- [ ] Unequal/Kropki mode: Hint colors
+- [ ] Unruly: Cell colors; 3D effect of fixed cells
 
