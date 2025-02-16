@@ -28,6 +28,8 @@ I received reports that the app works with these devices:
 * PB626  - Touch Lux 3 (see note below)
 * PB628  - Touch Lux 5 (see note below)
 * PB743  - InkPad Color 3 (see notes below)
+* PB634  - Verse Pro
+* PB700  - Era P700
 
 The app seems to work also on *Vivlio* devices, for further details see [this blog entry](https://www.liseuses.net/50-jeux-video-liseuse-vivlio-pocketbook/) (in french language)
 
@@ -55,15 +57,17 @@ When everything compiles successfully, you find `build/SGTPuzzles.app`. Copy thi
 
 ### Development history
 
-**Changelog after Beta release** see [ChangeLog.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/ChangeLog.md)
+**Q2 2020** Project started. Looking into PocketBook SDK and app development.
 
-**14.11.2020 Beta version ready!** Games can now be individually configured. All elements needed for beta are now implemented.
-
-**6.10.2020 Alpha version ready!** Persistence of game params and current game now working. Most games UI are reworked suitable for eInk screen.
+**11.8.2020 First major milestone reached!** Some games are now playable on a very basic level.
 
 **16.8.2020 Next milestone** Game control buttons now working. All games playable (but those using blitter / animations still need rewriting)
 
-**11.8.2020 First major milestone reached!** Some games are now playable on a very basic level. 
+**6.10.2020 Alpha version ready!** Persistence of game params and current game now working. Most games UI are reworked suitable for eInk screen.
+
+**14.11.2020 Beta version ready!** Games can now be individually configured. All elements needed for beta are now implemented.
+
+**Changelog after Beta release** see [ChangeLog.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/ChangeLog.md)
 
 There is still work to do. See ToDo list below. eInk screens are limited in response time and color availability, so most of the games need individual tweaking to make them fun to play.
 

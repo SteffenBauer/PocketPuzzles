@@ -65,6 +65,7 @@ void switchToParamScreen();
 void switchToChooserScreen();
 void switchToGameScreen();
 
+static bool setupAppCapabilities();
 static void setupApp();
 void exitApp();
 

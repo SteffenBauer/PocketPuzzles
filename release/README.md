@@ -9,11 +9,15 @@ Choose between one of these build stages:
 * [Nightly build](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/nightly/SGTPuzzles.app) This binary is kept in sync with the current master branch. Can contain untested code, so install only when you want the newest features.
 
 ### Upgrading
-**Important note on upgrading the app**
+**Important notes on upgrading the app**
 
+#### From version lower than 0.7.12
 In the nightly release and upcoming stable releases (0.7.12 and higher) the *loopy* puzzle will not contain all grid types anymore. The app may crash when trying to launch a *loopy* game configured to one of the unsupported grid types.
 
 To prevent a crash, configure the *loopy* game to a *squares* grid type before upgrading.
+
+#### From version lower than 0.8.2
+In the nightly version and upcoming stable versions >= 0.8.2, I switched to compile with the current SDK 6.8, which only supports devices with firmware 6. For devices with firmware 5, install 0.8.1.
 
 ### Installation
 

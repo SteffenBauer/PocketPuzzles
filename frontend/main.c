@@ -1,7 +1,9 @@
+#include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <math.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "inkview.h"
 #include "frontend/main.h"
@@ -42,6 +44,22 @@ void switchToGameScreen() {
     gameScreenShow();
 }
 
+static bool setupAppCapabilities() {
+    const char *firmware_version = GetSoftwareVersion();
+    char *ptr;
+    int major, minor;
+
+    ptr = strchr(firmware_version, '.');
+    sscanf(ptr+1, "%i.%i", &major, &minor);
+    if (major < 6) {
+        Message(ICON_WARNING, "", "This app only runs under firmware version 6 or higher!", 2000);
+        return false;
+    }
+    if (minor >= 8)
+        IvSetAppCapability(APP_CAPABILITY_SUPPORT_SCREEN_INVERSION);
+    return true;
+}
+
 static void setupApp() {
     char *buf;
     SetPanelType(PANEL_ENABLED);
@@ -78,7 +96,10 @@ void exitApp() {
 
 static int main_handler(int event_type, int param_one, int param_two) {
     if (event_type == EVT_INIT) {
-        setupApp();
+        if (setupAppCapabilities())
+            setupApp();
+        else
+            CloseApp();
     }
     else if (event_type == EVT_EXIT || (event_type == EVT_HIDE) ||
             (event_type == EVT_KEYPRESS && param_one == IV_KEY_HOME)) {
@@ -101,6 +122,9 @@ static int main_handler(int event_type, int param_one, int param_two) {
     }
     else if (event_type == EVT_POINTERUP) {
         SCREEN.release(param_one, param_two);
+    }
+    else if (event_type == EVT_SCREEN_INVERSION_MODE_CHANGED) {
+        FullUpdate();
     }
     return 0;
 }

@@ -4,6 +4,10 @@
 
 ### Changed
 * Sync with upstream refactorings
+* Switch to SDK-B288-6.8
+
+### Added
+* Supports dark mode on firmware >= 6.8 devices
 
 ## 0.8.1 - 2023/12/30
 
