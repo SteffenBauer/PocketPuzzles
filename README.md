@@ -55,6 +55,21 @@ Run: `make`, or `make -j4` to compile parallel using 4 processor cores (adjust a
 
 When everything compiles successfully, you find `build/SGTPuzzles.app`. Copy this to the folder `/applications` on your device. Reboot if necessary after transfer.
 
+### Manual build using Docker
+
+Install Docker from https://docs.docker.com and start it.
+
+Then run
+
+```bash
+DOCKER_BUILDKIT=1 docker build --no-cache --output ./app/ .
+```
+
+The app will be saved as `./app/SGTPuzzles.app`
+
+Additionally a `Pocket Puzzles.epub` is generated, containing
+all the puzzle's rules.
+
 ### Development history
 
 **Q2 2020** Project started. Looking into PocketBook SDK and app development.
