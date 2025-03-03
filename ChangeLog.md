@@ -9,6 +9,9 @@
 ### Added
 * Supports dark mode on firmware >= 6.8 devices
 
+### Fixed
+* *Mosaic*: Possible crash in `solve_game` due to insufficient buffer size
+
 ## 0.8.1 - 2023/12/30
 
 ### Added

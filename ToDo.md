@@ -46,6 +46,7 @@
 - [X] Dark mode support
 - [ ] Screen orientation handling
 - [ ] Generate separate documentation eBook
+- [ ] App icon
 
 ### Current bugs
 
@@ -127,6 +128,10 @@
 - [ ] Pearl: "No line" on right click instead of release
 - [ ] Slant: 'Hard' game difficulty (backtracking)
 - [ ] Twiddle: Re-activate basic animation (?)
+- [ ] Dominosa: Remove limit on highlighted numbers
+- [ ] Creek: Smaller border
+- [ ] Slant: Smaller border
+- [ ] Pattern: Optimize border size calculation
 
 #### One-click symbol fill
 
@@ -152,6 +157,7 @@
 
 - [X] ABCD
 - [X] Bricks
+- [ ] Bridges: Change current hint finish indicator to grey-out
 - [X] Boats
 - [ ] Pattern
 - [X] Range
