@@ -128,10 +128,11 @@
 - [ ] Pearl: "No line" on right click instead of release
 - [ ] Slant: 'Hard' game difficulty (backtracking)
 - [ ] Twiddle: Re-activate basic animation (?)
-- [ ] Dominosa: Remove limit on highlighted numbers
-- [ ] Creek: Smaller border
-- [ ] Slant: Smaller border
+- [X] Dominosa: Remove limit on highlighted numbers
+- [X] Creek: Smaller border
+- [X] Slant: Smaller border
 - [ ] Pattern: Optimize border size calculation
+- [X] Bridges: Change current hint finish indicator to grey-out
 
 #### One-click symbol fill
 
@@ -157,7 +158,7 @@
 
 - [X] ABCD
 - [X] Bricks
-- [ ] Bridges: Change current hint finish indicator to grey-out
+- [X] Bridges: Change current hint finish indicator to grey-out
 - [X] Boats
 - [ ] Pattern
 - [X] Range

@@ -82,14 +82,12 @@ enum {
     COL_BACKGROUND,
     COL_TEXT,
     COL_TEXTCLASH,
-    COL_TEXTHIGH_1,
-    COL_TEXTHIGH_2,
+    COL_TEXTHIGH,
     COL_DOMINO,
     COL_DOMINOCLASH,
     COL_DOMINOTEXT,
     COL_EDGE,
-    COL_HIGHLIGHT_1,
-    COL_HIGHLIGHT_2,
+    COL_HIGHLIGHT,
     NCOLOURS
 };
 
@@ -2426,21 +2424,23 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 }
 
 struct game_ui {
-    int cur_x, cur_y, highlight_1, highlight_2;
-    bool cur_visible;
+    bool *highlight;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
+    int i,n;
+    n = state->params.n+1;
     game_ui *ui = snew(game_ui);
-    ui->cur_x = ui->cur_y = 0;
-    ui->cur_visible = false;
-    ui->highlight_1 = ui->highlight_2 = -1;
+    ui->highlight = snewn(n, bool);
+    for (i=0;i<n;i++)
+        ui->highlight[i] = false;
     return ui;
 }
 
 static void free_ui(game_ui *ui)
 {
+    sfree(ui->highlight);
     sfree(ui);
 }
 
@@ -2462,15 +2462,12 @@ static key_label *game_request_keys(const game_params *params, const game_ui *ui
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
-    if (!oldstate->completed && newstate->completed)
-        ui->cur_visible = false;
 }
 
 static const char *current_key_label(const game_ui *ui,
                                      const game_state *state, int button) {
     if (button < '0' || button > '9') return "";
-    if ((ui->highlight_1 >= 0) && ((button-'0') == ui->highlight_1)) return "H";
-    if ((ui->highlight_2 >= 0) && ((button-'0') == ui->highlight_2)) return "H";
+    if (ui->highlight[button-'0']) return "H";
     return "E";
 }
 
@@ -2535,25 +2532,15 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             (state->grid[d1] != d1 || state->grid[d2] != d2))
             return NULL;
 
-        ui->cur_visible = false;
         sprintf(buf, "%c%d,%d", (int)(button == RIGHT_BUTTON ? 'E' : 'D'), d1, d2);
         return dupstr(buf);
     } 
     else if (isdigit(button)) {
         int n = state->params.n, num = button - '0';
-        if (num > n) {
+        if (num > n)
             return NULL;
-        } else if (ui->highlight_1 == num) {
-            ui->highlight_1 = -1;
-        } else if (ui->highlight_2 == num) {
-            ui->highlight_2 = -1;
-        } else if (ui->highlight_1 == -1) {
-            ui->highlight_1 = num;
-        } else if (ui->highlight_2 == -1) {
-            ui->highlight_2 = num;
-        } else {
-            return NULL;
-        }
+        else
+            ui->highlight[num] = !ui->highlight[num];
         return MOVE_UI_UPDATE;
     }
 
@@ -2746,14 +2733,12 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_BACKGROUND  * 3 + i] = 1.0F;
         ret[COL_TEXT        * 3 + i] = 0.0F;
         ret[COL_TEXTCLASH   * 3 + i] = 0.5F;
-        ret[COL_TEXTHIGH_1  * 3 + i] = 0.25F;
-        ret[COL_TEXTHIGH_2  * 3 + i] = 0.75F;
+        ret[COL_TEXTHIGH    * 3 + i] = 1.0F;
         ret[COL_DOMINO      * 3 + i] = 0.0F;
         ret[COL_DOMINOCLASH * 3 + i] = 0.75F;
         ret[COL_DOMINOTEXT  * 3 + i] = 1.0F;
         ret[COL_EDGE        * 3 + i] = 0.0F;
-        ret[COL_HIGHLIGHT_1 * 3 + i] = 0.6F;
-        ret[COL_HIGHLIGHT_2 * 3 + i] = 0.4F;
+        ret[COL_HIGHLIGHT   * 3 + i] = 0.25F;
     }
 
     *ncolours = NCOLOURS;
@@ -2795,9 +2780,8 @@ enum {
    * EDGE_*                     [0x100 -- 0xF00]
  * and must fit into an unsigned long (32 bits).
  */
-#define DF_HIGHLIGHT_1  0x10
-#define DF_HIGHLIGHT_2  0x20
-#define DF_CLASH        0x80
+#define DF_HIGHLIGHT     0x10
+#define DF_CLASH         0x20
 
 #define DF_CURSOR        0x01000
 #define DF_CURSOR_USEFUL 0x02000
@@ -2810,7 +2794,7 @@ enum {
 #define IS_EMPTY(s,x,y) ((s)->grid[(y)*(s)->w+(x)] == ((y)*(s)->w+(x)))
 
 static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
-                      int x, int y, int type, int highlight_1, int highlight_2)
+                      int x, int y, int type)
 {
     int w = state->w /*, h = state->h */;
     int cx = COORD(x), cy = COORD(y);
@@ -2910,12 +2894,9 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
             draw_rect_corners(dr, ox, oy, CURSOR_RADIUS+1, nc);
     }
 
-    if (flags & DF_HIGHLIGHT_1) {
-        draw_rect(dr, cx+TILESIZE/4, cy+TILESIZE/4, TILESIZE/2, TILESIZE/2, COL_HIGHLIGHT_1);
-        nc = COL_TEXTHIGH_1;
-    } else if (flags & DF_HIGHLIGHT_2) {
-        draw_rect(dr, cx+TILESIZE/4, cy+TILESIZE/4, TILESIZE/2, TILESIZE/2, COL_HIGHLIGHT_2);
-        nc = COL_TEXTHIGH_2;
+    if (flags & DF_HIGHLIGHT) {
+        draw_rect(dr, cx+TILESIZE/4, cy+TILESIZE/4, TILESIZE/2, TILESIZE/2, COL_HIGHLIGHT);
+        nc = COL_TEXTHIGH;
     }
 
     sprintf(str, "%d", state->numbers->numbers[y*w+x]);
@@ -2965,7 +2946,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         for (x = 0; x < w; x++) {
             int n = y*w+x;
             int n1, n2, di;
-        unsigned long c;
+            unsigned long c;
 
             if (state->grid[n] == n-1)
                 c = TYPE_R;
@@ -2988,29 +2969,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 c |= state->edges[n];
             }
 
-            if (n1 == ui->highlight_1)
-                c |= DF_HIGHLIGHT_1;
-            if (n1 == ui->highlight_2)
-                c |= DF_HIGHLIGHT_2;
+            if (ui->highlight[n1])
+                c |= DF_HIGHLIGHT;
 
-            if (ui->cur_visible) {
-        unsigned curx = (unsigned)(ui->cur_x - (2*x-1));
-        unsigned cury = (unsigned)(ui->cur_y - (2*y-1));
-        if (curx < 3 && cury < 3) {
-            c |= (DF_CURSOR |
-              (curx * DF_CURSOR_XBASE) |
-              (cury * DF_CURSOR_YBASE));
-                    if ((ui->cur_x ^ ui->cur_y) & 1)
-                        c |= DF_CURSOR_USEFUL;
-                }
+            if (ds->visible[n] != c) {
+            draw_tile(dr, ds, state, x, y, c);
+                    ds->visible[n] = c;
             }
-
-        if (ds->visible[n] != c) {
-        draw_tile(dr, ds, state, x, y, c,
-                          ui->highlight_1, ui->highlight_2);
-                ds->visible[n] = c;
         }
-    }
 
     sfree(used);
 }

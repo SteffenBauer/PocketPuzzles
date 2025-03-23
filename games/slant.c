@@ -1589,7 +1589,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 
 #define PREFERRED_TILESIZE 32
 #define TILESIZE (ds->tilesize)
-#define BORDER TILESIZE
+#define BORDER ((TILESIZE+1) / 2)
 #define CLUE_RADIUS (TILESIZE / 3)
 #define CLUE_TEXTSIZE (TILESIZE / 2)
 #define COORD(x)  ( (x) * TILESIZE + BORDER )
@@ -1824,11 +1824,17 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_ui *ui, game_c
     int bgcol = COL_BACKGROUND;
     int fscol = chesscolour ? COL_SLANT2 : COL_SLANT1;
     int bscol = chesscolour ? COL_SLANT1 : COL_SLANT2;
+    int cx, cy, tsx, tsy;
+    cx = x<0 ? COORD(x+1) - BORDER : COORD(x);
+    cy = y<0 ? COORD(y+1) - BORDER : COORD(y);
+    tsx = x<0 || x==w ? BORDER : TILESIZE;
+    tsy = y<0 || y==h ? BORDER : TILESIZE;
+
     if (ui->show_filled && !(ui->show_errors && (v & ERRSLASH)) && (v & (BACKSLASH | FORWSLASH)))
         bgcol = COL_FILLEDSQUARE;
 
-    clip(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
-    draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE, bgcol);
+    clip(dr, cx, cy, tsx, tsy);
+    draw_rect(dr, cx, cy, tsx, tsy, bgcol);
 
     /*
      * Draw the grid lines.
@@ -1870,7 +1876,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_ui *ui, game_c
           -1, -1);
 
     unclip(dr);
-    draw_update(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
+    draw_update(dr, cx, cy, tsx, tsy);
 }
 
 static void game_redraw(drawing *dr, game_drawstate *ds,

@@ -2643,11 +2643,11 @@ static void draw_island(drawing *dr, game_drawstate *ds,
     irad = orad - LINE_WIDTH;
     fg = ((idata & DI_COLMASK) == DI_COL_SELECTED ? COL_FOREGROUND :
           (idata & DI_COLMASK) == DI_COL_WARNING ? COL_BACKGROUND :
-          (idata & DI_BGMASK)  == DI_BG_MARK ? COL_HIGHLIGHT : COL_FOREGROUND);
+          (idata & DI_BGMASK)  == DI_BG_MARK ? COL_LOWLIGHT : COL_FOREGROUND);
 
     bg = ((idata & DI_COLMASK) == DI_COL_SELECTED ? COL_HIGHLIGHT :
           (idata & DI_COLMASK) == DI_COL_WARNING ? COL_WARNING :
-          (idata & DI_BGMASK)  == DI_BG_MARK ? COL_FOREGROUND : COL_BACKGROUND);
+          (idata & DI_BGMASK)  == DI_BG_MARK ? COL_BACKGROUND : COL_BACKGROUND);
 
     cg = ((idata & DI_COLMASK) == DI_COL_SELECTED ? COL_FOREGROUND :
           (idata & DI_COLMASK) == DI_COL_WARNING ? COL_LOWLIGHT :

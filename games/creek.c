@@ -1106,7 +1106,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 
 #define PREFERRED_TILESIZE 32
 #define TILESIZE (ds->tilesize)
-#define BORDER (TILESIZE)
+#define BORDER ((TILESIZE+1) / 2)
 #define CLUE_RADIUS (TILESIZE / 3)
 #define CLUE_TEXTSIZE (TILESIZE / 2)
 #define COORD(x)  ( (x) * TILESIZE + BORDER )
@@ -1362,10 +1362,15 @@ static void draw_tile_creek(drawing *dr, game_drawstate *ds, game_clues *clues,
               int x, int y, long v)
 {
     int w = clues->w, h = clues->h, W = w+1 /*, H = h+1 */;
+    int cx, cy, tsx, tsy;
+    cx = x<0 ? COORD(x+1) - BORDER: COORD(x);
+    cy = y<0 ? COORD(y+1) - BORDER: COORD(y);
+    tsx = x<0 || x==w ? BORDER : TILESIZE;
+    tsy = y<0 || y==h ? BORDER : TILESIZE;
 
-    clip(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
+    clip(dr, cx, cy, tsx, tsy);
 
-    draw_rect(dr, COORD(x), COORD(y), TILESIZE, TILESIZE,
+    draw_rect(dr, cx, cy, tsx, tsy,
           (v & CR_ERR)   ? COL_CREEK_EMPTY :
           (v & CR_BLACK) ? COL_CREEK_FILLED :
           (v & CR_WHITE) ? COL_CREEK_EMPTY :
@@ -1408,7 +1413,7 @@ static void draw_tile_creek(drawing *dr, game_drawstate *ds, game_clues *clues,
            -1, -1);
 
      unclip(dr);
-     draw_update(dr, COORD(x), COORD(y), TILESIZE, TILESIZE);
+     draw_update(dr, cx, cy, tsx, tsy);
 
 }
 
