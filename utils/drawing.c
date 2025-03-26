@@ -31,18 +31,9 @@
 
 #include "puzzles.h"
 
-struct print_colour {
-    int hatch;
-    int hatch_when;            /* 0=never 1=only-in-b&w 2=always */
-    float r, g, b;
-    float grey;
-};
-
 struct drawing {
     const drawing_api *api;
     void *handle;
-    struct print_colour *colours;
-    int ncolours, coloursize;
     float scale;
     /* `me' is only used in status_bar(), so print-oriented instances of
      * this may set it to NULL. */
@@ -55,8 +46,6 @@ drawing *drawing_new(const drawing_api *api, midend *me, void *handle)
     drawing *dr = snew(drawing);
     dr->api = api;
     dr->handle = handle;
-    dr->colours = NULL;
-    dr->ncolours = dr->coloursize = 0;
     dr->scale = 1.0F;
     dr->me = me;
     dr->laststatus = NULL;
@@ -66,7 +55,6 @@ drawing *drawing_new(const drawing_api *api, midend *me, void *handle)
 void drawing_free(drawing *dr)
 {
     sfree(dr->laststatus);
-    sfree(dr->colours);
     sfree(dr);
 }
 
@@ -233,125 +221,3 @@ void blitter_load(drawing *dr, blitter *bl, int x, int y)
     dr->api->blitter_load(dr->handle, bl, x, y);
 }
 
-void print_begin_doc(drawing *dr, int pages)
-{
-    dr->api->begin_doc(dr->handle, pages);
-}
-
-void print_begin_page(drawing *dr, int number)
-{
-    dr->api->begin_page(dr->handle, number);
-}
-
-void print_begin_puzzle(drawing *dr, float xm, float xc,
-                        float ym, float yc, int pw, int ph, float wmm,
-                        float scale)
-{
-    dr->scale = scale;
-    dr->ncolours = 0;
-    dr->api->begin_puzzle(dr->handle, xm, xc, ym, yc, pw, ph, wmm);
-}
-
-void print_end_puzzle(drawing *dr)
-{
-    dr->api->end_puzzle(dr->handle);
-    dr->scale = 1.0F;
-}
-
-void print_end_page(drawing *dr, int number)
-{
-    dr->api->end_page(dr->handle, number);
-}
-
-void print_end_doc(drawing *dr)
-{
-    dr->api->end_doc(dr->handle);
-}
-
-void print_get_colour(drawing *dr, int colour, bool printing_in_colour,
-                      int *hatch, float *r, float *g, float *b)
-{
-    assert(colour >= 0 && colour < dr->ncolours);
-    if (dr->colours[colour].hatch_when == 2 ||
-        (dr->colours[colour].hatch_when == 1 && !printing_in_colour)) {
-        *hatch = dr->colours[colour].hatch;
-    } else {
-        *hatch = -1;
-        if (printing_in_colour) {
-            *r = dr->colours[colour].r;
-            *g = dr->colours[colour].g;
-            *b = dr->colours[colour].b;
-        } else {
-            *r = *g = *b = dr->colours[colour].grey;
-        }
-    }
-}
-
-static int print_generic_colour(drawing *dr, float r, float g, float b,
-                                float grey, int hatch, int hatch_when)
-{
-    if (dr->ncolours >= dr->coloursize) {
-        dr->coloursize = dr->ncolours + 16;
-        dr->colours = sresize(dr->colours, dr->coloursize,
-                              struct print_colour);
-    }
-    dr->colours[dr->ncolours].hatch = hatch;
-    dr->colours[dr->ncolours].hatch_when = hatch_when;
-    dr->colours[dr->ncolours].r = r;
-    dr->colours[dr->ncolours].g = g;
-    dr->colours[dr->ncolours].b = b;
-    dr->colours[dr->ncolours].grey = grey;
-    return dr->ncolours++;
-}
-
-int print_mono_colour(drawing *dr, int grey)
-{
-    return print_generic_colour(dr, grey, grey, grey, grey, -1, 0);
-}
-
-int print_grey_colour(drawing *dr, float grey)
-{
-    return print_generic_colour(dr, grey, grey, grey, grey, -1, 0);
-}
-
-int print_hatched_colour(drawing *dr, int hatch)
-{
-    return print_generic_colour(dr, 0, 0, 0, 0, hatch, 2);
-}
-
-int print_rgb_mono_colour(drawing *dr, float r, float g, float b, int grey)
-{
-    return print_generic_colour(dr, r, g, b, grey, -1, 0);
-}
-
-int print_rgb_grey_colour(drawing *dr, float r, float g, float b, float grey)
-{
-    return print_generic_colour(dr, r, g, b, grey, -1, 0);
-}
-
-int print_rgb_hatched_colour(drawing *dr, float r, float g, float b, int hatch)
-{
-    return print_generic_colour(dr, r, g, b, 0, hatch, 1);
-}
-
-void print_line_width(drawing *dr, int width)
-{
-    /*
-     * I don't think it's entirely sensible to have line widths be
-     * entirely relative to the puzzle size; there is a point
-     * beyond which lines are just _stupidly_ thick. On the other
-     * hand, absolute line widths aren't particularly nice either
-     * because they start to feel a bit feeble at really large
-     * scales.
-     * 
-     * My experimental answer is to scale line widths as the
-     * _square root_ of the main puzzle scale. Double the puzzle
-     * size, and the line width multiplies by 1.4.
-     */
-    dr->api->line_width(dr->handle, (float)sqrt(dr->scale) * width);
-}
-
-void print_line_dotted(drawing *dr, bool dotted)
-{
-    dr->api->line_dotted(dr->handle, dotted);
-}

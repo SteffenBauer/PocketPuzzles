@@ -22,336 +22,336 @@ all: abcd ascent binary blackbox boats bricks bridges clusters creek crossnum cu
 		untangle walls
 
 abcd: abcd.o drawing.o gtk.o malloc.o midend.o \
-		misc.o no-icon.o printing.o ps.o random.o version.o
+		misc.o no-icon.o random.o version.o
 	$(CC) -o $@ abcd.o drawing.o gtk.o malloc.o midend.o \
-		misc.o no-icon.o printing.o ps.o random.o version.o $(XLFLAGS) \
+		misc.o no-icon.o random.o version.o $(XLFLAGS) \
 		$(XLIBS)
 
 ascent: ascent.o no-icon.o drawing.o gtk.o malloc.o \
-		matching.o midend.o misc.o printing.o ps.o random.o \
+		matching.o midend.o misc.o random.o \
 		version.o
 	$(CC) -o $@ ascent.o no-icon.o drawing.o gtk.o malloc.o \
-		matching.o midend.o misc.o printing.o ps.o random.o \
+		matching.o midend.o misc.o random.o \
 		version.o  $(XLFLAGS) $(XLIBS)
 
 binary: drawing.o binary.o no-icon.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o
+		midend.o misc.o random.o version.o
 	$(CC) -o $@ drawing.o binary.o no-icon.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o  \
+		midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 blackbox: blackbox.o no-icon.o drawing.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o
+		midend.o misc.o random.o version.o
 	$(CC) -o $@ blackbox.o no-icon.o drawing.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o  \
+		midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 boats: boats.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o
+		midend.o misc.o random.o version.o
 	$(CC) -o $@ boats.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o  \
+		midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 bricks: bricks.o no-icon.o drawing.o  \
-		gtk.o malloc.o midend.o misc.o printing.o ps.o random.o \
+		gtk.o malloc.o midend.o misc.o random.o \
 		version.o
 	$(CC) -o $@ bricks.o no-icon.o drawing.o \
-		gtk.o malloc.o midend.o misc.o printing.o ps.o random.o \
+		gtk.o malloc.o midend.o misc.o random.o \
 		version.o  $(XLFLAGS) $(XLIBS)
 
 bridges: bridges.o no-icon.o drawing.o dsf.o findloop.o \
-		gtk.o malloc.o midend.o misc.o printing.o ps.o random.o \
+		gtk.o malloc.o midend.o misc.o random.o \
 		version.o
 	$(CC) -o $@ bridges.o no-icon.o drawing.o dsf.o findloop.o \
-		gtk.o malloc.o midend.o misc.o printing.o ps.o random.o \
+		gtk.o malloc.o midend.o misc.o random.o \
 		version.o  $(XLFLAGS) $(XLIBS)
 
 clusters: clusters.o no-icon.o drawing.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o
+		midend.o misc.o random.o version.o
 	$(CC) -o $@ clusters.o no-icon.o drawing.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o  \
+		midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 creek: creek.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o
+		midend.o misc.o random.o version.o
 	$(CC) -o $@ creek.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o  \
+		midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 crossnum: drawing.o gtk.o crossnum.o no-icon.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o
+		midend.o misc.o random.o version.o
 	$(CC) -o $@ drawing.o gtk.o crossnum.o no-icon.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o  \
+		midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 cube: cube.o no-icon.o drawing.o gtk.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o version.o
+		misc.o random.o version.o
 	$(CC) -o $@ cube.o no-icon.o drawing.o gtk.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o version.o  $(XLFLAGS) \
+		misc.o random.o version.o  $(XLFLAGS) \
 		$(XLIBS)
 
 dominosa: dominosa.o no-icon.o drawing.o dsf.o findloop.o \
-		gtk.o laydomino.o malloc.o midend.o misc.o printing.o ps.o \
+		gtk.o laydomino.o malloc.o midend.o misc.o \
 		random.o sort.o version.o
 	$(CC) -o $@ dominosa.o no-icon.o drawing.o dsf.o findloop.o \
-		gtk.o laydomino.o malloc.o midend.o misc.o printing.o ps.o \
+		gtk.o laydomino.o malloc.o midend.o misc.o \
 		random.o sort.o version.o  $(XLFLAGS) $(XLIBS)
 
 fifteen: drawing.o fifteen.o no-icon.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o
+		midend.o misc.o random.o version.o
 	$(CC) -o $@ drawing.o fifteen.o no-icon.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o  \
+		midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 filling: drawing.o dsf.o filling.o no-icon.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o
+		midend.o misc.o random.o version.o
 	$(CC) -o $@ drawing.o dsf.o filling.o no-icon.o gtk.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o  \
+		midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 flip: drawing.o flip.o no-icon.o gtk.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o tree234.o version.o
+		misc.o random.o tree234.o version.o
 	$(CC) -o $@ drawing.o flip.o no-icon.o gtk.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o tree234.o version.o  \
+		misc.o random.o tree234.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 flood: drawing.o flood.o no-icon.o gtk.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o version.o
+		misc.o random.o version.o
 	$(CC) -o $@ drawing.o flood.o no-icon.o gtk.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o version.o  $(XLFLAGS) \
+		misc.o random.o version.o  $(XLFLAGS) \
 		$(XLIBS)
 
 galaxies: drawing.o dsf.o galaxies.o no-icon.o gtk.o \
-		malloc.o midend.o misc.o printing.o ps.o random.o version.o
+		malloc.o midend.o misc.o random.o version.o
 	$(CC) -o $@ drawing.o dsf.o galaxies.o no-icon.o gtk.o \
-		malloc.o midend.o misc.o printing.o ps.o random.o version.o  \
+		malloc.o midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 guess: drawing.o gtk.o guess.o no-icon.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o version.o
+		misc.o random.o version.o
 	$(CC) -o $@ drawing.o gtk.o guess.o no-icon.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o version.o  $(XLFLAGS) \
+		misc.o random.o version.o  $(XLFLAGS) \
 		$(XLIBS)
 
 inertia: drawing.o gtk.o inertia.o no-icon.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o
+		midend.o misc.o random.o version.o
 	$(CC) -o $@ drawing.o gtk.o inertia.o no-icon.o malloc.o \
-		midend.o misc.o printing.o ps.o random.o version.o  \
+		midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 keen: drawing.o dsf.o gtk.o keen.o no-icon.o latin.o malloc.o \
-		matching.o midend.o misc.o printing.o ps.o random.o \
+		matching.o midend.o misc.o random.o \
 		tree234.o version.o
 	$(CC) -o $@ drawing.o dsf.o gtk.o keen.o no-icon.o latin.o \
-		malloc.o matching.o midend.o misc.o printing.o ps.o random.o \
+		malloc.o matching.o midend.o misc.o random.o \
 		tree234.o version.o  $(XLFLAGS) $(XLIBS)
 
 lightup: combi.o drawing.o gtk.o lightup.o no-icon.o \
-		malloc.o midend.o misc.o printing.o ps.o random.o version.o
+		malloc.o midend.o misc.o random.o version.o
 	$(CC) -o $@ combi.o drawing.o gtk.o lightup.o no-icon.o \
-		malloc.o midend.o misc.o printing.o ps.o random.o version.o  \
+		malloc.o midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 loopy: drawing.o dsf.o grid.o gtk.o loopgen.o loopy.o \
-		no-icon.o malloc.o midend.o misc.o printing.o \
-		ps.o random.o tree234.o version.o
+		no-icon.o malloc.o midend.o misc.o \
+		random.o tree234.o version.o
 	$(CC) -o $@ drawing.o dsf.o grid.o gtk.o loopgen.o loopy.o \
-		no-icon.o malloc.o midend.o misc.o printing.o \
-		ps.o random.o tree234.o version.o  $(XLFLAGS) $(XLIBS)
+		no-icon.o malloc.o midend.o misc.o \
+		random.o tree234.o version.o  $(XLFLAGS) $(XLIBS)
 
 magnets: drawing.o gtk.o laydomino.o magnets.o no-icon.o \
-		malloc.o midend.o misc.o printing.o ps.o random.o version.o
+		malloc.o midend.o misc.o random.o version.o
 	$(CC) -o $@ drawing.o gtk.o laydomino.o magnets.o no-icon.o \
-		malloc.o midend.o misc.o printing.o ps.o random.o version.o  \
+		malloc.o midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 map: drawing.o dsf.o gtk.o malloc.o map.o no-icon.o midend.o \
-		misc.o printing.o ps.o random.o version.o
+		misc.o random.o version.o
 	$(CC) -o $@ drawing.o dsf.o gtk.o malloc.o map.o no-icon.o midend.o \
-		misc.o printing.o ps.o random.o version.o  $(XLFLAGS) \
+		misc.o random.o version.o  $(XLFLAGS) \
 		$(XLIBS)
 
 mathrax: drawing.o gtk.o latin.o malloc.o matching.o mathrax.o \
-		no-icon.o midend.o misc.o printing.o ps.o random.o \
+		no-icon.o midend.o misc.o random.o \
 		tree234.o version.o
 	$(CC) -o $@ drawing.o gtk.o latin.o malloc.o matching.o mathrax.o \
-		no-icon.o midend.o misc.o printing.o ps.o random.o \
+		no-icon.o midend.o misc.o random.o \
 		tree234.o version.o  $(XLFLAGS) $(XLIBS)
 
 mines: drawing.o gtk.o malloc.o midend.o mines.o no-icon.o \
-		misc.o printing.o ps.o random.o tree234.o version.o
+		misc.o random.o tree234.o version.o
 	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o mines.o no-icon.o \
-		misc.o printing.o ps.o random.o tree234.o version.o  \
+		misc.o random.o tree234.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 mosaic: drawing.o gtk.o malloc.o midend.o misc.o mosaic.o \
-		no-icon.o printing.o ps.o random.o version.o
+		no-icon.o random.o version.o
 	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o mosaic.o \
-		no-icon.o printing.o ps.o random.o version.o  $(XLFLAGS) \
+		no-icon.o random.o version.o  $(XLFLAGS) \
 		$(XLIBS)
 
 net: drawing.o dsf.o findloop.o gtk.o malloc.o midend.o misc.o \
-		net.o no-icon.o printing.o ps.o random.o tree234.o \
+		net.o no-icon.o random.o tree234.o \
 		version.o
 	$(CC) -o $@ drawing.o dsf.o findloop.o gtk.o malloc.o midend.o \
-		misc.o net.o no-icon.o printing.o ps.o random.o tree234.o \
+		misc.o net.o no-icon.o random.o tree234.o \
 		version.o  $(XLFLAGS) $(XLIBS)
 
 palisade: divvy.o drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		palisade.o no-icon.o printing.o ps.o random.o \
+		palisade.o no-icon.o random.o \
 		version.o
 	$(CC) -o $@ divvy.o drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		palisade.o no-icon.o printing.o ps.o random.o \
+		palisade.o no-icon.o random.o \
 		version.o  $(XLFLAGS) $(XLIBS)
 
 pattern: drawing.o gtk.o malloc.o midend.o misc.o pattern.o \
-		no-icon.o printing.o ps.o random.o version.o
+		no-icon.o random.o version.o
 	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o pattern.o \
-		no-icon.o printing.o ps.o random.o version.o  \
+		no-icon.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 pearl: drawing.o dsf.o grid.o gtk.o loopgen.o malloc.o midend.o \
-		misc.o pearl.o no-icon.o printing.o ps.o \
+		misc.o pearl.o no-icon.o \
 		random.o tdq.o tree234.o version.o
 	$(CC) -o $@ drawing.o dsf.o grid.o gtk.o loopgen.o malloc.o midend.o \
-		misc.o pearl.o no-icon.o printing.o ps.o \
+		misc.o pearl.o no-icon.o \
 		random.o tdq.o tree234.o version.o  $(XLFLAGS) $(XLIBS)
 
 pegs: drawing.o gtk.o malloc.o midend.o misc.o pegs.o \
-		no-icon.o printing.o ps.o random.o tree234.o version.o
+		no-icon.o random.o tree234.o version.o
 	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o pegs.o \
-		no-icon.o printing.o ps.o random.o tree234.o version.o  \
+		no-icon.o random.o tree234.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
-range: drawing.o dsf.o gtk.o malloc.o midend.o misc.o printing.o \
-		ps.o random.o range.o no-icon.o version.o
+range: drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
+		random.o range.o no-icon.o version.o
 	$(CC) -o $@ drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o range.o no-icon.o version.o  \
+		random.o range.o no-icon.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
-rect: drawing.o gtk.o malloc.o midend.o misc.o printing.o ps.o \
+rect: drawing.o gtk.o malloc.o midend.o misc.o \
 		random.o rect.o no-icon.o version.o
-	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o printing.o ps.o \
+	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o \
 		random.o rect.o no-icon.o version.o  $(XLFLAGS) $(XLIBS)
 
-rome: drawing.o dsf.o gtk.o malloc.o midend.o misc.o printing.o \
-		ps.o random.o rome.o no-icon.o version.o
+rome: drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
+		random.o rome.o no-icon.o version.o
 	$(CC) -o $@ drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o rome.o no-icon.o version.o  \
+		random.o rome.o no-icon.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 salad: drawing.o gtk.o latin.o malloc.o matching.o midend.o \
-		misc.o printing.o ps.o random.o salad.o no-icon.o \
+		misc.o random.o salad.o no-icon.o \
 		tree234.o version.o
 	$(CC) -o $@ drawing.o gtk.o latin.o malloc.o matching.o midend.o \
-		misc.o printing.o ps.o random.o salad.o no-icon.o \
+		misc.o random.o salad.o no-icon.o \
 		tree234.o version.o  $(XLFLAGS) $(XLIBS)
 
-samegame: drawing.o gtk.o malloc.o midend.o misc.o printing.o \
-		ps.o random.o samegame.o no-icon.o version.o
-	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o printing.o ps.o \
+samegame: drawing.o gtk.o malloc.o midend.o misc.o \
+		random.o samegame.o no-icon.o version.o
+	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o \
 		random.o samegame.o no-icon.o version.o  $(XLFLAGS) \
 		$(XLIBS)
 
 signpost: drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o signpost.o no-icon.o \
+		random.o signpost.o no-icon.o \
 		version.o
 	$(CC) -o $@ drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o signpost.o no-icon.o \
+		random.o signpost.o no-icon.o \
 		version.o  $(XLFLAGS) $(XLIBS)
 
 singles: drawing.o dsf.o gtk.o latin.o malloc.o matching.o \
-		midend.o misc.o printing.o ps.o random.o singles.o \
+		midend.o misc.o random.o singles.o \
 		no-icon.o tree234.o version.o
 	$(CC) -o $@ drawing.o dsf.o gtk.o latin.o malloc.o matching.o \
-		midend.o misc.o printing.o ps.o random.o singles.o \
+		midend.o misc.o random.o singles.o \
 		no-icon.o tree234.o version.o  $(XLFLAGS) $(XLIBS)
 
-sixteen: drawing.o gtk.o malloc.o midend.o misc.o printing.o \
-		ps.o random.o sixteen.o no-icon.o version.o
-	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o printing.o ps.o \
+sixteen: drawing.o gtk.o malloc.o midend.o misc.o \
+		random.o sixteen.o no-icon.o version.o
+	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o \
 		random.o sixteen.o no-icon.o version.o  $(XLFLAGS) \
 		$(XLIBS)
 
 slant: drawing.o dsf.o findloop.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o slant.o no-icon.o version.o
+		random.o slant.o no-icon.o version.o
 	$(CC) -o $@ drawing.o dsf.o findloop.o gtk.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o slant.o no-icon.o \
+		misc.o random.o slant.o no-icon.o \
 		version.o  $(XLFLAGS) $(XLIBS)
 
 solo: divvy.o drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o solo.o no-icon.o version.o
+		random.o solo.o no-icon.o version.o
 	$(CC) -o $@ divvy.o drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o solo.o no-icon.o version.o  \
+		random.o solo.o no-icon.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 spokes: drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o spokes.o no-icon.o version.o
+		random.o spokes.o no-icon.o version.o
 	$(CC) -o $@ drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o spokes.o no-icon.o version.o  \
+		random.o spokes.o no-icon.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 sticks: drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o sticks.o no-icon.o version.o
+		random.o sticks.o no-icon.o version.o
 	$(CC) -o $@ drawing.o dsf.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o sticks.o no-icon.o version.o  \
+		random.o sticks.o no-icon.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 tents: drawing.o dsf.o gtk.o malloc.o matching.o midend.o misc.o \
-		printing.o ps.o random.o tents.o no-icon.o version.o
+		random.o tents.o no-icon.o version.o
 	$(CC) -o $@ drawing.o dsf.o gtk.o malloc.o matching.o midend.o \
-		misc.o printing.o ps.o random.o tents.o no-icon.o \
+		misc.o random.o tents.o no-icon.o \
 		version.o  $(XLFLAGS) $(XLIBS)
 
 towers: drawing.o gtk.o latin.o malloc.o matching.o midend.o \
-		misc.o printing.o ps.o random.o towers.o no-icon.o \
+		misc.o random.o towers.o no-icon.o \
 		tree234.o version.o
 	$(CC) -o $@ drawing.o gtk.o latin.o malloc.o matching.o midend.o \
-		misc.o printing.o ps.o random.o towers.o no-icon.o \
+		misc.o random.o towers.o no-icon.o \
 		tree234.o version.o  $(XLFLAGS) $(XLIBS)
 
 tracks: drawing.o dsf.o findloop.o gtk.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o tracks.o no-icon.o \
+		misc.o random.o tracks.o no-icon.o \
 		version.o
 	$(CC) -o $@ drawing.o dsf.o findloop.o gtk.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o tracks.o no-icon.o \
+		misc.o random.o tracks.o no-icon.o \
 		version.o  $(XLFLAGS) $(XLIBS)
 
-twiddle: drawing.o gtk.o malloc.o midend.o misc.o printing.o \
-		ps.o random.o twiddle.o no-icon.o version.o
-	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o printing.o ps.o \
+twiddle: drawing.o gtk.o malloc.o midend.o misc.o \
+		random.o twiddle.o no-icon.o version.o
+	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o \
 		random.o twiddle.o no-icon.o version.o  $(XLFLAGS) \
 		$(XLIBS)
 
-undead: drawing.o gtk.o malloc.o midend.o misc.o printing.o ps.o \
+undead: drawing.o gtk.o malloc.o midend.o misc.o \
 		random.o undead.o no-icon.o version.o
-	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o printing.o ps.o \
+	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o \
 		random.o undead.o no-icon.o version.o  $(XLFLAGS) \
 		$(XLIBS)
 
 unequal: drawing.o gtk.o latin.o malloc.o matching.o midend.o \
-		misc.o printing.o ps.o random.o tree234.o unequal.o \
+		misc.o random.o tree234.o unequal.o \
 		no-icon.o version.o
 	$(CC) -o $@ drawing.o gtk.o latin.o malloc.o matching.o midend.o \
-		misc.o printing.o ps.o random.o tree234.o unequal.o \
+		misc.o random.o tree234.o unequal.o \
 		no-icon.o version.o  $(XLFLAGS) $(XLIBS)
 
-unruly: drawing.o gtk.o malloc.o midend.o misc.o printing.o ps.o \
+unruly: drawing.o gtk.o malloc.o midend.o misc.o \
 		random.o unruly.o no-icon.o version.o
-	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o printing.o ps.o \
+	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o \
 		random.o unruly.o no-icon.o version.o  $(XLFLAGS) \
 		$(XLIBS)
 
-untangle: drawing.o gtk.o malloc.o midend.o misc.o printing.o \
-		ps.o random.o tree234.o untangle.o no-icon.o version.o
-	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o printing.o ps.o \
+untangle: drawing.o gtk.o malloc.o midend.o misc.o \
+		random.o tree234.o untangle.o no-icon.o version.o
+	$(CC) -o $@ drawing.o gtk.o malloc.o midend.o misc.o \
 		random.o tree234.o untangle.o no-icon.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
 walls: drawing.o dsf.o findloop.o gtk.o malloc.o midend.o misc.o \
-		printing.o ps.o random.o version.o walls.o no-icon.o
+		random.o version.o walls.o no-icon.o
 	$(CC) -o $@ drawing.o dsf.o findloop.o gtk.o malloc.o midend.o \
-		misc.o printing.o ps.o random.o version.o walls.o \
+		misc.o random.o version.o walls.o \
 		no-icon.o  $(XLFLAGS) $(XLIBS)
 
 
@@ -496,10 +496,6 @@ midend.o: ../utils/midend.c ../include/puzzles.h
 misc.o: ../utils/misc.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 no-icon.o: ./no-icon.c
-	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
-printing.o: ../utils/printing.c ../include/puzzles.h
-	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
-ps.o: ./ps.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 random.o: ../utils/random.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@

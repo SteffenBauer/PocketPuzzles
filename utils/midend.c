@@ -1257,7 +1257,6 @@ key_label *midend_request_keys(midend *me, int *n)
 
     if(me->ourgame->request_keys)
     {
-        /* keys = me->ourgame->request_keys(midend_get_params(me), &nkeys); */
         keys = me->ourgame->request_keys(me->params, me->ui, &nkeys);
         for(i = 0; i < nkeys; ++i)
         {
@@ -1275,8 +1274,7 @@ key_label *midend_request_keys(midend *me, int *n)
 /* Return a good label to show next to a key right now. */
 const char *midend_current_key_label(midend *me, int button)
 {
-    if (!me->ourgame->current_key_label)
-        return "";
+    if (!me->ourgame->current_key_label) return "";
     return me->ourgame->current_key_label(
         me->ui, me->states[me->statepos-1].state, button);
 }
@@ -2817,49 +2815,6 @@ const char *identify_game(char **name,
     cleanup:
     sfree(val);
     return ret;
-}
-
-const char *midend_print_puzzle(midend *me, document *doc, bool with_soln)
-{
-    game_state *soln = NULL;
-
-    if (me->statepos < 1)
-        return "No game set up to print";/* _shouldn't_ happen! */
-
-    if (with_soln) {
-        const char *msg;
-        char *movestr;
-
-        if (!me->ourgame->can_solve)
-            return "This game does not support the Solve operation";
-
-        msg = "Solve operation failed";/* game _should_ overwrite on error */
-        movestr = me->ourgame->solve(me->states[0].state,
-                         me->states[me->statepos-1].state,
-                         me->aux_info, &msg);
-        if (!movestr)
-            return msg;
-        soln = me->ourgame->execute_move(me->states[me->statepos-1].state,
-                         me->ui, movestr);
-        assert(soln);
-
-        sfree(movestr);
-    } else
-        soln = NULL;
-
-    /*
-     * This call passes over ownership of the two game_states, the
-     * game_params and the game_ui. Hence we duplicate the ones we
-     * want to keep, and we don't have to bother freeing soln if it
-     * was non-NULL.
-     */
-    game_ui *ui = me->ourgame->new_ui(me->states[0].state);
-    midend_apply_prefs(me, ui);
-    document_add_puzzle(doc, me->ourgame,
-        me->ourgame->dup_params(me->curparams), ui,
-        me->ourgame->dup_game(me->states[0].state), soln);
-
-    return NULL;
 }
 
 static void midend_apply_prefs(midend *me, game_ui *ui)
