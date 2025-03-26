@@ -55,17 +55,6 @@
 # endif
 #endif
 
-#if defined USE_CAIRO && GTK_CHECK_VERSION(2,10,0)
-/* We can only use printing if we are using Cairo for drawing and we
-   have a GTK version >= 2.10 (when GtkPrintOperation was added). */
-# define USE_PRINTING
-# if GTK_CHECK_VERSION(2,18,0)
-/* We can embed the page setup. Before 2.18, we needed to have a
-   separate page setup. */
-#  define USE_EMBED_PAGE_SETUP
-# endif
-#endif
-
 #if GTK_CHECK_VERSION(3,0,0)
 /* The old names are still more concise! */
 #define gtk_hbox_new(x,y) gtk_box_new(GTK_ORIENTATION_HORIZONTAL,y)
@@ -261,22 +250,6 @@ struct frontend {
      */
     bool awaiting_resize_ack;
 #endif
-#ifdef USE_CAIRO
-    int printcount, printw, printh;
-    float printscale;
-    bool printsolns, printcolour;
-    int hatch;
-    float hatchthick, hatchspace;
-    drawing *print_dr;
-    document *doc;
-#endif
-#ifdef USE_PRINTING
-    GtkPrintOperation *printop;
-    GtkPrintContext *printcontext;
-    GtkSpinButton *printcount_spin_button, *printw_spin_button,
-        *printh_spin_button, *printscale_spin_button;
-    GtkCheckButton *soln_check_button, *colour_check_button;
-#endif
     const struct internal_drawing_api *dr_api;
 };
 
@@ -389,17 +362,6 @@ static void draw_set_colour(frontend *fe, int colour)
                          fe->colours[3*colour + 2]);
 }
 
-static void print_set_colour(frontend *fe, int colour)
-{
-    float r, g, b;
-
-    print_get_colour(fe->print_dr, colour, fe->printcolour,
-                     &(fe->hatch), &r, &g, &b);
-
-    if (fe->hatch < 0)
-        cairo_set_source_rgb(fe->cr, r, g, b);
-}
-
 static void set_window_background(frontend *fe, int colour)
 {
 #if GTK_CHECK_VERSION(3,0,0)
@@ -486,52 +448,6 @@ static void save_screenshot_png(frontend *fe, const char *screenshot_file)
     cairo_surface_write_to_png(fe->image, screenshot_file);
 }
 
-static void do_hatch(frontend *fe)
-{
-    double i, x, y, width, height, maxdim;
-
-    /* Get the dimensions of the region to be hatched. */
-    cairo_path_extents(fe->cr, &x, &y, &width, &height);
-
-    maxdim = max(width, height);
-
-    cairo_save(fe->cr);
-
-    /* Set the line color and width. */
-    cairo_set_source_rgb(fe->cr, 0, 0, 0);
-    cairo_set_line_width(fe->cr, fe->hatchthick);
-    /* Clip to the region. */
-    cairo_clip(fe->cr);
-    /* Hatch the bounding area of the fill region. */
-    if (fe->hatch == HATCH_VERT || fe->hatch == HATCH_PLUS) {
-        for (i = 0.0; i <= width; i += fe->hatchspace) {
-            cairo_move_to(fe->cr, i, 0);
-            cairo_rel_line_to(fe->cr, 0, height);
-        }
-    }
-    if (fe->hatch == HATCH_HORIZ || fe->hatch == HATCH_PLUS) {
-        for (i = 0.0; i <= height; i += fe->hatchspace) {
-            cairo_move_to(fe->cr, 0, i);
-            cairo_rel_line_to(fe->cr, width, 0);
-        }
-    }
-    if (fe->hatch == HATCH_SLASH || fe->hatch == HATCH_X) {
-        for (i = -height; i <= width; i += fe->hatchspace * ROOT2) {
-            cairo_move_to(fe->cr, i, 0);
-            cairo_rel_line_to(fe->cr, maxdim, maxdim);
-        }
-    }
-    if (fe->hatch == HATCH_BACKSLASH || fe->hatch == HATCH_X) {
-        for (i = 0.0; i <= width + height; i += fe->hatchspace * ROOT2) {
-            cairo_move_to(fe->cr, i, 0);
-            cairo_rel_line_to(fe->cr, -maxdim, maxdim);
-        }
-    }
-    cairo_stroke(fe->cr);
-
-    cairo_restore(fe->cr);
-}
-
 static void do_draw_fill(frontend *fe)
 {
     cairo_fill(fe->cr);
@@ -540,26 +456,6 @@ static void do_draw_fill(frontend *fe)
 static void do_draw_fill_preserve(frontend *fe)
 {
     cairo_fill_preserve(fe->cr);
-}
-
-static void do_print_fill(frontend *fe)
-{
-    if (fe->hatch < 0)
-        cairo_fill(fe->cr);
-    else
-        do_hatch(fe);
-}
-
-static void do_print_fill_preserve(frontend *fe)
-{
-    if (fe->hatch < 0) {
-        cairo_fill_preserve(fe->cr);
-    } else {
-        cairo_path_t *oldpath;
-        oldpath = cairo_copy_path(fe->cr);
-        do_hatch(fe);
-        cairo_append_path(fe->cr, oldpath);
-    }
 }
 
 static void do_clip(frontend *fe, int x, int y, int w, int h)
@@ -1333,89 +1229,6 @@ static char *gtk_text_fallback(void *handle, const char *const *strings,
 }
 #endif
 
-#ifdef USE_PRINTING
-static void gtk_begin_doc(void *handle, int pages)
-{
-    frontend *fe = (frontend *)handle;
-    gtk_print_operation_set_n_pages(fe->printop, pages);
-}
-
-static void gtk_begin_page(void *handle, int number)
-{
-}
-
-static void gtk_begin_puzzle(void *handle, float xm, float xc,
-                      float ym, float yc, int pw, int ph, float wmm)
-{
-    frontend *fe = (frontend *)handle;
-    double ppw, pph, pox, poy, dpmmx, dpmmy;
-    double scale;
-
-    ppw = gtk_print_context_get_width(fe->printcontext);
-    pph = gtk_print_context_get_height(fe->printcontext);
-    dpmmx = gtk_print_context_get_dpi_x(fe->printcontext) / 25.4;
-    dpmmy = gtk_print_context_get_dpi_y(fe->printcontext) / 25.4;
-
-    /*
-     * Compute the puzzle's position in pixels on the logical page.
-     */
-    pox = xm * ppw + xc * dpmmx;
-    poy = ym * pph + yc * dpmmy;
-
-    /*
-     * And determine the scale.
-     *
-     * I need a scale such that the maximum puzzle-coordinate
-     * extent of the rectangle (pw * scale) is equal to the pixel
-     * equivalent of the puzzle's millimetre width (wmm * dpmmx).
-     */
-    scale = wmm * dpmmx / pw;
-
-    /*
-     * Now instruct Cairo to transform points based on our calculated
-     * values (order here *is* important).
-     */
-    cairo_save(fe->cr);
-    cairo_translate(fe->cr, pox, poy);
-    cairo_scale(fe->cr, scale, scale);
-
-    fe->hatchthick = 0.2 * pw / wmm;
-    fe->hatchspace = 1.0 * pw / wmm;
-}
-
-static void gtk_end_puzzle(void *handle)
-{
-    frontend *fe = (frontend *)handle;
-    cairo_restore(fe->cr);
-}
-
-static void gtk_end_page(void *handle, int number)
-{
-}
-
-static void gtk_end_doc(void *handle)
-{
-}
-
-static void gtk_line_width(void *handle, float width)
-{
-    frontend *fe = (frontend *)handle;
-    cairo_set_line_width(fe->cr, width);
-}
-
-static void gtk_line_dotted(void *handle, bool dotted)
-{
-    frontend *fe = (frontend *)handle;
-
-    if (dotted) {
-        const double dash = 35.0;
-        cairo_set_dash(fe->cr, &dash, 1, 0);
-    } else {
-        cairo_set_dash(fe->cr, NULL, 0, 0);
-    }
-}
-#endif /* USE_PRINTING */
-
 static const struct internal_drawing_api internal_drawing = {
     draw_set_colour,
 #ifdef USE_CAIRO
@@ -1423,14 +1236,6 @@ static const struct internal_drawing_api internal_drawing = {
     do_draw_fill_preserve,
 #endif
 };
-
-#ifdef USE_CAIRO
-static const struct internal_drawing_api internal_printing = {
-    print_set_colour,
-    do_print_fill,
-    do_print_fill_preserve,
-};
-#endif
 
 static const struct drawing_api gtk_drawing = {
     gtk_draw_text,
@@ -1448,19 +1253,6 @@ static const struct drawing_api gtk_drawing = {
     gtk_blitter_free,
     gtk_blitter_save,
     gtk_blitter_load,
-#ifdef USE_PRINTING
-    gtk_begin_doc,
-    gtk_begin_page,
-    gtk_begin_puzzle,
-    gtk_end_puzzle,
-    gtk_end_page,
-    gtk_end_doc,
-    gtk_line_width,
-    gtk_line_dotted,
-#else
-    NULL, NULL, NULL, NULL, NULL, NULL, /* {begin,end}_{doc,page,puzzle} */
-    NULL, NULL,			       /* line_width, line_dotted */
-#endif
 #ifdef USE_PANGO
     gtk_text_fallback,
 #else
@@ -2558,317 +2350,6 @@ static char *file_selector(frontend *fe, const char *title, bool save)
 
 #endif
 
-#ifdef USE_PRINTING
-static GObject *create_print_widget(GtkPrintOperation *print, gpointer data)
-{
-    GtkLabel *count_label, *width_label, *height_label,
-        *scale_llabel, *scale_rlabel;
-    GtkBox *scale_hbox;
-    GtkWidget *grid;
-    frontend *fe = (frontend *)data;
-
-    fe->printcount_spin_button =
-        GTK_SPIN_BUTTON(gtk_spin_button_new_with_range(1, 999, 1));
-    gtk_spin_button_set_numeric(fe->printcount_spin_button, true);
-    gtk_spin_button_set_snap_to_ticks(fe->printcount_spin_button, true);
-    fe->printw_spin_button =
-        GTK_SPIN_BUTTON(gtk_spin_button_new_with_range(1, 99, 1));
-    gtk_spin_button_set_numeric(fe->printw_spin_button, true);
-    gtk_spin_button_set_snap_to_ticks(fe->printw_spin_button, true);
-    fe->printh_spin_button =
-        GTK_SPIN_BUTTON(gtk_spin_button_new_with_range(1, 99, 1));
-    gtk_spin_button_set_numeric(fe->printh_spin_button, true);
-    gtk_spin_button_set_snap_to_ticks(fe->printh_spin_button, true);
-    fe->printscale_spin_button =
-        GTK_SPIN_BUTTON(gtk_spin_button_new_with_range(1, 1000, 1));
-    gtk_spin_button_set_digits(fe->printscale_spin_button, 1);
-    gtk_spin_button_set_numeric(fe->printscale_spin_button, true);
-    if (thegame.can_solve) {
-        fe->soln_check_button =
-            GTK_CHECK_BUTTON(
-                gtk_check_button_new_with_label("Print solutions"));
-    }
-    if (thegame.can_print_in_colour) {
-        fe->colour_check_button =
-            GTK_CHECK_BUTTON(
-                gtk_check_button_new_with_label("Print in color"));
-    }
-
-    /* Set defaults to what was selected last time. */
-    gtk_spin_button_set_value(fe->printcount_spin_button,
-                              (gdouble)fe->printcount);
-    gtk_spin_button_set_value(fe->printw_spin_button,
-                              (gdouble)fe->printw);
-    gtk_spin_button_set_value(fe->printh_spin_button,
-                              (gdouble)fe->printh);
-    gtk_spin_button_set_value(fe->printscale_spin_button,
-                              (gdouble)fe->printscale);
-    if (thegame.can_solve) {
-        gtk_toggle_button_set_active(
-            GTK_TOGGLE_BUTTON(fe->soln_check_button), fe->printsolns);
-    }
-    if (thegame.can_print_in_colour) {
-        gtk_toggle_button_set_active(
-            GTK_TOGGLE_BUTTON(fe->colour_check_button), fe->printcolour);
-    }
-
-    count_label = GTK_LABEL(gtk_label_new("Puzzles to print:"));
-    width_label = GTK_LABEL(gtk_label_new("Puzzles across:"));
-    height_label = GTK_LABEL(gtk_label_new("Puzzles down:"));
-    scale_llabel = GTK_LABEL(gtk_label_new("Puzzle scale:"));
-    scale_rlabel = GTK_LABEL(gtk_label_new("%"));
-#if GTK_CHECK_VERSION(3,0,0)
-    gtk_widget_set_halign(GTK_WIDGET(count_label), GTK_ALIGN_START);
-    gtk_widget_set_halign(GTK_WIDGET(width_label), GTK_ALIGN_START);
-    gtk_widget_set_halign(GTK_WIDGET(height_label), GTK_ALIGN_START);
-    gtk_widget_set_halign(GTK_WIDGET(scale_llabel), GTK_ALIGN_START);
-#else
-    gtk_misc_set_alignment(GTK_MISC(count_label), 0, 0);
-    gtk_misc_set_alignment(GTK_MISC(width_label), 0, 0);
-    gtk_misc_set_alignment(GTK_MISC(height_label), 0, 0);
-    gtk_misc_set_alignment(GTK_MISC(scale_llabel), 0, 0);
-#endif
-
-    scale_hbox = GTK_BOX(gtk_hbox_new(false, 6));
-    gtk_box_pack_start(scale_hbox, GTK_WIDGET(fe->printscale_spin_button),
-                       false, false, 0);
-    gtk_box_pack_start(scale_hbox, GTK_WIDGET(scale_rlabel),
-                       false, false, 0);
-
-#if GTK_CHECK_VERSION(3,0,0)
-    grid = gtk_grid_new();
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 18);
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 18);
-    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(count_label), 0, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(width_label), 0, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(height_label), 0, 2, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(scale_llabel), 0, 3, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(fe->printcount_spin_button),
-		    1, 0, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(fe->printw_spin_button),
-		    1, 1, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(fe->printh_spin_button),
-		    1, 2, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(scale_hbox), 1, 3, 1, 1);
-    if (thegame.can_solve) {
-        gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(fe->soln_check_button),
-                        0, 4, 1, 1);
-    }
-    if (thegame.can_print_in_colour) {
-        gtk_grid_attach(GTK_GRID(grid), GTK_WIDGET(fe->colour_check_button),
-                        thegame.can_solve, 4, 1, 1);
-    }
-#else
-    grid = gtk_table_new((thegame.can_solve || thegame.can_print_in_colour) ?
-                         5 : 4, 2, false);
-    gtk_table_set_col_spacings(GTK_TABLE(grid), 18);
-    gtk_table_set_row_spacings(GTK_TABLE(grid), 18);
-    gtk_table_attach(GTK_TABLE(grid), GTK_WIDGET(count_label), 0, 1, 0, 1,
-                     GTK_SHRINK | GTK_FILL, GTK_SHRINK | GTK_FILL, 0, 0);
-    gtk_table_attach(GTK_TABLE(grid), GTK_WIDGET(width_label), 0, 1, 1, 2,
-                     GTK_SHRINK | GTK_FILL, GTK_SHRINK | GTK_FILL, 0, 0);
-    gtk_table_attach(GTK_TABLE(grid), GTK_WIDGET(height_label), 0, 1, 2, 3,
-                     GTK_SHRINK | GTK_FILL, GTK_SHRINK | GTK_FILL, 0, 0);
-    gtk_table_attach(GTK_TABLE(grid), GTK_WIDGET(scale_llabel), 0, 1, 3, 4,
-                     GTK_SHRINK | GTK_FILL, GTK_SHRINK | GTK_FILL, 0, 0);
-    gtk_table_attach(GTK_TABLE(grid), GTK_WIDGET(fe->printcount_spin_button),
-                     1, 2, 0, 1,
-                     GTK_SHRINK | GTK_FILL, GTK_SHRINK | GTK_FILL, 0, 0);
-    gtk_table_attach(GTK_TABLE(grid), GTK_WIDGET(fe->printw_spin_button),
-                     1, 2, 1, 2,
-                     GTK_SHRINK | GTK_FILL, GTK_SHRINK | GTK_FILL, 0, 0);
-    gtk_table_attach(GTK_TABLE(grid), GTK_WIDGET(fe->printh_spin_button),
-                     1, 2, 2, 3,
-                     GTK_SHRINK | GTK_FILL, GTK_SHRINK | GTK_FILL, 0, 0);
-    gtk_table_attach(GTK_TABLE(grid), GTK_WIDGET(scale_hbox), 1, 2, 3, 4,
-                     GTK_SHRINK | GTK_FILL, GTK_SHRINK | GTK_FILL, 0, 0);
-    if (thegame.can_solve) {
-        gtk_table_attach(GTK_TABLE(grid), GTK_WIDGET(fe->soln_check_button),
-                         0, 1, 4, 5,
-                         GTK_SHRINK | GTK_FILL, GTK_SHRINK | GTK_FILL, 0, 0);
-    }
-    if (thegame.can_print_in_colour) {
-        gtk_table_attach(GTK_TABLE(grid), GTK_WIDGET(fe->colour_check_button),
-                         thegame.can_solve, thegame.can_solve + 1, 4, 5,
-                         GTK_SHRINK | GTK_FILL, GTK_SHRINK | GTK_FILL, 0, 0);
-    }
-#endif
-    gtk_container_set_border_width(GTK_CONTAINER(grid), 12);
-
-    gtk_widget_show_all(grid);
-
-    return G_OBJECT(grid);
-}
-
-static void apply_print_widget(GtkPrintOperation *print,
-                        GtkWidget *widget, gpointer data)
-{
-    frontend *fe = (frontend *)data;
-
-    /* We ignore `widget' because it is easier and faster to store the
-       widgets we need in `fe' then to get the children of `widget'. */
-    fe->printcount =
-        gtk_spin_button_get_value_as_int(fe->printcount_spin_button);
-    fe->printw = gtk_spin_button_get_value_as_int(fe->printw_spin_button);
-    fe->printh = gtk_spin_button_get_value_as_int(fe->printh_spin_button);
-    fe->printscale = gtk_spin_button_get_value(fe->printscale_spin_button);
-    if (thegame.can_solve) {
-        fe->printsolns =
-            gtk_toggle_button_get_active(
-                GTK_TOGGLE_BUTTON(fe->soln_check_button));
-    }
-    if (thegame.can_print_in_colour) {
-        fe->printcolour =
-            gtk_toggle_button_get_active(
-                GTK_TOGGLE_BUTTON(fe->colour_check_button));
-    }
-}
-
-static void print_begin(GtkPrintOperation *printop,
-                 GtkPrintContext *context, gpointer data)
-{
-    frontend *fe = (frontend *)data;
-    midend *nme = NULL;  /* non-interactive midend for bulk puzzle generation */
-    int i;
-
-    fe->printcontext = context;
-    fe->cr = gtk_print_context_get_cairo_context(context);
-
-    /*
-     * Create our document structure and fill it up with puzzles.
-     */
-    fe->doc = document_new(fe->printw, fe->printh, fe->printscale / 100.0F);
-
-    for (i = 0; i < fe->printcount; i++) {
-        const char *err;
-
-        if (i == 0) {
-            err = midend_print_puzzle(fe->me, fe->doc, fe->printsolns);
-        } else {
-	    if (!nme) {
-		game_params *params;
-
-		nme = midend_new(NULL, &thegame, NULL, NULL);
-
-		/*
-		 * Set the non-interactive mid-end to have the same
-		 * parameters as the standard one.
-		 */
-		params = midend_get_params(fe->me);
-		midend_set_params(nme, params);
-		thegame.free_params(params);
-	    }
-            load_prefs(fe);
-            midend_new_game(nme);
-            err = midend_print_puzzle(nme, fe->doc, fe->printsolns);
-        }
-
-        if (err) {
-            error_box(fe->window, err);
-            return;
-        }
-    }
-
-    if (nme)
-        midend_free(nme);
-
-    /* Begin the document. */
-    document_begin(fe->doc, fe->print_dr);
-}
-
-static void draw_page(GtkPrintOperation *printop,
-               GtkPrintContext *context,
-               gint page_nr, gpointer data)
-{
-    frontend *fe = (frontend *)data;
-    document_print_page(fe->doc, fe->print_dr, page_nr);
-}
-
-static void print_end(GtkPrintOperation *printop,
-               GtkPrintContext *context, gpointer data)
-{
-    frontend *fe = (frontend *)data;
-
-    /* End and free the document. */
-    document_end(fe->doc, fe->print_dr);
-    document_free(fe->doc);
-    fe->doc = NULL;
-}
-
-static void print_dialog(frontend *fe)
-{
-    GError *error;
-    static GtkPrintSettings *settings = NULL;
-    static GtkPageSetup *page_setup = NULL;
-#ifndef USE_EMBED_PAGE_SETUP
-    GtkPageSetup *new_page_setup;
-#endif
-
-    fe->printop = gtk_print_operation_new();
-    gtk_print_operation_set_use_full_page(fe->printop, true);
-    gtk_print_operation_set_custom_tab_label(fe->printop, "Puzzle Settings");
-    g_signal_connect(fe->printop, "create-custom-widget",
-                     G_CALLBACK(create_print_widget), fe);
-    g_signal_connect(fe->printop, "custom-widget-apply",
-                     G_CALLBACK(apply_print_widget), fe);
-    g_signal_connect(fe->printop, "begin-print", G_CALLBACK(print_begin), fe);
-    g_signal_connect(fe->printop, "draw-page", G_CALLBACK(draw_page), fe);
-    g_signal_connect(fe->printop, "end-print", G_CALLBACK(print_end), fe);
-#ifdef USE_EMBED_PAGE_SETUP
-    gtk_print_operation_set_embed_page_setup(fe->printop, true);
-#else
-    if (page_setup == NULL) {
-        page_setup =
-            g_object_ref(
-                gtk_print_operation_get_default_page_setup(fe->printop));
-    }
-    if (settings == NULL) {
-        settings =
-            g_object_ref(gtk_print_operation_get_print_settings(fe->printop));
-    }
-    new_page_setup = gtk_print_run_page_setup_dialog(GTK_WINDOW(fe->window),
-                                                     page_setup, settings);
-    g_object_unref(page_setup);
-    page_setup = new_page_setup;
-    gtk_print_operation_set_default_page_setup(fe->printop, page_setup);
-#endif
-
-    if (settings != NULL)
-        gtk_print_operation_set_print_settings(fe->printop, settings);
-    if (page_setup != NULL)
-        gtk_print_operation_set_default_page_setup(fe->printop, page_setup);
-
-    switch (gtk_print_operation_run(fe->printop,
-                                    GTK_PRINT_OPERATION_ACTION_PRINT_DIALOG,
-                                    GTK_WINDOW(fe->window), &error)) {
-    case GTK_PRINT_OPERATION_RESULT_ERROR:
-        error_box(fe->window, error->message);
-        g_error_free(error);
-        break;
-    case GTK_PRINT_OPERATION_RESULT_APPLY:
-        if (settings != NULL)
-            g_object_unref(settings);
-        settings =
-            g_object_ref(gtk_print_operation_get_print_settings(fe->printop));
-#ifdef USE_EMBED_PAGE_SETUP
-        if (page_setup != NULL)
-            g_object_unref(page_setup);
-        page_setup =
-            g_object_ref(
-                gtk_print_operation_get_default_page_setup(fe->printop));
-#endif
-        break;
-    default:
-        /* Don't error out on -Werror=switch. */
-        break;
-    }
-
-    g_object_unref(fe->printop);
-    fe->printop = NULL;
-    fe->printcontext = NULL;
-}
-#endif /* USE_PRINTING */
-
 struct savefile_write_ctx {
     FILE *fp;
     int error;
@@ -3172,15 +2653,6 @@ static bool delete_prefs(const game *game, char **msg)
     return ok;
 }
 
-#ifdef USE_PRINTING
-static void menu_print_event(GtkMenuItem *menuitem, gpointer data)
-{
-    frontend *fe = (frontend *)data;
-
-    print_dialog(fe);
-}
-#endif
-
 static void menu_solve_event(GtkMenuItem *menuitem, gpointer data)
 {
     frontend *fe = (frontend *)data;
@@ -3335,9 +2807,6 @@ static frontend *new_window(
     char *arg, int argtype, char **error, bool headless)
 {
     frontend *fe;
-#ifdef USE_PRINTING
-    frontend *print_fe = NULL;
-#endif
     GtkBox *vbox, *hbox;
     GtkWidget *menu, *menuitem;
     GList *iconlist;
@@ -3365,56 +2834,32 @@ static frontend *new_window(
     load_prefs(fe);
     fe->dr_api = &internal_drawing;
 
-#ifdef USE_PRINTING
-    if (thegame.can_print) {
-        print_fe = snew(frontend);
-        memset(print_fe, 0, sizeof(frontend));
-
-        /* Defaults */
-        print_fe->printcount = print_fe->printw = print_fe->printh = 1;
-        print_fe->printscale = 100;
-        print_fe->printsolns = false;
-        print_fe->printcolour = thegame.can_print_in_colour;
-
-        /*
-         * We need to use the same midend as the main frontend because
-         * we need midend_print_puzzle() to be able to print the
-         * current puzzle.
-         */
-        print_fe->me = fe->me;
-
-        print_fe->print_dr = drawing_new(&gtk_drawing, print_fe->me, print_fe);
-
-        print_fe->dr_api = &internal_printing;
-    }
-#endif
-
     if (arg) {
-	const char *err;
-	FILE *fp;
+        const char *err;
+        FILE *fp;
 
-	errbuf[0] = '\0';
+        errbuf[0] = '\0';
 
-	switch (argtype) {
-	  case ARG_ID:
-	    err = midend_game_id(fe->me, arg);
-	    if (!err)
-		midend_new_game(fe->me);
-	    else
-		sprintf(errbuf, "Invalid game ID: %.800s", err);
-	    break;
-	  case ARG_SAVE:
-	    fp = fopen(arg, "r");
-	    if (!fp) {
-		sprintf(errbuf, "Error opening file: %.800s", strerror(errno));
-	    } else {
-		err = midend_deserialise(fe->me, savefile_read, fp);
+        switch (argtype) {
+          case ARG_ID:
+            err = midend_game_id(fe->me, arg);
+            if (!err)
+                midend_new_game(fe->me);
+            else
+                sprintf(errbuf, "Invalid game ID: %.800s", err);
+            break;
+          case ARG_SAVE:
+            fp = fopen(arg, "r");
+            if (!fp) {
+                sprintf(errbuf, "Error opening file: %.800s", strerror(errno));
+            } else {
+                err = midend_deserialise(fe->me, savefile_read, fp);
                 if (err)
                     sprintf(errbuf, "Invalid save file: %.800s", err);
                 fclose(fp);
-	    }
-	    break;
-	  default /*case ARG_EITHER*/:
+            }
+            break;
+          default /*case ARG_EITHER*/:
 	    /*
 	     * First try treating the argument as a game ID.
 	     */
@@ -3442,17 +2887,11 @@ static frontend *new_window(
 	    *error = dupstr(errbuf);
 	    midend_free(fe->me);
 	    sfree(fe);
-#ifdef USE_PRINTING
-            if (thegame.can_print) {
-                drawing_free(print_fe->print_dr);
-                sfree(print_fe);
-            }
-#endif
-	    return NULL;
-	}
+            return NULL;
+        }
 
     } else {
-	midend_new_game(fe->me);
+        midend_new_game(fe->me);
     }
 
     if (headless) {
@@ -3591,16 +3030,6 @@ static frontend *new_window(
     g_signal_connect(G_OBJECT(menuitem), "activate",
                      G_CALLBACK(menu_save_event), fe);
     gtk_widget_show(menuitem);
-#ifdef USE_PRINTING
-    if (thegame.can_print) {
-        add_menu_separator(GTK_CONTAINER(menu));
-        menuitem = gtk_menu_item_new_with_label("Print...");
-        gtk_container_add(GTK_CONTAINER(menu), menuitem);
-        g_signal_connect(G_OBJECT(menuitem), "activate",
-                         G_CALLBACK(menu_print_event), print_fe);
-        gtk_widget_show(menuitem);
-    }
-#endif
 #ifndef STYLUS_BASED
     add_menu_separator(GTK_CONTAINER(menu));
     add_menu_ui_item(fe, GTK_CONTAINER(menu), "Undo", UI_UNDO, 'u', 0);
@@ -3832,14 +3261,10 @@ static void list_presets_from_menu(struct preset_menu *menu)
 int main(int argc, char **argv)
 {
     char *pname = argv[0];
-    int ngenerate = 0, px = 1, py = 1;
-    bool print = false;
-    bool time_generation = false, test_solve = false, list_presets = false;
+    int ngenerate = 0;
+    bool list_presets = false;
     bool delete_prefs_action = false;
-    bool soln = false, colour = false;
-    float scale = 1.0F;
     float redo_proportion = 0.0F;
-    const char *savefile = NULL, *savesuffix = NULL;
     char *arg = NULL;
     int argtype = ARG_EITHER;
     char *screenshot_file = NULL;
@@ -3888,57 +3313,11 @@ int main(int argc, char **argv)
 		}
 	    } else
 		ngenerate = 1;
-	} else if (doing_opts && !strcmp(p, "--time-generation")) {
-            time_generation = true;
-	} else if (doing_opts && !strcmp(p, "--test-solve")) {
-            test_solve = true;
 	} else if (doing_opts && !strcmp(p, "--list-presets")) {
             list_presets = true;
 	} else if (doing_opts && (!strcmp(p, "--delete-prefs") ||
                                   !strcmp(p, "--delete-preferences"))) {
             delete_prefs_action = true;
-	} else if (doing_opts && !strcmp(p, "--save")) {
-	    if (--ac > 0) {
-		savefile = *++av;
-	    } else {
-		fprintf(stderr, "%s: '--save' expected a filename\n",
-			pname);
-		return 1;
-	    }
-	} else if (doing_opts && (!strcmp(p, "--save-suffix") ||
-				  !strcmp(p, "--savesuffix"))) {
-	    if (--ac > 0) {
-		savesuffix = *++av;
-	    } else {
-		fprintf(stderr, "%s: '--save-suffix' expected a filename\n",
-			pname);
-		return 1;
-	    }
-	} else if (doing_opts && !strcmp(p, "--print")) {
-	    if (!thegame.can_print) {
-		fprintf(stderr, "%s: this game does not support printing\n",
-			pname);
-		return 1;
-	    }
-	    print = true;
-	    if (--ac > 0) {
-		char *dim = *++av;
-		if (sscanf(dim, "%dx%d", &px, &py) != 2) {
-		    fprintf(stderr, "%s: unable to parse argument '%s' to "
-			    "'--print'\n", pname, dim);
-		    return 1;
-		}
-	    } else {
-		px = py = 1;
-	    }
-	} else if (doing_opts && !strcmp(p, "--scale")) {
-	    if (--ac > 0) {
-		scale = atof(*++av);
-	    } else {
-		fprintf(stderr, "%s: no argument supplied to '--scale'\n",
-			pname);
-		return 1;
-	    }
 	} else if (doing_opts && !strcmp(p, "--redo")) {
 	    /*
 	     * This is an internal option which I don't expect
@@ -3982,22 +3361,6 @@ int main(int argc, char **argv)
 			pname);
 		return 1;
 	    }
-	} else if (doing_opts && (!strcmp(p, "--with-solutions") ||
-				  !strcmp(p, "--with-solution") ||
-				  !strcmp(p, "--with-solns") ||
-				  !strcmp(p, "--with-soln") ||
-				  !strcmp(p, "--solutions") ||
-				  !strcmp(p, "--solution") ||
-				  !strcmp(p, "--solns") ||
-				  !strcmp(p, "--soln"))) {
-	    soln = true;
-	} else if (doing_opts && !strcmp(p, "--colour")) {
-	    if (!thegame.can_print_in_colour) {
-		fprintf(stderr, "%s: this game does not support colour"
-			" printing\n", pname);
-		return 1;
-	    }
-	    colour = true;
 	} else if (doing_opts && !strcmp(p, "--load")) {
 	    argtype = ARG_SAVE;
 	} else if (doing_opts && !strcmp(p, "--game")) {
@@ -4018,221 +3381,7 @@ int main(int argc, char **argv)
 	}
     }
 
-    /*
-     * Special standalone mode for generating puzzle IDs on the
-     * command line. Useful for generating puzzles to be printed
-     * out and solved offline (for puzzles where that even makes
-     * sense - Solo, for example, is a lot more pencil-and-paper
-     * friendly than Twiddle!)
-     * 
-     * Usage:
-     * 
-     *   <puzzle-name> --generate [<n> [<params>]]
-     * 
-     * <n>, if present, is the number of puzzle IDs to generate.
-     * <params>, if present, is the same type of parameter string
-     * you would pass to the puzzle when running it in GUI mode,
-     * including optional extras such as the expansion factor in
-     * Rectangles and the difficulty level in Solo.
-     * 
-     * If you specify <params>, you must also specify <n> (although
-     * you may specify it to be 1). Sorry; that was the
-     * simplest-to-parse command-line syntax I came up with.
-     */
-    if (ngenerate > 0 || print || savefile || savesuffix) {
-	int i, n = 1;
-	midend *me;
-	char *id;
-	document *doc = NULL;
-
-        /*
-         * If we're in this branch, we should display any pending
-         * error message from the command line, since GTK isn't going
-         * to take another crack at making sense of it.
-         */
-        if (*errbuf) {
-            fputs(errbuf, stderr);
-            return 1;
-        }
-
-	n = ngenerate;
-
-	me = midend_new(NULL, &thegame, NULL, NULL);
-	i = 0;
-
-	if (savefile && !savesuffix)
-	    savesuffix = "";
-	if (!savefile && savesuffix)
-	    savefile = "";
-
-	if (print)
-	    doc = document_new(px, py, scale);
-
-	/*
-	 * In this loop, we either generate a game ID or read one
-	 * from stdin depending on whether we're in generate mode;
-	 * then we either write it to stdout or print it, depending
-	 * on whether we're in print mode. Thus, this loop handles
-	 * generate-to-stdout, print-from-stdin and generate-and-
-	 * immediately-print modes.
-	 * 
-	 * (It could also handle a copy-stdin-to-stdout mode,
-	 * although there's currently no combination of options
-	 * which will cause this loop to be activated in that mode.
-	 * It wouldn't be _entirely_ pointless, though, because
-	 * stdin could contain bare params strings or random-seed
-	 * IDs, and stdout would contain nothing but fully
-	 * generated descriptive game IDs.)
-	 */
-	while (ngenerate == 0 || i < n) {
-	    char *pstr, *seed;
-            const char *err;
-            struct rusage before, after;
-
-	    if (ngenerate == 0) {
-		pstr = fgetline(stdin);
-		if (!pstr)
-		    break;
-		pstr[strcspn(pstr, "\r\n")] = '\0';
-	    } else {
-		if (arg) {
-		    pstr = snewn(strlen(arg) + 40, char);
-
-		    strcpy(pstr, arg);
-		    if (i > 0 && strchr(arg, '#'))
-			sprintf(pstr + strlen(pstr), "-%d", i);
-		} else
-		    pstr = NULL;
-	    }
-
-	    if (pstr) {
-		err = midend_game_id(me, pstr);
-		if (err) {
-		    fprintf(stderr, "%s: error parsing '%s': %s\n",
-			    pname, pstr, err);
-		    return 1;
-		}
-	    }
-
-            if (time_generation)
-                getrusage(RUSAGE_SELF, &before);
-
-            midend_new_game(me);
-
-            seed = midend_get_random_seed(me);
-
-            if (time_generation) {
-                double elapsed;
-
-                getrusage(RUSAGE_SELF, &after);
-
-                elapsed = (after.ru_utime.tv_sec -
-                           before.ru_utime.tv_sec);
-                elapsed += (after.ru_utime.tv_usec -
-                            before.ru_utime.tv_usec) / 1000000.0;
-
-                printf("%s %s: %.6f\n", thegame.name, seed, elapsed);
-            }
-
-            if (test_solve && thegame.can_solve) {
-                /*
-                 * Now destroy the aux_info in the midend, by means of
-                 * re-entering the same game id, and then try to solve
-                 * it.
-                 */
-                char *game_id;
-
-                game_id = midend_get_game_id(me);
-                err = midend_game_id(me, game_id);
-                if (err) {
-                    fprintf(stderr, "%s %s: game id re-entry error: %s\n",
-                            thegame.name, seed, err);
-                    return 1;
-                }
-                midend_new_game(me);
-                sfree(game_id);
-
-                err = midend_solve(me);
-                /*
-                 * If the solve operation returned the error "Solution
-                 * not known for this puzzle", that's OK, because that
-                 * just means it's a puzzle for which we don't have an
-                 * algorithmic solver and hence can't solve it without
-                 * the aux_info, e.g. Netslide. Any other error is a
-                 * problem, though.
-                 */
-                if (err && strcmp(err, "Solution not known for this puzzle")) {
-                    fprintf(stderr, "%s %s: solve error: %s\n",
-                            thegame.name, seed, err);
-                    return 1;
-                }
-            }
-
-	    sfree(pstr);
-            sfree(seed);
-
-	    if (doc) {
-		err = midend_print_puzzle(me, doc, soln);
-		if (err) {
-		    fprintf(stderr, "%s: error in printing: %s\n", pname, err);
-		    return 1;
-		}
-	    }
-	    if (savefile) {
-		struct savefile_write_ctx ctx;
-		char *realname = snewn(40 + strlen(savefile) +
-				       strlen(savesuffix), char);
-		sprintf(realname, "%s%d%s", savefile, i, savesuffix);
-
-                if (soln) {
-                    const char *err = midend_solve(me);
-                    if (err) {
-                        fprintf(stderr, "%s: unable to show solution: %s\n",
-                                realname, err);
-                        return 1;
-                    }
-                }
-
-		ctx.fp = fopen(realname, "w");
-		if (!ctx.fp) {
-		    fprintf(stderr, "%s: open: %s\n", realname,
-			    strerror(errno));
-		    return 1;
-		}
-                ctx.error = 0;
-		midend_serialise(me, savefile_write, &ctx);
-		if (ctx.error) {
-		    fprintf(stderr, "%s: write: %s\n", realname,
-			    strerror(ctx.error));
-		    return 1;
-		}
-		if (fclose(ctx.fp)) {
-		    fprintf(stderr, "%s: close: %s\n", realname,
-			    strerror(errno));
-		    return 1;
-		}
-		sfree(realname);
-	    }
-	    if (!doc && !savefile && !time_generation) {
-		id = midend_get_game_id(me);
-		puts(id);
-		sfree(id);
-	    }
-
-	    i++;
-	}
-
-	if (doc) {
-	    psdata *ps = ps_init(stdout, colour);
-	    document_print(doc, ps_drawing_api(ps));
-	    document_free(doc);
-	    ps_free(ps);
-	}
-
-	midend_free(me);
-
-	return 0;
-    } else if (list_presets) {
+    if (list_presets) {
         /*
          * Another specialist mode which causes the puzzle to list the
          * game_params strings for all its preset configurations.

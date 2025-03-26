@@ -116,14 +116,6 @@ typedef struct psdata psdata;
 #define FONT_FIXED_NORMAL 2
 #define FONT_VARIABLE_NORMAL 3
 
-/* For printing colours */
-#define HATCH_SLASH     1
-#define HATCH_BACKSLASH 2
-#define HATCH_HORIZ     3
-#define HATCH_VERT      4
-#define HATCH_PLUS      5
-#define HATCH_X         6
-
 /*
  * Structure used to pass configuration data between frontend and
  * game
@@ -140,6 +132,7 @@ struct config_item {
     /* Value from the above C_* enum */
     int type;
     union {
+        /* PocketPuzzles: Add C_STRING_MORE for values that can be in/decreased in +-5 steps */
         struct { /* if type == C_STRING || C_STRING_MORE */
             /* Always dynamically allocated and non-NULL */
             char *sval;
@@ -269,6 +262,8 @@ void draw_rect(drawing *dr, int x, int y, int w, int h, int colour);
 void draw_line(drawing *dr, int x1, int y1, int x2, int y2, int colour);
 void draw_polygon(drawing *dr, const int *coords, int npoints,
                   int fillcolour, int outlinecolour);
+void draw_polygon_fallback(drawing *dr, const int *coords, int npoints,
+                           int fillcolour, int outlinecolour);
 void draw_circle(drawing *dr, int cx, int cy, int radius,
                  int fillcolour, int outlinecolour);
 void draw_thick_line(drawing *dr, float thickness,
@@ -290,25 +285,6 @@ void blitter_free(drawing *dr, blitter *bl);
 void blitter_save(drawing *dr, blitter *bl, int x, int y);
 #define BLITTER_FROMSAVED (-1)
 void blitter_load(drawing *dr, blitter *bl, int x, int y);
-void print_begin_doc(drawing *dr, int pages);
-void print_begin_page(drawing *dr, int number);
-void print_begin_puzzle(drawing *dr, float xm, float xc,
-            float ym, float yc, int pw, int ph, float wmm,
-            float scale);
-void print_end_puzzle(drawing *dr);
-void print_end_page(drawing *dr, int number);
-void print_end_doc(drawing *dr);
-void print_get_colour(drawing *dr, int colour, bool printing_in_colour,
-              int *hatch, float *r, float *g, float *b);
-int print_mono_colour(drawing *dr, int grey); /* 0==black, 1==white */
-int print_grey_colour(drawing *dr, float grey);
-int print_hatched_colour(drawing *dr, int hatch);
-int print_rgb_mono_colour(drawing *dr, float r, float g, float b, int mono);
-int print_rgb_grey_colour(drawing *dr, float r, float g, float b, float grey);
-int print_rgb_hatched_colour(drawing *dr, float r, float g, float b,
-                 int hatch);
-void print_line_width(drawing *dr, int width);
-void print_line_dotted(drawing *dr, bool dotted);
 
 /*
  * midend.c
@@ -459,6 +435,9 @@ char *button2label(int button);
  * standard per clause 7.26.11.1.) */
 void swap_regions(void *av, void *bv, size_t size);
 
+/* comparator for sorting ints with qsort() */
+int compare_integers(const void *av, const void *bv);
+
 /*
  * dsf.c
  */
@@ -573,26 +552,6 @@ void SHA_Init(SHA_State *s);
 void SHA_Bytes(SHA_State *s, const void *p, int len);
 void SHA_Final(SHA_State *s, unsigned char *output);
 void SHA_Simple(const void *p, int len, unsigned char *output);
-
-/*
- * printing.c
- */
-document *document_new(int pw, int ph, float userscale);
-void document_free(document *doc);
-void document_add_puzzle(document *doc, const game *game, game_params *par,
-             game_ui *ui, game_state *st, game_state *st2);
-int document_npages(const document *doc);
-void document_begin(const document *doc, drawing *dr);
-void document_end(const document *doc, drawing *dr);
-void document_print_page(const document *doc, drawing *dr, int page_nr);
-void document_print(const document *doc, drawing *dr);
-
-/*
- * ps.c
- */
-psdata *ps_init(FILE *outfile, bool colour);
-void ps_free(psdata *ps);
-drawing *ps_drawing_api(psdata *ps);
 
 /*
  * combi.c: provides a structure and functions for iterating over
@@ -785,15 +744,6 @@ struct drawing_api {
     void (*blitter_free)(void *handle, blitter *bl);
     void (*blitter_save)(void *handle, blitter *bl, int x, int y);
     void (*blitter_load)(void *handle, blitter *bl, int x, int y);
-    void (*begin_doc)(void *handle, int pages);
-    void (*begin_page)(void *handle, int number);
-    void (*begin_puzzle)(void *handle, float xm, float xc,
-             float ym, float yc, int pw, int ph, float wmm);
-    void (*end_puzzle)(void *handle);
-    void (*end_page)(void *handle, int number);
-    void (*end_doc)(void *handle);
-    void (*line_width)(void *handle, float width);
-    void (*line_dotted)(void *handle, bool dotted);
     char *(*text_fallback)(void *handle, const char *const *strings,
                int nstrings);
     void (*draw_thick_line)(void *handle, float thickness,

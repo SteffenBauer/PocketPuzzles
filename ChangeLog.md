@@ -3,11 +3,13 @@
 ## 0.8.2 nightly
 
 ### Changed
-* Sync with upstream refactorings
 * Switch to SDK-B288-6.8
+* Sync rewrite of `findloop` algorithm from upstream
+* Sync refactoring of `compare_int` function to utils from upstream
 * *Creek* / *Slant*: Decrease border size to get more game board on the screen
-* *Bridges*: Change grey-out color of finished island
-* *Dominosa*: Remove limit of highlighted numbers.
+* *Bridges*: Change grey-out color of finished islands
+* *Dominosa*: Remove limit of highlighted numbers
+* Removed unused infrastructure to print a game
 
 ### Added
 * Supports dark mode on firmware >= 6.8 devices
