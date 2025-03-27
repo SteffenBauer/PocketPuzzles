@@ -2,8 +2,6 @@
  * draw-poly.c: Fallback polygon drawing function.
  */
 
-#include <assert.h>
-
 #include "puzzles.h"
 
 struct edge {
@@ -94,14 +92,6 @@ void draw_polygon_fallback(drawing *dr, const int *coords, int npoints,
         if(y1 > max_y)
             max_y = y1;
 
-#define COORD_LIMIT (1<<(sizeof(int)*CHAR_BIT-2 - FRACBITS))
-        /* Prevent integer overflow when computing `inverse_slope',
-         * which shifts the coordinates left by FRACBITS, and for
-         * which we'd like to avoid relying on `long long'. */
-	/* If this ever causes issues, see the above comment about
-	   possible solutions. */
-	assert(x1 < COORD_LIMIT && y1 < COORD_LIMIT);
-
         /* Only create non-horizontal edges, and require y1 < y2. */
         if(y1 != y2) {
             bool swap = y1 > y2;
@@ -146,9 +136,6 @@ void draw_polygon_fallback(drawing *dr, const int *coords, int npoints,
 
         qsort(intersections, n_intersections, sizeof(int), compare_integers);
 
-        assert(n_intersections % 2 == 0);
-        assert(n_intersections <= n_edges);
-
         /* Draw horizontal lines between successive pairs of
          * intersections of the scanline with active edges. */
         for(i = 0; i + 1 < n_intersections; i += 2) {
@@ -163,7 +150,6 @@ void draw_polygon_fallback(drawing *dr, const int *coords, int npoints,
     sfree(edges);
 
 draw_outline:
-    assert(outlinecolour >= 0);
     for (i = 0; i < 2 * npoints; i += 2)
         draw_line(dr,
                   coords[i], coords[i+1],
@@ -171,132 +157,3 @@ draw_outline:
                   outlinecolour);
 }
 
-#ifdef STANDALONE_POLYGON
-
-/*
- * Standalone program to test draw_polygon_fallback(). By default,
- * creates a window and allows clicking points to build a
- * polygon. Optionally, can draw a randomly growing polygon in
- * "screensaver" mode.
- */
-
-#include <SDL.h>
-
-void draw_line(drawing *dr, int x1, int y1, int x2, int y2, int colour)
-{
-    SDL_Renderer *renderer = GET_HANDLE_AS_TYPE(dr, SDL_Renderer);
-    SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
-}
-
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 600
-#define MAX_SCREENSAVER_POINTS 1000
-
-int main(int argc, char *argv[]) {
-    SDL_Window* window = NULL;
-    SDL_Event event;
-    SDL_Renderer *renderer = NULL;
-    int running = 1;
-    int i;
-    drawing dr;
-    bool screensaver = false;
-
-    if(argc >= 2) {
-	if(!strcmp(argv[1], "--screensaver"))
-	    screensaver = true;
-	else
-	    printf("usage: %s [--screensaver]\n", argv[0]);
-    }
-
-    int *poly = NULL;
-    int n_points = 0;
-
-    /* Initialize SDL */
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    /* Create window */
-    window = SDL_CreateWindow("Polygon Drawing Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
-    if (!window) {
-        printf("Window could not be created! SDL_Error: %s\n", SDL_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
-    /* Create renderer */
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (!renderer) {
-        printf("Renderer could not be created! SDL_Error: %s\n", SDL_GetError());
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-
-    dr.handle = renderer;
-
-    if(!screensaver)
-	printf("Click points in the window to create vertices. Pressing C resets.\n");
-
-    while (running) {
-        while (SDL_PollEvent(&event) != 0) {
-            if (event.type == SDL_QUIT) {
-                running = 0;
-            }
-            else if (event.type == SDL_MOUSEBUTTONDOWN) {
-                if (event.button.button == SDL_BUTTON_LEFT) {
-                    int mouseX = event.button.x;
-                    int mouseY = event.button.y;
-
-                    poly = realloc(poly, ++n_points * 2 * sizeof(int));
-                    poly[2 * (n_points - 1)] = mouseX;
-                    poly[2 * (n_points - 1) + 1] = mouseY;
-                }
-            }
-            else if (event.type == SDL_KEYDOWN) {
-                if (event.key.keysym.sym == SDLK_c) {
-                    free(poly);
-                    poly = NULL;
-                    n_points = 0;
-                }
-            }
-        }
-
-	if(screensaver) {
-	    poly = realloc(poly, ++n_points * 2 * sizeof(int));
-	    poly[2 * (n_points - 1)] = rand() % WINDOW_WIDTH;
-	    poly[2 * (n_points - 1) + 1] = rand() % WINDOW_HEIGHT;
-
-	    if(n_points >= MAX_SCREENSAVER_POINTS) {
-		free(poly);
-		poly = NULL;
-		n_points = 0;
-	    }
-	}
-
-        /* Clear the screen with a black color */
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-
-        /* Set draw color to white */
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-
-        draw_polygon_fallback(&dr, poly, n_points, 1, 1);
-
-	SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-	for(i = 0; i < 2*n_points; i+=2)
-	    SDL_RenderDrawPoint(renderer, poly[i], poly[i+1]);
-
-        /* Present the back buffer */
-        SDL_RenderPresent(renderer);
-    }
-
-    /* Clean up and quit SDL */
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-
-    return 0;
-}
-#endif

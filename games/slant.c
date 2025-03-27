@@ -40,20 +40,17 @@ enum {
     COL_SLANT2,
     COL_ERROR,
     COL_FILLEDSQUARE,
+    COL_GROUNDED,
     NCOLOURS
 };
 
-/*
- * In standalone solver mode, `verbose' is a variable which can be
- * set by command-line option; in debugging mode it's simply always
- * true.
- */
-#if defined STANDALONE_SOLVER
-#define SOLVER_DIAGNOSTICS
-bool verbose = false;
-#elif defined SOLVER_DIAGNOSTICS
-#define verbose true
-#endif
+enum {
+    PREF_CLICK_ACTIONS,
+    PREF_SHADE_FILLED,
+    PREF_SHOW_ERRORS,
+    PREF_FADE_GROUNDED,
+    N_PREF_ITEMS
+};
 
 /*
  * Difficulty levels. I do some macro ickery here to ensure that my
@@ -84,6 +81,7 @@ typedef struct game_clues {
 
 #define ERR_VERTEX 1
 #define ERR_SQUARE 2
+#define BORDER_EDGE 4 /* kind of an abuse: not an error */
 
 struct game_state {
     struct game_params p;
@@ -1390,6 +1388,48 @@ static bool check_completion(game_state *state)
     memset(state->errors, 0, W*H);
 
     /*
+     * Detect and grounded-highlight edge-connected components in the grid.
+     */
+    {
+        DSF *connected = dsf_new(W*H);
+        unsigned root_NW;
+        int slash;
+        int x, y;
+
+        for (x = 0; x <= w; x++) {
+            dsf_merge(connected, x, 0);
+            dsf_merge(connected, h*W+x, 0);
+        }
+        for (y = 0; y <= h; y++) {
+            dsf_merge(connected, y*W, 0);
+            dsf_merge(connected, y*W+w, 0);
+        }
+
+        for (y = 0; y < h; y++) {
+            for (x = 0; x < w; x++) {
+                switch (state->soln[y*w+x]) {
+                  case -1:
+                    dsf_merge(connected, y*W+x, (y+1)*W+(x+1));
+                    break;
+                  case +1:
+                    dsf_merge(connected, y*W+(x+1), (y+1)*W+x);
+                    break;
+                  default:
+                    continue;
+                }
+            }
+        }
+
+        root_NW = dsf_canonify(connected, 0);
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w; x++)
+                if ((slash = state->soln[y*w+x]) && dsf_canonify(
+                        connected, y*W + x + (slash == 1 ? 1 : 0)) == root_NW)
+                    state->errors[y*w+x] |= BORDER_EDGE;
+        dsf_free(connected);
+    }
+
+    /*
      * Detect and error-highlight loops in the grid.
      */
     {
@@ -1530,6 +1570,7 @@ struct game_ui {
      bool swap_buttons;
      bool show_filled;
      bool show_errors;
+     bool fade_grounded;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1538,6 +1579,7 @@ static game_ui *new_ui(const game_state *state)
     ui->swap_buttons = false;
     ui->show_filled = false;
     ui->show_errors = true;
+    ui->fade_grounded = false;
     return ui;
 }
 
@@ -1550,36 +1592,42 @@ static config_item *get_prefs(game_ui *ui)
 {
     config_item *ret;
 
-    ret = snewn(4, config_item);
+    ret = snewn(N_PREF_ITEMS+1, config_item);
 
-    ret[0].name = "Short/Long click actions";
-    ret[0].kw = "short-long";
-    ret[0].type = C_CHOICES;
-    ret[0].u.choices.choicenames = ":Short \\, Long /:Short /, Long \\";
-    ret[0].u.choices.choicekws = ":\\:/";
-    ret[0].u.choices.selected = ui->swap_buttons;
+    ret[PREF_CLICK_ACTIONS].name = "Short/Long click actions";
+    ret[PREF_CLICK_ACTIONS].kw = "short-long";
+    ret[PREF_CLICK_ACTIONS].type = C_CHOICES;
+    ret[PREF_CLICK_ACTIONS].u.choices.choicenames = ":Short \\, Long /:Short /, Long \\";
+    ret[PREF_CLICK_ACTIONS].u.choices.choicekws = ":\\:/";
+    ret[PREF_CLICK_ACTIONS].u.choices.selected = ui->swap_buttons;
 
-    ret[1].name = "Shade filled cells";
-    ret[1].kw = "show-filled";
-    ret[1].type = C_BOOLEAN;
-    ret[1].u.boolean.bval = ui->show_filled;
+    ret[PREF_SHADE_FILLED].name = "Shade filled cells";
+    ret[PREF_SHADE_FILLED].kw = "show-filled";
+    ret[PREF_SHADE_FILLED].type = C_BOOLEAN;
+    ret[PREF_SHADE_FILLED].u.boolean.bval = ui->show_filled;
 
-    ret[2].name = "Show errors";
-    ret[2].kw = "show-errors";
-    ret[2].type = C_BOOLEAN;
-    ret[2].u.boolean.bval = ui->show_errors;
+    ret[PREF_SHOW_ERRORS].name = "Show errors";
+    ret[PREF_SHOW_ERRORS].kw = "show-errors";
+    ret[PREF_SHOW_ERRORS].type = C_BOOLEAN;
+    ret[PREF_SHOW_ERRORS].u.boolean.bval = ui->show_errors;
 
-    ret[3].name = NULL;
-    ret[3].type = C_END;
+    ret[PREF_FADE_GROUNDED].name = "Fade grounded components";
+    ret[PREF_FADE_GROUNDED].kw = "fade-grounded";
+    ret[PREF_FADE_GROUNDED].type = C_BOOLEAN;
+    ret[PREF_FADE_GROUNDED].u.boolean.bval = ui->fade_grounded;
+
+    ret[N_PREF_ITEMS].name = NULL;
+    ret[N_PREF_ITEMS].type = C_END;
 
     return ret;
 }
 
 static void set_prefs(game_ui *ui, const config_item *cfg)
 {
-    ui->swap_buttons = cfg[0].u.choices.selected;
-    ui->show_filled = cfg[1].u.boolean.bval;
-    ui->show_errors = cfg[2].u.boolean.bval;
+    ui->swap_buttons = cfg[PREF_CLICK_ACTIONS].u.choices.selected;
+    ui->show_filled = cfg[PREF_SHADE_FILLED].u.boolean.bval;
+    ui->show_errors = cfg[PREF_SHOW_ERRORS].u.boolean.bval;
+    ui->fade_grounded = cfg[PREF_FADE_GROUNDED].u.boolean.bval;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -1615,6 +1663,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
 #define ERR_TR    0x00008000L
 #define ERR_BL    0x00010000L
 #define ERR_BR    0x00020000L
+#define GROUNDED  0x00040000L
 
 struct game_drawstate {
     int tilesize;
@@ -1738,6 +1787,7 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_SLANT1       * 3 + i] = 0.0F;
         ret[COL_SLANT2       * 3 + i] = 0.0F;
         ret[COL_ERROR        * 3 + i] = 0.5F;
+        ret[COL_GROUNDED     * 3 + i] = 0.75F;
     }
 
     *ncolours = NCOLOURS;
@@ -1812,7 +1862,7 @@ static void draw_slash(drawing *dr, game_drawstate *ds, const game_ui *ui,
         }
     }
     else {
-        draw_thick_line(dr, 5.0, x1, y1, x2, y2, colour);
+        draw_thick_line(dr, 5.0, x1, y1, x2, y2, v & GROUNDED ? COL_GROUNDED : colour);
     }
 }
 
@@ -1940,6 +1990,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 ds->todraw[(y+1)*(w+2)+x] |= ERR_TR;
                 ds->todraw[(y+1)*(w+2)+(x+1)] |= ERR_TL;
             }
+    if (ui->fade_grounded)
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w; x++)
+                if (state->errors[y*w+x] & BORDER_EDGE)
+                    // dunno why but it works this way
+                    ds->todraw[(y+1)*(W+1)+(x+1)] |= GROUNDED;
 
     /*
      * Now go through and draw the grid squares.
@@ -1947,7 +2003,8 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (y = -1; y <= h; y++) {
     for (x = -1; x <= w; x++) {
         if (ds->todraw[(y+1)*(w+2)+(x+1)] != ds->grid[(y+1)*(w+2)+(x+1)]) {
-            draw_tile(dr, ds, ui, state->clues, x, y, ds->todraw[(y+1)*(w+2)+(x+1)]);
+            draw_tile(dr, ds, ui, state->clues, x, y,
+                      ds->todraw[(y+1)*(w+2)+(x+1)]);
             ds->grid[(y+1)*(w+2)+(x+1)] = ds->todraw[(y+1)*(w+2)+(x+1)];
         }
     }

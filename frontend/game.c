@@ -27,6 +27,8 @@ const struct drawing_api ink_drawing = {
     ink_blitter_free,
     ink_blitter_save,
     ink_blitter_load,
+    NULL,
+    NULL,
 };
 
 int convertColor(int colindex) {
