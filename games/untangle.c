@@ -51,6 +51,13 @@ enum {
     NCOLOURS
 };
 
+enum {
+  PREF_SHOW_HINT_BUTTON,
+  PREF_VERTEX_STYLE,
+  PREF_SHOW_CROSSED_EDGES,
+  N_PREF_ITEMS
+};
+
 typedef struct point {
     /*
      * Points are stored using rational coordinates, with the same
@@ -1064,6 +1071,8 @@ struct game_ui {
     bool hint_button;
     bool hint_mode;
     point hintpoint;
+    bool vertex_numbers;
+    bool show_crossed_edges;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1076,6 +1085,8 @@ static game_ui *new_ui(const game_state *state)
     ui->hintpoint.x = -1;
     ui->hintpoint.y = -1;
     ui->hintpoint.d = -1;
+    ui->vertex_numbers = false;
+    ui->show_crossed_edges = true;
     return ui;
 }
 
@@ -1088,22 +1099,36 @@ static config_item *get_prefs(game_ui *ui)
 {
     config_item *ret;
 
-    ret = snewn(2, config_item);
+    ret = snewn(N_PREF_ITEMS+1, config_item);
 
-    ret[0].name = "Show Hint button";
-    ret[0].kw = "hint-button";
-    ret[0].type = C_BOOLEAN;
-    ret[0].u.boolean.bval = ui->hint_button;
+    ret[PREF_SHOW_HINT_BUTTON].name = "Show Hint button";
+    ret[PREF_SHOW_HINT_BUTTON].kw = "hint-button";
+    ret[PREF_SHOW_HINT_BUTTON].type = C_BOOLEAN;
+    ret[PREF_SHOW_HINT_BUTTON].u.boolean.bval = ui->hint_button;
 
-    ret[1].name = NULL;
-    ret[1].type = C_END;
+    ret[PREF_VERTEX_STYLE].name = "Display style for vertices";
+    ret[PREF_VERTEX_STYLE].kw = "vertex-style";
+    ret[PREF_VERTEX_STYLE].type = C_CHOICES;
+    ret[PREF_VERTEX_STYLE].u.choices.choicenames = ":Circles:Numbers";
+    ret[PREF_VERTEX_STYLE].u.choices.choicekws = ":circle:number";
+    ret[PREF_VERTEX_STYLE].u.choices.selected = ui->vertex_numbers;
+
+    ret[PREF_SHOW_CROSSED_EDGES].name = "Show edges that cross another edge";
+    ret[PREF_SHOW_CROSSED_EDGES].kw = "show-crossed-edges";
+    ret[PREF_SHOW_CROSSED_EDGES].type = C_BOOLEAN;
+    ret[PREF_SHOW_CROSSED_EDGES].u.boolean.bval = ui->show_crossed_edges;
+
+    ret[N_PREF_ITEMS].name = NULL;
+    ret[N_PREF_ITEMS].type = C_END;
 
     return ret;
 }
 
 static void set_prefs(game_ui *ui, const config_item *cfg)
 {
-    ui->hint_button = cfg[0].u.boolean.bval;
+    ui->hint_button = cfg[PREF_SHOW_HINT_BUTTON].u.boolean.bval;
+    ui->vertex_numbers = cfg[PREF_VERTEX_STYLE].u.choices.selected;
+    ui->show_crossed_edges = cfg[PREF_SHOW_CROSSED_EDGES].u.boolean.bval;
 }
 
 static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
@@ -1444,10 +1469,14 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      */
 
     for (i = 0; (e = index234(state->graph->edges, i)) != NULL; i++) {
-        if ((oldstate?oldstate:state)->crosses[i]) 
-            draw_thick_line(dr, 3.0, ds->x[e->a], ds->y[e->a], ds->x[e->b], ds->y[e->b], COL_CROSSEDLINE);
-        else
-            draw_thick_line(dr, 5.0, ds->x[e->a], ds->y[e->a], ds->x[e->b], ds->y[e->b], COL_LINE);
+        if (ui->show_crossed_edges) {
+            if ((oldstate?oldstate:state)->crosses[i]) 
+                draw_thick_line(dr, 3.0, ds->x[e->a], ds->y[e->a], ds->x[e->b], ds->y[e->b], COL_CROSSEDLINE);
+            else
+                draw_thick_line(dr, 5.0, ds->x[e->a], ds->y[e->a], ds->x[e->b], ds->y[e->b], COL_LINE);
+        } else {
+            draw_thick_line(dr, 4.0, ds->x[e->a], ds->y[e->a], ds->x[e->b], ds->y[e->b], COL_LINE);
+        }
     }
 
     /*
@@ -1464,16 +1493,25 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             if (ui->dragpoint == i) {
                 c = COL_DRAGPOINT;
             } else if (ui->dragpoint >= 0 && isedge(state->graph->edges, ui->dragpoint, i)) {
-                c = COL_NEIGHBOUR;
+                c = ui->vertex_numbers ? COL_DRAGPOINT : COL_NEIGHBOUR;
             } else {
                 c = COL_POINT;
             }
 
             if (c == thisc) {
-                draw_circle(dr, ds->x[i], ds->y[i], CIRCLE_RADIUS,
-                                COL_OUTLINE, COL_OUTLINE);
-                draw_circle(dr, ds->x[i], ds->y[i], 3*CIRCLE_RADIUS/4,
-                                c, COL_OUTLINE);
+                if (ui->vertex_numbers) {
+                        char buf[80];
+                        sprintf(buf, "%d", i);
+                        draw_circle(dr, ds->x[i], ds->y[i], DRAG_THRESHOLD/2, bg, bg);
+                        draw_text(dr, ds->x[i], ds->y[i], FONT_VARIABLE,
+                                  DRAG_THRESHOLD*3/4,
+                                  ALIGN_VCENTRE|ALIGN_HCENTRE, c, buf);
+                } else {
+                    draw_circle(dr, ds->x[i], ds->y[i], CIRCLE_RADIUS,
+                                    COL_OUTLINE, COL_OUTLINE);
+                    draw_circle(dr, ds->x[i], ds->y[i], 3*CIRCLE_RADIUS/4,
+                                    c, COL_OUTLINE);
+                }
             }
         }
     }

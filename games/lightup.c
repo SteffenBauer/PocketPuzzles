@@ -86,6 +86,11 @@ enum {
     NCOLOURS
 };
 
+enum {
+    PREF_SHOW_LIT_BLOBS,
+    N_PREF_ITEMS
+};
+
 enum { SYMM_NONE, SYMM_REF2, SYMM_ROT2, SYMM_REF4, SYMM_ROT4, SYMM_MAX };
 
 #define DIFFCOUNT 2
@@ -1753,6 +1758,7 @@ done:
 struct game_ui {
     int cur_x, cur_y;
     bool cur_visible;
+    bool draw_blobs_when_lit;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1760,6 +1766,7 @@ static game_ui *new_ui(const game_state *state)
     game_ui *ui = snew(game_ui);
     ui->cur_x = ui->cur_y = 0;
     ui->cur_visible = false;
+    ui->draw_blobs_when_lit = true;
     return ui;
 }
 
@@ -1767,6 +1774,29 @@ static void free_ui(game_ui *ui)
 {
     sfree(ui);
 }
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(N_PREF_ITEMS+1, config_item);
+
+    ret[PREF_SHOW_LIT_BLOBS].name = "Draw non-light marks even when lit";
+    ret[PREF_SHOW_LIT_BLOBS].kw = "show-lit-blobs";
+    ret[PREF_SHOW_LIT_BLOBS].type = C_BOOLEAN;
+    ret[PREF_SHOW_LIT_BLOBS].u.boolean.bval = ui->draw_blobs_when_lit;
+
+    ret[N_PREF_ITEMS].name = NULL;
+    ret[N_PREF_ITEMS].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->draw_blobs_when_lit = cfg[PREF_SHOW_LIT_BLOBS].u.boolean.bval;
+}
+
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
@@ -2007,7 +2037,7 @@ static unsigned int tile_flags(game_drawstate *ds, const game_state *state,
     return ret;
 }
 
-static void tile_redraw(drawing *dr, game_drawstate *ds,
+static void tile_redraw(drawing *dr, game_drawstate *ds, const game_ui *ui,
                         const game_state *state, int x, int y)
 {
     unsigned int ds_flags = GRID(ds, flags, x, y);
@@ -2042,13 +2072,7 @@ static void tile_redraw(drawing *dr, game_drawstate *ds,
             draw_circle(dr, dx + TILE_SIZE/2, dy + TILE_SIZE/2, TILE_RADIUS,
                         lcol, COL_BLACK);
         } else if ((ds_flags & DF_IMPOSSIBLE)) {
-            static int draw_blobs_when_lit = -1;
-            if (draw_blobs_when_lit < 0) {
-        char *env = getenv("LIGHTUP_LIT_BLOBS");
-        draw_blobs_when_lit = (!env || (env[0] == 'y' ||
-                                                env[0] == 'Y'));
-            }
-            if (!(ds_flags & DF_LIT) || draw_blobs_when_lit) {
+            if (!(ds_flags & DF_LIT) || ui->draw_blobs_when_lit) {
                 int rlen = TILE_SIZE / 4;
                 draw_rect(dr, dx + TILE_SIZE/2 - rlen/2,
                           dy + TILE_SIZE/2 - rlen/2,
@@ -2096,7 +2120,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             unsigned int ds_flags = tile_flags(ds, state, ui, x, y);
             if (ds_flags != GRID(ds, flags, x, y)) {
                 GRID(ds, flags, x, y) = ds_flags;
-                tile_redraw(dr, ds, state, x, y);
+                tile_redraw(dr, ds, ui, state, x, y);
             }
         }
     }
@@ -2149,7 +2173,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */

@@ -56,6 +56,12 @@ enum {
     NCOLOURS
 };
 
+enum {
+    PREF_MARKS_BUTTON,
+    PREF_MARKS_ACTION,
+    N_PREF_ITEMS
+};
+
 struct game_params {
     int w, h, n, diff;
 };
@@ -2145,35 +2151,34 @@ static key_label *game_request_keys(const game_params *params, const game_ui *ui
     return keys;
 }
 
-
 static config_item *get_prefs(game_ui *ui)
 {
     config_item *ret;
 
-    ret = snewn(3, config_item);
+    ret = snewn(N_PREF_ITEMS+1, config_item);
 
-    ret[0].name = "Show fill marks button";
-    ret[0].kw = "hint-button";
-    ret[0].type = C_BOOLEAN;
-    ret[0].u.boolean.bval = ui->marks_button;
+    ret[PREF_MARKS_BUTTON].name = "Show fill marks button";
+    ret[PREF_MARKS_BUTTON].kw = "hint-button";
+    ret[PREF_MARKS_BUTTON].type = C_BOOLEAN;
+    ret[PREF_MARKS_BUTTON].u.boolean.bval = ui->marks_button;
 
-    ret[1].name = "Fill marks button action";
-    ret[1].kw = "marks-action";
-    ret[1].type = C_CHOICES;
-    ret[1].u.choices.choicenames = ":All marks:Possible marks only";
-    ret[1].u.choices.choicekws = ":all:possible";
-    ret[1].u.choices.selected = ui->marks_action;
+    ret[PREF_MARKS_ACTION].name = "Fill marks button action";
+    ret[PREF_MARKS_ACTION].kw = "marks-action";
+    ret[PREF_MARKS_ACTION].type = C_CHOICES;
+    ret[PREF_MARKS_ACTION].u.choices.choicenames = ":All marks:Possible marks only";
+    ret[PREF_MARKS_ACTION].u.choices.choicekws = ":all:possible";
+    ret[PREF_MARKS_ACTION].u.choices.selected = ui->marks_action;
 
-    ret[2].name = NULL;
-    ret[2].type = C_END;
+    ret[N_PREF_ITEMS].name = NULL;
+    ret[N_PREF_ITEMS].type = C_END;
 
     return ret;
 }
 
 static void set_prefs(game_ui *ui, const config_item *cfg)
 {
-    ui->marks_button = cfg[0].u.boolean.bval;
-    ui->marks_action = cfg[1].u.choices.selected;
+    ui->marks_button = cfg[PREF_MARKS_BUTTON].u.boolean.bval;
+    ui->marks_action = cfg[PREF_MARKS_ACTION].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
