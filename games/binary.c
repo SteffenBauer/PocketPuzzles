@@ -37,6 +37,12 @@ enum {
 };
 
 enum {
+    PREF_GAME_BACKGROUND,
+    PREF_INPUT_METHOD,
+    N_PREF_ITEMS
+};
+
+enum {
     BACKGROUND_EMPTY,
     BACKGROUND_CHESS,
     BACKGROUND_LINES
@@ -422,32 +428,32 @@ static config_item *get_prefs(game_ui *ui)
 {
     config_item *ret;
 
-    ret = snewn(3, config_item);
+    ret = snewn(N_PREF_ITEMS+1, config_item);
 
-    ret[0].name = "Game background";
-    ret[0].kw = "background";
-    ret[0].type = C_CHOICES;
-    ret[0].u.choices.choicenames = ":Empty:Chessboard:Lines";
-    ret[0].u.choices.choicekws = ":empty:chess:lines";
-    ret[0].u.choices.selected = ui->background;
+    ret[PREF_GAME_BACKGROUND].name = "Game background";
+    ret[PREF_GAME_BACKGROUND].kw = "background";
+    ret[PREF_GAME_BACKGROUND].type = C_CHOICES;
+    ret[PREF_GAME_BACKGROUND].u.choices.choicenames = ":Empty:Chessboard:Lines";
+    ret[PREF_GAME_BACKGROUND].u.choices.choicekws = ":empty:chess:lines";
+    ret[PREF_GAME_BACKGROUND].u.choices.selected = ui->background;
 
-    ret[1].name = "Input method";
-    ret[1].kw = "input";
-    ret[1].type = C_CHOICES;
-    ret[1].u.choices.choicenames = ":Swipe:Tap";
-    ret[1].u.choices.choicekws = ":swipe:tap";
-    ret[1].u.choices.selected = ui->inputtype;
+    ret[PREF_INPUT_METHOD].name = "Input method";
+    ret[PREF_INPUT_METHOD].kw = "input";
+    ret[PREF_INPUT_METHOD].type = C_CHOICES;
+    ret[PREF_INPUT_METHOD].u.choices.choicenames = ":Swipe:Tap";
+    ret[PREF_INPUT_METHOD].u.choices.choicekws = ":swipe:tap";
+    ret[PREF_INPUT_METHOD].u.choices.selected = ui->inputtype;
 
-    ret[2].name = NULL;
-    ret[2].type = C_END;
+    ret[N_PREF_ITEMS].name = NULL;
+    ret[N_PREF_ITEMS].type = C_END;
 
     return ret;
 }
 
 static void set_prefs(game_ui *ui, const config_item *cfg)
 {
-    ui->background = cfg[0].u.choices.selected;
-    ui->inputtype = cfg[1].u.choices.selected;
+    ui->background = cfg[PREF_GAME_BACKGROUND].u.choices.selected;
+    ui->inputtype = cfg[PREF_INPUT_METHOD].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,

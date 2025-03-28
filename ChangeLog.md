@@ -4,15 +4,17 @@
 
 ### Changed
 * Switch to SDK-B288-6.8
-* Sync rewrite of `findloop` algorithm from upstream
-* Sync refactoring of `compare_int` function to utils from upstream
+* Rewrite `findloop` algorithm (refactor from upstream)
+* Move `compare_int` function to utils (refactor from upstream)
+* Use semantic enum names for preferences (refactor from upstream)
+* Remove unused infrastructure to print a game
 * *Creek* / *Slant*: Decrease border size to get more game board on the screen
 * *Bridges*: Change grey-out color of finished islands
 * *Dominosa*: Remove limit of highlighted numbers
-* Removed unused infrastructure to print a game
 
 ### Added
 * Supports dark mode on firmware >= 6.8 devices
+* *Lightup*: New preference "Draw non-light marks even when lit"
 
 ### Fixed
 * *Mosaic*: Possible crash in `solve_game` due to insufficient buffer size

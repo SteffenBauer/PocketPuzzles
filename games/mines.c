@@ -27,6 +27,11 @@ enum {
     NCOLOURS
 };
 
+enum {
+    PREF_CLICK_ACTIONS,
+    N_PREF_ITEMS
+};
+
 #define PREFERRED_TILE_SIZE 20
 #define TILE_SIZE (ds->tilesize)
 #define BORDER (TILE_SIZE / 2)
@@ -2295,24 +2300,24 @@ static config_item *get_prefs(game_ui *ui)
 {
     config_item *ret;
 
-    ret = snewn(2, config_item);
+    ret = snewn(N_PREF_ITEMS+1, config_item);
 
-    ret[0].name = "Short/Long click actions";
-    ret[0].kw = "short-long";
-    ret[0].type = C_CHOICES;
-    ret[0].u.choices.choicenames = ":Uncover/Mark:Mark/Uncover";
-    ret[0].u.choices.choicekws = ":uncover:mark";
-    ret[0].u.choices.selected = ui->click_mode;
+    ret[PREF_CLICK_ACTIONS].name = "Short/Long click actions";
+    ret[PREF_CLICK_ACTIONS].kw = "short-long";
+    ret[PREF_CLICK_ACTIONS].type = C_CHOICES;
+    ret[PREF_CLICK_ACTIONS].u.choices.choicenames = ":Uncover/Mark:Mark/Uncover";
+    ret[PREF_CLICK_ACTIONS].u.choices.choicekws = ":uncover:mark";
+    ret[PREF_CLICK_ACTIONS].u.choices.selected = ui->click_mode;
 
-    ret[1].name = NULL;
-    ret[1].type = C_END;
+    ret[N_PREF_ITEMS].name = NULL;
+    ret[N_PREF_ITEMS].type = C_END;
 
     return ret;
 }
 
 static void set_prefs(game_ui *ui, const config_item *cfg)
 {
-    ui->click_mode = cfg[0].u.choices.selected;
+    ui->click_mode = cfg[PREF_CLICK_ACTIONS].u.choices.selected;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,

@@ -92,6 +92,12 @@ struct game_params {
     puzzle_size h;
 };
 
+enum {
+    PREF_CLICK_ACTIONS,
+    PREF_HINT_BUTTON,
+    N_PREF_ITEMS
+};
+
 struct game_state {
     struct game_params params;
     bool has_cheated, was_solved;
@@ -1184,30 +1190,30 @@ static config_item *get_prefs(game_ui *ui)
 {
     config_item *ret;
 
-    ret = snewn(3, config_item);
+    ret = snewn(N_PREF_ITEMS+1, config_item);
 
-    ret[0].name = "Short/Long click actions";
-    ret[0].kw = "short-long";
-    ret[0].type = C_CHOICES;
-    ret[0].u.choices.choicenames = ":Fill/dot:Dot/Fill";
-    ret[0].u.choices.choicekws = ":fill:dot";
-    ret[0].u.choices.selected = ui->swap_buttons;
+    ret[PREF_CLICK_ACTIONS].name = "Short/Long click actions";
+    ret[PREF_CLICK_ACTIONS].kw = "short-long";
+    ret[PREF_CLICK_ACTIONS].type = C_CHOICES;
+    ret[PREF_CLICK_ACTIONS].u.choices.choicenames = ":Fill/dot:Dot/Fill";
+    ret[PREF_CLICK_ACTIONS].u.choices.choicekws = ":fill:dot";
+    ret[PREF_CLICK_ACTIONS].u.choices.selected = ui->swap_buttons;
 
-    ret[1].name = "Show Hint button";
-    ret[1].kw = "hint-button";
-    ret[1].type = C_BOOLEAN;
-    ret[1].u.boolean.bval = ui->hint_button;
+    ret[PREF_HINT_BUTTON].name = "Show Hint button";
+    ret[PREF_HINT_BUTTON].kw = "hint-button";
+    ret[PREF_HINT_BUTTON].type = C_BOOLEAN;
+    ret[PREF_HINT_BUTTON].u.boolean.bval = ui->hint_button;
 
-    ret[2].name = NULL;
-    ret[2].type = C_END;
+    ret[N_PREF_ITEMS].name = NULL;
+    ret[N_PREF_ITEMS].type = C_END;
 
     return ret;
 }
 
 static void set_prefs(game_ui *ui, const config_item *cfg)
 {
-    ui->swap_buttons = cfg[0].u.choices.selected;
-    ui->hint_button = cfg[1].u.boolean.bval;
+    ui->swap_buttons = cfg[PREF_CLICK_ACTIONS].u.choices.selected;
+    ui->hint_button = cfg[PREF_HINT_BUTTON].u.boolean.bval;
 }
 
 typedef struct drawcell {

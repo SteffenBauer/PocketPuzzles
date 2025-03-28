@@ -101,6 +101,11 @@ enum {
     NCOLOURS
 };
 
+enum {
+    PREF_GRID_BUTTON,
+    N_PREF_ITEMS
+};
+
 struct game_params {
     int w, h, maxb;
     int islands, expansion;     /* %age of island squares, %age chance of expansion */
@@ -2063,22 +2068,22 @@ static config_item *get_prefs(game_ui *ui)
 {
     config_item *ret;
 
-    ret = snewn(2, config_item);
+    ret = snewn(N_PREF_ITEMS+1, config_item);
 
-    ret[0].name = "Show button to display grid lines";
-    ret[0].kw = "grid-button";
-    ret[0].type = C_BOOLEAN;
-    ret[0].u.boolean.bval = ui->grid_button;
+    ret[PREF_GRID_BUTTON].name = "Show button to display grid lines";
+    ret[PREF_GRID_BUTTON].kw = "grid-button";
+    ret[PREF_GRID_BUTTON].type = C_BOOLEAN;
+    ret[PREF_GRID_BUTTON].u.boolean.bval = ui->grid_button;
 
-    ret[1].name = NULL;
-    ret[1].type = C_END;
+    ret[N_PREF_ITEMS].name = NULL;
+    ret[N_PREF_ITEMS].type = C_END;
 
     return ret;
 }
 
 static void set_prefs(game_ui *ui, const config_item *cfg)
 {
-    ui->grid_button = cfg[0].u.boolean.bval;
+    ui->grid_button = cfg[PREF_GRID_BUTTON].u.boolean.bval;
 }
 
 static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)

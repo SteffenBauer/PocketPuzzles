@@ -70,6 +70,12 @@ enum {
     NCOLOURS
 };
 
+enum {
+    PREF_CLICK_ACTIONS,
+    PREF_SHOW_ERRORS,
+    N_PREF_ITEMS
+};
+
 struct game_params {
     int w2, h2;        /* full grid width and height respectively */
     bool unique;       /* should row and column patterns be unique? */
@@ -1366,30 +1372,30 @@ static config_item *get_prefs(game_ui *ui)
 {
     config_item *ret;
 
-    ret = snewn(3, config_item);
+    ret = snewn(N_PREF_ITEMS+1, config_item);
 
-    ret[0].name = "Short/Long click actions";
-    ret[0].kw = "short-long";
-    ret[0].type = C_CHOICES;
-    ret[0].u.choices.choicenames = ":Black/White:White/Black";
-    ret[0].u.choices.choicekws = ":black:white";
-    ret[0].u.choices.selected = ui->click_mode;
+    ret[PREF_CLICK_ACTIONS].name = "Short/Long click actions";
+    ret[PREF_CLICK_ACTIONS].kw = "short-long";
+    ret[PREF_CLICK_ACTIONS].type = C_CHOICES;
+    ret[PREF_CLICK_ACTIONS].u.choices.choicenames = ":Black/White:White/Black";
+    ret[PREF_CLICK_ACTIONS].u.choices.choicekws = ":black:white";
+    ret[PREF_CLICK_ACTIONS].u.choices.selected = ui->click_mode;
 
-    ret[1].name = "Show errors";
-    ret[1].kw = "show-errors";
-    ret[1].type = C_BOOLEAN;
-    ret[1].u.boolean.bval = ui->show_errors;
+    ret[PREF_SHOW_ERRORS].name = "Show errors";
+    ret[PREF_SHOW_ERRORS].kw = "show-errors";
+    ret[PREF_SHOW_ERRORS].type = C_BOOLEAN;
+    ret[PREF_SHOW_ERRORS].u.boolean.bval = ui->show_errors;
 
-    ret[2].name = NULL;
-    ret[2].type = C_END;
+    ret[N_PREF_ITEMS].name = NULL;
+    ret[N_PREF_ITEMS].type = C_END;
 
     return ret;
 }
 
 static void set_prefs(game_ui *ui, const config_item *cfg)
 {
-    ui->click_mode = cfg[0].u.choices.selected;
-    ui->show_errors = cfg[1].u.boolean.bval;
+    ui->click_mode = cfg[PREF_CLICK_ACTIONS].u.choices.selected;
+    ui->show_errors = cfg[PREF_SHOW_ERRORS].u.boolean.bval;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
