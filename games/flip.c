@@ -20,7 +20,6 @@ enum {
     COL_GRID,
     COL_DIAG,
     COL_HINT,
-    COL_CURSOR,
     NCOLOURS
 };
 
@@ -786,7 +785,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
         for (i = 0; i < wh; i++)
         if (equations[j * (wh+1) + i])
             break;
-        assert(i < wh);               /* there must have been one! */
+        assert(i < wh);    /* there must have been one! */
 
         /*
          * Compute this variable using the rest.
@@ -1000,7 +999,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_GRID       * 3 + i] = 0.0F;
         ret[COL_DIAG       * 3 + i] = 0.0F;
         ret[COL_HINT       * 3 + i] = 0.75F;
-        ret[COL_CURSOR     * 3 + i] = 0.5F;
     }
 
     *ncolours = NCOLOURS;
@@ -1034,7 +1032,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
 {
     int w = ds->w, h = ds->h, wh = w * h;
     int bx = x * TILE_SIZE + BORDER, by = y * TILE_SIZE + BORDER;
-    int i, j, dcol = (tile & 4) ? COL_CURSOR : COL_DIAG;
+    int i, j;
 
     clip(dr, bx+2, by+2, TILE_SIZE-3, TILE_SIZE-3);
 
@@ -1053,15 +1051,11 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
         int cx = (bx + TILE_SIZE/2) + (2 * ox - 1) * td;
         int cy = (by + TILE_SIZE/2) + (2 * oy - 1) * td;
         if (ox == 0 && oy == 0)
-            draw_rect(dr, cx, cy, 2*td, 2*td, dcol);
+            draw_rect(dr, cx, cy, 2*td, 2*td, COL_DIAG);
         else {
-            draw_rect(dr, cx, cy, 2*td, 2*td, dcol);
+            draw_rect(dr, cx, cy, 2*td, 2*td, COL_DIAG);
             draw_rect(dr, cx+3, cy+3, 2*td-6, 2*td-6, COL_BACKGROUND);
 
-/*            draw_line(dr, cx, cy, cx+2*td, cy, dcol);
-            draw_line(dr, cx, cy+2*td, cx+2*td, cy+2*td, dcol);
-            draw_line(dr, cx, cy, cx, cy+2*td, dcol);
-            draw_line(dr, cx+2*td, cy, cx+2*td, cy+2*td, dcol); */
         }
     }
 

@@ -1496,11 +1496,13 @@ static game_state *new_game(midend *me, const game_params *params,
             desc++;
         }
         else if (*desc == ',') {
+            assert(i == w*(h+1));
             fh = false;
             i = 0;
             desc++;
         }
     }
+    assert(i == (w+1)*h);
     return state;
 }
 
@@ -1618,15 +1620,6 @@ struct game_drawstate {
     unsigned long *cell;
 };
 
-/* 
-static void debug_draglist(game_ui *ui) {
-    int i;
-    printf("Mode %i, Edges in draglist %i, Pending %i Dragcoords [", ui->dragmode, ui->ndragcoords, ui->pending);
-    for (i=0;i<ui->ndragcoords;i++)
-        printf("%i ",ui->dragcoords[i]);
-    printf("]\n");
-}
-*/
 static int get_edge(const game_state *state, int coord) {
         int vcoff = (2*state->w+3)*(2*state->h+3);
         int x = coord % vcoff;
@@ -1754,7 +1747,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             int dragedge = get_edge(state, ui->rawcoords[i]);
             if (dragedge >= 0) ui->dragcoords[ui->ndragcoords++] = dragedge;
         }
-        /* debug_draglist(ui); */
         return MOVE_UI_UPDATE;
     }
    /* Drag or click finished */
@@ -1781,8 +1773,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->dragcoords[ui->ndragcoords++] = edge;
         }
 
-        /* debug_draglist(ui); */
-        
         /* There is something to do after drag */
         if (ui->dragmode != DRAG_NONE && ui->ndragcoords > 0) {
             char tmpbuf[80];

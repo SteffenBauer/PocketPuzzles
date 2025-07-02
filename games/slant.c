@@ -151,15 +151,15 @@ static void decode_params(game_params *ret, char const *string)
     if (*string == 'x') {
         string++;
         ret->h = atoi(string);
-    while (*string && isdigit((unsigned char)*string)) string++;
+        while (*string && isdigit((unsigned char)*string)) string++;
     }
     if (*string == 'd') {
-    int i;
-    string++;
-    for (i = 0; i < DIFFCOUNT; i++)
-        if (*string == slant_diffchars[i])
-        ret->diff = i;
-    if (*string) string++;
+        int i;
+        string++;
+        for (i = 0; i < DIFFCOUNT; i++)
+            if (*string == slant_diffchars[i])
+                ret->diff = i;
+        if (*string) string++;
     }
 }
 
@@ -169,7 +169,7 @@ static char *encode_params(const game_params *params, bool full)
 
     sprintf(data, "%dx%d", params->w, params->h);
     if (full)
-    sprintf(data + strlen(data), "d%c", slant_diffchars[params->diff]);
+        sprintf(data + strlen(data), "d%c", slant_diffchars[params->diff]);
 
     return dupstr(data);
 }
@@ -339,25 +339,25 @@ static void merge_vertices(DSF *connected,
     bool border = false;    /* initialise to placate optimiser */
 
     if (sc) {
-    i = dsf_canonify(connected, i);
-    j = dsf_canonify(connected, j);
+        i = dsf_canonify(connected, i);
+        j = dsf_canonify(connected, j);
 
-    /*
-     * We have used one possible exit from each of the two
-     * classes. Thus, the viable exit count of the new class is
-     * the sum of the old exit counts minus two.
-     */
-    exits = sc->exits[i] + sc->exits[j] - 2;
+        /*
+         * We have used one possible exit from each of the two
+         * classes. Thus, the viable exit count of the new class is
+         * the sum of the old exit counts minus two.
+         */
+        exits = sc->exits[i] + sc->exits[j] - 2;
 
-    border = sc->border[i] || sc->border[j];
+        border = sc->border[i] || sc->border[j];
     }
 
     dsf_merge(connected, i, j);
 
     if (sc) {
-    i = dsf_canonify(connected, i);
-    sc->exits[i] = exits;
-    sc->border[i] = border;
+        i = dsf_canonify(connected, i);
+        sc->exits[i] = exits;
+        sc->border[i] = border;
     }
 }
 
@@ -371,8 +371,8 @@ static void merge_vertices(DSF *connected,
 static void decr_exits(struct solver_scratch *sc, int i)
 {
     if (sc->clues[i] < 0) {
-    i = dsf_canonify(sc->connected, i);
-    sc->exits[i]--;
+        i = dsf_canonify(sc->connected, i);
+        sc->exits[i]--;
     }
 }
 
@@ -385,33 +385,28 @@ static void fill_square(int w, int h, int x, int y, int v,
     assert(x >= 0 && x < w && y >= 0 && y < h);
 
     if (soln[y*w+x] != 0) {
-    return;                   /* do nothing */
+        return;                   /* do nothing */
     }
-
-#ifdef SOLVER_DIAGNOSTICS
-    if (verbose)
-    printf("  placing %c in %d,%d\n", v == -1 ? '\\' : '/', x, y);
-#endif
 
     soln[y*w+x] = v;
 
     if (sc) {
-    int c = dsf_canonify(sc->equiv, y*w+x);
-    sc->slashval[c] = v;
+        int c = dsf_canonify(sc->equiv, y*w+x);
+        sc->slashval[c] = v;
     }
 
     if (v < 0) {
-    merge_vertices(connected, sc, y*W+x, (y+1)*W+(x+1));
-    if (sc) {
-        decr_exits(sc, y*W+(x+1));
-        decr_exits(sc, (y+1)*W+x);
-    }
+        merge_vertices(connected, sc, y*W+x, (y+1)*W+(x+1));
+        if (sc) {
+            decr_exits(sc, y*W+(x+1));
+            decr_exits(sc, (y+1)*W+x);
+        }
     } else {
-    merge_vertices(connected, sc, y*W+(x+1), (y+1)*W+x);
-    if (sc) {
-        decr_exits(sc, y*W+x);
-        decr_exits(sc, (y+1)*W+(x+1));
-    }
+        merge_vertices(connected, sc, y*W+(x+1), (y+1)*W+x);
+        if (sc) {
+            decr_exits(sc, y*W+x);
+            decr_exits(sc, (y+1)*W+(x+1));
+        }
     }
 }
 
@@ -424,21 +419,6 @@ static bool vbitmap_clear(int w, int h, struct solver_scratch *sc,
     for (vbit = 1; vbit <= 8; vbit <<= 1)
         if (vbits & sc->vbitmap[y*w+x] & vbit) {
             done_something = true;
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose) {
-                va_list ap;
-
-                printf("ruling out %c shape at (%d,%d)-(%d,%d) (",
-                       "!v^!>!!!<"[vbit], x, y,
-                       x+((vbit&0x3)!=0), y+((vbit&0xC)!=0));
-
-                va_start(ap, reason);
-                vprintf(reason, ap);
-                va_end(ap);
-
-                printf(")\n");
-            }
-#endif
             sc->vbitmap[y*w+x] &= ~vbit;
         }
 
@@ -503,14 +483,14 @@ static int slant_solve(int w, int h, const signed char *clues,
     for (y = 0; y < H; y++)
     for (x = 0; x < W; x++) {
         if (y == 0 || y == H-1 || x == 0 || x == W-1)
-        sc->border[y*W+x] = true;
+            sc->border[y*W+x] = true;
         else
-        sc->border[y*W+x] = false;
+            sc->border[y*W+x] = false;
 
         if (clues[y*W+x] < 0)
-        sc->exits[y*W+x] = 4;
+            sc->exits[y*W+x] = 4;
         else
-        sc->exits[y*W+x] = clues[y*W+x];
+            sc->exits[y*W+x] = clues[y*W+x];
     }
 
     /*
@@ -622,24 +602,10 @@ static int slant_solve(int w, int h, const signed char *clues,
             /*
              * No consistent value for this at all!
              */
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-            printf("need %d / %d lines around clue point at %d,%d!\n",
-                   nl, nu, x, y);
-#endif
             return 0;           /* impossible */
         }
 
         if (nu > 0 && (nl == 0 || nl == nu)) {
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose) {
-            if (meq >= 0)
-                printf("partially (since %d,%d == %d,%d) ",
-                   mj1%w, mj1/w, mj2%w, mj2/w);
-            printf("%s around clue point at %d,%d\n",
-                   nl ? "filling" : "emptying", x, y);
-            }
-#endif
             for (i = 0; i < nneighbours; i++) {
             j = neighbours[i].pos;
             s = neighbours[i].slash;
@@ -677,46 +643,29 @@ static int slant_solve(int w, int h, const signed char *clues,
             }
             }
             if (i < nneighbours) {
-            int sv1, sv2;
+                int sv1, sv2;
 
-            assert(last >= 0);
-            /*
-             * neighbours[last] and neighbours[i] are
-             * the pair. Mark them equivalent.
-             */
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose) {
-                if (meq >= 0)
-                printf("since %d,%d == %d,%d, ",
-                       mj1%w, mj1/w, mj2%w, mj2/w);
-            }
-#endif
-            mj1 = neighbours[last].pos;
-            mj2 = neighbours[i].pos;
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-                printf("clue point at %d,%d implies %d,%d == %d,"
-                   "%d\n", x, y, mj1%w, mj1/w, mj2%w, mj2/w);
-#endif
-            mj1 = dsf_canonify(sc->equiv, mj1);
-            sv1 = sc->slashval[mj1];
-            mj2 = dsf_canonify(sc->equiv, mj2);
-            sv2 = sc->slashval[mj2];
-            if (sv1 != 0 && sv2 != 0 && sv1 != sv2) {
-#ifdef SOLVER_DIAGNOSTICS
-                if (verbose)
-                printf("merged two equivalence classes with"
-                       " different slash values!\n");
-#endif
-                return 0;
-            }
-            sv1 = sv1 ? sv1 : sv2;
-            dsf_merge(sc->equiv, mj1, mj2);
-            mj1 = dsf_canonify(sc->equiv, mj1);
-            sc->slashval[mj1] = sv1;
+                assert(last >= 0);
+                /*
+                 * neighbours[last] and neighbours[i] are
+                 * the pair. Mark them equivalent.
+                 */
+                mj1 = neighbours[last].pos;
+                mj2 = neighbours[i].pos;
+                mj1 = dsf_canonify(sc->equiv, mj1);
+                sv1 = sc->slashval[mj1];
+                mj2 = dsf_canonify(sc->equiv, mj2);
+                sv2 = sc->slashval[mj2];
+                if (sv1 != 0 && sv2 != 0 && sv1 != sv2) {
+                    return 0;
+                }
+                sv1 = sv1 ? sv1 : sv2;
+                dsf_merge(sc->equiv, mj1, mj2);
+                mj1 = dsf_canonify(sc->equiv, mj1);
+                sc->slashval[mj1] = sv1;
             }
         }
-        }
+    }
 
     if (done_something)
         continue;
@@ -733,13 +682,9 @@ static int slant_solve(int w, int h, const signed char *clues,
      * end avoidance. Only _immediate_ loop avoidance remains.
      */
     for (y = 0; y < h; y++)
-        for (x = 0; x < w; x++) {
+    for (x = 0; x < w; x++) {
         bool fs, bs;
-                int v, c1, c2;
-#ifdef SOLVER_DIAGNOSTICS
-        const char *reason = "<internal error>";
-#endif
-
+        int v, c1, c2;
         if (soln[y*w+x])
             continue;           /* got this one already */
 
@@ -760,23 +705,14 @@ static int slant_solve(int w, int h, const signed char *clues,
         c2 = dsf_canonify(sc->connected, (y+1)*W+(x+1));
         if (c1 == c2) {
             fs = true;
-#ifdef SOLVER_DIAGNOSTICS
-            reason = "simple loop avoidance";
-#endif
         }
         if (difficulty > DIFF_EASY &&
             !sc->border[c1] && !sc->border[c2] &&
             sc->exits[c1] <= 1 && sc->exits[c2] <= 1) {
             fs = true;
-#ifdef SOLVER_DIAGNOSTICS
-            reason = "dead end avoidance";
-#endif
         }
         if (v == +1) {
             fs = true;
-#ifdef SOLVER_DIAGNOSTICS
-            reason = "equivalence to an already filled square";
-#endif
         }
 
         /*
@@ -787,193 +723,160 @@ static int slant_solve(int w, int h, const signed char *clues,
         c2 = dsf_canonify(sc->connected, (y+1)*W+x);
         if (c1 == c2) {
             bs = true;
-#ifdef SOLVER_DIAGNOSTICS
-            reason = "simple loop avoidance";
-#endif
         }
         if (difficulty > DIFF_EASY &&
             !sc->border[c1] && !sc->border[c2] &&
             sc->exits[c1] <= 1 && sc->exits[c2] <= 1) {
             bs = true;
-#ifdef SOLVER_DIAGNOSTICS
-            reason = "dead end avoidance";
-#endif
         }
         if (v == -1) {
             bs = true;
-#ifdef SOLVER_DIAGNOSTICS
-            reason = "equivalence to an already filled square";
-#endif
         }
 
         if (fs && bs) {
             /*
              * No consistent value for this at all!
              */
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-            printf("%d,%d has no consistent slash!\n", x, y);
-#endif
             return 0;          /* impossible */
         }
 
         if (fs) {
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-            printf("employing %s\n", reason);
-#endif
             fill_square(w, h, x, y, +1, soln, sc->connected, sc);
             done_something = true;
         } else if (bs) {
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-            printf("employing %s\n", reason);
-#endif
             fill_square(w, h, x, y, -1, soln, sc->connected, sc);
             done_something = true;
         }
-        }
+    }
 
-        if (done_something)
-            continue;
+    if (done_something)
+        continue;
 
-        /*
-         * Now see what we can do with the vbitmap array. All
-         * vbitmap deductions are disabled at Easy level.
-         */
-        if (difficulty <= DIFF_EASY)
-            continue;
+    /*
+     * Now see what we can do with the vbitmap array. All
+     * vbitmap deductions are disabled at Easy level.
+     */
+    if (difficulty <= DIFF_EASY)
+        continue;
 
     for (y = 0; y < h; y++)
-        for (x = 0; x < w; x++) {
-                int s, c;
+    for (x = 0; x < w; x++) {
+        int s, c;
 
-                /*
-                 * Any line already placed in a square must rule
-                 * out any type of v which contradicts it.
-                 */
-                if ((s = soln[y*w+x]) != 0) {
-                    if (x > 0)
-                        done_something |=
-                        vbitmap_clear(w, h, sc, x-1, y, (s < 0 ? 0x1 : 0x2),
-                                      "contradicts known edge at (%d,%d)",x,y);
-                    if (x+1 < w)
-                        done_something |=
-                        vbitmap_clear(w, h, sc, x, y, (s < 0 ? 0x2 : 0x1),
-                                      "contradicts known edge at (%d,%d)",x,y);
-                    if (y > 0)
-                        done_something |=
-                        vbitmap_clear(w, h, sc, x, y-1, (s < 0 ? 0x4 : 0x8),
-                                      "contradicts known edge at (%d,%d)",x,y);
-                    if (y+1 < h)
-                        done_something |=
-                        vbitmap_clear(w, h, sc, x, y, (s < 0 ? 0x8 : 0x4),
-                                      "contradicts known edge at (%d,%d)",x,y);
-                }
+        /*
+         * Any line already placed in a square must rule
+         * out any type of v which contradicts it.
+         */
+        if ((s = soln[y*w+x]) != 0) {
+            if (x > 0)
+                done_something |=
+                    vbitmap_clear(w, h, sc, x-1, y, (s < 0 ? 0x1 : 0x2),
+                                 "contradicts known edge at (%d,%d)",x,y);
+            if (x+1 < w)
+                done_something |=
+                    vbitmap_clear(w, h, sc, x, y, (s < 0 ? 0x2 : 0x1),
+                                 "contradicts known edge at (%d,%d)",x,y);
+            if (y > 0)
+                done_something |=
+                    vbitmap_clear(w, h, sc, x, y-1, (s < 0 ? 0x4 : 0x8),
+                                 "contradicts known edge at (%d,%d)",x,y);
+            if (y+1 < h)
+                done_something |=
+                    vbitmap_clear(w, h, sc, x, y, (s < 0 ? 0x8 : 0x4),
+                                 "contradicts known edge at (%d,%d)",x,y);
+        }
 
-                /*
-                 * If both types of v are ruled out for a pair of
-                 * adjacent squares, mark them as equivalent.
-                 */
-                if (x+1 < w && !(sc->vbitmap[y*w+x] & 0x3)) {
-                    int n1 = y*w+x, n2 = y*w+(x+1);
-                    if (dsf_canonify(sc->equiv, n1) !=
-                        dsf_canonify(sc->equiv, n2)) {
-                        dsf_merge(sc->equiv, n1, n2);
-                        done_something = true;
-#ifdef SOLVER_DIAGNOSTICS
-                        if (verbose)
-                            printf("(%d,%d) and (%d,%d) must be equivalent"
-                                   " because both v-shapes are ruled out\n",
-                                   x, y, x+1, y);
-#endif
-                    }
-                }
-                if (y+1 < h && !(sc->vbitmap[y*w+x] & 0xC)) {
-                    int n1 = y*w+x, n2 = (y+1)*w+x;
-                    if (dsf_canonify(sc->equiv, n1) !=
-                        dsf_canonify(sc->equiv, n2)) {
-                        dsf_merge(sc->equiv, n1, n2);
-                        done_something = true;
-#ifdef SOLVER_DIAGNOSTICS
-                        if (verbose)
-                            printf("(%d,%d) and (%d,%d) must be equivalent"
-                                   " because both v-shapes are ruled out\n",
-                                   x, y, x, y+1);
-#endif
-                    }
-                }
+        /*
+         * If both types of v are ruled out for a pair of
+         * adjacent squares, mark them as equivalent.
+         */
+        if (x+1 < w && !(sc->vbitmap[y*w+x] & 0x3)) {
+            int n1 = y*w+x, n2 = y*w+(x+1);
+            if (dsf_canonify(sc->equiv, n1) !=
+                dsf_canonify(sc->equiv, n2)) {
+                dsf_merge(sc->equiv, n1, n2);
+                done_something = true;
+            }
+        }
+        if (y+1 < h && !(sc->vbitmap[y*w+x] & 0xC)) {
+            int n1 = y*w+x, n2 = (y+1)*w+x;
+            if (dsf_canonify(sc->equiv, n1) !=
+                dsf_canonify(sc->equiv, n2)) {
+                dsf_merge(sc->equiv, n1, n2);
+                done_something = true;
+            }
+        }
 
-                /*
-                 * The remaining work in this loop only works
-                 * around non-edge clue points.
-                 */
-                if (y == 0 || x == 0)
-                    continue;
+        /*
+         * The remaining work in this loop only works
+         * around non-edge clue points.
+         */
+        if (y == 0 || x == 0)
+            continue;
         if ((c = clues[y*W+x]) < 0)
             continue;
 
-                /*
-                 * x,y marks a clue point not on the grid edge. See
-                 * if this clue point allows us to rule out any v
-                 * shapes.
-                 */
+        /*
+         * x,y marks a clue point not on the grid edge. See
+         * if this clue point allows us to rule out any v
+         * shapes.
+         */
 
-                if (c == 1) {
-                    /*
-                     * A 1 clue can never have any v shape pointing
-                     * at it.
-                     */
-                    done_something |=
-                        vbitmap_clear(w, h, sc, x-1, y-1, 0x5,
-                                      "points at 1 clue at (%d,%d)", x, y);
-                    done_something |=
-                        vbitmap_clear(w, h, sc, x-1, y, 0x2,
-                                      "points at 1 clue at (%d,%d)", x, y);
-                    done_something |=
-                        vbitmap_clear(w, h, sc, x, y-1, 0x8,
-                                      "points at 1 clue at (%d,%d)", x, y);
-                } else if (c == 3) {
-                    /*
-                     * A 3 clue can never have any v shape pointing
-                     * away from it.
-                     */
-                    done_something |=
-                        vbitmap_clear(w, h, sc, x-1, y-1, 0xA,
-                                      "points away from 3 clue at (%d,%d)", x, y);
-                    done_something |=
-                        vbitmap_clear(w, h, sc, x-1, y, 0x1,
-                                      "points away from 3 clue at (%d,%d)", x, y);
-                    done_something |=
-                        vbitmap_clear(w, h, sc, x, y-1, 0x4,
-                                      "points away from 3 clue at (%d,%d)", x, y);
-                } else if (c == 2) {
-                    /*
-                     * If a 2 clue has any kind of v ruled out on
-                     * one side of it, the same v is ruled out on
-                     * the other side.
-                     */
-                    done_something |=
-                        vbitmap_clear(w, h, sc, x-1, y-1,
-                                      (sc->vbitmap[(y  )*w+(x-1)] & 0x3) ^ 0x3,
-                                      "propagated by 2 clue at (%d,%d)", x, y);
-                    done_something |=
-                        vbitmap_clear(w, h, sc, x-1, y-1,
-                                      (sc->vbitmap[(y-1)*w+(x  )] & 0xC) ^ 0xC,
-                                      "propagated by 2 clue at (%d,%d)", x, y);
-                    done_something |=
-                        vbitmap_clear(w, h, sc, x-1, y,
-                                      (sc->vbitmap[(y-1)*w+(x-1)] & 0x3) ^ 0x3,
-                                      "propagated by 2 clue at (%d,%d)", x, y);
-                    done_something |=
-                        vbitmap_clear(w, h, sc, x, y-1,
-                                      (sc->vbitmap[(y-1)*w+(x-1)] & 0xC) ^ 0xC,
-                                      "propagated by 2 clue at (%d,%d)", x, y);
-                }
+        if (c == 1) {
+            /*
+             * A 1 clue can never have any v shape pointing
+             * at it.
+             */
+            done_something |=
+               vbitmap_clear(w, h, sc, x-1, y-1, 0x5,
+                            "points at 1 clue at (%d,%d)", x, y);
+            done_something |=
+               vbitmap_clear(w, h, sc, x-1, y, 0x2,
+                            "points at 1 clue at (%d,%d)", x, y);
+            done_something |=
+               vbitmap_clear(w, h, sc, x, y-1, 0x8,
+                            "points at 1 clue at (%d,%d)", x, y);
+         } else if (c == 3) {
+            /*
+             * A 3 clue can never have any v shape pointing
+             * away from it.
+             */
+            done_something |=
+                vbitmap_clear(w, h, sc, x-1, y-1, 0xA,
+                              "points away from 3 clue at (%d,%d)", x, y);
+            done_something |=
+                vbitmap_clear(w, h, sc, x-1, y, 0x1,
+                              "points away from 3 clue at (%d,%d)", x, y);
+            done_something |=
+                vbitmap_clear(w, h, sc, x, y-1, 0x4,
+                              "points away from 3 clue at (%d,%d)", x, y);
+         } else if (c == 2) {
+            /*
+             * If a 2 clue has any kind of v ruled out on
+             * one side of it, the same v is ruled out on
+             * the other side.
+             */
+             done_something |=
+                vbitmap_clear(w, h, sc, x-1, y-1,
+                             (sc->vbitmap[(y  )*w+(x-1)] & 0x3) ^ 0x3,
+                             "propagated by 2 clue at (%d,%d)", x, y);
+             done_something |=
+                vbitmap_clear(w, h, sc, x-1, y-1,
+                             (sc->vbitmap[(y-1)*w+(x  )] & 0xC) ^ 0xC,
+                              "propagated by 2 clue at (%d,%d)", x, y);
+             done_something |=
+                vbitmap_clear(w, h, sc, x-1, y,
+                             (sc->vbitmap[(y-1)*w+(x-1)] & 0x3) ^ 0x3,
+                              "propagated by 2 clue at (%d,%d)", x, y);
+             done_something |=
+                vbitmap_clear(w, h, sc, x, y-1,
+                             (sc->vbitmap[(y-1)*w+(x-1)] & 0xC) ^ 0xC,
+                              "propagated by 2 clue at (%d,%d)", x, y);
+         }
 
 #undef CLEARBITS
 
-            }
+    }
 
     } while (done_something);
 
@@ -981,8 +884,8 @@ static int slant_solve(int w, int h, const signed char *clues,
      * Solver can make no more progress. See if the grid is full.
      */
     for (i = 0; i < w*h; i++)
-    if (!soln[i])
-        return 2;               /* failed to converge */
+        if (!soln[i])
+            return 2;               /* failed to converge */
     return 1;                   /* success */
 }
 
@@ -1013,51 +916,51 @@ static void slant_generate(int w, int h, signed char *soln, random_state *rs)
      */
     indices = snewn(w*h, int);
     for (i = 0; i < w*h; i++)
-    indices[i] = i;
+        indices[i] = i;
     shuffle(indices, w*h, sizeof(*indices), rs);
 
     /*
      * Fill in each one in turn.
      */
     for (i = 0; i < w*h; i++) {
-    bool fs, bs;
+        bool fs, bs;
         int v;
 
-    y = indices[i] / w;
-    x = indices[i] % w;
+        y = indices[i] / w;
+        x = indices[i] % w;
 
-    fs = (dsf_canonify(connected, y*W+x) ==
-          dsf_canonify(connected, (y+1)*W+(x+1)));
-    bs = (dsf_canonify(connected, (y+1)*W+x) ==
-          dsf_canonify(connected, y*W+(x+1)));
+        fs = (dsf_canonify(connected, y*W+x) ==
+              dsf_canonify(connected, (y+1)*W+(x+1)));
+        bs = (dsf_canonify(connected, (y+1)*W+x) ==
+              dsf_canonify(connected, y*W+(x+1)));
 
-    /*
-     * It isn't possible to get into a situation where we
-     * aren't allowed to place _either_ type of slash in a
-     * square. Thus, filled-grid generation never has to
-     * backtrack.
-     * 
-     * Proof (thanks to Gareth Taylor):
-     * 
-     * If it were possible, it would have to be because there
-     * was an existing path (not using this square) between the
-     * top-left and bottom-right corners of this square, and
-     * another between the other two. These two paths would
-     * have to cross at some point.
-     * 
-     * Obviously they can't cross in the middle of a square, so
-     * they must cross by sharing a point in common. But this
-     * isn't possible either: if you chessboard-colour all the
-     * points on the grid, you find that any continuous
-     * diagonal path is entirely composed of points of the same
-     * colour. And one of our two hypothetical paths is between
-     * two black points, and the other is between two white
-     * points - therefore they can have no point in common. []
-     */
-    assert(!(fs && bs));
+        /*
+         * It isn't possible to get into a situation where we
+         * aren't allowed to place _either_ type of slash in a
+         * square. Thus, filled-grid generation never has to
+         * backtrack.
+         * 
+         * Proof (thanks to Gareth Taylor):
+         * 
+         * If it were possible, it would have to be because there
+         * was an existing path (not using this square) between the
+         * top-left and bottom-right corners of this square, and
+         * another between the other two. These two paths would
+         * have to cross at some point.
+         * 
+         * Obviously they can't cross in the middle of a square, so
+         * they must cross by sharing a point in common. But this
+         * isn't possible either: if you chessboard-colour all the
+         * points on the grid, you find that any continuous
+         * diagonal path is entirely composed of points of the same
+         * colour. And one of our two hypothetical paths is between
+         * two black points, and the other is between two white
+         * points - therefore they can have no point in common. []
+         */
+        assert(!(fs && bs));
 
-    v = fs ? +1 : bs ? -1 : 2 * random_upto(rs, 2) - 1;
-    fill_square(w, h, x, y, v, soln, connected, NULL);
+        v = fs ? +1 : bs ? -1 : 2 * random_upto(rs, 2) - 1;
+        fill_square(w, h, x, y, v, soln, connected, NULL);
     }
 
     sfree(indices);
@@ -1090,7 +993,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      * Fill in the complete set of clues.
      */
     for (y = 0; y < H; y++)
-        for (x = 0; x < W; x++) {
+    for (x = 0; x < W; x++) {
         v = 0;
 
         if (x > 0 && y > 0 && soln[(y-1)*w+(x-1)] == -1) v++;
@@ -1099,15 +1002,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         if (x < w && y < h && soln[y*w+x] == -1) v++;
 
         clues[y*W+x] = v;
-        }
-
-    /*
-     * With all clue points filled in, all puzzles are easy: we can
-     * simply process the clue points in lexicographic order, and
-     * at each clue point we will always have at most one square
-     * undecided, which we can then fill in uniquely.
-     */
-    assert(slant_solve(w, h, clues, tmpsoln, sc, DIFF_EASY) == 1);
+    }
 
     /*
      * Remove as many clues as possible while retaining solubility.
@@ -1123,9 +1018,9 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         clueindices[i] = i;
     shuffle(clueindices, W*H, sizeof(*clueindices), rs);
     for (j = 0; j < 2; j++) {
-        for (i = 0; i < W*H; i++) {
+    for (i = 0; i < W*H; i++) {
         int pass;
-                bool yb, xb;
+        bool yb, xb;
 
         y = clueindices[i] / W;
         x = clueindices[i] % W;
@@ -1149,9 +1044,9 @@ static char *new_game_desc(const game_params *params, random_state *rs,
             clues[y*W+x] = -1;
             if (slant_solve(w, h, clues, tmpsoln, sc,
                     params->diff) != 1)
-            clues[y*W+x] = v;           /* put it back */
+                clues[y*W+x] = v;           /* put it back */
         }
-        }
+    }
     }
 
     /*
@@ -1179,21 +1074,21 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         if (n == -1)
         run++;
         else {
-        if (run) {
-            while (run > 0) {
-            int c = 'a' - 1 + run;
-            if (run > 26)
-                c = 'z';
-            *p++ = c;
-            run -= c - ('a' - 1);
+            if (run) {
+                while (run > 0) {
+                    int c = 'a' - 1 + run;
+                    if (run > 26)
+                        c = 'z';
+                    *p++ = c;
+                    run -= c - ('a' - 1);
+                }
             }
-        }
-        if (n >= 0)
-            *p++ = '0' + n;
-        run = 0;
+            if (n >= 0)
+                *p++ = '0' + n;
+            run = 0;
         }
     }
-    assert(p - desc <= W*H);
+	assert(p - desc <= W*H);
     *p++ = '\0';
     desc = sresize(desc, p - desc, char);
     }
@@ -1248,6 +1143,7 @@ static game_state *new_game(midend *me, const game_params *params,
 {
     int w = params->w, h = params->h, W = w+1, H = h+1;
     game_state *state = snew(game_state);
+    int area = W*H;
     int squares = 0;
 
     state->p = *params;
@@ -1270,8 +1166,10 @@ static game_state *new_game(midend *me, const game_params *params,
             squares += n - 'a' + 1;
         } else if (n >= '0' && n <= '4') {
             state->clues->clues[squares++] = n - '0';
-        }
+        } else
+            assert(!"can't get here");
     }
+    assert(squares == area);
 
     return state;
 }

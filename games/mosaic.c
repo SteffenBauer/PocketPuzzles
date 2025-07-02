@@ -12,7 +12,6 @@
  * interaction is based on the range puzzle in the collection.
  */
 
-#include <assert.h>
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>
@@ -576,6 +575,7 @@ static bool solve_game_actual(const game_params *params,
     solved = 0;
     while (solved < params->height * params->width && made_progress
            && !error) {
+        made_progress = false;
         for (y=0; y < params->height; y++) {
             for (x=0; x < params->width; x++) {
                 curr = solve_cell(params, NULL, desc, sol, x, y);
@@ -1344,7 +1344,7 @@ static void draw_cell(drawing *dr, int cell, int ts, signed char clue_val,
     if (clue_val >= 0) {
         char clue[80];
         sprintf(clue, "%d", clue_val);
-        draw_text(dr, startX + ts/2, startY + ts/2, 1, ts * 3/5,
+        draw_text(dr, startX + ts/2, startY + ts/2, FONT_VARIABLE, ts * 3/5,
         ALIGN_VCENTRE | ALIGN_HCENTRE, text_color, clue);
     }
     draw_update(dr, startX, startY, ts - 1, ts - 1);

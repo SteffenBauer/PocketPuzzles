@@ -683,7 +683,7 @@ static bool fourcolour_recurse(int *graph, int n, int ngraph,
      * If there aren't any uncoloured vertices at all, we're done.
      */
     if (nvert == 0)
-    return true;               /* we've got a colouring! */
+        return true;               /* we've got a colouring! */
 
     /*
      * Pick a random vertex in that set.
@@ -692,8 +692,7 @@ static bool fourcolour_recurse(int *graph, int n, int ngraph,
     for (i = 0; i < n; i++)
     if (colouring[i] < 0 && scratch[i*FIVE+FOUR] == nfree)
         if (j-- == 0)
-        break;
-    assert(i < n);
+            break;
     start = graph_vertex_start(graph, n, ngraph, i);
 
     /*
@@ -721,7 +720,7 @@ static bool fourcolour_recurse(int *graph, int n, int ngraph,
     for (j = start; j < ngraph && graph[j] < n*(i+1); j++) {
         k = graph[j] - i*n;
         if (scratch[k*FIVE+c] == 0)
-        scratch[k*FIVE+FOUR]--;
+            scratch[k*FIVE+FOUR]--;
         scratch[k*FIVE+c]++;
     }
 
@@ -739,7 +738,7 @@ static bool fourcolour_recurse(int *graph, int n, int ngraph,
         k = graph[j] - i*n;
         scratch[k*FIVE+c]--;
         if (scratch[k*FIVE+c] == 0)
-        scratch[k*FIVE+FOUR]++;
+            scratch[k*FIVE+FOUR]++;
     }
     colouring[i] = -1;
     }
@@ -827,7 +826,6 @@ static void free_scratch(struct solver_scratch *sc)
  */
 static int bitcount(int word)
 {
-    assert(FOUR <= 4);                 /* or this needs changing */
     word = ((word & 0xA) >> 1) + (word & 0x5);
     word = ((word & 0xC) >> 2) + (word & 0x3);
     return word;
@@ -1103,8 +1101,6 @@ static int map_solver(struct solver_scratch *sc,
                             }
                         }
                     }
-
-                    assert(tail <= n);
                 }
         }
 
@@ -1116,7 +1112,7 @@ static int map_solver(struct solver_scratch *sc,
      * See if we've got a complete solution, and return if so.
      */
     for (i = 0; i < n; i++)
-    if (colouring[i] < 0)
+        if (colouring[i] < 0)
             break;
     if (i == n) {
         return 1;                      /* success! */
@@ -1151,15 +1147,12 @@ static int map_solver(struct solver_scratch *sc,
             /* Count the set bits. */
             c = (p & 5) + ((p >> 1) & 5);
             c = (c & 3) + ((c >> 2) & 3);
-            assert(c > 1);             /* or colouring[i] would be >= 0 */
 
             if (c < bestc) {
                 best = i;
                 bestc = c;
             }
         }
-
-        assert(best >= 0);             /* or we'd be solved already */
 
         /*
          * Now iterate over the possible colours for this region.
@@ -1230,9 +1223,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     int i, j, w, h, n, solveret, cfreq[FOUR];
     int wh;
     int mindiff, tries;
-#ifdef GENERATION_DIAGNOSTICS
-    int x, y;
-#endif
     char *ret, buf[80];
     int retlen, retsize;
 
@@ -1268,55 +1258,15 @@ static char *new_game_desc(const game_params *params, random_state *rs,
          */
         genmap(w, h, n, map, rs);
 
-#ifdef GENERATION_DIAGNOSTICS
-        for (y = 0; y < h; y++) {
-            for (x = 0; x < w; x++) {
-                int v = map[y*w+x];
-                if (v >= 62)
-                    putchar('!');
-                else if (v >= 36)
-                    putchar('a' + v-36);
-                else if (v >= 10)
-                    putchar('A' + v-10);
-                else
-                    putchar('0' + v);
-            }
-            putchar('\n');
-        }
-#endif
-
         /*
          * Convert the map into a graph.
          */
         ngraph = gengraph(w, h, n, map, graph);
 
-#ifdef GENERATION_DIAGNOSTICS
-        for (i = 0; i < ngraph; i++)
-            printf("%d-%d\n", graph[i]/n, graph[i]%n);
-#endif
-
         /*
          * Colour the map.
          */
         fourcolour(graph, n, ngraph, colouring, rs);
-
-#ifdef GENERATION_DIAGNOSTICS
-        for (i = 0; i < n; i++)
-            printf("%d: %d\n", i, colouring[i]);
-
-        for (y = 0; y < h; y++) {
-            for (x = 0; x < w; x++) {
-                int v = colouring[map[y*w+x]];
-                if (v >= 36)
-                    putchar('a' + v-36);
-                else if (v >= 10)
-                    putchar('A' + v-10);
-                else
-                    putchar('0' + v);
-            }
-            putchar('\n');
-        }
-#endif
 
         /*
          * Encode the solution as an aux string.
@@ -1372,27 +1322,11 @@ static char *new_game_desc(const game_params *params, random_state *rs,
             colouring2[j] = -1;
             solveret = map_solver(sc, graph, n, ngraph, colouring2,
                   params->diff);
-            assert(solveret >= 0);           /* mustn't be impossible! */
             if (solveret == 1) {
                 cfreq[colouring[j]]--;
                 colouring[j] = -1;
             }
         }
-
-#ifdef GENERATION_DIAGNOSTICS
-        for (i = 0; i < n; i++)
-            if (colouring[i] >= 0) {
-                if (i >= 62)
-                    putchar('!');
-                else if (i >= 36)
-                    putchar('a' + i-36);
-                else if (i >= 10)
-                    putchar('A' + i-10);
-                else
-                    putchar('0' + i);
-                printf(": %d\n", colouring[i]);
-            }
-#endif
 
         /*
          * Finally, check that the puzzle is _at least_ as hard as
@@ -1404,15 +1338,15 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         memcpy(colouring2, colouring, n*sizeof(int));
         if (map_solver(sc, graph, n, ngraph, colouring2,
                        mindiff - 1) == 1) {
-        /*
-         * Drop minimum difficulty if necessary.
-         */
-        if (mindiff > 0 && (n < 9 || n > 2*wh/3)) {
-        if (tries-- <= 0)
-            mindiff = 0;       /* give up and go for Easy */
-        }
+            /*
+             * Drop minimum difficulty if necessary.
+             */
+            if (mindiff > 0 && (n < 9 || n > 2*wh/3)) {
+                if (tries-- <= 0)
+                    mindiff = 0;       /* give up and go for Easy */
+            }
             continue;
-    }
+        }
 
         break;
     }
@@ -1435,7 +1369,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
     {
     int run;
-        bool pv;
+    bool pv;
 
     /*
      * Start with a notional non-edge, so that there'll be an
@@ -1447,46 +1381,46 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
     for (i = 0; i < w*(h-1) + (w-1)*h; i++) {
         int x, y, dx, dy;
-            bool v;
+        bool v;
 
         if (i < w*(h-1)) {
-        /* Horizontal edge. */
-        y = i / w;
-        x = i % w;
-        dx = 0;
-        dy = 1;
+            /* Horizontal edge. */
+            y = i / w;
+            x = i % w;
+            dx = 0;
+            dy = 1;
         } else {
-        /* Vertical edge. */
-        x = (i - w*(h-1)) / h;
-        y = (i - w*(h-1)) % h;
-        dx = 1;
-        dy = 0;
+            /* Vertical edge. */
+            x = (i - w*(h-1)) / h;
+            y = (i - w*(h-1)) % h;
+            dx = 1;
+            dy = 0;
         }
 
         if (retlen + 10 >= retsize) {
-        retsize = retlen + 256;
-        ret = sresize(ret, retsize, char);
+            retsize = retlen + 256;
+            ret = sresize(ret, retsize, char);
         }
 
         v = (map[y*w+x] != map[(y+dy)*w+(x+dx)]);
 
         if (pv != v) {
-        ret[retlen++] = 'a'-1 + run;
-        run = 1;
-        pv = v;
+            ret[retlen++] = 'a'-1 + run;
+            run = 1;
+            pv = v;
         } else {
-        /*
-         * 'z' is a special case in this encoding. Rather
-         * than meaning a run of 26 and a state switch, it
-         * means a run of 25 and _no_ state switch, because
-         * otherwise there'd be no way to encode runs of
-         * more than 26.
-         */
-        if (run == 25) {
-            ret[retlen++] = 'z';
-            run = 0;
-        }
-        run++;
+            /*
+             * 'z' is a special case in this encoding. Rather
+             * than meaning a run of 26 and a state switch, it
+             * means a run of 25 and _no_ state switch, because
+             * otherwise there'd be no way to encode runs of
+             * more than 26.
+             */
+            if (run == 25) {
+                ret[retlen++] = 'z';
+                run = 0;
+            }
+            run++;
         }
     }
 
@@ -1500,33 +1434,31 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     run = 0;
     for (i = 0; i < n; i++) {
         if (retlen + 10 >= retsize) {
-        retsize = retlen + 256;
-        ret = sresize(ret, retsize, char);
+            retsize = retlen + 256;
+            ret = sresize(ret, retsize, char);
         }
 
         if (colouring[i] < 0) {
-        /*
-         * In _this_ encoding, 'z' is a run of 26, since
-         * there's no implicit state switch after each run.
-         * Confusingly different, but more compact.
-         */
-        if (run == 26) {
-            ret[retlen++] = 'z';
-            run = 0;
-        }
-        run++;
+            /*
+             * In _this_ encoding, 'z' is a run of 26, since
+             * there's no implicit state switch after each run.
+             * Confusingly different, but more compact.
+             */
+            if (run == 26) {
+                ret[retlen++] = 'z';
+                run = 0;
+            }
+            run++;
         } else {
-        if (run > 0)
-            ret[retlen++] = 'a'-1 + run;
-        ret[retlen++] = '0' + colouring[i];
-        run = 0;
+            if (run > 0)
+                ret[retlen++] = 'a'-1 + run;
+            ret[retlen++] = '0' + colouring[i];
+            run = 0;
         }
     }
     if (run > 0)
         ret[retlen++] = 'a'-1 + run;
     ret[retlen] = '\0';
-
-    assert(retlen < retsize);
     }
 
     free_scratch(sc);
@@ -1597,7 +1529,6 @@ static const char *parse_edge_list(const game_params *params,
             state = !state;
         p++;
     }
-    assert(pos <= 2*wh-w-h);
     if (pos < 2*wh-w-h) {
         err = "Too little data in edge list";
         goto out;
@@ -1640,26 +1571,26 @@ static const char *validate_desc(const game_params *params, const char *desc)
     ret = parse_edge_list(params, &desc, map);
     sfree(map);
     if (ret)
-    return ret;
+        return ret;
 
     if (*desc != ',')
-    return "Expected comma before clue list";
+        return "Expected comma before clue list";
     desc++;                   /* eat comma */
 
     area = 0;
     while (*desc) {
-    if (*desc >= '0' && *desc < '0'+FOUR)
-        area++;
-    else if (*desc >= 'a' && *desc <= 'z')
-        area += *desc - 'a' + 1;
-    else
-        return "Unexpected character in clue list";
-    desc++;
+        if (*desc >= '0' && *desc < '0'+FOUR)
+            area++;
+        else if (*desc >= 'a' && *desc <= 'z')
+            area += *desc - 'a' + 1;
+        else
+            return "Unexpected character in clue list";
+        desc++;
     }
     if (area < n)
-    return "Too little data in clue list";
+        return "Too little data in clue list";
     else if (area > n)
-    return "Too much data in clue list";
+        return "Too much data in clue list";
 
     return NULL;
 }
@@ -1675,10 +1606,10 @@ static game_state *new_game(midend *me, const game_params *params,
     state->p = *params;
     state->colouring = snewn(n, int);
     for (i = 0; i < n; i++)
-    state->colouring[i] = -1;
+        state->colouring[i] = -1;
     state->pencil = snewn(n, int);
     for (i = 0; i < n; i++)
-    state->pencil[i] = 0;
+        state->pencil[i] = 0;
 
     state->completed = false;
     state->cheated = false;
@@ -1690,7 +1621,7 @@ static game_state *new_game(midend *me, const game_params *params,
     state->map->n = n;
     state->map->immutable = snewn(n, bool);
     for (i = 0; i < n; i++)
-    state->map->immutable[i] = false;
+        state->map->immutable[i] = false;
 
     p = desc;
 
@@ -1702,7 +1633,6 @@ static game_state *new_game(midend *me, const game_params *params,
     for (i = wh; i < 4*wh; i++)
         state->map->map[i] = state->map->map[i % wh];
 
-    assert(*p == ',');
     p++;
 
     /*
@@ -1710,17 +1640,15 @@ static game_state *new_game(midend *me, const game_params *params,
      */
     pos = 0;
     while (*p) {
-    if (*p >= '0' && *p < '0'+FOUR) {
-        state->colouring[pos] = *p - '0';
-        state->map->immutable[pos] = true;
-        pos++;
-    } else {
-        assert(*p >= 'a' && *p <= 'z');
-        pos += *p - 'a' + 1;
+        if (*p >= '0' && *p < '0'+FOUR) {
+            state->colouring[pos] = *p - '0';
+            state->map->immutable[pos] = true;
+            pos++;
+        } else {
+            pos += *p - 'a' + 1;
+        }
+        p++;
     }
-    p++;
-    }
-    assert(pos == n);
 
     state->map->ngraph = gengraph(w, h, n, state->map->map, state->map->graph);
 
@@ -2108,8 +2036,6 @@ struct game_ui {
     int drag_pencil;
     int dragx, dragy;
     int highlight_region;
-    int cur_x, cur_y, cur_lastmove;
-    bool cur_visible, cur_moved;
     bool marks_button;
     int marks_action;
 };
@@ -2121,10 +2047,6 @@ static game_ui *new_ui(const game_state *state)
     ui->drag_colour = -2;
     ui->drag_pencil = 0;
     ui->highlight_region = -1;
-    ui->cur_x = ui->cur_y = 0;
-    ui->cur_visible = false;
-    ui->cur_moved = false;
-    ui->cur_lastmove = 0;
     ui->marks_button = true;
     ui->marks_action = 1;
     return ui;
@@ -2210,19 +2132,6 @@ struct game_drawstate {
 #define COORD(x)  ( (x) * TILESIZE + BORDER )
 #define FROMCOORD(x)  ( ((x) - BORDER + TILESIZE) / TILESIZE - 1 )
 
- /*
-  * EPSILON_FOO are epsilons added to absolute cursor position by
-  * cursor movement, such that in pathological cases (e.g. a very
-  * small diamond-shaped area) it's relatively easy to select the
-  * region you wanted.
-  */
-
-#define EPSILON_X(button) (((button) == CURSOR_RIGHT) ? +1 : \
-                           ((button) == CURSOR_LEFT)  ? -1 : 0)
-#define EPSILON_Y(button) (((button) == CURSOR_DOWN)  ? +1 : \
-                           ((button) == CURSOR_UP)    ? -1 : 0)
-
-
 /*
  * Return the map region containing a point in tile (tx,ty), offset by
  * (x_eps,y_eps) from the centre of the tile.
@@ -2280,7 +2189,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
         ui->dragx = x;
         ui->dragy = y;
-        ui->cur_visible = false;
 
         return MOVE_UI_UPDATE;
     }

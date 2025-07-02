@@ -28,7 +28,6 @@ enum {
     COL_HIGHLIGHT_GENTLE,
     COL_LOWLIGHT,
     COL_LOWLIGHT_GENTLE,
-    COL_HIGHCURSOR, COL_LOWCURSOR,
     NCOLOURS
 };
 
@@ -238,7 +237,7 @@ static void do_rotate(int *grid, int w, int h, int n, bool orientable,
     assert(y >= 0 && y+n <= h);
     dir &= 3;
     if (dir == 0)
-    return;                   /* nothing to do */
+        return;                   /* nothing to do */
 
     grid += y*w+x;               /* translate region to top corner */
 
@@ -536,18 +535,11 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 }
 
 struct game_ui {
-    int cur_x, cur_y;
-    bool cur_visible;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
     game_ui *ui = snew(game_ui);
-
-    ui->cur_x = 0;
-    ui->cur_y = 0;
-    ui->cur_visible = false;
-
     return ui;
 }
 
@@ -566,7 +558,6 @@ struct game_drawstate {
     int w, h, bgcolour;
     int *grid;
     int tilesize;
-    int cur_x, cur_y;
 };
 
 static char *interpret_move(const game_state *state, game_ui *ui,
@@ -592,7 +583,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         dir = (button == LEFT_BUTTON ? 1 : -1);
         if (x < 0 || x > w-n || y < 0 || y > h-n)
             return NULL;
-        ui->cur_visible = false;
     } else {
         return MOVE_UNUSED;
     }
@@ -682,10 +672,8 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_HIGHLIGHT        * 3 + i] = 0.8;
         ret[COL_LOWLIGHT         * 3 + i] = 0.4;
         ret[COL_TEXT             * 3 + i] = 0.0;
-        ret[COL_HIGHCURSOR       * 3 + i] = 0.7F;
         ret[COL_HIGHLIGHT_GENTLE * 3 + i] = 0.7F;
         ret[COL_LOWLIGHT_GENTLE  * 3 + i] = 0.7F;
-        ret[COL_LOWCURSOR        * 3 + i] = 0.7F;
     }
 
     *ncolours = NCOLOURS;
@@ -705,7 +693,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->tilesize = 0;                  /* haven't decided yet */
     for (i = 0; i < ds->w*ds->h; i++)
         ds->grid[i] = -1;
-    ds->cur_x = ds->cur_y = -state->n;
 
     return ds;
 }
@@ -736,11 +723,6 @@ static void rotate(int *xy, struct rotation *rot)
     xy[1] = (int)(yf2 + rot->oy + 0.5);   /* round to nearest */
     }
 }
-
-#define CUR_TOP         1
-#define CUR_RIGHT       2
-#define CUR_BOTTOM      4
-#define CUR_LEFT        8
 
 static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
                       int x, int y, int tile, int flash_colour,
@@ -781,28 +763,28 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
     coords[3] = y;
     rotate(coords+2, rot);
     draw_polygon(dr, coords, 3, rot ? rot->rc : COL_LOWLIGHT,
-         rot ? rot->rc : (cedges & CUR_RIGHT) ? COL_LOWCURSOR : COL_LOWLIGHT);
+         rot ? rot->rc : COL_LOWLIGHT);
 
     /* Bottom side. */
     coords[2] = x;
     coords[3] = y + TILE_SIZE - 1;
     rotate(coords+2, rot);
     draw_polygon(dr, coords, 3, rot ? rot->bc : COL_LOWLIGHT,
-         rot ? rot->bc : (cedges & CUR_BOTTOM) ? COL_LOWCURSOR : COL_LOWLIGHT);
+         rot ? rot->bc : COL_LOWLIGHT);
 
     /* Left side. */
     coords[0] = x;
     coords[1] = y;
     rotate(coords+0, rot);
     draw_polygon(dr, coords, 3, rot ? rot->lc : COL_HIGHLIGHT,
-         rot ? rot->lc : (cedges & CUR_LEFT) ? COL_HIGHCURSOR : COL_HIGHLIGHT);
+         rot ? rot->lc : COL_HIGHLIGHT);
 
     /* Top side. */
     coords[2] = x + TILE_SIZE - 1;
     coords[3] = y;
     rotate(coords+2, rot);
     draw_polygon(dr, coords, 3, rot ? rot->tc : COL_HIGHLIGHT,
-         rot ? rot->tc : (cedges & CUR_TOP) ? COL_HIGHCURSOR : COL_HIGHLIGHT);
+         rot ? rot->tc : COL_HIGHLIGHT);
 
     /*
      * Now the main blank area in the centre of the tile.
@@ -956,13 +938,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     int i, bgcolour;
     struct rotation srot, *rot;
     int lastx = -1, lasty = -1, lastr = -1;
-    int cx, cy, n = state->n;
-    bool cmoved = false;
-
-    cx = ui->cur_visible ? ui->cur_x : -state->n;
-    cy = ui->cur_visible ? ui->cur_y : -state->n;
-    if (cx != ds->cur_x || cy != ds->cur_y)
-        cmoved = true;
 
     bgcolour = COL_BACKGROUND;
 
@@ -996,40 +971,40 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
      * background colour before doing anything else.
      */
     if (oldstate) {
-    float angle;
-    float anim_max = game_anim_length_real(oldstate, state, dir, ui);
+        float angle;
+        float anim_max = game_anim_length_real(oldstate, state, dir, ui);
 
-    if (dir > 0) {
-        lastx = state->lastx;
-        lasty = state->lasty;
-        lastr = state->lastr;
-    } else {
-        lastx = oldstate->lastx;
-        lasty = oldstate->lasty;
-        lastr = -oldstate->lastr;
-    }
+        if (dir > 0) {
+            lastx = state->lastx;
+            lasty = state->lasty;
+            lastr = state->lastr;
+        } else {
+            lastx = oldstate->lastx;
+            lasty = oldstate->lasty;
+            lastr = -oldstate->lastr;
+        }
 
-    rot = &srot;
-    rot->cx = COORD(lastx);
-    rot->cy = COORD(lasty);
-    rot->cw = rot->ch = TILE_SIZE * state->n;
-    rot->ox = rot->cx + rot->cw/2;
-    rot->oy = rot->cy + rot->ch/2;
-    angle = ((-(float)PI/2 * lastr) * (1.0F - animtime / anim_max));
-    rot->c = (float)cos(angle);
-    rot->s = (float)sin(angle);
+        rot = &srot;
+        rot->cx = COORD(lastx);
+        rot->cy = COORD(lasty);
+        rot->cw = rot->ch = TILE_SIZE * state->n;
+        rot->ox = rot->cx + rot->cw/2;
+        rot->oy = rot->cy + rot->ch/2;
+        angle = ((-(float)PI/2 * lastr) * (1.0F - animtime / anim_max));
+        rot->c = (float)cos(angle);
+        rot->s = (float)sin(angle);
 
-    /*
-     * Sort out the colours of the various sides of the tile.
-     */
-    rot->lc = highlight_colour((float)PI + angle);
-    rot->rc = highlight_colour(angle);
-    rot->tc = highlight_colour((float)(PI/2.0) + angle);
-    rot->bc = highlight_colour((float)(-PI/2.0) + angle);
+        /*
+         * Sort out the colours of the various sides of the tile.
+         */
+        rot->lc = highlight_colour((float)PI + angle);
+        rot->rc = highlight_colour(angle);
+        rot->tc = highlight_colour((float)(PI/2.0) + angle);
+        rot->bc = highlight_colour((float)(-PI/2.0) + angle);
 
-    draw_rect(dr, rot->cx, rot->cy, rot->cw, rot->ch, bgcolour);
+        draw_rect(dr, rot->cx, rot->cy, rot->cw, rot->ch, bgcolour);
     } else
-    rot = NULL;
+        rot = NULL;
 
     /*
      * Now draw each tile.
@@ -1053,31 +1028,16 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         else
             t = state->grid[i];
 
-        if (cmoved) {
-            /* cursor has moved (or changed visibility)... */
-            if (tx == cx || tx == cx+n-1 || ty == cy || ty == cy+n-1)
-                cc = true; /* ...we're on new cursor, redraw */
-            if (tx == ds->cur_x || tx == ds->cur_x+n-1 ||
-                ty == ds->cur_y || ty == ds->cur_y+n-1)
-                cc = true; /* ...we were on old cursor, redraw */
-        }
-
         if (ds->bgcolour != bgcolour ||   /* always redraw when flashing */
             ds->grid[i] != t || ds->grid[i] == -1 || t == -1 || cc) {
             int x = COORD(tx), y = COORD(ty);
             unsigned cedges = 0;
-
-            if (tx == cx     && ty >= cy && ty <= cy+n-1) cedges |= CUR_LEFT;
-            if (ty == cy     && tx >= cx && tx <= cx+n-1) cedges |= CUR_TOP;
-            if (tx == cx+n-1 && ty >= cy && ty <= cy+n-1) cedges |= CUR_RIGHT;
-            if (ty == cy+n-1 && tx >= cx && tx <= cx+n-1) cedges |= CUR_BOTTOM;
 
             draw_tile(dr, ds, state, x, y, state->grid[i], bgcolour, rot, cedges);
             ds->grid[i] = t;
         }
     }
     ds->bgcolour = bgcolour;
-    ds->cur_x = cx; ds->cur_y = cy;
 
     /*
      * Update the status bar.

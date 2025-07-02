@@ -332,10 +332,6 @@ static int find_gem_candidates(int w, int h, char *grid,
     int sign = (pass == 0 ? +1 : -1);
     int dir;
 
-#ifdef SOLVER_DIAGNOSTICS
-    printf("starting pass %d\n", pass);
-#endif
-
     /*
      * `head' and `tail' are indices within sc->positions which
      * track the list of board positions left to process.
@@ -345,9 +341,6 @@ static int find_gem_candidates(int w, int h, char *grid,
         int index = (sy*w+sx)*DIRECTIONS+dir;
         sc->positions[tail++] = index;
         reachable[index] = true;
-#ifdef SOLVER_DIAGNOSTICS
-        printf("starting point %d,%d,%d\n", sx, sy, dir);
-#endif
     }
 
     /*
@@ -361,9 +354,6 @@ static int find_gem_candidates(int w, int h, char *grid,
         int y = index / (w * DIRECTIONS);
         int n, x2, y2, d2, i2;
 
-#ifdef SOLVER_DIAGNOSTICS
-        printf("processing point %d,%d,%d\n", x, y, dir);
-#endif
         /*
          * The places we attempt to switch to here are:
          *     - each possible direction change (all the other
@@ -386,19 +376,13 @@ static int find_gem_candidates(int w, int h, char *grid,
             y2 >= 0 && y2 < h &&
             !reachable[i2]) {
             bool ok;
-#ifdef SOLVER_DIAGNOSTICS
-            printf("  trying point %d,%d,%d", x2, y2, d2);
-#endif
             if (pass == 0)
-            ok = can_go(w, h, grid, x, y, dir, x2, y2, d2);
+                ok = can_go(w, h, grid, x, y, dir, x2, y2, d2);
             else
-            ok = can_go(w, h, grid, x2, y2, d2, x, y, dir);
-#ifdef SOLVER_DIAGNOSTICS
-            printf(" - %sok\n", ok ? "" : "not ");
-#endif
+                ok = can_go(w, h, grid, x2, y2, d2, x, y, dir);
             if (ok) {
-            sc->positions[tail++] = i2;
-            reachable[i2] = true;
+                sc->positions[tail++] = i2;
+                reachable[i2] = true;
             }
         }
         }
@@ -418,10 +402,6 @@ static int find_gem_candidates(int w, int h, char *grid,
         for (gd = 0; gd < DIRECTIONS; gd++) {
             int index = (gy*w+gx)*DIRECTIONS+gd;
             if (sc->reachable_from[index] && sc->reachable_to[index]) {
-#ifdef SOLVER_DIAGNOSTICS
-            printf("space at %d,%d is reachable via"
-                   " direction %d\n", gx, gy, gd);
-#endif
             LV_AT(w, h, grid, gx, gy) = POSSGEM;
             possgems++;
             break;
@@ -895,33 +875,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     while (1) {
     int target, n1, n2, bestdist, extralen;
 
-#ifdef TSP_DIAGNOSTICS
-    printf("circuit is");
-    for (i = 0; i < circuitlen; i++) {
-        int nc = nodes[circuit[i]];
-        printf(" (%d,%d,%d)", nc/DP1%w, nc/(DP1*w), nc%DP1);
-    }
-    printf("\n");
-    printf("moves are ");
-    x = nodes[circuit[0]] / DP1 % w;
-    y = nodes[circuit[0]] / DP1 / w;
-    for (i = 1; i < circuitlen; i++) {
-        int x2, y2, dx, dy;
-        if (nodes[circuit[i]] % DP1 != DIRECTIONS)
-        continue;
-        x2 = nodes[circuit[i]] / DP1 % w;
-        y2 = nodes[circuit[i]] / DP1 / w;
-        dx = (x2 > x ? +1 : x2 < x ? -1 : 0);
-        dy = (y2 > y ? +1 : y2 < y ? -1 : 0);
-        for (d = 0; d < DIRECTIONS; d++)
-        if (DX(d) == dx && DY(d) == dy)
-            printf("%c", "89632147"[d]);
-        x = x2;
-        y = y2;
-    }
-    printf("\n");
-#endif
-
     /*
      * First, start a pair of bfses at _every_ vertex currently
      * in the tour, and extend them outwards to find the
@@ -989,10 +942,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
      * node on the current tour, how quickly we can get both to
      * and from the target vertex from that node.
      */
-#ifdef TSP_DIAGNOSTICS
-    printf("target node is %d (%d,%d,%d)\n", target, nodes[target]/DP1%w,
-           nodes[target]/DP1/w, nodes[target]%DP1);
-#endif
 
     for (pass = 0; pass < 2; pass++) {
         int *ep = (pass == 0 ? edges : backedges);
@@ -1073,17 +1022,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
         err = "Unable to find a solution from this starting point";
         break;
     }
-#ifdef TSP_DIAGNOSTICS
-    printf("insertion point: n1=%d, n2=%d, dist=%d\n", n1, n2, bestdist);
-#endif
-
-#ifdef TSP_DIAGNOSTICS
-    printf("circuit before lengthening is");
-    for (i = 0; i < circuitlen; i++) {
-        printf(" %d", circuit[i]);
-    }
-    printf("\n");
-#endif
 
     /*
      * Now actually lengthen the tour to take in this round
@@ -1100,14 +1038,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     memmove(circuit + n2 + extralen, circuit + n2,
         (circuitlen - n2 - extralen) * sizeof(int));
     n2 += extralen;
-
-#ifdef TSP_DIAGNOSTICS
-    printf("circuit in middle of lengthening is");
-    for (i = 0; i < circuitlen; i++) {
-        printf(" %d", circuit[i]);
-    }
-    printf("\n");
-#endif
 
     /*
      * Find the shortest-path routes to and from the target,
@@ -1138,14 +1068,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
         }
     }
 
-#ifdef TSP_DIAGNOSTICS
-    printf("circuit after lengthening is");
-    for (i = 0; i < circuitlen; i++) {
-        printf(" %d", circuit[i]);
-    }
-    printf("\n");
-#endif
-
     /*
      * Finally, mark all gems that the new piece of circuit
      * passes through as visited.
@@ -1156,27 +1078,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
         unvisited[pos] = false;
     }
     }
-
-#ifdef TSP_DIAGNOSTICS
-    printf("before reduction, moves are ");
-    x = nodes[circuit[0]] / DP1 % w;
-    y = nodes[circuit[0]] / DP1 / w;
-    for (i = 1; i < circuitlen; i++) {
-    int x2, y2, dx, dy;
-    if (nodes[circuit[i]] % DP1 != DIRECTIONS)
-        continue;
-    x2 = nodes[circuit[i]] / DP1 % w;
-    y2 = nodes[circuit[i]] / DP1 / w;
-    dx = (x2 > x ? +1 : x2 < x ? -1 : 0);
-    dy = (y2 > y ? +1 : y2 < y ? -1 : 0);
-    for (d = 0; d < DIRECTIONS; d++)
-        if (DX(d) == dx && DY(d) == dy)
-        printf("%c", "89632147"[d]);
-    x = x2;
-    y = y2;
-    }
-    printf("\n");
-#endif
 
     /*
      * That's got a basic solution. Now optimise it by removing
@@ -1243,10 +1144,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
             p = min(i, j);
             q = max(i, j);
 
-#ifdef TSP_DIAGNOSTICS
-            printf("optimising section from %d - %d\n", p, q);
-#endif
-
             for (k = 0; k < n; k++)
             dist[k] = -1;
             head = tail = 0;
@@ -1276,10 +1173,6 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
             if (dir > 0)
             i = q;           /* resume loop from the right place */
-
-#ifdef TSP_DIAGNOSTICS
-            printf("new section runs from %d - %d\n", p, q);
-#endif
 
             dest = q;
             assert(dest >= 0);
@@ -1313,55 +1206,9 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
             j = i;
 
-#ifdef TSP_DIAGNOSTICS
-            printf("during reduction, circuit is");
-            for (k = 0; k < circuitlen; k++) {
-            int nc = nodes[circuit[k]];
-            printf(" (%d,%d,%d)", nc/DP1%w, nc/(DP1*w), nc%DP1);
-            }
-            printf("\n");
-            printf("moves are ");
-            x = nodes[circuit[0]] / DP1 % w;
-            y = nodes[circuit[0]] / DP1 / w;
-            for (k = 1; k < circuitlen; k++) {
-            int x2, y2, dx, dy;
-            if (nodes[circuit[k]] % DP1 != DIRECTIONS)
-                continue;
-            x2 = nodes[circuit[k]] / DP1 % w;
-            y2 = nodes[circuit[k]] / DP1 / w;
-            dx = (x2 > x ? +1 : x2 < x ? -1 : 0);
-            dy = (y2 > y ? +1 : y2 < y ? -1 : 0);
-            for (d = 0; d < DIRECTIONS; d++)
-                if (DX(d) == dx && DY(d) == dy)
-                printf("%c", "89632147"[d]);
-            x = x2;
-            y = y2;
-            }
-            printf("\n");
-#endif
         }
         }
 
-#ifdef TSP_DIAGNOSTICS
-        printf("after reduction, moves are ");
-        x = nodes[circuit[0]] / DP1 % w;
-        y = nodes[circuit[0]] / DP1 / w;
-        for (i = 1; i < circuitlen; i++) {
-        int x2, y2, dx, dy;
-        if (nodes[circuit[i]] % DP1 != DIRECTIONS)
-            continue;
-        x2 = nodes[circuit[i]] / DP1 % w;
-        y2 = nodes[circuit[i]] / DP1 / w;
-        dx = (x2 > x ? +1 : x2 < x ? -1 : 0);
-        dy = (y2 > y ? +1 : y2 < y ? -1 : 0);
-        for (d = 0; d < DIRECTIONS; d++)
-            if (DX(d) == dx && DY(d) == dy)
-            printf("%c", "89632147"[d]);
-        x = x2;
-        y = y2;
-        }
-        printf("\n");
-#endif
     }
 
     /*

@@ -7,10 +7,12 @@
 * Rewrite `findloop` algorithm (refactor from upstream)
 * Move `compare_int` function to utils (refactor from upstream)
 * Use semantic enum names for preferences (refactor from upstream)
-* Remove unused infrastructure to print a game
 * *Creek* / *Slant*: Decrease border size to get more game board on the screen
 * *Bridges*: Change grey-out color of finished islands
 * *Dominosa*: Remove limit of highlighted numbers
+* Remove unused infrastructure to print a game
+* Remove unused cursor controls infrastructure
+* Remove unused debug statements
 
 ### Added
 * Supports dark mode on firmware >= 6.8 devices
@@ -18,6 +20,7 @@
 
 ### Fixed
 * *Mosaic*: Possible crash in `solve_game` due to insufficient buffer size
+* *Pearl*: Fix shortcut-loop detection on squares
 
 ## 0.8.1 - 2023/12/30
 

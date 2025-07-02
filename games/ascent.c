@@ -910,9 +910,9 @@ static int solver_near(struct solver_scratch *scratch, cell near, number num, in
     int hdist, vdist;
     int ret = 0;
     cell i;
-    
+
     assert(num >= 0 && num < s);
-    
+
     for(i = 0; i < s; i++)
     {
         if(!GET_BIT(scratch->marks, i*s+num)) continue;
@@ -1491,7 +1491,8 @@ static char ascent_add_edges(struct solver_scratch *scratch, number *grid,
 
     while(attempts < MAX_ATTEMPTS)
     {
-        matching_with_scratch(mscratch, aw*ah, w*h, adjlists, adjsizes, rs, match, NULL);
+        int total = matching_with_scratch(mscratch, aw*ah, w*h, adjlists, adjsizes, rs, match, NULL);
+        assert(total > 0);
 
         memcpy(scratch->grid, grid, w*h*sizeof(number));
         

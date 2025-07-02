@@ -13,6 +13,7 @@
  *    - white-blink the edges (instead), a la loopy?
  */
 
+#include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -166,6 +167,7 @@ static const char *validate_params(const game_params *params, bool full)
 
     /* MAYBE FIXME: we (just?) don't have the UI for winning these. */
     if (k == wh) return "Region size must be less than the grid area";
+    assert (k < wh); /* or wh % k != 0 */
 
     if (k == 2 && w != 1 && h != 1)
         return "Region size can't be two unless width or height is one";
@@ -280,11 +282,13 @@ static void disconnect(solver_ctx *ctx, int i, int j, int dir)
 
 static bool disconnected(solver_ctx *ctx, int i, int j, int dir)
 {
+    assert (j == COMPUTE_J || j == i + dx[dir] + ctx->params->w*dy[dir]);
     return ctx->borders[i] & BORDER(dir);
 }
 
 static bool maybe(solver_ctx *ctx, int i, int j, int dir)
 {
+    assert (j == COMPUTE_J || j == i + dx[dir] + ctx->params->w*dy[dir]);
     return !disconnected(ctx, i, j, dir) && !connected(ctx, i, j, dir);
     /* the ordering is important: disconnected works for invalid
      * squares (i.e. out of bounds), connected doesn't. */
@@ -429,12 +433,16 @@ static bool solver_no_dangling_edges(solver_ctx *ctx)
                 } else ++noline;
 
             if (4 - noline == 1) {
+                assert (e != -1);
                 disconnect(ctx, e, COMPUTE_J, de);
                 changed = true;
                 continue;
             }
 
             if (4 - noline != 2) continue;
+
+            assert (e != -1);
+            assert (f != -1);
 
             if (ctx->borders[e] & BORDER(de)) {
                 if (!(ctx->borders[f] & BORDER(df))) {
@@ -510,6 +518,7 @@ static void build_dsf(int w, int h, borderflag *border, DSF *dsf, bool black)
         }
     }
 }
+
 static bool is_solved(const game_params *params, clue *clues,
                       borderflag *border)
 {
@@ -627,6 +636,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
     init_borders(w, h, rim);
 
+    assert (!('@' & BORDER_MASK));
     *soln++ = 'S';
     soln[wh] = '\0';
 
@@ -671,6 +681,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     dsf_free(dsf);
 
     char *output = snewn(wh + 1, char), *p = output;
+
     r = 0;
     for (i = 0; i < wh; ++i) {
         if (numbers[i] != EMPTY) {
@@ -702,6 +713,7 @@ static const char *validate_desc(const game_params *params, const char *desc)
         } else if (isdigit((unsigned char)*desc)) {
             if (*desc > '4') {
                 static char buf[] = "Invalid (too large) number: '5'";
+                assert (isdigit((unsigned char)buf[lenof(buf) - 3]));
                 buf[lenof(buf) - 3] = *desc; /* ... or 6, 7, 8, 9 :-) */
                 return buf;
             }

@@ -156,7 +156,7 @@ void *find234(tree234 *t, void *e, cmpfn234 cmp);
 void *findrel234(tree234 *t, void *e, cmpfn234 cmp, int relation);
 void *findpos234(tree234 *t, void *e, cmpfn234 cmp, int *index);
 void *findrelpos234(tree234 *t, void *e, cmpfn234 cmp, int relation,
-		    int *index);
+                    int *index);
 
 /*
  * Delete an element e in a 2-3-4 tree. Does not free the element,

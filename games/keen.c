@@ -466,78 +466,28 @@ static int solver_common(struct latin_solver *solver, void *vctx, int diff)
          * levels (hence the big if statement here).
          */
     if (diff < DIFF_HARD) {
-#ifdef STANDALONE_SOLVER
-        char prefix[256];
-
-        if (solver_show_working)
-        sprintf(prefix, "%*susing clue at (%d,%d):\n",
-            solver_recurse_depth*4, "",
-            sq[0]/w+1, sq[0]%w+1);
-        else
-        prefix[0] = '\0';           /* placate optimiser */
-#endif
-
         for (i = 0; i < n; i++)
         for (j = 1; j <= w; j++) {
             if (solver->cube[sq[i]*w+j-1] &&
             !(ctx->iscratch[i] & (1 << j))) {
-#ifdef STANDALONE_SOLVER
-            if (solver_show_working) {
-                printf("%s%*s  ruling out %d at (%d,%d)\n",
-                   prefix, solver_recurse_depth*4, "",
-                   j, sq[i]/w+1, sq[i]%w+1);
-                prefix[0] = '\0';
-            }
-#endif
-            solver->cube[sq[i]*w+j-1] = 0;
-            ret = 1;
+                solver->cube[sq[i]*w+j-1] = 0;
+                ret = 1;
             }
         }
     } else {
-#ifdef STANDALONE_SOLVER
-        char prefix[256];
-
-        if (solver_show_working)
-        sprintf(prefix, "%*susing clue at (%d,%d):\n",
-            solver_recurse_depth*4, "",
-            sq[0]/w+1, sq[0]%w+1);
-        else
-        prefix[0] = '\0';           /* placate optimiser */
-#endif
-
         for (i = 0; i < 2*w; i++) {
-        int start = (i < w ? i*w : i-w);
-        int step = (i < w ? 1 : w);
-        for (j = 1; j <= w; j++) if (ctx->iscratch[i] & (1 << j)) {
-#ifdef STANDALONE_SOLVER
-            char prefix2[256];
-
-            if (solver_show_working)
-            sprintf(prefix2, "%*s  this clue requires %d in"
-                " %s %d:\n", solver_recurse_depth*4, "",
-                j, i < w ? "column" : "row", i%w+1);
-            else
-            prefix2[0] = '\0';   /* placate optimiser */
-#endif
-
-            for (k = 0; k < w; k++) {
-            int pos = start + k*step;
-            if (ctx->whichbox[pos] != box &&
-                solver->cube[pos*w+j-1]) {
-#ifdef STANDALONE_SOLVER
-                if (solver_show_working) {
-                printf("%s%s%*s   ruling out %d at (%d,%d)\n",
-                       prefix, prefix2,
-                       solver_recurse_depth*4, "",
-                       j, pos/w+1, pos%w+1);
-                prefix[0] = prefix2[0] = '\0';
+            int start = (i < w ? i*w : i-w);
+            int step = (i < w ? 1 : w);
+            for (j = 1; j <= w; j++) if (ctx->iscratch[i] & (1 << j)) {
+                for (k = 0; k < w; k++) {
+                    int pos = start + k*step;
+                    if (ctx->whichbox[pos] != box &&
+                        solver->cube[pos*w+j-1]) {
+                        solver->cube[pos*w+j-1] = 0;
+                        ret = 1;
+                    }
                 }
-#endif
-                solver->cube[pos*w+j-1] = 0;
-                ret = 1;
             }
-            }
-        }
         }
 
         /*
@@ -657,20 +607,6 @@ static bool keen_valid(struct latin_solver *solver, void *vctx)
         }
 
         if (fail) {
-#ifdef STANDALONE_SOLVER
-        if (solver_show_working) {
-        printf("%*sclue at (%d,%d) is violated\n",
-                       solver_recurse_depth*4, "",
-                       sq[0]/w+1, sq[0]%w+1);
-        printf("%*s  (%s clue with target %ld containing [",
-                       solver_recurse_depth*4, "",
-                       (op == C_ADD ? "addition" : op == C_SUB ? "subtraction":
-                        op == C_MUL ? "multiplication" : "division"), value);
-                for (i = 0; i < n; i++)
-                    printf(" %d", (int)solver->grid[transpose(sq[i], w)]);
-                printf(" ]\n");
-            }
-#endif
             return false;
         }
     }
@@ -1496,12 +1432,6 @@ struct game_ui {
      */
     bool hshow;
     /*
-     * This indicates whether we're using the highlight as a cursor;
-     * it means that it doesn't vanish on a keypress, and that it is
-     * allowed on immutable squares.
-     */
-    bool hcursor;
-    /*
      * This contains the number which gets highlighted when the user
      * presses a number when the UI is not in highlight mode.
      * 0 means that no number is currently highlighted.
@@ -1517,7 +1447,6 @@ static game_ui *new_ui(const game_state *state)
     ui->hx = ui->hy = 0;
     ui->hpencil = false;
     ui->hshow = false;
-    ui->hcursor = false;
     ui->hhint = -1;
     ui->hdrag = false;
     return ui;
@@ -1560,7 +1489,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
      * a square which we had a pencil-mode highlight in (by Undo, or
      * by Redo, or by Solve), then we cancel the highlight.
      */
-    if (ui->hshow && ui->hpencil && !ui->hcursor &&
+    if (ui->hshow && ui->hpencil && 
         newstate->grid[ui->hy * w + ui->hx] != 0) {
         ui->hshow = false;
     }
@@ -1738,7 +1667,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hpencil = false;
                 ui->hhint = -1;
             }
-            ui->hcursor = false;
             return MOVE_UI_UPDATE;
         }
         else if (button == RIGHT_BUTTON) {
@@ -1759,7 +1687,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             } else {
                 ui->hshow = false;
             }
-            ui->hcursor = false;
             ui->hhint = -1;
             ui->hdrag = false;
             return MOVE_UI_UPDATE;
@@ -1769,7 +1696,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         }
     } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         ui->hshow = false;
-        ui->hcursor = false;
         ui->hhint = -1;
         ui->hdrag = false;
         return MOVE_UI_UPDATE;

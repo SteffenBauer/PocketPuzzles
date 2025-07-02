@@ -58,6 +58,11 @@ enum {
     NCOLOURS
 };
 
+enum {
+    PREF_APPEARANCE,
+    N_PREF_ITEMS
+};
+
 struct game_params {
     int w, diff;
 };
@@ -866,16 +871,16 @@ static game_state *new_game(midend *me, const game_params *params,
         } else if (c == '_') {
         /* do nothing */;
         } else if (c > '0' && c <= '9') {
-        int val = atoi(p-1);
-        assert(val >= 1 && val <= w);
-        assert(pos < a);
-        state->grid[pos] = state->clues->immutable[pos] = val;
-        pos++;
-        while (*p && isdigit((unsigned char)*p)) p++;
+            int val = atoi(p-1);
+            assert(val >= 1 && val <= w);
+            assert(pos < a);
+            state->grid[pos] = state->clues->immutable[pos] = val;
+            pos++;
+            while (*p && isdigit((unsigned char)*p)) p++;
         } else
-        assert(!"Corrupt game description");
-    }
-    assert(pos == a);
+            assert(!"Corrupt game description");
+        }
+        assert(pos == a);
     }
     assert(!*p);
 
@@ -975,18 +980,27 @@ struct game_ui {
      */
     bool hshow;
     /*
-     * This indicates whether we're using the highlight as a cursor;
-     * it means that it doesn't vanish on a keypress, and that it is
-     * allowed on immutable squares.
-     */
-    bool hcursor;
-    /*
      * This contains the number which gets highlighted when the user
      * presses a number when the UI is not in highlight mode.
      * 0 means that no number is currently highlighted.
      */
     int hhint;
     bool hdrag;
+
+    /*
+     * User preference option which can be set to FALSE to disable the
+     * 3D graphical style, and instead just display the puzzle as if
+     * it was a Sudoku variant, i.e. each square just has a digit in
+     * it.
+     *
+     * I was initially a bit uncertain about whether the 3D style
+     * would be the right thing, on the basis that it uses up space in
+     * the cells and makes it hard to use many pencil marks. Actually
+     * nobody seems to have complained, but having put in the option
+     * while I was still being uncertain, it seems silly not to leave
+     * it in just in case.
+     */
+    int three_d;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -996,15 +1010,39 @@ static game_ui *new_ui(const game_state *state)
     ui->hx = ui->hy = 0;
     ui->hpencil = false;
     ui->hshow = false;
-    ui->hcursor = false;
     ui->hhint = -1;
     ui->hdrag = false;
+    ui->three_d = true;
     return ui;
 }
 
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(N_PREF_ITEMS+1, config_item);
+
+    ret[PREF_APPEARANCE].name = "Puzzle appearance";
+    ret[PREF_APPEARANCE].kw = "appearance";
+    ret[PREF_APPEARANCE].type = C_CHOICES;
+    ret[PREF_APPEARANCE].u.choices.choicenames = ":2D:3D";
+    ret[PREF_APPEARANCE].u.choices.choicekws = ":2d:3d";
+    ret[PREF_APPEARANCE].u.choices.selected = ui->three_d;
+
+    ret[N_PREF_ITEMS].name = NULL;
+    ret[N_PREF_ITEMS].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->three_d = cfg[PREF_APPEARANCE].u.choices.selected;
 }
 
 static key_label *game_request_keys(const game_params *params, const game_ui *ui, int *nkeys)
@@ -1038,7 +1076,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
      * a square which we had a pencil-mode highlight in (by Undo, or
      * by Redo, or by Solve), then we cancel the highlight.
      */
-    if (ui->hshow && ui->hpencil && !ui->hcursor &&
+    if (ui->hshow && ui->hpencil &&
         newstate->grid[ui->hy * w + ui->hx] != 0) {
         ui->hshow = false;
     }
@@ -1071,7 +1109,6 @@ static const char *current_key_label(const game_ui *ui,
 
 struct game_drawstate {
     int tilesize;
-    bool three_d;       /* default 3D graphics are user-disableable */
     long *tiles;               /* (w+2)*(w+2) temp space */
     long *drawn;               /* (w+2)*(w+2)*4: current drawn data */
     bool *errtmp;
@@ -1085,6 +1122,9 @@ static bool check_errors(const game_state *state, bool *errors)
     digit *grid = state->grid;
     int i, x, y;
     bool errs = false;
+    int tmp[32];
+
+    assert(w < lenof(tmp));
 
     if (errors)
     for (i = 0; i < A; i++)
@@ -1199,7 +1239,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     tx = FROMCOORD(x);
     ty = FROMCOORD(y);
 
-    if (ds->three_d) {
+    if (ui->three_d) {
     /*
      * In 3D mode, just locating the mouse click in the natural
      * square grid may not be sufficient to tell which tower the
@@ -1254,7 +1294,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hshow = !state->clues->immutable[ty*w+tx];
                 ui->hpencil = false;
             }
-            ui->hcursor = false;
             return MOVE_UI_UPDATE;
         }
         else if (button == RIGHT_BUTTON) {
@@ -1276,7 +1315,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             } else {
                 ui->hshow = false;
             }
-            ui->hcursor = false;
             ui->hhint = -1;
             ui->hdrag = false;
             return MOVE_UI_UPDATE;
@@ -1446,7 +1484,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     int i;
 
     ds->tilesize = 0;
-    ds->three_d = true;
     ds->tiles = snewn((w+2)*(w+2), long);
     ds->drawn = snewn((w+2)*(w+2)*4, long);
     for (i = 0; i < (w+2)*(w+2)*4; i++)
@@ -1464,8 +1501,8 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
     sfree(ds);
 }
 
-static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
-              int x, int y, long tile)
+static void draw_tile(drawing *dr, game_drawstate *ds, const game_ui *ui,
+                     struct clues *clues, int x, int y, long tile)
 {
     int w = clues->w /* , a = w*w */;
     int tx, ty, bg;
@@ -1479,7 +1516,7 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
                                  COL_BACKGROUND;
 
     /* draw tower */
-    if (ds->three_d && (tile & DF_PLAYAREA) && (tile & DF_DIGIT_MASK)) {
+    if (ui->three_d && (tile & DF_PLAYAREA) && (tile & DF_DIGIT_MASK)) {
     int coords[8];
     int xoff = X_3D_DISP(tile & DF_DIGIT_MASK, w);
     int yoff = Y_3D_DISP(tile & DF_DIGIT_MASK, w);
@@ -1586,10 +1623,10 @@ static void draw_tile(drawing *dr, game_drawstate *ds, struct clues *clues,
          * to put the pencil marks.
          */
         /* Start with the whole square, minus space for impinging towers */
-        pl = tx + (ds->three_d ? X_3D_DISP(w,w) : 0);
+        pl = tx + (ui->three_d ? X_3D_DISP(w,w) : 0);
         pr = tx + TILESIZE;
         pt = ty;
-        pb = ty + TILESIZE - (ds->three_d ? Y_3D_DISP(w,w) : 0);
+        pb = ty + TILESIZE - (ui->three_d ? Y_3D_DISP(w,w) : 0);
 
         /*
          * We arrange our pencil marks in a grid layout, with
@@ -1732,13 +1769,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         ds->drawn[i*4+2] != bl || ds->drawn[i*4+3] != br) {
         clip(dr, COORD(x-1), COORD(y-1), TILESIZE, TILESIZE);
 
-        draw_tile(dr, ds, state->clues, x-1, y-1, tr);
+        draw_tile(dr, ds, ui, state->clues, x-1, y-1, tr);
         if (x > 0)
-            draw_tile(dr, ds, state->clues, x-2, y-1, tl);
+            draw_tile(dr, ds, ui, state->clues, x-2, y-1, tl);
         if (y <= w)
-            draw_tile(dr, ds, state->clues, x-1, y, br);
+            draw_tile(dr, ds, ui, state->clues, x-1, y, br);
         if (x > 0 && y <= w)
-            draw_tile(dr, ds, state->clues, x-2, y, bl);
+            draw_tile(dr, ds, ui, state->clues, x-2, y, bl);
 
         unclip(dr);
         draw_update(dr, COORD(x-1), COORD(y-1), TILESIZE, TILESIZE);
@@ -1796,7 +1833,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */

@@ -18,9 +18,7 @@ enum {
     COL_TEXT,
     COL_UNKNOWN,
     COL_GRID,
-    COL_CURSOR,
     COL_ERROR,
-    COL_CURSOR_GUIDE,
     NCOLOURS
 };
 
@@ -224,7 +222,6 @@ static const char *validate_params(const game_params *params, bool full)
  * it's useful to anyone.)
  */
 
-#ifndef STANDALONE_PICTURE_GENERATOR
 static int float_compare(const void *av, const void *bv)
 {
     const float *a = (const float *)av;
@@ -329,7 +326,6 @@ static void generate(random_state *rs, int w, int h, unsigned char *retgrid)
 
     sfree(fgrid);
 }
-#endif
 
 static int compute_rowdata(int *ret, unsigned char *start, int len, int step)
 {
@@ -357,10 +353,6 @@ static int compute_rowdata(int *ret, unsigned char *start, int len, int step)
 #define BLOCK 1
 #define DOT 2
 #define STILL_UNKNOWN 3
-
-#ifdef STANDALONE_SOLVER
-bool verbose = false;
-#endif
 
 static bool do_recurse(unsigned char *known, unsigned char *deduced,
                        unsigned char *row,
@@ -432,9 +424,6 @@ static bool do_row(unsigned char *known, unsigned char *deduced,
                    unsigned char *minpos_ok, unsigned char *maxpos_ok,
                    unsigned char *start, int len, int step, int *data,
                    unsigned int *changed
-#ifdef STANDALONE_SOLVER
-                   , const char *rowcol, int index, int cluewid
-#endif
                    )
 {
     int rowlen, i, freespace;
@@ -470,27 +459,6 @@ static bool do_row(unsigned char *known, unsigned char *deduced,
         if (changed) changed[i]++;
         done_any = true;
     }
-#ifdef STANDALONE_SOLVER
-    if (verbose && done_any) {
-    char buf[80];
-    int thiscluewid;
-    printf("%s %2d: [", rowcol, index);
-    for (thiscluewid = -1, i = 0; data[i]; i++)
-        thiscluewid += sprintf(buf, " %d", data[i]);
-    printf("%*s", cluewid - thiscluewid, "");
-    for (i = 0; data[i]; i++)
-        printf(" %d", data[i]);
-    printf(" ] ");
-    for (i = 0; i < len; i++)
-        putchar(known[i] == BLOCK ? '#' :
-            known[i] == DOT ? '.' : '?');
-    printf(" -> ");
-    for (i = 0; i < len; i++)
-        putchar(start[i*step] == BLOCK ? '#' :
-            start[i*step] == DOT ? '.' : '?');
-    putchar('\n');
-    }
-#endif
     return done_any;
 }
 
@@ -498,12 +466,8 @@ static bool solve_puzzle(const game_state *state, unsigned char *grid,
                          int w, int h,
                          unsigned char *matrix, unsigned char *workspace,
                          unsigned int *changed_h, unsigned int *changed_w,
-                         int *rowdata
-#ifdef STANDALONE_SOLVER
-                         , int cluewid
-#else
-                         , int dummy
-#endif
+                         int *rowdata,
+                         int dummy
                          )
 {
     int i, j, max;
@@ -602,9 +566,6 @@ static bool solve_puzzle(const game_state *state, unsigned char *grid,
                workspace+3*max, workspace+4*max,
                workspace+5*max, workspace+6*max,
                matrix+i*w, w, 1, rowdata, changed_w
-#ifdef STANDALONE_SOLVER
-               , "row", i+1, cluewid
-#endif
                );
             changed_h[i] = 0;
         }
@@ -626,9 +587,6 @@ static bool solve_puzzle(const game_state *state, unsigned char *grid,
                workspace+3*max, workspace+4*max,
                workspace+5*max, workspace+6*max,
                matrix+i, h, w, rowdata, changed_h
-#ifdef STANDALONE_SOLVER
-               , "col", i+1, cluewid
-#endif
                );
             changed_w[i] = 0;
         }
@@ -713,9 +671,6 @@ static unsigned char *generate_soluble(random_state *rs, int w, int h)
 }
 #endif
 
-#ifdef STANDALONE_PICTURE_GENERATOR
-unsigned char *picture;
-#endif
 
 static char *new_game_desc(const game_params *params, random_state *rs,
                char **aux, bool interactive)
@@ -724,58 +679,10 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     int i, j, max, rowlen, *rowdata;
     char intbuf[80], *desc;
     int desclen, descpos;
-#ifdef STANDALONE_PICTURE_GENERATOR
-    game_state *state;
-    int *index;
-#endif
 
     max = max(params->w, params->h);
 
-#ifdef STANDALONE_PICTURE_GENERATOR
-    /*
-     * Fixed input picture.
-     */
-    grid = snewn(params->w * params->h, unsigned char);
-    memcpy(grid, picture, params->w * params->h);
-
-    /*
-     * Now winnow the immutable square set as far as possible.
-     */
-    state = snew(game_state);
-    state->grid = grid;
-    state->common = snew(game_state_common);
-    state->common->rowdata = NULL;
-    state->common->immutable = snewn(params->w * params->h, bool);
-    for (i = 0; i < params->w * params->h; i++)
-        state->common->immutable[i] = true;
-
-    index = snewn(params->w * params->h, int);
-    for (i = 0; i < params->w * params->h; i++)
-        index[i] = i;
-    shuffle(index, params->w * params->h, sizeof(*index), rs);
-
-    {
-        unsigned char *matrix = snewn(params->w*params->h, unsigned char);
-        unsigned char *workspace = snewn(max*7, unsigned char);
-        unsigned int *changed_h = snewn(max+1, unsigned int);
-        unsigned int *changed_w = snewn(max+1, unsigned int);
-        int *rowdata = snewn(max+1, int);
-        for (i = 0; i < params->w * params->h; i++) {
-            state->common->immutable[index[i]] = false;
-            if (!solve_puzzle(state, grid, params->w, params->h,
-                              matrix, workspace, changed_h, changed_w,
-                              rowdata, 0))
-                state->common->immutable[index[i]] = true;
-        }
-        sfree(workspace);
-        sfree(changed_h);
-        sfree(changed_w);
-        sfree(rowdata);
-        sfree(matrix);
-    }
-#else
     grid = generate_soluble(rs, params->w, params->h);
-#endif
     rowdata = snewn(max, int);
 
     /*
@@ -848,40 +755,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     assert(descpos == desclen);
     assert(desc[desclen-1] == '/');
     desc[desclen-1] = '\0';
-#ifdef STANDALONE_PICTURE_GENERATOR
-    for (i = 0; i < params->w * params->h; i++)
-        if (state->common->immutable[i])
-            break;
-    if (i < params->w * params->h) {
-        /*
-         * At least one immutable square, so we need a suffix.
-         */
-        int run;
-
-        desc = sresize(desc, desclen + params->w * params->h + 3, char);
-        desc[descpos-1] = ',';
-
-        run = 0;
-        for (i = 0; i < params->w * params->h; i++) {
-            if (!state->common->immutable[i]) {
-                run++;
-                if (run == 25) {
-                    desc[descpos++] = 'z';
-                    run = 0;
-                }
-            } else {
-                desc[descpos++] = run + (grid[i] == GRID_FULL ? 'A' : 'a');
-                run = 0;
-            }
-        }
-        if (run > 0)
-            desc[descpos++] = run + 'a';
-        desc[descpos] = '\0';
-    }
-    sfree(state->common->immutable);
-    sfree(state->common);
-    sfree(state);
-#endif
     sfree(rowdata);
     sfree(grid);
     return desc;
@@ -1132,8 +1005,6 @@ struct game_ui {
     int drag_end_x;
     int drag_end_y;
     int drag, release, state;
-    int cur_x, cur_y;
-    bool cur_visible;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1142,8 +1013,6 @@ static game_ui *new_ui(const game_state *state)
 
     ret = snew(game_ui);
     ret->dragging = false;
-    ret->cur_x = ret->cur_y = 0;
-    ret->cur_visible = false;
 
     return ret;
 }
@@ -1163,7 +1032,6 @@ struct game_drawstate {
     int w, h;
     int tilesize;
     unsigned char *visible, *numcolours;
-    int cur_x, cur_y;
     char *strbuf; /* Used for formatting clues. */
 };
 
@@ -1175,42 +1043,24 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     x = FROMCOORD(state->common->w, x);
     y = FROMCOORD(state->common->h, y);
-#define STYLUS_BASED
 
     if (x >= 0 && x < state->common->w && y >= 0 && y < state->common->h &&
-        (button == LEFT_BUTTON || button == RIGHT_BUTTON ||
-         button == MIDDLE_BUTTON)) {
-#ifdef STYLUS_BASED
+        (button == LEFT_BUTTON || button == RIGHT_BUTTON)) {
         int currstate = state->grid[y * state->common->w + x];
-#endif
 
         ui->dragging = true;
 
         if (button == LEFT_BUTTON) {
             ui->drag = LEFT_DRAG;
             ui->release = LEFT_RELEASE;
-#ifdef STYLUS_BASED
             ui->state = (currstate + 2) % 3; /* FULL -> EMPTY -> UNKNOWN */
-#else
-            ui->state = GRID_FULL;
-#endif
         } else if (button == RIGHT_BUTTON) {
             ui->drag = RIGHT_DRAG;
             ui->release = RIGHT_RELEASE;
-#ifdef STYLUS_BASED
             ui->state = (currstate + 1) % 3; /* EMPTY -> FULL -> UNKNOWN */
-#else
-            ui->state = GRID_EMPTY;
-#endif
-        } else /* if (button == MIDDLE_BUTTON) */ {
-            ui->drag = MIDDLE_DRAG;
-            ui->release = MIDDLE_RELEASE;
-            ui->state = GRID_UNKNOWN;
         }
-#undef STYLUS_BASED
         ui->drag_start_x = ui->drag_end_x = x;
         ui->drag_start_y = ui->drag_end_y = y;
-        ui->cur_visible = false;
 
         return MOVE_UI_UPDATE;
     }
@@ -1542,8 +1392,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_TEXT         * 3 + i] = 0.0F;
         ret[COL_FULL         * 3 + i] = 0.0F;
         ret[COL_EMPTY        * 3 + i] = 1.0F;
-        ret[COL_CURSOR_GUIDE * 3 + i] = 0.5F;
-        ret[COL_CURSOR       * 3 + i] = 0.5F;
         ret[COL_ERROR        * 3 + i] = 0.5F;
     }
 
@@ -1563,7 +1411,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     memset(ds->visible, 255, ds->w * ds->h);
     ds->numcolours = snewn(ds->w + ds->h, unsigned char);
     memset(ds->numcolours, 255, ds->w + ds->h);
-    ds->cur_x = ds->cur_y = 0;
     ds->strbuf = snewn(state->common->rowsize *
                        MAX_DIGITS(*state->common->rowdata) + 1, char);
     return ds;
@@ -1578,7 +1425,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 }
 
 static void grid_square(drawing *dr, game_drawstate *ds,
-                        int y, int x, int state, bool cur)
+                        int y, int x, int state)
 {
     int xl, xr, yt, yb, dx, dy, dw, dh, i;
 
@@ -1611,10 +1458,6 @@ static void grid_square(drawing *dr, game_drawstate *ds,
     draw_rect(dr, dx, dy, dw, dh,
               (state == GRID_FULL ? COL_FULL :
                state == GRID_EMPTY ? COL_EMPTY : COL_UNKNOWN));
-    if (cur) {
-        draw_rect_outline(dr, dx, dy, dw, dh, COL_CURSOR);
-        draw_rect_outline(dr, dx+1, dy+1, dw-2, dh-2, COL_CURSOR);
-    }
 
     draw_update(dr, TOCOORD(ds->w, x), TOCOORD(ds->h, y),
                 TILE_SIZE, TILE_SIZE);
@@ -1721,8 +1564,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int i, j;
     int x1, x2, y1, y2;
-    int cx, cy;
-    bool cmoved;
     char buf[48];
 
     sprintf(buf, "%s",
@@ -1740,7 +1581,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         ds->started = true;
 
-    draw_update(dr, 0, 0, SIZE(ds->w), SIZE(ds->h));
+        draw_update(dr, 0, 0, SIZE(ds->w), SIZE(ds->h));
     }
 
     if (ui->dragging) {
@@ -1752,13 +1593,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         x1 = x2 = y1 = y2 = -1;        /* placate gcc warnings */
     }
 
-    if (ui->cur_visible) {
-        cx = ui->cur_x; cy = ui->cur_y;
-    } else {
-        cx = cy = -1;
-    }
-    cmoved = (cx != ds->cur_x || cy != ds->cur_y);
-
     /*
      * Now draw any grid squares which have changed since last
      * redraw.
@@ -1766,7 +1600,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (i = 0; i < ds->h; i++) {
         for (j = 0; j < ds->w; j++) {
             int val;
-            bool cc = false;
 
             /*
              * Work out what state this square should be drawn in,
@@ -1778,21 +1611,12 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             else
                 val = state->grid[i * state->common->w + j];
 
-            if (cmoved) {
-                /* the cursor has moved; if we were the old or
-                 * the new cursor position we need to redraw. */
-                if (j == cx && i == cy) cc = true;
-                if (j == ds->cur_x && i == ds->cur_y) cc = true;
-            }
-
-            if (ds->visible[i * ds->w + j] != val || cc) {
-                grid_square(dr, ds, i, j, val,
-                            (j == cx && i == cy));
+            if (ds->visible[i * ds->w + j] != val) {
+                grid_square(dr, ds, i, j, val);
                 ds->visible[i * ds->w + j] = val;
             }
         }
     }
-    ds->cur_x = cx; ds->cur_y = cy;
 
     /*
      * Redraw any numbers which have changed their colour due to error

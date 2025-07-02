@@ -16,7 +16,6 @@
 #define GRID_PEG  1
 #define GRID_OBST 2
 
-#define GRID_CURSOR 10
 #define GRID_JUMPING 20
 #define GRID_DEST 40
 
@@ -25,7 +24,7 @@ enum {
     COL_HIGHLIGHT,
     COL_LOWLIGHT,
     COL_PEG,
-    COL_CURSOR,
+    COL_JUMP,
     NCOLOURS
 };
 
@@ -353,10 +352,6 @@ static void update_moves(unsigned char *grid, int w, int h, int x, int y,
              * It's in the tree but listed with the wrong
              * cost. Remove the old version.
              */
-#ifdef GENERATION_DIAGNOSTICS
-            printf("correcting %d%+d,%d%+d at cost %d\n",
-               m->x, m->dx, m->y, m->dy, m->cost);
-#endif
             del234(trees->bymove, m);
             del234(trees->bycost, m);
             sfree(m);
@@ -368,15 +363,6 @@ static void update_moves(unsigned char *grid, int w, int h, int x, int y,
             *m = move;
             add234(trees->bymove, m);
             add234(trees->bycost, m);
-#ifdef GENERATION_DIAGNOSTICS
-            printf("adding %d%+d,%d%+d at cost %d\n",
-               move.x, move.dx, move.y, move.dy, move.cost);
-#endif
-        } else {
-#ifdef GENERATION_DIAGNOSTICS
-            printf("not adding %d%+d,%d%+d at cost %d\n",
-               move.x, move.dx, move.y, move.dy, move.cost);
-#endif
         }
         } else {
         /*
@@ -390,10 +376,6 @@ static void update_moves(unsigned char *grid, int w, int h, int x, int y,
          * return the one it deletes.)
          */
         struct move *m = del234(trees->bymove, &move);
-#ifdef GENERATION_DIAGNOSTICS
-        printf("%sdeleting %d%+d,%d%+d\n", m ? "" : "not ",
-               move.x, move.dx, move.y, move.dy);
-#endif
         if (m) {
             del234(trees->bycost, m);
             sfree(m);
@@ -438,9 +420,6 @@ static void pegs_genmoves(unsigned char *grid, int w, int h, random_state *rs)
     for (mtmp.cost = 0; mtmp.cost <= maxcost; mtmp.cost++) {
         limit = -1;
         m = findrelpos234(trees->bycost, &mtmp, NULL, REL234_LT, &limit);
-#ifdef GENERATION_DIAGNOSTICS
-        printf("%d moves available with cost %d\n", limit+1, mtmp.cost);
-#endif
         if (m)
         break;
     }
@@ -449,11 +428,6 @@ static void pegs_genmoves(unsigned char *grid, int w, int h, random_state *rs)
 
     index = random_upto(rs, limit+1);
     move = *(struct move *)index234(trees->bycost, index);
-
-#ifdef GENERATION_DIAGNOSTICS
-    printf("selecting move %d%+d,%d%+d at cost %d\n",
-           move.x, move.dx, move.y, move.dy, move.cost);
-#endif
 
     grid[move.y * w + move.x] = GRID_HOLE;
     grid[(move.y+move.dy) * w + (move.x+move.dx)] = GRID_PEG;
@@ -483,13 +457,7 @@ static void pegs_generate(unsigned char *grid, int w, int h, random_state *rs)
 
     memset(grid, GRID_OBST, w*h);
     grid[(h/2) * w + (w/2)] = GRID_PEG;
-#ifdef GENERATION_DIAGNOSTICS
-    printf("beginning move selection\n");
-#endif
     pegs_genmoves(grid, w, h, rs);
-#ifdef GENERATION_DIAGNOSTICS
-    printf("finished move selection\n");
-#endif
 
     extremes = 0;
     for (y = 0; y < h; y++) {
@@ -507,13 +475,7 @@ static void pegs_generate(unsigned char *grid, int w, int h, random_state *rs)
 
     if (extremes == 15)
         break;
-#ifdef GENERATION_DIAGNOSTICS
-    printf("insufficient extent; trying again\n");
-#endif
     }
-#ifdef GENERATION_DIAGNOSTICS
-    fflush(stdout);
-#endif
 }
 
 /* ----------------------------------------------------------------------
@@ -740,30 +702,15 @@ static void free_game(game_state *state)
 }
 
 struct game_ui {
-    int cur_x, cur_y;
-    bool cur_visible;
+    int jump_x, jump_y;
+    bool jump_visible;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
     game_ui *ui = snew(game_ui);
-    int x, y, v;
-
-    ui->cur_visible = false;
-
-    /* make sure we start the cursor somewhere on the grid. */
-    for (x = 0; x < state->w; x++) {
-        for (y = 0; y < state->h; y++) {
-            v = state->grid[y*state->w+x];
-            if (v == GRID_PEG || v == GRID_HOLE) {
-                ui->cur_x = x; ui->cur_y = y;
-                goto found;
-            }
-        }
-    }
-    assert(!"new_ui found nowhere for cursor");
-found:
-
+    ui->jump_visible = false;
+    ui->jump_x = ui->jump_y = -1;
     return ui;
 }
 
@@ -775,7 +722,6 @@ static void free_ui(game_ui *ui)
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
-    ui->cur_visible = false;
 }
 
 #define PREFERRED_TILE_SIZE 33
@@ -808,29 +754,29 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         tx = FROMCOORD(x);
         ty = FROMCOORD(y);
         if (tx >= 0 && tx < w && ty >= 0 && ty < h) {
-            if (ui->cur_visible && ui->cur_x == tx && ui->cur_y == ty) {
-                ui->cur_visible = false;
+            if (ui->jump_visible && ui->jump_x == tx && ui->jump_y == ty) {
+                ui->jump_visible = false;
                 return MOVE_UI_UPDATE;
             }
             if (state->grid[ty*w+tx] == GRID_PEG) {
-                ui->cur_x = tx; ui->cur_y = ty;
-                ui->cur_visible = true;
+                ui->jump_x = tx; ui->jump_y = ty;
+                ui->jump_visible = true;
                 return MOVE_UI_UPDATE;
             }
-            if (ui->cur_visible == true) {
+            if (ui->jump_visible == true) {
                 int mx, my;
                 mx = -1; my = -1;
-                if (ui->cur_x == tx-2 && ui->cur_y == ty) { mx = tx-1; my = ty; }
-                if (ui->cur_x == tx+2 && ui->cur_y == ty) { mx = tx+1; my = ty; }
-                if (ui->cur_x == tx && ui->cur_y == ty-2) { mx = tx; my = ty-1; }
-                if (ui->cur_x == tx && ui->cur_y == ty+2) { mx = tx; my = ty+1; }
+                if (ui->jump_x == tx-2 && ui->jump_y == ty) { mx = tx-1; my = ty; }
+                if (ui->jump_x == tx+2 && ui->jump_y == ty) { mx = tx+1; my = ty; }
+                if (ui->jump_x == tx && ui->jump_y == ty-2) { mx = tx; my = ty-1; }
+                if (ui->jump_x == tx && ui->jump_y == ty+2) { mx = tx; my = ty+1; }
 
-                ui->cur_visible = false;
+                ui->jump_visible = false;
                 if (mx >= 0 && my >= 0 &&
-                    state->grid[ui->cur_y*w+ui->cur_x] == GRID_PEG &&
+                    state->grid[ui->jump_y*w+ui->jump_x] == GRID_PEG &&
                     state->grid[my*w+mx] == GRID_PEG &&
                     state->grid[ty*w+tx] == GRID_HOLE) {
-                    sprintf(buf, "%d,%d-%d,%d", ui->cur_x, ui->cur_y, tx, ty);
+                    sprintf(buf, "%d,%d-%d,%d", ui->jump_x, ui->jump_y, tx, ty);
                     return dupstr(buf);
                 }
                 return MOVE_UI_UPDATE;
@@ -932,7 +878,7 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_HIGHLIGHT  * 3 + i] = 0.7F;
         ret[COL_LOWLIGHT   * 3 + i] = 0.3F;
         ret[COL_PEG        * 3 + i] = 0.0F;
-        ret[COL_CURSOR     * 3 + i] = 0.5F;
+        ret[COL_JUMP       * 3 + i] = 0.5F;
     }
 
     *ncolours = NCOLOURS;
@@ -969,7 +915,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
 static void draw_tile(drawing *dr, game_drawstate *ds,
               int x, int y, int v, int bgcolour)
 {
-    bool cursor = false, jumping = false, destination = false;
+    bool jumping = false, destination = false;
     int bg;
 
     if (bgcolour >= 0) {
@@ -981,19 +927,15 @@ static void draw_tile(drawing *dr, game_drawstate *ds,
     if (v >= GRID_JUMPING) {
         jumping = true; v -= GRID_JUMPING;
     }
-    if (v >= GRID_CURSOR) {
-        cursor = true; v -= GRID_CURSOR;
-    }
 
     if (v == GRID_HOLE) {
         bg = destination ? COL_HIGHLIGHT : COL_BACKGROUND;
         draw_circle(dr, x+TILESIZE/2, y+TILESIZE/2, TILESIZE/4, COL_PEG, COL_PEG);
         draw_circle(dr, x+TILESIZE/2, y+TILESIZE/2, TILESIZE/4-5, bg, bg);
     } else if (v == GRID_PEG) {
-        bg = (cursor || jumping) ? COL_CURSOR : COL_PEG;
+        bg = jumping ? COL_JUMP : COL_PEG;
         draw_circle(dr, x+TILESIZE/2, y+TILESIZE/2, TILESIZE/3, bg, bg);
-        bg = (!cursor || jumping) ? COL_PEG : COL_CURSOR;
-        draw_circle(dr, x+TILESIZE/2, y+TILESIZE/2, TILESIZE/4, bg, bg);
+        draw_circle(dr, x+TILESIZE/2, y+TILESIZE/2, TILESIZE/4, COL_PEG, COL_PEG);
         draw_circle(dr, x+2*TILESIZE/5, y+2*TILESIZE/5, TILESIZE/16, COL_BACKGROUND, COL_BACKGROUND);
     }
 
@@ -1111,17 +1053,17 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         v = state->grid[y*w+x];
 
-        if (ui->cur_visible && ui->cur_x == x && ui->cur_y == y)
+        if (ui->jump_visible && ui->jump_x == x && ui->jump_y == y)
             v += GRID_JUMPING;
 
-        if (ui->cur_visible && v == GRID_HOLE) {
-            if ((ui->cur_x - x) == 2 && (ui->cur_y - y) == 0 && ds->grid[y*w+(x+1)] == GRID_PEG)
+        if (ui->jump_visible && v == GRID_HOLE) {
+            if ((ui->jump_x - x) == 2 && (ui->jump_y - y) == 0 && ds->grid[y*w+(x+1)] == GRID_PEG)
                 v += GRID_DEST;
-            else if ((x - ui->cur_x) == 2 && (ui->cur_y - y) == 0 && ds->grid[y*w+(x-1)] == GRID_PEG)
+            else if ((x - ui->jump_x) == 2 && (ui->jump_y - y) == 0 && ds->grid[y*w+(x-1)] == GRID_PEG)
                 v += GRID_DEST;
-            else if ((ui->cur_x - x) == 0 && (ui->cur_y - y) == 2 && ds->grid[(y+1)*w+x] == GRID_PEG)
+            else if ((ui->jump_x - x) == 0 && (ui->jump_y - y) == 2 && ds->grid[(y+1)*w+x] == GRID_PEG)
                 v += GRID_DEST;
-            else if ((ui->cur_x - x) == 0 && (y - ui->cur_y) == 2 && ds->grid[(y-1)*w+x] == GRID_PEG)
+            else if ((ui->jump_x - x) == 0 && (y - ui->jump_y) == 2 && ds->grid[(y-1)*w+x] == GRID_PEG)
                 v += GRID_DEST;
         }
 

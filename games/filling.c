@@ -536,42 +536,42 @@ static bool learn_expand_or_one(struct solver_state *s, int w, int h) {
     assert(s);
 
     for (i = 0; i < sz; ++i) {
-    int j;
-    bool one = true;
+        int j;
+        bool one = true;
 
-    if (s->board[i] != EMPTY) continue;
+        if (s->board[i] != EMPTY) continue;
 
-    for (j = 0; j < 4; ++j) {
-        const int x = (i % w) + dx[j];
-        const int y = (i / w) + dy[j];
-        const int idx = w*y + x;
-        if (x < 0 || x >= w || y < 0 || y >= h) continue;
-        if (s->board[idx] == EMPTY) {
-        one = false;
-        continue;
+        for (j = 0; j < 4; ++j) {
+            const int x = (i % w) + dx[j];
+            const int y = (i / w) + dy[j];
+            const int idx = w*y + x;
+            if (x < 0 || x >= w || y < 0 || y >= h) continue;
+            if (s->board[idx] == EMPTY) {
+                one = false;
+                continue;
+            }
+            if (one &&
+               (s->board[idx] == 1 ||
+               (s->board[idx] >= expandsize(s->board, s->dsf, w, h,
+                              i, s->board[idx]))))
+                one = false;
+            if (dsf_size(s->dsf, idx) == s->board[idx]) continue;
+            assert(s->board[i] == EMPTY);
+            s->board[i] = -SENTINEL;
+            if (check_capacity(s->board, w, h, idx)) continue;
+            assert(s->board[i] == EMPTY);
+            expand(s, w, h, i, idx);
+            learn = true;
+            break;
         }
-        if (one &&
-        (s->board[idx] == 1 ||
-         (s->board[idx] >= expandsize(s->board, s->dsf, w, h,
-                          i, s->board[idx]))))
-        one = false;
-        if (dsf_size(s->dsf, idx) == s->board[idx]) continue;
-        assert(s->board[i] == EMPTY);
-        s->board[i] = -SENTINEL;
-        if (check_capacity(s->board, w, h, idx)) continue;
-        assert(s->board[i] == EMPTY);
-        expand(s, w, h, i, idx);
-        learn = true;
-        break;
-    }
 
-    if (j == 4 && one) {
-        assert(s->board[i] == EMPTY);
-        s->board[i] = 1;
-        assert(s->nempty);
-        --s->nempty;
-        learn = true;
-    }
+        if (j == 4 && one) {
+            assert(s->board[i] == EMPTY);
+            s->board[i] = 1;
+            assert(s->nempty);
+            --s->nempty;
+            learn = true;
+        }
     }
     return learn;
 }
@@ -612,28 +612,6 @@ static bool learn_blocked_expansion(struct solver_state *s, int w, int h) {
                 if (x < 0 || x >= w || y < 0 || y >= h) continue;
                 if (s->board[idx] != EMPTY) continue;
                 if (exp == idx) continue;
-
-                /* find out the would-be size of the new connected
-                 * component if we actually expanded into idx */
-                /*
-                size = 1;
-                for (l = 0; l < 4; ++l) {
-                    const int lx = x + dx[l];
-                    const int ly = y + dy[l];
-                    const int idxl = w*ly + lx;
-                    int root;
-                    int m;
-                    if (lx < 0 || lx >= w || ly < 0 || ly >= h) continue;
-                    if (board[idxl] != board[j]) continue;
-                    root = dsf_canonify(dsf, idxl);
-                    for (m = 0; m < nhits && root != hits[m]; ++m);
-                    if (m != nhits) continue;
-                    // printv("\t  (%d, %d) contributed %d to size\n", lx, ly, dsf[root] >> 2);
-                    size += dsf_size(dsf, root);
-                    assert(dsf_size(dsf, root) >= 1);
-                    hits[nhits++] = root;
-                }
-                */
 
                 size = expandsize(s->board, s->dsf, w, h, idx, s->board[j]);
 
@@ -703,20 +681,6 @@ static bool learn_critical_square(struct solver_state *s, int w, int h) {
     return learn;
 }
 
-#if 0
-static void print_bitmap(int *bitmap, int w, int h) {
-    if (verbose) {
-    int x, y;
-    for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
-        printv(" %03x", bm[y*w+x]);
-        }
-        printv("\n");
-    }
-    }
-}
-#endif
-
 static bool learn_bitmap_deductions(struct solver_state *s, int w, int h)
 {
     const int sz = w * h;
@@ -777,10 +741,6 @@ static bool learn_bitmap_deductions(struct solver_state *s, int w, int h)
     for (y = 0; y < h; y++)
     for (x = 0; x < w; x++)
         bm[y*w+x] = (1 << 10) - (1 << 1); /* bits 1,2,...,9 now set */
-#if 0
-    printv("initial bitmap:\n");
-    print_bitmap(bm, w, h);
-#endif
 
     /*
      * Now completely zero out the bitmap for squares that are already
@@ -809,10 +769,6 @@ static bool learn_bitmap_deductions(struct solver_state *s, int w, int h)
         }
     }
     }
-#if 0
-    printv("bitmap after filled squares:\n");
-    print_bitmap(bm, w, h);
-#endif
 
     /*
      * Now, for each n, we separately find the connected components of
@@ -838,10 +794,6 @@ static bool learn_bitmap_deductions(struct solver_state *s, int w, int h)
         if ((bm[i] & (1 << n)) && dsf_size(dsf, i) < n)
         bm[i] &= ~(1 << n);
     }
-#if 0
-    printv("bitmap after winnowing small components:\n");
-    print_bitmap(bm, w, h);
-#endif
 
     /*
      * Now our bitmap includes every square which could be part of a
@@ -917,10 +869,6 @@ static bool learn_bitmap_deductions(struct solver_state *s, int w, int h)
         if (minsize[i] <= n)
         bm[i] |= 1<<n;
     }
-#if 0
-    printv("bitmap after bfs:\n");
-    print_bitmap(bm, w, h);
-#endif
 
     /*
      * Now our bitmap is complete. Look for entries with only one bit
@@ -972,11 +920,11 @@ static bool solver(const int *orig, int w, int h, char **solution) {
 
     init_solver_state(&ss, w, h);
     do {
-    if (learn_blocked_expansion(&ss, w, h)) continue;
-    if (learn_expand_or_one(&ss, w, h)) continue;
-    if (learn_critical_square(&ss, w, h)) continue;
-    if (learn_bitmap_deductions(&ss, w, h)) continue;
-    break;
+        if (learn_blocked_expansion(&ss, w, h)) continue;
+        if (learn_expand_or_one(&ss, w, h)) continue;
+        if (learn_critical_square(&ss, w, h)) continue;
+        if (learn_bitmap_deductions(&ss, w, h)) continue;
+        break;
     } while (ss.nempty);
 
     if (solution) {
@@ -1136,13 +1084,13 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     for (run = j = i = 0; i < sz; ++i) {
         assert(board[i] >= 0);
         assert(board[i] < 10);
-    if (board[i] == 0) {
-        ++run;
-    } else {
-        j += encode_run(description + j, run);
-        run = 0;
-        description[j++] = board[i] + '0';
-    }
+        if (board[i] == 0) {
+            ++run;
+        } else {
+            j += encode_run(description + j, run);
+            run = 0;
+            description[j++] = board[i] + '0';
+        }
     }
     j += encode_run(description + j, run);
     description[j++] = '\0';
@@ -1186,11 +1134,11 @@ static game_state *new_game(midend *me, const game_params *params,
     state->shared->clues = snewn(sz, int);
 
     for (i = 0; *desc; ++desc) {
-    if (*desc >= 'a' && *desc <= 'z') {
-        int j = *desc - 'a' + 1;
-        assert(i + j <= sz);
-        for (; j; --j) state->shared->clues[i++] = 0;
-    } else state->shared->clues[i++] = *desc - '0';
+        if (*desc >= 'a' && *desc <= 'z') {
+            int j = *desc - 'a' + 1;
+            assert(i + j <= sz);
+            for (; j; --j) state->shared->clues[i++] = 0;
+        } else state->shared->clues[i++] = *desc - '0';
     }
     state->board = memdup(state->shared->clues, sz, sizeof (int));
 
@@ -1328,10 +1276,8 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     char *move = NULL;
     int i;
     bool pbutton = false;
-
     assert(ui);
     assert(ds);
-
     button = STRIP_BUTTON_MODIFIERS(button);
 
     if (button == LEFT_BUTTON || button == LEFT_DRAG) {

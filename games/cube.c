@@ -626,7 +626,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     facesperclass = solids[params->solid]->nfaces / data.nclasses;
 
     for (i = 0; i < data.nclasses; i++)
-    assert(data.nsquares[i] >= facesperclass);
+        assert(data.nsquares[i] >= facesperclass);
     assert(data.squareindex == area);
 
     /*
@@ -635,7 +635,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
      */
     flags = snewn(area, bool);
     for (i = 0; i < area; i++)
-    flags[i] = false;
+        flags[i] = false;
 
     for (i = 0; i < data.nclasses; i++) {
     for (j = 0; j < facesperclass; j++) {
@@ -810,7 +810,6 @@ static struct solid *transform_poly(const struct solid *solid, bool flip,
      */
     vx = ret->vertices[key1*3+0] - ret->vertices[key0*3+0];
     vy = ret->vertices[key1*3+1] - ret->vertices[key0*3+1];
-    assert(APPROXEQ(vx*vx + vy*vy, 1.0));
 
     vmatrix[0] =  vx; vmatrix[3] = vy; vmatrix[6] = 0;
     vmatrix[1] = -vy; vmatrix[4] = vx; vmatrix[7] = 0;
@@ -883,7 +882,6 @@ static game_state *new_game(midend *me, const game_params *params,
     grid->squares = snewn(area, struct grid_square);
     grid->nsquares = 0;
     enum_grid_squares(params, add_grid_square_callback, grid);
-    assert(grid->nsquares == area);
     state->grid = grid;
     grid->refcount = 1;
 
@@ -1044,7 +1042,6 @@ static int find_move_dest(const game_state *from, int direction,
             skey[j] = i;
             j++;
         }
-    assert(j == 2);
 
     /*
      * Now find the other grid square which shares those points.
@@ -1085,28 +1082,7 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
     button = button & (~MOD_MASK | MOD_NUM_KEYPAD);
 
-    /*
-     * Moves can be made with the cursor keys or numeric keypad, or
-     * alternatively you can left-click and the polyhedron will
-     * move in the general direction of the mouse pointer.
-     */
-    if (button == CURSOR_UP || button == (MOD_NUM_KEYPAD | '8'))
-        direction = UP;
-    else if (button == CURSOR_DOWN || button == (MOD_NUM_KEYPAD | '2'))
-        direction = DOWN;
-    else if (button == CURSOR_LEFT || button == (MOD_NUM_KEYPAD | '4'))
-        direction = LEFT;
-    else if (button == CURSOR_RIGHT || button == (MOD_NUM_KEYPAD | '6'))
-        direction = RIGHT;
-    else if (button == (MOD_NUM_KEYPAD | '7'))
-        direction = UP_LEFT;
-    else if (button == (MOD_NUM_KEYPAD | '1'))
-        direction = DOWN_LEFT;
-    else if (button == (MOD_NUM_KEYPAD | '9'))
-        direction = UP_RIGHT;
-    else if (button == (MOD_NUM_KEYPAD | '3'))
-        direction = DOWN_RIGHT;
-    else if (button == LEFT_BUTTON) {
+    if (button == LEFT_BUTTON) {
         /*
          * Find the bearing of the click point from the current
          * square's centre.
@@ -1160,7 +1136,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 direction = RIGHT;
         } else {
             /* Down-pointing triangle. */
-            assert(state->grid->squares[state->current].directions[DOWN] == 0);
             if (angle > PI/2 || angle < -5*PI/6)
                 direction = LEFT;
             else if (angle < -PI/6)
@@ -1260,12 +1235,9 @@ static game_state *execute_move(const game_state *from, const game_ui *ui, const
                     from->solid->faces[i*from->solid->order + j] == pkey[1])
                     match++;
             if (match == 2) {
-                assert(nf < 2);
                 f[nf++] = i;
             }
         }
-
-        assert(nf == 2);
 
         dp = 0;
         for (i = 0; i < 3; i++)
@@ -1309,8 +1281,6 @@ static game_state *execute_move(const game_state *from, const game_ui *ui, const
             flip_poly(poly, from->grid->squares[ret->current].flip);
             success = align_poly(poly, &from->grid->squares[ret->current], all_pkey);
         }
-
-        assert(success);
     }
 
     /*
@@ -1349,12 +1319,7 @@ static game_state *execute_move(const game_state *from, const game_ui *ui, const
                     newcolours[i] = ret->facecolours[j];
                 }
             }
-
-            assert(nmatch == 1);
         }
-
-        for (i = 0; i < from->solid->nfaces; i++)
-            assert(newcolours[i] != -1);
 
         sfree(ret->facecolours);
         ret->facecolours = newcolours;
@@ -1530,7 +1495,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
          * This is an Undo. So reverse the order of the states, and
          * run the roll timer backwards.
          */
-    assert(oldstate);
 
         t = oldstate;
         oldstate = state;

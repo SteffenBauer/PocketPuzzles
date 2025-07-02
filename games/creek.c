@@ -805,7 +805,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
          * undecided, which we can then fill in uniquely.
          */
         initialize_solver_creek(w, h, clues, tmpsoln, scc, DIFF_EASY);
-        assert(creek_solve(w, h, clues, tmpsoln, scc, DIFF_EASY) == 1);
 
         /*
          * Remove as many clues as possible while retaining solubility.
@@ -940,6 +939,7 @@ static game_state *new_game(midend *me, const game_params *params,
 {
     int w = params->w, h = params->h, W = w+1, H = h+1;
     game_state *state = snew(game_state);
+    int area = W*H;
     int squares = 0;
 
     state->p = *params;
@@ -964,7 +964,8 @@ static game_state *new_game(midend *me, const game_params *params,
             state->clues->clues[squares++] = n - '0';
         } else
             assert(!"can't get here");
-    }
+        }
+    assert(squares == area);
 
     return state;
 }

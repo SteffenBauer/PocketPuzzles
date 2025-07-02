@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <ctype.h>
 #include <math.h>
 
@@ -1004,8 +1003,6 @@ struct game_ui {
     int drag_end;
     int drag;
     bool highlight;
-
-    int cx, cy;
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1016,8 +1013,6 @@ static game_ui *new_ui(const game_state *state)
     ui->drag_end = -1;
     ui->drag = DRAG_NONE;
     ui->highlight = false;
-    ui->cx = ui->cy = 0;
-    
     return ui;
 }
 
@@ -1086,7 +1081,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         
         angle = atan2(dy, dx);
         angle = (angle + (PI/8)) / (PI/4);
-        assert(angle > -16.0F);
         dir = (int)(angle + 16.0F) & 7;
         
         x = sx+spoke_dirs[dir].dx;

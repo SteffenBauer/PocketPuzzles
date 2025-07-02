@@ -13,14 +13,14 @@
  *    draw_text in particular. I'd have to invent a front end API
  *    which retrieved the text bounds.
  *     + that might allow me to do the alignment centrally as well?
- * 	  * perhaps not, because PS can't return this information,
- * 	    so there would have to be a special case for it.
+ *        * perhaps not, because PS can't return this information,
+ *          so there would have to be a special case for it.
  *     + however, that at least doesn't stand in the way of using
- * 	 the text bounds for draw_update, because PS doesn't need
- * 	 draw_update since it's printing-only. Any _interactive_
- * 	 drawing API couldn't get away with refusing to tell you
- * 	 what parts of the screen a text draw had covered, because
- * 	 you would inevitably need to erase it later on.
+ *       the text bounds for draw_update, because PS doesn't need
+ *       draw_update since it's printing-only. Any _interactive_
+ *       drawing API couldn't get away with refusing to tell you
+ *       what parts of the screen a text draw had covered, because
+ *       you would inevitably need to erase it later on.
  */
 
 #include <stdio.h>

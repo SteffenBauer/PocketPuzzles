@@ -24,9 +24,6 @@
 #define Y(state, i) ( (i) / (state)->w )
 #define C(state, x, y) ( (y) * (state)->w + (x) )
 
-#define TILE_CURSOR(i, state, x, y) ((i) == C((state), (x), (y)) &&     \
-                                     0 <= (x) && (x) < (state)->w &&    \
-                                     0 <= (y) && (y) < (state)->h)
 enum {
     COL_BACKGROUND,
     COL_TEXT,
@@ -510,19 +507,11 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 enum cursor_mode { unlocked, lock_tile, lock_position };
 
 struct game_ui {
-    int cur_x, cur_y;
-    bool cur_visible;
-    enum cursor_mode cur_mode;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
     game_ui *ui = snew(game_ui);
-    ui->cur_x = 0;
-    ui->cur_y = 0;
-    ui->cur_visible = false;
-    ui->cur_mode = unlocked;
-
     return ui;
 }
 
@@ -541,7 +530,6 @@ struct game_drawstate {
     int w, h, bgcolour;
     int *tiles;
     int tilesize;
-    int cur_x, cur_y;
 };
 
 static char *interpret_move(const game_state *state, game_ui *ui,
@@ -556,7 +544,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         cx = FROMCOORD(x);
         cy = FROMCOORD(y);
-        ui->cur_visible = false;
     } else {
         return NULL;
     }
@@ -698,7 +685,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->tilesize = 0;                  /* haven't decided yet */
     for (i = 0; i < ds->w*ds->h; i++)
         ds->tiles[i] = -1;
-    ds->cur_x = ds->cur_y = -1;
 
     return ds;
 }
@@ -765,33 +751,12 @@ static void draw_arrow(drawing *dr, game_drawstate *ds,
     draw_polygon(dr, coords, 7, cur ? COL_HIGHLIGHT : COL_LOWLIGHT, COL_TEXT);
 }
 
-static void draw_arrow_for_cursor(drawing *dr, game_drawstate *ds,
-                                  int cur_x, int cur_y, bool cur)
-{
-    if (cur_x == -1 && cur_y == -1)
-        return; /* 'no cursur here */
-    else if (cur_x == -1) /* LH column. */
-        draw_arrow(dr, ds, COORD(0), COORD(cur_y+1), 0, -1, cur);
-    else if (cur_x == ds->w) /* RH column */
-        draw_arrow(dr, ds, COORD(ds->w), COORD(cur_y), 0, +1, cur);
-    else if (cur_y == -1) /* Top row */
-        draw_arrow(dr, ds, COORD(cur_x), COORD(0), +1, 0, cur);
-    else if (cur_y == ds->h) /* Bottom row */
-        draw_arrow(dr, ds, COORD(cur_x+1), COORD(ds->h), -1, 0, cur);
-    else
-        return;
-
-    draw_update(dr, COORD(cur_x), COORD(cur_y),
-                TILE_SIZE, TILE_SIZE);
-}
-
 static void game_redraw(drawing *dr, game_drawstate *ds,
                         const game_state *oldstate, const game_state *state,
                         int dir, const game_ui *ui,
                         float animtime, float flashtime)
 {
     int i, bgcolour;
-    int cur_x = -1, cur_y = -1;
 
     bgcolour = COL_BACKGROUND;
 
@@ -831,18 +796,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
         ds->started = true;
     }
-    /*
-     * Cursor (highlighted arrow around edge)
-     */
-    if (ui->cur_visible) {
-        cur_x = ui->cur_x; cur_y = ui->cur_y;
-    }
-
-    if (cur_x != ds->cur_x || cur_y != ds->cur_y) {
-        /* Cursor has changed; redraw two (prev and curr) arrows. */
-        draw_arrow_for_cursor(dr, ds, cur_x, cur_y, true);
-        draw_arrow_for_cursor(dr, ds, ds->cur_x, ds->cur_y, false);
-    }
 
     /*
      * Now draw each tile.
@@ -867,10 +820,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     t0 = t;
 
     if (ds->bgcolour != bgcolour ||   /* always redraw when flashing */
-            ds->tiles[i] != t || ds->tiles[i] == -1 || t == -1 ||
-            ((ds->cur_x != cur_x || ds->cur_y != cur_y) && /* cursor moved */
-             (TILE_CURSOR(i, state, ds->cur_x, ds->cur_y) ||
-              TILE_CURSOR(i, state, cur_x, cur_y)))) {
+            ds->tiles[i] != t || ds->tiles[i] == -1 || t == -1) {
             int x, y, x2, y2;
 
         /*
@@ -937,18 +887,13 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         x2 = y2 = -1;
         }
 
-        draw_tile(dr, ds, state, x, y, t,
-              (x2 == -1 && TILE_CURSOR(i, state, cur_x, cur_y)) ?
-                      COL_LOWLIGHT : bgcolour);
+        draw_tile(dr, ds, state, x, y, t, bgcolour);
 
         if (x2 != -1 || y2 != -1)
             draw_tile(dr, ds, state, x2, y2, t, bgcolour);
     }
     ds->tiles[i] = t0;
     }
-
-    ds->cur_x = cur_x;
-    ds->cur_y = cur_y;
 
     unclip(dr);
 

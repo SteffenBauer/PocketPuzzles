@@ -830,9 +830,6 @@ static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
     x = startx;
     y = starty;
     d = startd;
-#ifdef PERTURB_DIAGNOSTICS
-    printf("perturb %d,%d:%d\n", x, y, d);
-#endif
     do {
     int x2, y2, d2;
 
@@ -844,9 +841,6 @@ static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
     perimeter[nperim].y = y;
     perimeter[nperim].direction = d;
     nperim++;
-#ifdef PERTURB_DIAGNOSTICS
-    printf("perimeter: %d,%d:%d\n", x, y, d);
-#endif
 
     /*
      * First, see if we can simply turn left from where we are
@@ -914,9 +908,6 @@ static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
      * We've found the point at which we're going to make a new
      * link.
      */
-#ifdef PERTURB_DIAGNOSTICS    
-    printf("linking %d,%d:%d\n", x, y, d);
-#endif
     tiles[y*w+x] |= d;
     tiles[y2*w+x2] |= F(d);
 
@@ -963,42 +954,25 @@ static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
          * reverses the previous one on the loop in which case
          * we take it away again.
          */
-#ifdef PERTURB_DIAGNOSTICS
-        printf("looppos[%d] = %d,%d:%d\n", i, x, y, d);
-#endif
         if (nloop[i] > 0 &&
         loop[i][nloop[i]-1].x == x2 &&
         loop[i][nloop[i]-1].y == y2 &&
         loop[i][nloop[i]-1].direction == F(d)) {
-#ifdef PERTURB_DIAGNOSTICS
-        printf("removing path segment %d,%d:%d from loop[%d]\n",
-               x2, y2, F(d), i);
-#endif
         nloop[i]--;
         } else {
         if (nloop[i] >= loopsize[i]) {
             loopsize[i] = loopsize[i] * 3 / 2 + 32;
             loop[i] = sresize(loop[i], loopsize[i], struct xyd);
         }
-#ifdef PERTURB_DIAGNOSTICS
-        printf("adding path segment %d,%d:%d to loop[%d]\n",
-               x, y, d, i);
-#endif
         loop[i][nloop[i]++] = looppos[i];
         }
 
-#ifdef PERTURB_DIAGNOSTICS
-        printf("tile at new location is %x\n", tiles[y2*w+x2] & 0xF);
-#endif
         d = F(d);
         for (j = 0; j < 4; j++) {
         if (i == 0)
             d = A(d);
         else
             d = C(d);
-#ifdef PERTURB_DIAGNOSTICS
-        printf("trying dir %d\n", d);
-#endif
         if (tiles[y2*w+x2] & d) {
             looppos[i].x = x2;
             looppos[i].y = y2;
@@ -1013,9 +987,6 @@ static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
         if (looppos[i].x == loop[i][0].x &&
         looppos[i].y == loop[i][0].y &&
         looppos[i].direction == loop[i][0].direction) {
-#ifdef PERTURB_DIAGNOSTICS
-        printf("loop %d finished tracking\n", i);
-#endif
 
         /*
          * Having found our loop, we now sever it at a
@@ -1062,9 +1033,6 @@ static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
          */
         if (x != -1) {
         while (y < h) {
-#ifdef PERTURB_DIAGNOSTICS
-            printf("resolved: locking tile %d,%d\n", x, y);
-#endif
             tiles[y * w + x] |= LOCKED;
             y++;
         }
@@ -1087,11 +1055,8 @@ static void perturb(int w, int h, unsigned char *tiles, bool wrapping,
          */
         assert(x == perimeter[i].x && y <= perimeter[i].y);
         while (y <= perimeter[i].y) {
-#ifdef PERTURB_DIAGNOSTICS
-        printf("resolved: locking tile %d,%d\n", x, y);
-#endif
-        tiles[y * w + x] |= LOCKED;
-        y++;
+            tiles[y * w + x] |= LOCKED;
+            y++;
         }
         x = y = -1;
     }
@@ -1171,13 +1136,13 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     possibilities = newtree234(xyd_cmp_nc);
 
     if (cx+1 < w)
-    add234(possibilities, new_xyd(cx, cy, R));
+        add234(possibilities, new_xyd(cx, cy, R));
     if (cy-1 >= 0)
-    add234(possibilities, new_xyd(cx, cy, U));
+        add234(possibilities, new_xyd(cx, cy, U));
     if (cx-1 >= 0)
-    add234(possibilities, new_xyd(cx, cy, L));
+        add234(possibilities, new_xyd(cx, cy, L));
     if (cy+1 < h)
-    add234(possibilities, new_xyd(cx, cy, D));
+        add234(possibilities, new_xyd(cx, cy, D));
 
     while (count234(possibilities) > 0) {
     int i;
@@ -1196,10 +1161,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
     OFFSET(x2, y2, x1, y1, d1, params);
     d2 = F(d1);
-#ifdef GENERATION_DIAGNOSTICS
-    printf("picked (%d,%d,%c) <-> (%d,%d,%c)\n",
-           x1, y1, "0RU3L567D9abcdef"[d1], x2, y2, "0RU3L567D9abcdef"[d2]);
-#endif
 
     /*
      * Make the connection. (We should be moving to an as yet
@@ -1223,12 +1184,8 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         xydp = find234(possibilities, &xyd1, NULL);
 
         if (xydp) {
-#ifdef GENERATION_DIAGNOSTICS
-        printf("T-piece; removing (%d,%d,%c)\n",
-               xydp->x, xydp->y, "0RU3L567D9abcdef"[xydp->direction]);
-#endif
-        del234(possibilities, xydp);
-        sfree(xydp);
+            del234(possibilities, xydp);
+            sfree(xydp);
         }
     }
 
@@ -1250,12 +1207,8 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         xydp = find234(possibilities, &xyd1, NULL);
 
         if (xydp) {
-#ifdef GENERATION_DIAGNOSTICS
-        printf("Loop avoidance; removing (%d,%d,%c)\n",
-               xydp->x, xydp->y, "0RU3L567D9abcdef"[xydp->direction]);
-#endif
-        del234(possibilities, xydp);
-        sfree(xydp);
+            del234(possibilities, xydp);
+            sfree(xydp);
         }
     }
 
@@ -1283,12 +1236,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         OFFSET(x3, y3, x2, y2, d, params);
 
         if (index(params, tiles, x3, y3))
-        continue;           /* this would create a loop */
-
-#ifdef GENERATION_DIAGNOSTICS
-        printf("New frontier; adding (%d,%d,%c)\n",
-           x2, y2, "0RU3L567D9abcdef"[d]);
-#endif
+            continue;           /* this would create a loop */
         add234(possibilities, new_xyd(x2, y2, d));
     }
     }

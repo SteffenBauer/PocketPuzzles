@@ -79,34 +79,6 @@
 
 /* #undef USE_CAIRO */
 /* #define NO_THICK_LINE */
-#ifdef DEBUGGING
-static FILE *debug_fp = NULL;
-
-static void dputs(const char *buf)
-{
-    if (!debug_fp) {
-        debug_fp = fopen("debug.log", "w");
-    }
-
-    fputs(buf, stderr);
-
-    if (debug_fp) {
-        fputs(buf, debug_fp);
-        fflush(debug_fp);
-    }
-}
-
-void debug_printf(const char *fmt, ...)
-{
-    char buf[4096];
-    va_list ap;
-
-    va_start(ap, fmt);
-    vsprintf(buf, fmt, ap);
-    dputs(buf);
-    va_end(ap);
-}
-#endif
 
 /* ----------------------------------------------------------------------
  * Error reporting functions used elsewhere.
@@ -184,13 +156,13 @@ struct frontend {
 #ifndef USE_CAIRO_WITHOUT_PIXMAP
     GdkPixmap *pixmap;
 #endif
-    GdkColor background;	       /* for painting outside puzzle area */
+    GdkColor background;               /* for painting outside puzzle area */
 #else
     GdkPixmap *pixmap;
     GdkGC *gc;
     GdkColor *colours;
     GdkColormap *colmap;
-    int backgroundindex;	       /* which of colours[] is background */
+    int backgroundindex;               /* which of colours[] is background */
 #endif
     int ncolours;
     int bbox_l, bbox_r, bbox_u, bbox_d;
@@ -259,7 +231,7 @@ struct blitter {
 #else
     GdkPixmap *pixmap;
 #endif
-    int w, h, x, y;
+    int w, h;
 };
 
 void get_random_seed(void **randseed, int *randseedsize)
@@ -420,9 +392,9 @@ static void set_window_background(frontend *fe, int colour)
     fe->background.green = fe->colours[3*colour + 1] * 65535;
     fe->background.blue = fe->colours[3*colour + 2] * 65535;
     if (!gdk_colormap_alloc_color(colmap, &fe->background, false, false)) {
-	g_error("couldn't allocate background (#%02x%02x%02x)\n",
-		fe->background.red >> 8, fe->background.green >> 8,
-		fe->background.blue >> 8);
+        g_error("couldn't allocate background (#%02x%02x%02x)\n",
+                fe->background.red >> 8, fe->background.green >> 8,
+                fe->background.blue >> 8);
     }
     gdk_window_set_background(gtk_widget_get_window(fe->area),
                               &fe->background);
@@ -437,7 +409,7 @@ static PangoLayout *make_pango_layout(frontend *fe)
 }
 
 static void draw_pango_layout(frontend *fe, PangoLayout *layout,
-			      int x, int y)
+                              int x, int y)
 {
     cairo_move_to(fe->cr, x, y);
     pango_cairo_show_layout(fe->cr, layout);
@@ -489,7 +461,7 @@ static void do_draw_line(frontend *fe, int x1, int y1, int x2, int y2)
 }
 
 static void do_draw_thick_line(frontend *fe, float thickness,
-			       float x1, float y1, float x2, float y2)
+                               float x1, float y1, float x2, float y2)
 {
     cairo_save(fe->cr);
     cairo_set_line_width(fe->cr, thickness);
@@ -501,17 +473,17 @@ static void do_draw_thick_line(frontend *fe, float thickness,
 }
 
 static void do_draw_poly(frontend *fe, const int *coords, int npoints,
-			 int fillcolour, int outlinecolour)
+                         int fillcolour, int outlinecolour)
 {
     int i;
 
     cairo_new_path(fe->cr);
     for (i = 0; i < npoints; i++)
-	cairo_line_to(fe->cr, coords[i*2] + 0.5, coords[i*2 + 1] + 0.5);
+        cairo_line_to(fe->cr, coords[i*2] + 0.5, coords[i*2 + 1] + 0.5);
     cairo_close_path(fe->cr);
     if (fillcolour >= 0) {
         fe->dr_api->set_colour(fe, fillcolour);
-	fe->dr_api->fill_preserve(fe);
+        fe->dr_api->fill_preserve(fe);
     }
     assert(outlinecolour >= 0);
     fe->dr_api->set_colour(fe, outlinecolour);
@@ -519,14 +491,14 @@ static void do_draw_poly(frontend *fe, const int *coords, int npoints,
 }
 
 static void do_draw_circle(frontend *fe, int cx, int cy, int radius,
-			   int fillcolour, int outlinecolour)
+                           int fillcolour, int outlinecolour)
 {
     cairo_new_path(fe->cr);
     cairo_arc(fe->cr, cx + 0.5, cy + 0.5, radius, 0, 2*PI);
-    cairo_close_path(fe->cr);		/* Just in case... */
+    cairo_close_path(fe->cr);                /* Just in case... */
     if (fillcolour >= 0) {
-	fe->dr_api->set_colour(fe, fillcolour);
-	fe->dr_api->fill_preserve(fe);
+        fe->dr_api->set_colour(fe, fillcolour);
+        fe->dr_api->fill_preserve(fe);
     }
     assert(outlinecolour >= 0);
     fe->dr_api->set_colour(fe, outlinecolour);
@@ -584,7 +556,7 @@ static void setup_backing_store(frontend *fe)
 #endif
 
     fe->image = cairo_image_surface_create(CAIRO_FORMAT_RGB24,
-					   fe->pw*fe->ps, fe->ph*fe->ps);
+                                           fe->pw*fe->ps, fe->ph*fe->ps);
 
     wipe_and_maybe_destroy_cairo(fe, cairo_create(fe->image), true);
 #ifndef USE_CAIRO_WITHOUT_PIXMAP
@@ -656,20 +628,20 @@ static void snaffle_colours(frontend *fe)
     fe->ncolours = ncolours;
     fe->colours = snewn(ncolours, GdkColor);
     for (i = 0; i < ncolours; i++) {
-	fe->colours[i].red = colours[i*3] * 0xFFFF;
-	fe->colours[i].green = colours[i*3+1] * 0xFFFF;
-	fe->colours[i].blue = colours[i*3+2] * 0xFFFF;
+        fe->colours[i].red = colours[i*3] * 0xFFFF;
+        fe->colours[i].green = colours[i*3+1] * 0xFFFF;
+        fe->colours[i].blue = colours[i*3+2] * 0xFFFF;
     }
     success = snewn(ncolours, gboolean);
     gdk_colormap_alloc_colors(fe->colmap, fe->colours, ncolours,
-			      false, false, success);
+                              false, false, success);
     for (i = 0; i < ncolours; i++) {
-	if (!success[i]) {
-	    g_error("couldn't allocate colour %d (#%02x%02x%02x)\n",
-		    i, fe->colours[i].red >> 8,
-		    fe->colours[i].green >> 8,
-		    fe->colours[i].blue >> 8);
-	}
+        if (!success[i]) {
+            g_error("couldn't allocate colour %d (#%02x%02x%02x)\n",
+                    i, fe->colours[i].red >> 8,
+                    fe->colours[i].green >> 8,
+                    fe->colours[i].blue >> 8);
+        }
     }
 }
 
@@ -692,7 +664,7 @@ static PangoLayout *make_pango_layout(frontend *fe)
 }
 
 static void draw_pango_layout(frontend *fe, PangoLayout *layout,
-			      int x, int y)
+                              int x, int y)
 {
     gdk_draw_layout(fe->pixmap, fe->gc, x, y, layout);
 }
@@ -706,7 +678,7 @@ static void save_screenshot_png(frontend *fe, const char *screenshot_file)
     midend_redraw(fe->me);
 
     pb = gdk_pixbuf_get_from_drawable(NULL, fe->pixmap,
-				      NULL, 0, 0, 0, 0, -1, -1);
+                                      NULL, 0, 0, 0, 0, -1, -1);
     gdk_pixbuf_save(pb, screenshot_file, "png", &gerror, NULL);
 }
 
@@ -743,26 +715,26 @@ static void do_draw_line(frontend *fe, int x1, int y1, int x2, int y2)
 }
 
 static void do_draw_thick_line(frontend *fe, float thickness,
-			       float x1, float y1, float x2, float y2)
+                               float x1, float y1, float x2, float y2)
 {
     GdkGCValues save;
 
     gdk_gc_get_values(fe->gc, &save);
     gdk_gc_set_line_attributes(fe->gc,
-			       thickness,
-			       GDK_LINE_SOLID,
-			       GDK_CAP_BUTT,
-			       GDK_JOIN_BEVEL);
+                               thickness,
+                               GDK_LINE_SOLID,
+                               GDK_CAP_BUTT,
+                               GDK_JOIN_BEVEL);
     gdk_draw_line(fe->pixmap, fe->gc, x1, y1, x2, y2);
     gdk_gc_set_line_attributes(fe->gc,
-			       save.line_width,
-			       save.line_style,
-			       save.cap_style,
-			       save.join_style);
+                               save.line_width,
+                               save.line_style,
+                               save.cap_style,
+                               save.join_style);
 }
 
 static void do_draw_poly(frontend *fe, const int *coords, int npoints,
-			 int fillcolour, int outlinecolour)
+                         int fillcolour, int outlinecolour)
 {
     GdkPoint *points = snewn(npoints, GdkPoint);
     int i;
@@ -773,8 +745,8 @@ static void do_draw_poly(frontend *fe, const int *coords, int npoints,
     }
 
     if (fillcolour >= 0) {
-	fe->dr_api->set_colour(fe, fillcolour);
-	gdk_draw_polygon(fe->pixmap, fe->gc, true, points, npoints);
+        fe->dr_api->set_colour(fe, fillcolour);
+        gdk_draw_polygon(fe->pixmap, fe->gc, true, points, npoints);
     }
     assert(outlinecolour >= 0);
     fe->dr_api->set_colour(fe, outlinecolour);
@@ -786,28 +758,28 @@ static void do_draw_poly(frontend *fe, const int *coords, int npoints,
      * draw the outline as a sequence of lines instead.
      */
     for (i = 0; i < npoints; i++)
-	gdk_draw_line(fe->pixmap, fe->gc,
-		      points[i].x, points[i].y,
-		      points[(i+1)%npoints].x, points[(i+1)%npoints].y);
+        gdk_draw_line(fe->pixmap, fe->gc,
+                      points[i].x, points[i].y,
+                      points[(i+1)%npoints].x, points[(i+1)%npoints].y);
 
     sfree(points);
 }
 
 static void do_draw_circle(frontend *fe, int cx, int cy, int radius,
-			   int fillcolour, int outlinecolour)
+                           int fillcolour, int outlinecolour)
 {
     if (fillcolour >= 0) {
-	fe->dr_api->set_colour(fe, fillcolour);
-	gdk_draw_arc(fe->pixmap, fe->gc, true,
-		     cx - radius, cy - radius,
-		     2 * radius, 2 * radius, 0, 360 * 64);
+        fe->dr_api->set_colour(fe, fillcolour);
+        gdk_draw_arc(fe->pixmap, fe->gc, true,
+                     cx - radius, cy - radius,
+                     2 * radius, 2 * radius, 0, 360 * 64);
     }
 
     assert(outlinecolour >= 0);
     fe->dr_api->set_colour(fe, outlinecolour);
     gdk_draw_arc(fe->pixmap, fe->gc, false,
-		 cx - radius, cy - radius,
-		 2 * radius, 2 * radius, 0, 360 * 64);
+                 cx - radius, cy - radius,
+                 2 * radius, 2 * radius, 0, 360 * 64);
 }
 
 static void setup_blitter(blitter *bl, int w, int h)
@@ -823,7 +795,7 @@ static void setup_blitter(blitter *bl, int w, int h)
 static void teardown_blitter(blitter *bl)
 {
     if (bl->pixmap)
-	gdk_pixmap_unref(bl->pixmap);
+        gdk_pixmap_unref(bl->pixmap);
 }
 
 static void do_blitter_save(frontend *fe, blitter *bl, int x, int y)
@@ -883,7 +855,7 @@ static void teardown_backing_store(frontend *fe)
 
 #ifndef USE_CAIRO_WITHOUT_PIXMAP
 static void repaint_rectangle(frontend *fe, GtkWidget *widget,
-			      int x, int y, int w, int h)
+                              int x, int y, int w, int h)
 {
     GdkGC *gc = gdk_gc_new(gtk_widget_get_window(widget));
 #ifdef USE_CAIRO
@@ -892,29 +864,29 @@ static void repaint_rectangle(frontend *fe, GtkWidget *widget,
     gdk_gc_set_foreground(gc, &fe->colours[fe->backgroundindex]);
 #endif
     if (x < fe->ox) {
-	gdk_draw_rectangle(gtk_widget_get_window(widget), gc,
-			   true, x, y, fe->ox - x, h);
-	w -= (fe->ox - x);
-	x = fe->ox;
+        gdk_draw_rectangle(gtk_widget_get_window(widget), gc,
+                           true, x, y, fe->ox - x, h);
+        w -= (fe->ox - x);
+        x = fe->ox;
     }
     if (y < fe->oy) {
-	gdk_draw_rectangle(gtk_widget_get_window(widget), gc,
-			   true, x, y, w, fe->oy - y);
-	h -= (fe->oy - y);
-	y = fe->oy;
+        gdk_draw_rectangle(gtk_widget_get_window(widget), gc,
+                           true, x, y, w, fe->oy - y);
+        h -= (fe->oy - y);
+        y = fe->oy;
     }
     if (w > fe->pw) {
-	gdk_draw_rectangle(gtk_widget_get_window(widget), gc,
-			   true, x + fe->pw, y, w - fe->pw, h);
-	w = fe->pw;
+        gdk_draw_rectangle(gtk_widget_get_window(widget), gc,
+                           true, x + fe->pw, y, w - fe->pw, h);
+        w = fe->pw;
     }
     if (h > fe->ph) {
-	gdk_draw_rectangle(gtk_widget_get_window(widget), gc,
-			   true, x, y + fe->ph, w, h - fe->ph);
-	h = fe->ph;
+        gdk_draw_rectangle(gtk_widget_get_window(widget), gc,
+                           true, x, y + fe->ph, w, h - fe->ph);
+        h = fe->ph;
     }
     gdk_draw_pixmap(gtk_widget_get_window(widget), gc, fe->pixmap,
-		    x - fe->ox, y - fe->oy, x, y, w, h);
+                    x - fe->ox, y - fe->oy, x, y, w, h);
     gdk_gc_unref(gc);
 }
 #endif
@@ -936,7 +908,7 @@ static void add_font(frontend *fe, int index, int fonttype, int fontsize)
     fd = pango_font_description_new();
     /* `Monospace' and `Sans' are meta-families guaranteed to exist */
     pango_font_description_set_family(fd, fonttype == FONT_FIXED ?
-				      "Monospace" : "Sans");
+                                      "Monospace" : "Sans");
     pango_font_description_set_weight(fd, PANGO_WEIGHT_BOLD);
     /*
      * I found some online Pango documentation which
@@ -955,20 +927,20 @@ static void add_font(frontend *fe, int index, int fonttype, int fontsize)
     pango_font_description_set_absolute_size(fd, PANGO_SCALE*fontsize);
 #else
     {
-	Display *d = GDK_DISPLAY();
-	int s = DefaultScreen(d);
-	double resolution =
-	    (PANGO_SCALE * 72.27 / 25.4) *
-	    ((double) DisplayWidthMM(d, s) / DisplayWidth (d, s));
-	pango_font_description_set_size(fd, resolution * fontsize);
+        Display *d = GDK_DISPLAY();
+        int s = DefaultScreen(d);
+        double resolution =
+            (PANGO_SCALE * 72.27 / 25.4) *
+            ((double) DisplayWidthMM(d, s) / DisplayWidth (d, s));
+        pango_font_description_set_size(fd, resolution * fontsize);
     }
 #endif
     fe->fonts[index].desc = fd;
 }
 
 static void align_and_draw_text(frontend *fe,
-				int index, int align, int x, int y,
-				const char *text)
+                                int index, int align, int x, int y,
+                                const char *text)
 {
     PangoLayout *layout;
     PangoRectangle rect;
@@ -983,14 +955,14 @@ static void align_and_draw_text(frontend *fe,
     pango_layout_get_pixel_extents(layout, NULL, &rect);
 
     if (align & ALIGN_VCENTRE)
-	rect.y -= rect.height / 2;
+        rect.y -= rect.height / 2;
     else
-	rect.y -= rect.height;
+        rect.y -= rect.height;
 
     if (align & ALIGN_HCENTRE)
-	rect.x -= rect.width / 2;
+        rect.x -= rect.width / 2;
     else if (align & ALIGN_HRIGHT)
-	rect.x -= rect.width;
+        rect.x -= rect.width;
 
     draw_pango_layout(fe, layout, rect.x + x, rect.y + y);
 
@@ -1013,11 +985,11 @@ static void add_font(int index, int fonttype, int fontsize)
      * tedious.
      */
     fe->fonts[i].font = gdk_font_load(fonttype == FONT_FIXED ?
-				      "fixed" : "variable");
+                                      "fixed" : "variable");
 }
 
 static void align_and_draw_text(int index, int align, int x, int y,
-				const char *text)
+                                const char *text)
 {
     int lb, rb, wid, asc, desc;
 
@@ -1026,12 +998,12 @@ static void align_and_draw_text(int index, int align, int x, int y,
      * string always...
      */
     gdk_string_extents(fe->fonts[i].font,
-		       "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-		       &lb, &rb, &wid, &asc, &desc);
+                       "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                       &lb, &rb, &wid, &asc, &desc);
     if (align & ALIGN_VCENTRE)
-	y += asc - (asc+desc)/2;
+        y += asc - (asc+desc)/2;
     else
-	y += asc;
+        y += asc;
 
     /*
      * ... but horizontal extents with respect to the provided
@@ -1039,12 +1011,12 @@ static void align_and_draw_text(int index, int align, int x, int y,
      * on the same y-coordinate don't have different baselines.
      */
     gdk_string_extents(fe->fonts[i].font, text,
-		       &lb, &rb, &wid, &asc, &desc);
+                       &lb, &rb, &wid, &asc, &desc);
 
     if (align & ALIGN_HCENTRE)
-	x -= wid / 2;
+        x -= wid / 2;
     else if (align & ALIGN_HRIGHT)
-	x -= wid;
+        x -= wid;
 
     /*
      * Actually draw the text.
@@ -1104,7 +1076,7 @@ static void gtk_draw_text(void *handle, int x, int y, int fonttype,
 
         fe->fonts[i].type = fonttype;
         fe->fonts[i].size = fontsize;
-	add_font(fe, i, fonttype, fontsize);
+        add_font(fe, i, fonttype, fontsize);
     }
 
     /*
@@ -1171,17 +1143,11 @@ static void gtk_blitter_save(void *handle, blitter *bl, int x, int y)
 {
     frontend *fe = (frontend *)handle;
     do_blitter_save(fe, bl, x, y);
-    bl->x = x;
-    bl->y = y;
 }
 
 static void gtk_blitter_load(void *handle, blitter *bl, int x, int y)
 {
     frontend *fe = (frontend *)handle;
-    if (x == BLITTER_FROMSAVED && y == BLITTER_FROMSAVED) {
-        x = bl->x;
-        y = bl->y;
-    }
     do_blitter_load(fe, bl, x, y);
 }
 
@@ -1208,11 +1174,11 @@ static void gtk_end_draw(void *handle)
                                    fe->bbox_r - fe->bbox_l + 2,
                                    fe->bbox_d - fe->bbox_u + 2);
 #else
-	repaint_rectangle(fe, fe->area,
-			  fe->bbox_l - 1 + fe->ox,
-			  fe->bbox_u - 1 + fe->oy,
-			  fe->bbox_r - fe->bbox_l + 2,
-			  fe->bbox_d - fe->bbox_u + 2);
+        repaint_rectangle(fe, fe->area,
+                          fe->bbox_l - 1 + fe->ox,
+                          fe->bbox_u - 1 + fe->oy,
+                          fe->bbox_r - fe->bbox_l + 2,
+                          fe->bbox_d - fe->bbox_u + 2);
 #endif
     }
 }
@@ -1306,7 +1272,7 @@ static gint key_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
         keyval = shift | ctrl | CURSOR_RIGHT;
     else if (event->keyval == GDK_KEY_KP_Right ||
              event->keyval == GDK_KEY_KP_6)
-	keyval = MOD_NUM_KEYPAD | '6';
+        keyval = MOD_NUM_KEYPAD | '6';
     else if (event->keyval == GDK_KEY_KP_Home ||
              event->keyval == GDK_KEY_KP_7)
         keyval = MOD_NUM_KEYPAD | '7';
@@ -1361,17 +1327,17 @@ static gint button_event(GtkWidget *widget, GdkEventButton *event,
         return true;
 
     if (event->button == 2 || (event->state & GDK_SHIFT_MASK))
-	button = MIDDLE_BUTTON;
+        button = MIDDLE_BUTTON;
     else if (event->button == 3 || (event->state & GDK_MOD1_MASK))
-	button = RIGHT_BUTTON;
+        button = RIGHT_BUTTON;
     else if (event->button == 1)
-	button = LEFT_BUTTON;
+        button = LEFT_BUTTON;
     else if (event->button == 8 && event->type == GDK_BUTTON_PRESS)
         button = 'u';
     else if (event->button == 9 && event->type == GDK_BUTTON_PRESS)
         button = 'r';
     else
-	return false;		       /* don't even know what button! */
+        return false;                       /* don't even know what button! */
 
     if (event->type == GDK_BUTTON_RELEASE && button >= LEFT_BUTTON)
         button += LEFT_RELEASE - LEFT_BUTTON;
@@ -1393,13 +1359,13 @@ static gint motion_event(GtkWidget *widget, GdkEventMotion *event,
         return true;
 
     if (event->state & (GDK_BUTTON2_MASK | GDK_SHIFT_MASK))
-	button = MIDDLE_DRAG;
+        button = MIDDLE_DRAG;
     else if (event->state & GDK_BUTTON1_MASK)
-	button = LEFT_DRAG;
+        button = LEFT_DRAG;
     else if (event->state & GDK_BUTTON3_MASK)
-	button = RIGHT_DRAG;
+        button = RIGHT_DRAG;
     else
-	return false;		       /* don't even know what button! */
+        return false;                       /* don't even know what button! */
 
     if (midend_process_key(fe->me, event->x - fe->ox,
                            event->y - fe->oy, button, false) == PKR_QUIT)
@@ -1452,9 +1418,9 @@ static gint expose_area(GtkWidget *widget, GdkEventExpose *event,
         cairo_fill(cr);
         cairo_destroy(cr);
 #else
-	repaint_rectangle(fe, widget,
-			  event->area.x, event->area.y,
-			  event->area.width, event->area.height);
+        repaint_rectangle(fe, widget,
+                          event->area.x, event->area.y,
+                          event->area.width, event->area.height);
 #endif
     }
     return true;
@@ -1462,7 +1428,7 @@ static gint expose_area(GtkWidget *widget, GdkEventExpose *event,
 #endif
 
 static gint map_window(GtkWidget *widget, GdkEvent *event,
-		       gpointer data)
+                       gpointer data)
 {
     frontend *fe = (frontend *)data;
 
@@ -1535,13 +1501,13 @@ static gint timer_func(gpointer data)
     frontend *fe = (frontend *)data;
 
     if (fe->timer_active) {
-	struct timeval now;
-	float elapsed;
-	gettimeofday(&now, NULL);
-	elapsed = ((now.tv_usec - fe->last_time.tv_usec) * 0.000001F +
-		   (now.tv_sec - fe->last_time.tv_sec));
-        midend_timer(fe->me, elapsed);	/* may clear timer_active */
-	fe->last_time = now;
+        struct timeval now;
+        float elapsed;
+        gettimeofday(&now, NULL);
+        elapsed = ((now.tv_usec - fe->last_time.tv_usec) * 0.000001F +
+                   (now.tv_sec - fe->last_time.tv_sec));
+        midend_timer(fe->me, elapsed);        /* may clear timer_active */
+        fe->last_time = now;
     }
 
     return fe->timer_active;
@@ -1658,36 +1624,36 @@ bool message_box(GtkWidget *parent, const char *title, const char *msg,
     gtk_label_set_line_wrap(GTK_LABEL(text), true);
 
     if (type == MB_OK) {
-	titles = LABEL_OK "\0";
-	def = cancel = 0;
+        titles = LABEL_OK "\0";
+        def = cancel = 0;
     } else {
-	assert(type == MB_YESNO);
-	titles = LABEL_NO "\0" LABEL_YES "\0";
-	def = 1;
-	cancel = 0;
+        assert(type == MB_YESNO);
+        titles = LABEL_NO "\0" LABEL_YES "\0";
+        def = 1;
+        cancel = 0;
     }
     i = 0;
     
     while (*titles) {
-	button = gtk_button_new_with_our_label(titles);
-	gtk_box_pack_end
+        button = gtk_button_new_with_our_label(titles);
+        gtk_box_pack_end
             (GTK_BOX(gtk_dialog_get_action_area(GTK_DIALOG(window))),
              button, false, false, 0);
-	gtk_widget_show(button);
-	if (i == def) {
-	    gtk_widget_set_can_default(button, true);
-	    gtk_window_set_default(GTK_WINDOW(window), button);
-	}
-	if (i == cancel) {
-	    g_signal_connect(G_OBJECT(window), "key_press_event",
+        gtk_widget_show(button);
+        if (i == def) {
+            gtk_widget_set_can_default(button, true);
+            gtk_window_set_default(GTK_WINDOW(window), button);
+        }
+        if (i == cancel) {
+            g_signal_connect(G_OBJECT(window), "key_press_event",
                              G_CALLBACK(win_key_press), button);
-	}
-	g_signal_connect(G_OBJECT(button), "clicked",
+        }
+        g_signal_connect(G_OBJECT(button), "clicked",
                          G_CALLBACK(msgbox_button_clicked), window);
-	g_object_set_data(G_OBJECT(button), "user-data",
+        g_object_set_data(G_OBJECT(button), "user-data",
                           GINT_TO_POINTER(i));
-	titles += strlen(titles)+1;
-	i++;
+        titles += strlen(titles)+1;
+        i++;
     }
     g_object_set_data(G_OBJECT(window), "user-data", &i);
     g_signal_connect(G_OBJECT(window), "destroy",
@@ -1751,11 +1717,11 @@ static gint editbox_key(GtkWidget *widget, GdkEventKey *event, gpointer data)
      */
     if (event->keyval == GDK_KEY_Return &&
         gtk_widget_get_parent(widget) != NULL) {
-	gint return_val;
-	g_signal_stop_emission_by_name(G_OBJECT(widget), "key_press_event");
-	g_signal_emit_by_name(G_OBJECT(gtk_widget_get_parent(widget)),
+        gint return_val;
+        g_signal_stop_emission_by_name(G_OBJECT(widget), "key_press_event");
+        g_signal_emit_by_name(G_OBJECT(gtk_widget_get_parent(widget)),
                               "key_press_event", event, &return_val);
-	return return_val;
+        return return_val;
     }
     return false;
 }
@@ -1846,143 +1812,143 @@ static bool get_config(frontend *fe, int which)
 
     for (i = fe->cfg; i->type != C_END; i++) {
 #if !GTK_CHECK_VERSION(3,0,0)
-	gtk_table_resize(GTK_TABLE(table), y+1, 2);
+        gtk_table_resize(GTK_TABLE(table), y+1, 2);
 #endif
 
-	switch (i->type) {
-	  case C_STRING:
-	  case C_STRING_MORE:
-	    /*
-	     * Edit box with a label beside it.
-	     */
+        switch (i->type) {
+          case C_STRING:
+          case C_STRING_MORE:
+            /*
+             * Edit box with a label beside it.
+             */
 
-	    w = gtk_label_new(i->name);
-	    align_label(GTK_LABEL(w), 0.0, 0.5);
+            w = gtk_label_new(i->name);
+            align_label(GTK_LABEL(w), 0.0, 0.5);
 #if GTK_CHECK_VERSION(3,0,0)
             gtk_grid_attach(GTK_GRID(table), w, 0, y, 1, 1);
 #else
-	    gtk_table_attach(GTK_TABLE(table), w, 0, 1, y, y+1,
-			     GTK_SHRINK | GTK_FILL,
-			     GTK_EXPAND | GTK_SHRINK | GTK_FILL,
-			     3, 3);
+            gtk_table_attach(GTK_TABLE(table), w, 0, 1, y, y+1,
+                             GTK_SHRINK | GTK_FILL,
+                             GTK_EXPAND | GTK_SHRINK | GTK_FILL,
+                             3, 3);
 #endif
-	    gtk_widget_show(w);
+            gtk_widget_show(w);
 
-	    w = gtk_entry_new();
+            w = gtk_entry_new();
 #if GTK_CHECK_VERSION(3,0,0)
             gtk_grid_attach(GTK_GRID(table), w, 1, y, 1, 1);
             g_object_set(G_OBJECT(w), "hexpand", true, (const char *)NULL);
 #else
-	    gtk_table_attach(GTK_TABLE(table), w, 1, 2, y, y+1,
-			     GTK_EXPAND | GTK_SHRINK | GTK_FILL,
-			     GTK_EXPAND | GTK_SHRINK | GTK_FILL,
-			     3, 3);
+            gtk_table_attach(GTK_TABLE(table), w, 1, 2, y, y+1,
+                             GTK_EXPAND | GTK_SHRINK | GTK_FILL,
+                             GTK_EXPAND | GTK_SHRINK | GTK_FILL,
+                             3, 3);
 #endif
-	    gtk_entry_set_text(GTK_ENTRY(w), i->u.string.sval);
-	    g_signal_connect(G_OBJECT(w), "changed",
+            gtk_entry_set_text(GTK_ENTRY(w), i->u.string.sval);
+            g_signal_connect(G_OBJECT(w), "changed",
                              G_CALLBACK(editbox_changed), i);
-	    g_signal_connect(G_OBJECT(w), "key_press_event",
+            g_signal_connect(G_OBJECT(w), "key_press_event",
                              G_CALLBACK(editbox_key), NULL);
-	    gtk_widget_show(w);
+            gtk_widget_show(w);
 
-	    break;
+            break;
 
-	  case C_BOOLEAN:
-	    /*
-	     * Simple checkbox.
-	     */
+          case C_BOOLEAN:
+            /*
+             * Simple checkbox.
+             */
             w = gtk_check_button_new_with_label(i->name);
-	    g_signal_connect(G_OBJECT(w), "toggled",
+            g_signal_connect(G_OBJECT(w), "toggled",
                              G_CALLBACK(button_toggled), i);
 #if GTK_CHECK_VERSION(3,0,0)
             gtk_grid_attach(GTK_GRID(table), w, 0, y, 2, 1);
             g_object_set(G_OBJECT(w), "hexpand", true, (const char *)NULL);
 #else
-	    gtk_table_attach(GTK_TABLE(table), w, 0, 2, y, y+1,
-			     GTK_EXPAND | GTK_SHRINK | GTK_FILL,
-			     GTK_EXPAND | GTK_SHRINK | GTK_FILL,
-			     3, 3);
+            gtk_table_attach(GTK_TABLE(table), w, 0, 2, y, y+1,
+                             GTK_EXPAND | GTK_SHRINK | GTK_FILL,
+                             GTK_EXPAND | GTK_SHRINK | GTK_FILL,
+                             3, 3);
 #endif
-	    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w),
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w),
                                          i->u.boolean.bval);
-	    gtk_widget_show(w);
-	    break;
+            gtk_widget_show(w);
+            break;
 
-	  case C_CHOICES:
-	    /*
-	     * Drop-down list (GtkComboBox).
-	     */
+          case C_CHOICES:
+            /*
+             * Drop-down list (GtkComboBox).
+             */
 
-	    w = gtk_label_new(i->name);
-	    align_label(GTK_LABEL(w), 0.0, 0.5);
+            w = gtk_label_new(i->name);
+            align_label(GTK_LABEL(w), 0.0, 0.5);
 #if GTK_CHECK_VERSION(3,0,0)
             gtk_grid_attach(GTK_GRID(table), w, 0, y, 1, 1);
 #else
-	    gtk_table_attach(GTK_TABLE(table), w, 0, 1, y, y+1,
-			     GTK_SHRINK | GTK_FILL,
-			     GTK_EXPAND | GTK_SHRINK | GTK_FILL ,
-			     3, 3);
+            gtk_table_attach(GTK_TABLE(table), w, 0, 1, y, y+1,
+                             GTK_SHRINK | GTK_FILL,
+                             GTK_EXPAND | GTK_SHRINK | GTK_FILL ,
+                             3, 3);
 #endif
-	    gtk_widget_show(w);
+            gtk_widget_show(w);
 
             {
-		int c;
-		const char *p, *q;
+                int c;
+                const char *p, *q;
                 char *name;
                 GtkListStore *model;
-		GtkCellRenderer *cr;
+                GtkCellRenderer *cr;
                 GtkTreeIter iter;
 
                 model = gtk_list_store_new(1, G_TYPE_STRING);
 
-		c = *i->u.choices.choicenames;
-		p = i->u.choices.choicenames+1;
+                c = *i->u.choices.choicenames;
+                p = i->u.choices.choicenames+1;
 
-		while (*p) {
-		    q = p;
-		    while (*q && *q != c)
-			q++;
+                while (*p) {
+                    q = p;
+                    while (*q && *q != c)
+                        q++;
 
-		    name = snewn(q-p+1, char);
-		    strncpy(name, p, q-p);
-		    name[q-p] = '\0';
+                    name = snewn(q-p+1, char);
+                    strncpy(name, p, q-p);
+                    name[q-p] = '\0';
 
-		    if (*q) q++;       /* eat delimiter */
+                    if (*q) q++;       /* eat delimiter */
 
                     gtk_list_store_append(model, &iter);
                     gtk_list_store_set(model, &iter, 0, name, -1);
 
-		    p = q;
-		}
+                    p = q;
+                }
 
                 w = gtk_combo_box_new_with_model(GTK_TREE_MODEL(model));
 
-		gtk_combo_box_set_active(GTK_COMBO_BOX(w),
+                gtk_combo_box_set_active(GTK_COMBO_BOX(w),
                                          i->u.choices.selected);
 
-		cr = gtk_cell_renderer_text_new();
-		gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(w), cr, true);
-		gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(w), cr,
-					       "text", 0, NULL);
+                cr = gtk_cell_renderer_text_new();
+                gtk_cell_layout_pack_start(GTK_CELL_LAYOUT(w), cr, true);
+                gtk_cell_layout_set_attributes(GTK_CELL_LAYOUT(w), cr,
+                                               "text", 0, NULL);
 
-		g_signal_connect(G_OBJECT(w), "changed",
-				 G_CALLBACK(droplist_sel), i);
+                g_signal_connect(G_OBJECT(w), "changed",
+                                 G_CALLBACK(droplist_sel), i);
             }
 
 #if GTK_CHECK_VERSION(3,0,0)
             gtk_grid_attach(GTK_GRID(table), w, 1, y, 1, 1);
             g_object_set(G_OBJECT(w), "hexpand", true, (const char *)NULL);
 #else
-	    gtk_table_attach(GTK_TABLE(table), w, 1, 2, y, y+1,
-			     GTK_EXPAND | GTK_SHRINK | GTK_FILL,
-			     GTK_EXPAND | GTK_SHRINK | GTK_FILL,
-			     3, 3);
+            gtk_table_attach(GTK_TABLE(table), w, 1, 2, y, y+1,
+                             GTK_EXPAND | GTK_SHRINK | GTK_FILL,
+                             GTK_EXPAND | GTK_SHRINK | GTK_FILL,
+                             3, 3);
 #endif
-	    gtk_widget_show(w);
-	    break;
-	}
+            gtk_widget_show(w);
+            break;
+        }
 
-	y++;
+        y++;
     }
 
     g_signal_connect(G_OBJECT(fe->cfgbox), "destroy",
@@ -1991,7 +1957,7 @@ static bool get_config(frontend *fe, int which)
                      G_CALLBACK(win_key_press), cancel);
     gtk_window_set_modal(GTK_WINDOW(fe->cfgbox), true);
     gtk_window_set_transient_for(GTK_WINDOW(fe->cfgbox),
-				 GTK_WINDOW(fe->window));
+                                 GTK_WINDOW(fe->window));
     /* set_transient_window_pos(fe->window, fe->cfgbox); */
     gtk_widget_show(fe->cfgbox);
     gtk_main();
@@ -2035,7 +2001,7 @@ static void get_size(frontend *fe, int *px, int *py)
 
 #if !GTK_CHECK_VERSION(2,0,0)
 #define gtk_window_resize(win, x, y) \
-	gdk_window_resize(GTK_WIDGET(win)->window, x, y)
+        gdk_window_resize(GTK_WIDGET(win)->window, x, y)
 #endif
 
 /*
@@ -2048,11 +2014,11 @@ static void changed_preset(frontend *fe)
 
     fe->preset_threaded = true;
     if (n < 0 && fe->preset_custom) {
-	gtk_check_menu_item_set_active(
-	    GTK_CHECK_MENU_ITEM(fe->preset_custom),
-	    true);
+        gtk_check_menu_item_set_active(
+            GTK_CHECK_MENU_ITEM(fe->preset_custom),
+            true);
     } else {
-	GSList *gs = fe->preset_radio;
+        GSList *gs = fe->preset_radio;
         GSList *found = NULL;
 
         for (gs = fe->preset_radio; gs; gs = gs->next) {
@@ -2076,7 +2042,7 @@ static void changed_preset(frontend *fe)
      */
     if (fe->copy_menu_item) {
         bool enabled = midend_can_format_as_text_now(fe->me);
-	gtk_widget_set_sensitive(fe->copy_menu_item, enabled);
+        gtk_widget_set_sensitive(fe->copy_menu_item, enabled);
     }
 }
 
@@ -2195,9 +2161,9 @@ static void menu_preset_event(GtkMenuItem *menuitem, gpointer data)
             G_OBJECT(menuitem), "user-data");
 
     if (fe->preset_threaded ||
-	(GTK_IS_CHECK_MENU_ITEM(menuitem) &&
-	 !gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menuitem))))
-	return;
+        (GTK_IS_CHECK_MENU_ITEM(menuitem) &&
+         !gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(menuitem))))
+        return;
     midend_set_params(fe->me, entry->params);
     midend_new_game(fe->me);
     changed_preset(fe);
@@ -2224,11 +2190,11 @@ static void set_selection(frontend *fe, GdkAtom selection)
      */
 
     if (gtk_selection_owner_set(fe->window, selection, CurrentTime)) {
-	gtk_selection_clear_targets(fe->window, selection);
-	gtk_selection_add_target(fe->window, selection,
-				 GDK_SELECTION_TYPE_STRING, 1);
-	gtk_selection_add_target(fe->window, selection, compound_text_atom, 1);
-	gtk_selection_add_target(fe->window, selection, utf8_string_atom, 1);
+        gtk_selection_clear_targets(fe->window, selection);
+        gtk_selection_add_target(fe->window, selection,
+                                 GDK_SELECTION_TYPE_STRING, 1);
+        gtk_selection_add_target(fe->window, selection, compound_text_atom, 1);
+        gtk_selection_add_target(fe->window, selection, utf8_string_atom, 1);
     }
 }
 
@@ -2245,11 +2211,11 @@ static void write_clip(frontend *fe, char *data)
 }
 
 static void selection_get(GtkWidget *widget, GtkSelectionData *seldata,
-		   guint info, guint time_stamp, gpointer data)
+                   guint info, guint time_stamp, gpointer data)
 {
     frontend *fe = (frontend *)data;
     gtk_selection_data_set(seldata, gtk_selection_data_get_target(seldata), 8,
-			   fe->paste_data, fe->paste_data_len);
+                           fe->paste_data, fe->paste_data_len);
 }
 
 static gint selection_clear(GtkWidget *widget, GdkEventSelection *seldata,
@@ -2258,7 +2224,7 @@ static gint selection_clear(GtkWidget *widget, GdkEventSelection *seldata,
     frontend *fe = (frontend *)data;
 
     if (fe->paste_data)
-	sfree(fe->paste_data);
+        sfree(fe->paste_data);
     fe->paste_data = NULL;
     fe->paste_data_len = 0;
     return true;
@@ -2272,7 +2238,7 @@ static void menu_copy_event(GtkMenuItem *menuitem, gpointer data)
     text = midend_text_format(fe->me);
 
     if (text) {
-	write_clip(fe, text);
+        write_clip(fe, text);
     } else {
         gdk_display_beep(gdk_display_get_default());
     }
@@ -2329,13 +2295,13 @@ static char *file_selector(frontend *fe, const char *title, bool save)
 
     GtkWidget *filesel =
         gtk_file_chooser_dialog_new(title,
-				    GTK_WINDOW(fe->window),
-				    save ? GTK_FILE_CHOOSER_ACTION_SAVE :
-				    GTK_FILE_CHOOSER_ACTION_OPEN,
-				    LABEL_CANCEL, GTK_RESPONSE_CANCEL,
-				    save ? LABEL_SAVE : LABEL_OPEN,
-				    GTK_RESPONSE_ACCEPT,
-				    NULL);
+                                    GTK_WINDOW(fe->window),
+                                    save ? GTK_FILE_CHOOSER_ACTION_SAVE :
+                                    GTK_FILE_CHOOSER_ACTION_OPEN,
+                                    LABEL_CANCEL, GTK_RESPONSE_CANCEL,
+                                    save ? LABEL_SAVE : LABEL_OPEN,
+                                    GTK_RESPONSE_ACCEPT,
+                                    NULL);
 
     if (gtk_dialog_run(GTK_DIALOG(filesel)) == GTK_RESPONSE_ACCEPT) {
         char *name = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(filesel));
@@ -2359,7 +2325,7 @@ static void savefile_write(void *wctx, const void *buf, int len)
 {
     struct savefile_write_ctx *ctx = (struct savefile_write_ctx *)wctx;
     if (fwrite(buf, 1, len, ctx->fp) < len)
-	ctx->error = errno;
+        ctx->error = errno;
 }
 
 static bool savefile_read(void *wctx, void *buf, int len)
@@ -2381,39 +2347,39 @@ static void menu_save_event(GtkMenuItem *menuitem, gpointer data)
     if (name) {
         FILE *fp;
 
-	if ((fp = fopen(name, "r")) != NULL) {
-	    char buf[256 + FILENAME_MAX];
-	    fclose(fp);
-	    /* file exists */
+        if ((fp = fopen(name, "r")) != NULL) {
+            char buf[256 + FILENAME_MAX];
+            fclose(fp);
+            /* file exists */
 
-	    sprintf(buf, "Are you sure you want to overwrite the"
-		    " file \"%.*s\"?",
-		    FILENAME_MAX, name);
-	    if (!message_box(fe->window, "Question", buf, true, MB_YESNO))
+            sprintf(buf, "Are you sure you want to overwrite the"
+                    " file \"%.*s\"?",
+                    FILENAME_MAX, name);
+            if (!message_box(fe->window, "Question", buf, true, MB_YESNO))
                 goto free_and_return;
-	}
+        }
 
-	fp = fopen(name, "w");
+        fp = fopen(name, "w");
 
         if (!fp) {
             error_box(fe->window, "Unable to open save file");
             goto free_and_return;
         }
 
-	{
-	    struct savefile_write_ctx ctx;
-	    ctx.fp = fp;
-	    ctx.error = 0;
-	    midend_serialise(fe->me, savefile_write, &ctx);
-	    fclose(fp);
-	    if (ctx.error) {
-		char boxmsg[512];
-		sprintf(boxmsg, "Error writing save file: %.400s",
-			strerror(ctx.error));
-		error_box(fe->window, boxmsg);
-		goto free_and_return;
-	    }
-	}
+        {
+            struct savefile_write_ctx ctx;
+            ctx.fp = fp;
+            ctx.error = 0;
+            midend_serialise(fe->me, savefile_write, &ctx);
+            fclose(fp);
+            if (ctx.error) {
+                char boxmsg[512];
+                sprintf(boxmsg, "Error writing save file: %.400s",
+                        strerror(ctx.error));
+                error_box(fe->window, boxmsg);
+                goto free_and_return;
+            }
+        }
     free_and_return:
         sfree(name);
     }
@@ -2445,7 +2411,7 @@ static void menu_load_event(GtkMenuItem *menuitem, gpointer data)
             return;
         }
 
-	changed_preset(fe);
+        changed_preset(fe);
         resize_fe(fe);
         midend_redraw(fe->me);
     }
@@ -2661,7 +2627,7 @@ static void menu_solve_event(GtkMenuItem *menuitem, gpointer data)
     msg = midend_solve(fe->me);
 
     if (msg)
-	error_box(fe->window, msg);
+        error_box(fe->window, msg);
 }
 
 static void menu_restart_event(GtkMenuItem *menuitem, gpointer data)
@@ -2724,9 +2690,9 @@ static void menu_about_event(GtkMenuItem *menuitem, gpointer data)
 
     sprintf(titlebuf, "About %.200s", thegame.name);
     sprintf(textbuf,
-	    "%.200s\n\n"
-	    "from Simon Tatham's Portable Puzzle Collection\n\n"
-	    "%.500s", thegame.name, ver);
+            "%.200s\n\n"
+            "from Simon Tatham's Portable Puzzle Collection\n\n"
+            "%.500s", thegame.name, ver);
 
     message_box(fe->window, titlebuf, textbuf, true, MB_OK);
 #endif
@@ -2860,33 +2826,33 @@ static frontend *new_window(
             }
             break;
           default /*case ARG_EITHER*/:
-	    /*
-	     * First try treating the argument as a game ID.
-	     */
-	    err = midend_game_id(fe->me, arg);
-	    if (!err) {
-		/*
-		 * It's a valid game ID.
-		 */
-		midend_new_game(fe->me);
-	    } else {
-		FILE *fp = fopen(arg, "r");
-		if (!fp) {
-		    sprintf(errbuf, "Supplied argument is neither a game ID (%.400s)"
-			    " nor a save file (%.400s)", err, strerror(errno));
-		} else {
-		    err = midend_deserialise(fe->me, savefile_read, fp);
-		    if (err)
-			sprintf(errbuf, "%.800s", err);
-		    fclose(fp);
-		}
-	    }
-	    break;
-	}
-	if (*errbuf) {
-	    *error = dupstr(errbuf);
-	    midend_free(fe->me);
-	    sfree(fe);
+            /*
+             * First try treating the argument as a game ID.
+             */
+            err = midend_game_id(fe->me, arg);
+            if (!err) {
+                /*
+                 * It's a valid game ID.
+                 */
+                midend_new_game(fe->me);
+            } else {
+                FILE *fp = fopen(arg, "r");
+                if (!fp) {
+                    sprintf(errbuf, "Supplied argument is neither a game ID (%.400s)"
+                            " nor a save file (%.400s)", err, strerror(errno));
+                } else {
+                    err = midend_deserialise(fe->me, savefile_read, fp);
+                    if (err)
+                        sprintf(errbuf, "%.800s", err);
+                    fclose(fp);
+                }
+            }
+            break;
+        }
+        if (*errbuf) {
+            *error = dupstr(errbuf);
+            midend_free(fe->me);
+            sfree(fe);
             return NULL;
         }
 
@@ -3003,19 +2969,19 @@ static frontend *new_window(
 
         populate_gtk_preset_menu(fe, preset_menu, submenu);
 
-	if (thegame.can_configure) {
-	    menuitem = fe->preset_custom =
-		gtk_radio_menu_item_new_with_label(fe->preset_radio,
-						   "Custom...");
-	    fe->preset_radio =
-		gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(menuitem));
+        if (thegame.can_configure) {
+            menuitem = fe->preset_custom =
+                gtk_radio_menu_item_new_with_label(fe->preset_radio,
+                                                   "Custom...");
+            fe->preset_radio =
+                gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(menuitem));
             gtk_container_add(GTK_CONTAINER(submenu), menuitem);
             g_object_set_data(G_OBJECT(menuitem), "user-data",
                               GINT_TO_POINTER(CFG_SETTINGS));
             g_signal_connect(G_OBJECT(menuitem), "activate",
                              G_CALLBACK(menu_config_event), fe);
             gtk_widget_show(menuitem);
-	}
+        }
 
     }
 
@@ -3036,15 +3002,15 @@ static frontend *new_window(
     add_menu_ui_item(fe, GTK_CONTAINER(menu), "Redo", UI_REDO, 'r', 0);
 #endif
     if (thegame.can_format_as_text_ever) {
-	add_menu_separator(GTK_CONTAINER(menu));
-	menuitem = gtk_menu_item_new_with_label("Copy");
-	gtk_container_add(GTK_CONTAINER(menu), menuitem);
-	g_signal_connect(G_OBJECT(menuitem), "activate",
+        add_menu_separator(GTK_CONTAINER(menu));
+        menuitem = gtk_menu_item_new_with_label("Copy");
+        gtk_container_add(GTK_CONTAINER(menu), menuitem);
+        g_signal_connect(G_OBJECT(menuitem), "activate",
                          G_CALLBACK(menu_copy_event), fe);
-	gtk_widget_show(menuitem);
-	fe->copy_menu_item = menuitem;
+        gtk_widget_show(menuitem);
+        fe->copy_menu_item = menuitem;
     } else {
-	fe->copy_menu_item = NULL;
+        fe->copy_menu_item = NULL;
     }
     if (thegame.can_solve) {
         add_menu_separator(GTK_CONTAINER(menu));
@@ -3093,21 +3059,21 @@ static frontend *new_window(
     gtk_widget_show(menuitem);
 
     if (thegame.flags & REQUIRE_NUMPAD) {
-	hbox = GTK_BOX(gtk_hbox_new(false, 0));
-	gtk_box_pack_start(vbox, GTK_WIDGET(hbox), false, false, 0);
-	gtk_widget_show(GTK_WIDGET(hbox));
+        hbox = GTK_BOX(gtk_hbox_new(false, 0));
+        gtk_box_pack_start(vbox, GTK_WIDGET(hbox), false, false, 0);
+        gtk_widget_show(GTK_WIDGET(hbox));
 
-	*((int*)errbuf)=0;
-	errbuf[1]='\0';
-	for(errbuf[0]='0';errbuf[0]<='9';errbuf[0]++) {
-	    menuitem=gtk_button_new_with_label(errbuf);
-	    g_object_set_data(G_OBJECT(menuitem), "user-data",
+        *((int*)errbuf)=0;
+        errbuf[1]='\0';
+        for(errbuf[0]='0';errbuf[0]<='9';errbuf[0]++) {
+            menuitem=gtk_button_new_with_label(errbuf);
+            g_object_set_data(G_OBJECT(menuitem), "user-data",
                               GINT_TO_POINTER((int)(errbuf[0])));
-	    g_signal_connect(G_OBJECT(menuitem), "clicked",
+            g_signal_connect(G_OBJECT(menuitem), "clicked",
                              G_CALLBACK(menu_key_event), fe);
-	    gtk_box_pack_start(hbox, menuitem, true, true, 0);
-	    gtk_widget_show(menuitem);
-	}
+            gtk_box_pack_start(hbox, menuitem, true, true, 0);
+            gtk_widget_show(menuitem);
+        }
     }
 #endif /* STYLUS_BASED */
 
@@ -3116,28 +3082,28 @@ static frontend *new_window(
     snaffle_colours(fe);
 
     if (midend_wants_statusbar(fe->me)) {
-	GtkWidget *viewport;
-	GtkRequisition req;
+        GtkWidget *viewport;
+        GtkRequisition req;
 
-	viewport = gtk_viewport_new(NULL, NULL);
-	gtk_viewport_set_shadow_type(GTK_VIEWPORT(viewport), GTK_SHADOW_NONE);
-	fe->statusbar = gtk_statusbar_new();
-	gtk_container_add(GTK_CONTAINER(viewport), fe->statusbar);
-	gtk_widget_show(viewport);
-	gtk_box_pack_end(vbox, viewport, false, false, 0);
-	gtk_widget_show(fe->statusbar);
-	fe->statusctx = gtk_statusbar_get_context_id
-	    (GTK_STATUSBAR(fe->statusbar), "game");
-	gtk_statusbar_push(GTK_STATUSBAR(fe->statusbar), fe->statusctx,
-			   DEFAULT_STATUSBAR_TEXT);
+        viewport = gtk_viewport_new(NULL, NULL);
+        gtk_viewport_set_shadow_type(GTK_VIEWPORT(viewport), GTK_SHADOW_NONE);
+        fe->statusbar = gtk_statusbar_new();
+        gtk_container_add(GTK_CONTAINER(viewport), fe->statusbar);
+        gtk_widget_show(viewport);
+        gtk_box_pack_end(vbox, viewport, false, false, 0);
+        gtk_widget_show(fe->statusbar);
+        fe->statusctx = gtk_statusbar_get_context_id
+            (GTK_STATUSBAR(fe->statusbar), "game");
+        gtk_statusbar_push(GTK_STATUSBAR(fe->statusbar), fe->statusctx,
+                           DEFAULT_STATUSBAR_TEXT);
 #if GTK_CHECK_VERSION(3,0,0)
-	gtk_widget_get_preferred_size(fe->statusbar, &req, NULL);
+        gtk_widget_get_preferred_size(fe->statusbar, &req, NULL);
 #else
-	gtk_widget_size_request(fe->statusbar, &req);
+        gtk_widget_size_request(fe->statusbar, &req);
 #endif
-	gtk_widget_set_size_request(viewport, -1, req.height);
+        gtk_widget_set_size_request(viewport, -1, req.height);
     } else
-	fe->statusbar = NULL;
+        fe->statusbar = NULL;
 
     fe->area = gtk_drawing_area_new();
 #if GTK_CHECK_VERSION(2,0,0) && !GTK_CHECK_VERSION(3,0,0)
@@ -3211,22 +3177,22 @@ static frontend *new_window(
     gtk_widget_add_events(GTK_WIDGET(fe->area),
                           GDK_BUTTON_PRESS_MASK |
                           GDK_BUTTON_RELEASE_MASK |
-			  GDK_BUTTON_MOTION_MASK |
-			  GDK_POINTER_MOTION_HINT_MASK);
+                          GDK_BUTTON_MOTION_MASK |
+                          GDK_POINTER_MOTION_HINT_MASK);
 
     if (n_xpm_icons) {
         gtk_window_set_icon(GTK_WINDOW(fe->window),
                             gdk_pixbuf_new_from_xpm_data
                             ((const gchar **)xpm_icons[n_xpm_icons-1]));
 
-	iconlist = NULL;
-	for (n = 0; n < n_xpm_icons; n++) {
-	    iconlist =
-		g_list_append(iconlist,
-			      gdk_pixbuf_new_from_xpm_data((const gchar **)
-							   xpm_icons[n]));
-	}
-	gtk_window_set_icon_list(GTK_WINDOW(fe->window), iconlist);
+        iconlist = NULL;
+        for (n = 0; n < n_xpm_icons; n++) {
+            iconlist =
+                g_list_append(iconlist,
+                              gdk_pixbuf_new_from_xpm_data((const gchar **)
+                                                           xpm_icons[n]));
+        }
+        gtk_window_set_icon_list(GTK_WINDOW(fe->window), iconlist);
     }
 
     gtk_widget_show(fe->area);
@@ -3282,103 +3248,103 @@ int main(int argc, char **argv)
      * display.
      * 
      * So what we do is:
-     * 	- we parse the command line ourselves, without modifying
-     * 	  argc/argv
-     * 	- if we encounter an error which might plausibly be the
-     * 	  result of a GTK command line (i.e. not detailed errors in
-     * 	  particular options of ours) we store the error message
-     * 	  and terminate parsing.
-     * 	- if we got enough out of the command line to know it
-     * 	  specifies a non-X mode of operation, we either display
-     * 	  the stored error and return failure, or if there is no
-     * 	  stored error we do the non-X operation and return
-     * 	  success.
+     *         - we parse the command line ourselves, without modifying
+     *           argc/argv
+     *         - if we encounter an error which might plausibly be the
+     *           result of a GTK command line (i.e. not detailed errors in
+     *           particular options of ours) we store the error message
+     *           and terminate parsing.
+     *         - if we got enough out of the command line to know it
+     *           specifies a non-X mode of operation, we either display
+     *           the stored error and return failure, or if there is no
+     *           stored error we do the non-X operation and return
+     *           success.
      *  - otherwise, we go straight to gtk_init().
      */
 
     errbuf[0] = '\0';
     while (--ac > 0) {
-	char *p = *++av;
-	if (doing_opts && !strcmp(p, "--version")) {
-	    printf("%s, from Simon Tatham's Portable Puzzle Collection\n%s\n",
-		   thegame.name, ver);
-	    return 0;
-	} else if (doing_opts && !strcmp(p, "--generate")) {
-	    if (--ac > 0) {
-		ngenerate = atoi(*++av);
-		if (!ngenerate) {
-		    fprintf(stderr, "%s: '--generate' expected a number\n",
-			    pname);
-		    return 1;
-		}
-	    } else
-		ngenerate = 1;
-	} else if (doing_opts && !strcmp(p, "--list-presets")) {
+        char *p = *++av;
+        if (doing_opts && !strcmp(p, "--version")) {
+            printf("%s, from Simon Tatham's Portable Puzzle Collection\n%s\n",
+                   thegame.name, ver);
+            return 0;
+        } else if (doing_opts && !strcmp(p, "--generate")) {
+            if (--ac > 0) {
+                ngenerate = atoi(*++av);
+                if (!ngenerate) {
+                    fprintf(stderr, "%s: '--generate' expected a number\n",
+                            pname);
+                    return 1;
+                }
+            } else
+                ngenerate = 1;
+        } else if (doing_opts && !strcmp(p, "--list-presets")) {
             list_presets = true;
-	} else if (doing_opts && (!strcmp(p, "--delete-prefs") ||
+        } else if (doing_opts && (!strcmp(p, "--delete-prefs") ||
                                   !strcmp(p, "--delete-preferences"))) {
             delete_prefs_action = true;
-	} else if (doing_opts && !strcmp(p, "--redo")) {
-	    /*
-	     * This is an internal option which I don't expect
-	     * users to have any particular use for. The effect of
-	     * --redo is that once the game has been loaded and
-	     * initialised, the next move in the redo chain is
-	     * replayed, and the game screen is redrawn part way
-	     * through the making of the move. This is only
-	     * meaningful if there _is_ a next move in the redo
-	     * chain, which means in turn that this option is only
-	     * useful if you're also passing a save file on the
-	     * command line.
-	     *
-	     * This option is used by the script which generates
-	     * the puzzle icons and website screenshots, and I
-	     * don't imagine it's useful for anything else.
-	     * (Unless, I suppose, users don't like my screenshots
-	     * and want to generate their own in the same way for
-	     * some repackaged version of the puzzles.)
-	     */
-	    if (--ac > 0) {
-		redo_proportion = atof(*++av);
-	    } else {
-		fprintf(stderr, "%s: no argument supplied to '--redo'\n",
-			pname);
-		return 1;
-	    }
-	} else if (doing_opts && !strcmp(p, "--screenshot")) {
-	    /*
-	     * Another internal option for the icon building
-	     * script. This causes a screenshot of the central
-	     * drawing area (i.e. not including the menu bar or
-	     * status bar) to be saved to a PNG file once the
-	     * window has been drawn, and then the application
-	     * quits immediately.
-	     */
-	    if (--ac > 0) {
-		screenshot_file = *++av;
-	    } else {
-		fprintf(stderr, "%s: no argument supplied to '--screenshot'\n",
-			pname);
-		return 1;
-	    }
-	} else if (doing_opts && !strcmp(p, "--load")) {
-	    argtype = ARG_SAVE;
-	} else if (doing_opts && !strcmp(p, "--game")) {
-	    argtype = ARG_ID;
-	} else if (doing_opts && !strcmp(p, "--")) {
-	    doing_opts = false;
-	} else if (!doing_opts || p[0] != '-') {
-	    if (arg) {
-		fprintf(stderr, "%s: more than one argument supplied\n",
-			pname);
-		return 1;
-	    }
-	    arg = p;
-	} else {
-	    sprintf(errbuf, "%.100s: unrecognised option '%.100s'\n",
-		    pname, p);
-	    break;
-	}
+        } else if (doing_opts && !strcmp(p, "--redo")) {
+            /*
+             * This is an internal option which I don't expect
+             * users to have any particular use for. The effect of
+             * --redo is that once the game has been loaded and
+             * initialised, the next move in the redo chain is
+             * replayed, and the game screen is redrawn part way
+             * through the making of the move. This is only
+             * meaningful if there _is_ a next move in the redo
+             * chain, which means in turn that this option is only
+             * useful if you're also passing a save file on the
+             * command line.
+             *
+             * This option is used by the script which generates
+             * the puzzle icons and website screenshots, and I
+             * don't imagine it's useful for anything else.
+             * (Unless, I suppose, users don't like my screenshots
+             * and want to generate their own in the same way for
+             * some repackaged version of the puzzles.)
+             */
+            if (--ac > 0) {
+                redo_proportion = atof(*++av);
+            } else {
+                fprintf(stderr, "%s: no argument supplied to '--redo'\n",
+                        pname);
+                return 1;
+            }
+        } else if (doing_opts && !strcmp(p, "--screenshot")) {
+            /*
+             * Another internal option for the icon building
+             * script. This causes a screenshot of the central
+             * drawing area (i.e. not including the menu bar or
+             * status bar) to be saved to a PNG file once the
+             * window has been drawn, and then the application
+             * quits immediately.
+             */
+            if (--ac > 0) {
+                screenshot_file = *++av;
+            } else {
+                fprintf(stderr, "%s: no argument supplied to '--screenshot'\n",
+                        pname);
+                return 1;
+            }
+        } else if (doing_opts && !strcmp(p, "--load")) {
+            argtype = ARG_SAVE;
+        } else if (doing_opts && !strcmp(p, "--game")) {
+            argtype = ARG_ID;
+        } else if (doing_opts && !strcmp(p, "--")) {
+            doing_opts = false;
+        } else if (!doing_opts || p[0] != '-') {
+            if (arg) {
+                fprintf(stderr, "%s: more than one argument supplied\n",
+                        pname);
+                return 1;
+            }
+            arg = p;
+        } else {
+            sprintf(errbuf, "%.100s: unrecognised option '%.100s'\n",
+                    pname, p);
+            break;
+        }
     }
 
     if (list_presets) {
@@ -3389,10 +3355,10 @@ int main(int argc, char **argv)
         midend *me;
         struct preset_menu *menu;
 
-	me = midend_new(NULL, &thegame, NULL, NULL);
+        me = midend_new(NULL, &thegame, NULL, NULL);
         menu = midend_get_presets(me, NULL);
         list_presets_from_menu(menu);
-	midend_free(me);
+        midend_free(me);
         return 0;
     } else if (delete_prefs_action) {
         char *msg = NULL;
@@ -3419,29 +3385,29 @@ int main(int argc, char **argv)
             return 1;
         }
 
-	if (screenshot_file) {
-	    /*
-	     * Some puzzles will not redraw their entire area if
-	     * given a partially completed animation, which means
-	     * we must redraw now and _then_ redraw again after
-	     * freezing the move timer.
-	     */
-	    midend_force_redraw(fe->me);
-	}
+        if (screenshot_file) {
+            /*
+             * Some puzzles will not redraw their entire area if
+             * given a partially completed animation, which means
+             * we must redraw now and _then_ redraw again after
+             * freezing the move timer.
+             */
+            midend_force_redraw(fe->me);
+        }
 
-	if (redo_proportion) {
-	    /* Start a redo. */
-	    midend_process_key(fe->me, 0, 0, 'r', false);
-	    /* And freeze the timer at the specified position. */
-	    midend_freeze_timer(fe->me, redo_proportion);
-	}
+        if (redo_proportion) {
+            /* Start a redo. */
+            midend_process_key(fe->me, 0, 0, 'r', false);
+            /* And freeze the timer at the specified position. */
+            midend_freeze_timer(fe->me, redo_proportion);
+        }
 
-	if (screenshot_file) {
-	    save_screenshot_png(fe, screenshot_file);
-	    exit(0);
-	}
+        if (screenshot_file) {
+            save_screenshot_png(fe, screenshot_file);
+            exit(0);
+        }
 
-	gtk_main();
+        gtk_main();
     }
 
     return 0;

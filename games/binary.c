@@ -7,12 +7,7 @@
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
-#ifdef NO_TGMATH_H
-#  include <math.h>
-#else
-#  include <tgmath.h>
-#endif
-
+#include <math.h>
 #include "puzzles.h"
 
 #define PREFERRED_TILE_SIZE 48

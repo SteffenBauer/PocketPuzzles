@@ -424,7 +424,6 @@ int c2diff(int w, int h, int cx, int cy, int button)
     if (button == CURSOR_UP && cy == h && (cx == 0 || cx == w-1))
         diff = (cx == 0) ? +1 : -1;
 
-    debug(("cx,cy = %d,%d; w%d h%d, diff = %d", cx, cy, w, h, diff));
     return diff;
 }
 

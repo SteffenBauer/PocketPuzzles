@@ -999,8 +999,9 @@ static void game_strip(game_state *new, int *scratch, digit *latin,
         gg_solved++;
         if (solver_state(copy, difficulty) != 1) {
             /* put clue back, we can't solve without it. */
-            gg_place_clue(new, scratch[i], latin, false);
-        }
+            bool ret = gg_place_clue(new, scratch[i], latin, false);
+            assert(ret);
+        } 
     }
     free_game(copy);
 }
@@ -1099,7 +1100,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
 generate:
     if (sq) sfree(sq);
     sq = latin_generate(params->order, rs);
-    latin_debug(sq, params->order);
     /* Separately shuffle the numeric and inequality clues */
     shuffle(scratch, lscratch/5, sizeof(int), rs);
     shuffle(scratch+lscratch/5, 4*lscratch/5, sizeof(int), rs);
@@ -1321,7 +1321,7 @@ static char *solve_game(const game_state *state, const game_state *currstate,
 
 struct game_ui {
     int hx, hy;                         /* as for solo.c, highlight pos */
-    bool hshow, hpencil, hcursor;       /* show state, type, and ?cursor. */
+    bool hshow, hpencil;       /* show state, type */
     int hhint;
     bool hdrag;
 };
@@ -1333,7 +1333,6 @@ static game_ui *new_ui(const game_state *state)
     ui->hx = ui->hy = 0;
     ui->hpencil = false;
     ui->hshow = false;
-    ui->hcursor = false;
     ui->hhint = -1;
     ui->hdrag = false;
     return ui;
@@ -1371,7 +1370,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
     /* See solo.c; if we were pencil-mode highlighting and
      * somehow a square has just been properly filled, cancel
      * pencil mode. */
-    if (ui->hshow && ui->hpencil && !ui->hcursor &&
+    if (ui->hshow && ui->hpencil && 
         GRID(newstate, nums, ui->hx, ui->hy) != 0) {
         ui->hshow = false;
     }
@@ -1437,7 +1436,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hshow = true;
                 ui->hhint = -1;
             }
-            ui->hcursor = false;
             ui->hdrag = false;
             return MOVE_UI_UPDATE;
         }
@@ -1458,7 +1456,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                 ui->hx = x; ui->hy = y; ui->hpencil = true;
                 ui->hshow = true;
             }
-            ui->hcursor = false;
             ui->hhint = -1;
             ui->hdrag = false;
             return MOVE_UI_UPDATE;
@@ -1469,7 +1466,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     } else if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         ui->hshow = false;
         ui->hpencil = false;
-        ui->hcursor = false;
         ui->hhint = -1;
         ui->hdrag = false;
         return MOVE_UI_UPDATE;

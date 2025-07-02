@@ -223,18 +223,6 @@
  */
 
 /*
- * In standalone solver mode, `verbose' is a variable which can be
- * set by command-line option; in debugging mode it's simply always
- * true.
- */
-#if defined STANDALONE_SOLVER
-#define SOLVER_DIAGNOSTICS
-bool verbose = false;
-#elif defined SOLVER_DIAGNOSTICS
-#define verbose true
-#endif
-
-/*
  * Difficulty levels. I do some macro ickery here to ensure that my
  * enum and the various forms of my name list always match up.
  */
@@ -500,24 +488,12 @@ static int tents_solve(int w, int h, const char *grid, int *numbers,
             }
 
             if (d == MAXDIR && linkd == 0) {
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-                printf("tent at %d,%d cannot link to anything\n",
-                   x, y);
-#endif
-            return 0;      /* no solution exists */
+                return 0;      /* no solution exists */
             } else if (d == MAXDIR) {
-            int x2 = x + dx(linkd), y2 = y + dy(linkd);
-
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-                printf("tent at %d,%d can only link to tree at"
-                   " %d,%d\n", x, y, x2, y2);
-#endif
-
-            sc->links[y*w+x] = linkd;
-            sc->links[y2*w+x2] = F(linkd);
-            done_something = true;
+                int x2 = x + dx(linkd), y2 = y + dy(linkd);
+                sc->links[y*w+x] = linkd;
+                sc->links[y2*w+x2] = F(linkd);
+                done_something = true;
             }
         }
 
@@ -531,26 +507,21 @@ static int tents_solve(int w, int h, const char *grid, int *numbers,
      * adjacent to any unmatched tree.
      */
     for (y = 0; y < h; y++)
-        for (x = 0; x < w; x++)
+    for (x = 0; x < w; x++)
         if (soln[y*w+x] == BLANK) {
             bool can_be_tent = false;
 
             for (d = 1; d < MAXDIR; d++) {
-            int x2 = x + dx(d), y2 = y + dy(d);
-            if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h &&
-                soln[y2*w+x2] == TREE &&
-                !sc->links[y2*w+x2])
-                can_be_tent = true;
+                int x2 = x + dx(d), y2 = y + dy(d);
+                if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h &&
+                    soln[y2*w+x2] == TREE &&
+                    !sc->links[y2*w+x2])
+                    can_be_tent = true;
             }
 
             if (!can_be_tent) {
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-                printf("%d,%d cannot be a tent (no adjacent"
-                   " unmatched tree)\n", x, y);
-#endif
-            soln[y*w+x] = NONTENT;
-            done_something = true;
+                soln[y*w+x] = NONTENT;
+                done_something = true;
             }
         }
 
@@ -570,20 +541,15 @@ static int tents_solve(int w, int h, const char *grid, int *numbers,
             for (dy = -1; dy <= +1; dy++)
             for (dx = -1; dx <= +1; dx++)
                 if (dy || dx) {
-                int x2 = x + dx, y2 = y + dy;
-                if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h &&
-                    soln[y2*w+x2] == TENT)
-                    imposs = true;
+                    int x2 = x + dx, y2 = y + dy;
+                    if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h &&
+                        soln[y2*w+x2] == TENT)
+                        imposs = true;
                 }
 
             if (imposs) {
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-                printf("%d,%d cannot be a tent (adjacent tent)\n",
-                   x, y);
-#endif
-            soln[y*w+x] = NONTENT;
-            done_something = true;
+                soln[y*w+x] = NONTENT;
+                done_something = true;
             }
         }
 
@@ -614,48 +580,31 @@ static int tents_solve(int w, int h, const char *grid, int *numbers,
             }
 
             if (nd == 0) {
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-                printf("tree at %d,%d cannot link to anything\n",
-                   x, y);
-#endif
-            return 0;      /* no solution exists */
+                return 0;      /* no solution exists */
             } else if (nd == 1) {
-            int x2 = x + dx(linkd), y2 = y + dy(linkd);
-
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-                printf("tree at %d,%d can only link to tent at"
-                   " %d,%d\n", x, y, x2, y2);
-#endif
-            soln[y2*w+x2] = TENT;
-            sc->links[y*w+x] = linkd;
-            sc->links[y2*w+x2] = F(linkd);
-            done_something = true;
+                int x2 = x + dx(linkd), y2 = y + dy(linkd);
+                soln[y2*w+x2] = TENT;
+                sc->links[y*w+x] = linkd;
+                sc->links[y2*w+x2] = F(linkd);
+                done_something = true;
             } else if (nd == 2 && (!dx(linkd) != !dx(linkd2)) &&
                    diff >= DIFF_TRICKY) {
-            /*
-             * If there are two possible places where
-             * this tree's tent can go, and they are
-             * diagonally separated rather than being
-             * on opposite sides of the tree, then the
-             * square (other than the tree square)
-             * which is adjacent to both of them must
-             * be a non-tent.
-             */
-            int x2 = x + dx(linkd) + dx(linkd2);
-            int y2 = y + dy(linkd) + dy(linkd2);
-            assert(x2 >= 0 && x2 < w && y2 >= 0 && y2 < h);
-            if (soln[y2*w+x2] == BLANK) {
-#ifdef SOLVER_DIAGNOSTICS
-                if (verbose)
-                printf("possible tent locations for tree at"
-                       " %d,%d rule out tent at %d,%d\n",
-                       x, y, x2, y2);
-#endif
-                soln[y2*w+x2] = NONTENT;
-                done_something = true;
-            }
+                /*
+                 * If there are two possible places where
+                 * this tree's tent can go, and they are
+                 * diagonally separated rather than being
+                 * on opposite sides of the tree, then the
+                 * square (other than the tree square)
+                 * which is adjacent to both of them must
+                 * be a non-tent.
+                 */
+                int x2 = x + dx(linkd) + dx(linkd2);
+                int y2 = y + dy(linkd) + dy(linkd2);
+                assert(x2 >= 0 && x2 < w && y2 >= 0 && y2 < h);
+                if (soln[y2*w+x2] == BLANK) {
+                    soln[y2*w+x2] = NONTENT;
+                    done_something = true;
+                }
             }
         }
 
@@ -707,13 +656,13 @@ static int tents_solve(int w, int h, const char *grid, int *numbers,
         }
 
         if (diff < DIFF_TRICKY) {
-        /*
-         * In Easy mode, we don't look at the effect of one
-         * row on the next (i.e. ruling out a square if all
-         * possibilities for an adjacent row place a tent
-         * next to it).
-         */
-        start1 = start2 = -1;
+            /*
+             * In Easy mode, we don't look at the effect of one
+             * row on the next (i.e. ruling out a square if all
+             * possibilities for an adjacent row place a tent
+             * next to it).
+             */
+            start1 = start2 = -1;
         }
 
         k = numbers[i];
@@ -724,21 +673,21 @@ static int tents_solve(int w, int h, const char *grid, int *numbers,
          */
         n = 0;
         for (j = 0; j < len; j++) {
-        if (soln[start+j*step] == TENT)
-            k--;           /* one fewer tent to place */
-        else if (soln[start+j*step] == BLANK)
-            sc->locs[n++] = j;
+            if (soln[start+j*step] == TENT)
+                k--;           /* one fewer tent to place */
+            else if (soln[start+j*step] == BLANK)
+                sc->locs[n++] = j;
         }
 
         if (n == 0)
-        continue;           /* nothing left to do here */
+            continue;           /* nothing left to do here */
 
         /*
          * Now we know we're placing k tents in n squares. Set
          * up the first possibility.
          */
         for (j = 0; j < n; j++)
-        sc->place[j] = (j < k ? TENT : NONTENT);
+            sc->place[j] = (j < k ? TENT : NONTENT);
 
         /*
          * We're aiming to find squares in this row which are
@@ -757,8 +706,8 @@ static int tents_solve(int w, int h, const char *grid, int *numbers,
          * And iterate over all possibilities.
          */
         while (1) {
-        int p;
-                bool valid;
+            int p;
+            bool valid;
 
         /*
          * See if this possibility is valid. The only way
@@ -864,18 +813,9 @@ static int tents_solve(int w, int h, const char *grid, int *numbers,
             if (tstart >= 0 &&
             mthis[j] != MAGIC && mthis[j] != BLANK &&
             soln[tstart+j*step] == BLANK) {
-            int pos = tstart+j*step;
-
-#ifdef SOLVER_DIAGNOSTICS
-            if (verbose)
-                printf("%s %d forces %s at %d,%d\n",
-                   step==1 ? "row" : "column",
-                   step==1 ? start/w : start,
-                   mthis[j] == TENT ? "tent" : "non-tent",
-                   pos % w, pos / w);
-#endif
-            soln[pos] = mthis[j];
-            done_something = true;
+                int pos = tstart+j*step;
+                soln[pos] = mthis[j];
+                done_something = true;
             }
         }
         }
@@ -1394,9 +1334,6 @@ struct game_ui {
     int dex, dey;                      /* coords of drag end */
     int drag_button;                   /* -1 for none, or a button code */
     bool drag_ok;                      /* dragged off the window, to cancel */
-
-    int cx, cy;                        /* cursor position. */
-    bool cdisp;                        /* is cursor displayed? */
 };
 
 static game_ui *new_ui(const game_state *state)
@@ -1406,8 +1343,6 @@ static game_ui *new_ui(const game_state *state)
     ui->dex = ui->dey = -1;
     ui->drag_button = -1;
     ui->drag_ok = false;
-    ui->cx = ui->cy = 0;
-    ui->cdisp = false;
     return ui;
 }
 
@@ -1427,7 +1362,6 @@ struct game_drawstate {
     game_params p;
     int *drawn, *numbersdrawn;
     bool *done;
-    int cx, cy;         /* last-drawn cursor pos, or (-1,-1) if absent. */
 };
 
 #define PREFERRED_TILESIZE 32
@@ -1506,7 +1440,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         ui->dsx = ui->dex = x;
         ui->dsy = ui->dey = y;
         ui->drag_ok = true;
-        ui->cdisp = false;
         return MOVE_UI_UPDATE;
     }
 
@@ -1839,7 +1772,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
         ds->numbersdrawn[i] = 2;
         ds->done[i] = false;
     }
-    ds->cx = ds->cy = -1;
 
     return ds;
 }
@@ -2201,7 +2133,7 @@ static void draw_err_adj(drawing *dr, game_drawstate *ds, int x, int y)
 }
 
 static void draw_tile(drawing *dr, game_drawstate *ds,
-                      int x, int y, int v, bool cur)
+                      int x, int y, int v)
 {
     int err;
     int tx = COORD(x), ty = COORD(y);
@@ -2270,13 +2202,6 @@ static void draw_tile(drawing *dr, game_drawstate *ds,
     if (err & (1 << ERR_ADJ_BOTRIGHT))
     draw_err_adj(dr, ds, tx+TILESIZE, ty+TILESIZE);
 
-    if (cur) {
-      int coff = TILESIZE/8;
-      draw_rect_outline(dr, tx + coff, ty + coff,
-                        TILESIZE - coff*2 + 1, TILESIZE - coff*2 + 1,
-            COL_GRID);
-    }
-
     unclip(dr);
     draw_update(dr, tx+1, ty+1, TILESIZE-1, TILESIZE-1);
 }
@@ -2290,15 +2215,8 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
 {
     int w = state->p.w, h = state->p.h;
     int x, y;
-    int cx = -1, cy = -1;
-    bool cmoved = false;
     char *tmpgrid;
     int *errors;
-
-    if (ui) {
-        if (ui->cdisp) { cx = ui->cx; cy = ui->cy; }
-        if (cx != ds->cx || cy != ds->cy) cmoved = true;
-    }
 
     if (!ds->started) {
         /*
@@ -2335,7 +2253,6 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
             int v = state->grid[y*w+x];
-            bool credraw = false;
 
             /*
              * We deliberately do not take drag_ok into account
@@ -2346,15 +2263,10 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
             if (ui && ui->drag_button >= 0)
                 v = drag_xform(ui, x, y, v);
 
-            if (cmoved) {
-              if ((x == cx && y == cy) ||
-                  (x == ds->cx && y == ds->cy)) credraw = true;
-            }
+            v |= errors[y*w+x];
 
-        v |= errors[y*w+x];
-
-            if (ds->drawn[y*w+x] != v || credraw) {
-                draw_tile(dr, ds, x, y, v, (x == cx && y == cy));
+            if (ds->drawn[y*w+x] != v) {
+                draw_tile(dr, ds, x, y, v);
                 ds->drawn[y*w+x] = v;
             }
         }
@@ -2391,11 +2303,6 @@ static void int_redraw(drawing *dr, game_drawstate *ds,
         ds->numbersdrawn[w+y] = errors[w*h+w+y];
         ds->done[w+y] = state->done[w+y];
     }
-    }
-
-    if (cmoved) {
-        ds->cx = cx;
-        ds->cy = cy;
     }
 
     sfree(errors);

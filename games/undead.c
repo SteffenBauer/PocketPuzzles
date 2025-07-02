@@ -2002,7 +2002,7 @@ static char *solve_game(const game_state *state_start, const game_state *currsta
 
 struct game_ui {
     int hx, hy;                         /* as for solo.c, highlight pos */
-    bool hshow, hpencil, hcursor;       /* show state, type, and ?cursor. */
+    bool hshow, hpencil;       /* show state, type. */
     char hhint;
     bool hdrag;
 };
@@ -2013,7 +2013,6 @@ static game_ui *new_ui(const game_state *state)
     ui->hx = ui->hy = 0;
     ui->hpencil = false;
     ui->hshow = false;
-    ui->hcursor = false;
     ui->hhint = ' ';
     ui->hdrag = false;
     return ui;
@@ -2044,7 +2043,7 @@ static void game_changed_state(game_ui *ui, const game_state *oldstate,
     /* See solo.c; if we were pencil-mode highlighting and
      * somehow a square has just been properly filled, cancel
      * pencil mode. */
-    if (ui->hshow && ui->hpencil && !ui->hcursor) {
+    if (ui->hshow && ui->hpencil) {
         int g = newstate->guess[newstate->common->xinfo[ui->hx + ui->hy*(newstate->common->params.w+2)]];
         if (g == 1 || g == 2 || g == 4)
             ui->hshow = false;
@@ -2130,22 +2129,18 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         xi = state->common->xinfo[ui->hx + ui->hy*(state->common->params.w+2)];
         if (xi >= 0 && !state->common->fixed[xi]) {
             if (button == 'G') {
-                if (!ui->hcursor) ui->hshow = false;
                 sprintf(buf,"G%d",xi);
                 return dupstr(buf);
             }
             if (button == 'V') {
-                if (!ui->hcursor) ui->hshow = false;
                 sprintf(buf,"V%d",xi);
                 return dupstr(buf);
             }
             if (button == 'Z') {
-                if (!ui->hcursor) ui->hshow = false;
                 sprintf(buf,"Z%d",xi);
                 return dupstr(buf);
             }
             if (button == '\b') {
-                if (!ui->hcursor) ui->hshow = false;
                 sprintf(buf,"E%d",xi);
                 return dupstr(buf);
             }
@@ -2169,10 +2164,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             }
             if (button == '\b') {
                 sprintf(buf,"E%d",xi);
-                if (!ui->hcursor) {
-                    ui->hpencil = false;
-                    ui->hshow = false;
-                }
                 return dupstr(buf);
             }
         }
@@ -2202,7 +2193,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                     else {
                         ui->hshow = true;
                         ui->hpencil = false;
-                        ui->hcursor = false;
                         ui->hx = gx; ui->hy = gy;
                     }
                     return MOVE_UI_UPDATE;
@@ -2214,7 +2204,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                     }
                     ui->hshow = true;
                     ui->hpencil = true;
-                    ui->hcursor = false;
                     ui->hx = gx; ui->hy = gy;
                     return MOVE_UI_UPDATE;
                 }
@@ -2228,14 +2217,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                         if (gx == ui->hx && gy == ui->hy) {
                             ui->hshow = false;
                             ui->hpencil = false;
-                            ui->hcursor = false;
                             ui->hx = 0; ui->hy = 0;
                             return MOVE_UI_UPDATE;
                         }
                         else {
                             ui->hshow = true;
                             ui->hpencil = false;
-                            ui->hcursor = false;
                             ui->hx = gx; ui->hy = gy;
                             return MOVE_UI_UPDATE;
                         }
@@ -2243,7 +2230,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                     else {
                         ui->hshow = true;
                         ui->hpencil = false;
-                        ui->hcursor = false;
                         ui->hx = gx; ui->hy = gy;
                         return MOVE_UI_UPDATE;
                     }
@@ -2252,7 +2238,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                     if (!ui->hpencil && g == 7) {
                         ui->hshow = true;
                         ui->hpencil = true;
-                        ui->hcursor = false;
                         ui->hx = gx; ui->hy = gy;
                         return MOVE_UI_UPDATE;
                     }
@@ -2260,14 +2245,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
                         if (gx == ui->hx && gy == ui->hy) {
                             ui->hshow = false;
                             ui->hpencil = false;
-                            ui->hcursor = false;
                             ui->hx = 0; ui->hy = 0;
                             return MOVE_UI_UPDATE;
                         }
                         else if (g == 7) {
                             ui->hshow = true;
                             ui->hpencil = true;
-                            ui->hcursor = false;
                             ui->hx = gx; ui->hy = gy;
                             return MOVE_UI_UPDATE;
                         }
@@ -2832,7 +2815,7 @@ static void draw_path_hint(drawing *dr, game_drawstate *ds,
     if (hint >= 0) sprintf(buf,"%d", hint);
     else           sprintf(buf," ");
     draw_rect(dr, dx, dy, text_size, text_size, ds->hint_errors[hint_index] ? COL_ERROR : COL_BACKGROUND);
-    draw_text(dr, text_dx, text_dy, FONT_FIXED, TILESIZE / 2,
+    draw_text(dr, text_dx, text_dy, FONT_VARIABLE, TILESIZE / 2,
               ALIGN_HCENTRE | ALIGN_VCENTRE, (ds->hint_errors[hint_index] ? COL_ERROR_TEXT : color), buf);
     draw_update(dr, dx, dy, text_size, text_size);
 

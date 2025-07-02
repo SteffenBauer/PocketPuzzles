@@ -218,32 +218,32 @@ static bool addremcommon(int w, int h, int x, int y, int *own, int val)
     int dir, count;
 
     for (dir = 0; dir < 8; dir++) {
-	int dx = ((dir & 3) == 2 ? 0 : dir > 2 && dir < 6 ? +1 : -1);
-	int dy = ((dir & 3) == 0 ? 0 : dir < 4 ? -1 : +1);
-	int sx = x+dx, sy = y+dy;
+        int dx = ((dir & 3) == 2 ? 0 : dir > 2 && dir < 6 ? +1 : -1);
+        int dy = ((dir & 3) == 0 ? 0 : dir < 4 ? -1 : +1);
+        int sx = x+dx, sy = y+dy;
 
-	if (sx < 0 || sx >= w || sy < 0 || sy >= h)
-	    neighbours[dir] = -1;      /* outside the grid */
-	else
-	    neighbours[dir] = own[sy*w+sx];
+        if (sx < 0 || sx >= w || sy < 0 || sy >= h)
+            neighbours[dir] = -1;      /* outside the grid */
+        else
+            neighbours[dir] = own[sy*w+sx];
     }
 
     /*
      * To begin with, check 4-adjacency.
      */
     if (neighbours[0] != val && neighbours[2] != val &&
-	neighbours[4] != val && neighbours[6] != val)
-	return false;
+        neighbours[4] != val && neighbours[6] != val)
+        return false;
 
     count = 0;
 
     for (dir = 0; dir < 8; dir++) {
-	int next = (dir + 1) & 7;
+        int next = (dir + 1) & 7;
         bool gotthis = (neighbours[dir] == val);
-	bool gotnext = (neighbours[next] == val);
+        bool gotnext = (neighbours[next] == val);
 
-	if (gotthis != gotnext)
-	    count++;
+        if (gotthis != gotnext)
+            count++;
     }
 
     return (count == 2);
@@ -287,7 +287,7 @@ DSF *divvy_rectangle_attempt(int w, int h, int k, random_state *rs)
      * for the answer to be non-deterministic.
      */
     for (i = 0; i < wh; i++)
-	order[i] = i;
+        order[i] = i;
     shuffle(order, wh, sizeof(*order), rs);
 
     /*
@@ -295,11 +295,11 @@ DSF *divvy_rectangle_attempt(int w, int h, int k, random_state *rs)
      * omino.
      */
     for (i = 0; i < wh; i++) {
-	own[i] = -1;
+        own[i] = -1;
     }
     for (i = 0; i < n; i++) {
-	own[order[i]] = i;
-	sizes[i] = 1;
+        own[order[i]] = i;
+        sizes[i] = 1;
     }
 
     /*
@@ -313,307 +313,264 @@ DSF *divvy_rectangle_attempt(int w, int h, int k, random_state *rs)
      * so the process is bounded in duration.
      */
     while (1) {
+        /*
+         * Go over the grid and figure out which squares can
+         * safely be added to, or removed from, each omino. We
+         * don't take account of other ominoes in this process, so
+         * we will often end up knowing that a square can be
+         * poached from one omino by another.
+         * 
+         * For each square, there may be up to four ominoes to
+         * which it can be added (those to which it is
+         * 4-adjacent).
+         */
+        for (y = 0; y < h; y++) {
+            for (x = 0; x < w; x++) {
+                int yx = y*w+x;
+                int curr = own[yx];
+                int dir;
 
-#ifdef DIVVY_DIAGNOSTICS
-	{
-	    int x, y;
-	    printf("Top of loop. Current grid:\n");
-	    for (y = 0; y < h; y++) {
-		for (x = 0; x < w; x++)
-		    printf("%3d", own[y*w+x]);
-		printf("\n");
-	    }
-	}
-#endif
+                if (curr < 0) {
+                    removable[yx] = false; /* can't remove if not owned! */
+                } else if (sizes[curr] == 1) {
+                    removable[yx] = true; /* can always remove a singleton */
+                } else {
+                    /*
+                     * See if this square can be removed from its
+                     * omino without disconnecting it.
+                     */
+                    removable[yx] = addremcommon(w, h, x, y, own, curr);
+                }
 
-	/*
-	 * Go over the grid and figure out which squares can
-	 * safely be added to, or removed from, each omino. We
-	 * don't take account of other ominoes in this process, so
-	 * we will often end up knowing that a square can be
-	 * poached from one omino by another.
-	 * 
-	 * For each square, there may be up to four ominoes to
-	 * which it can be added (those to which it is
-	 * 4-adjacent).
-	 */
-	for (y = 0; y < h; y++) {
-	    for (x = 0; x < w; x++) {
-		int yx = y*w+x;
-		int curr = own[yx];
-		int dir;
+                for (dir = 0; dir < 4; dir++) {
+                    int dx = (dir == 0 ? -1 : dir == 1 ? +1 : 0);
+                    int dy = (dir == 2 ? -1 : dir == 3 ? +1 : 0);
+                    int sx = x + dx, sy = y + dy;
+                    int syx = sy*w+sx;
 
-		if (curr < 0) {
-		    removable[yx] = false; /* can't remove if not owned! */
-		} else if (sizes[curr] == 1) {
-		    removable[yx] = true; /* can always remove a singleton */
-		} else {
-		    /*
-		     * See if this square can be removed from its
-		     * omino without disconnecting it.
-		     */
-		    removable[yx] = addremcommon(w, h, x, y, own, curr);
-		}
+                    addable[yx*4+dir] = -1;
 
-		for (dir = 0; dir < 4; dir++) {
-		    int dx = (dir == 0 ? -1 : dir == 1 ? +1 : 0);
-		    int dy = (dir == 2 ? -1 : dir == 3 ? +1 : 0);
-		    int sx = x + dx, sy = y + dy;
-		    int syx = sy*w+sx;
+                    if (sx < 0 || sx >= w || sy < 0 || sy >= h)
+                        continue;      /* no omino here! */
+                    if (own[syx] < 0)
+                        continue;      /* also no omino here */
+                    if (own[syx] == own[yx])
+                        continue;      /* we already got one */
+                    if (!addremcommon(w, h, x, y, own, own[syx]))
+                        continue;      /* would non-simply connect the omino */
+                    
+                    addable[yx*4+dir] = own[syx];
+                }
+            }
+        }
 
-		    addable[yx*4+dir] = -1;
+        for (i = j = 0; i < n; i++)
+            if (sizes[i] < k)
+                tmp[j++] = i;
+        if (j == 0)
+            break;                       /* all ominoes are complete! */
+        j = tmp[random_upto(rs, j)];
 
-		    if (sx < 0 || sx >= w || sy < 0 || sy >= h)
-			continue;      /* no omino here! */
-		    if (own[syx] < 0)
-			continue;      /* also no omino here */
-		    if (own[syx] == own[yx])
-			continue;      /* we already got one */
-		    if (!addremcommon(w, h, x, y, own, own[syx]))
-			continue;      /* would non-simply connect the omino */
-		    
-		    addable[yx*4+dir] = own[syx];
-		}
-	    }
-	}
+        /*
+         * So we're trying to expand omino j. We breadth-first
+         * search out from j across the space of ominoes.
+         * 
+         * For bfs purposes, we use two elements of tmp per omino:
+         * tmp[2*i+0] tells us which omino we got to i from, and
+         * tmp[2*i+1] numbers the grid square that omino stole
+         * from us.
+         * 
+         * This requires that wh (the size of tmp) is at least 2n,
+         * i.e. k is at least 2. There would have been nothing to
+         * stop a user calling this function with k=1, but if they
+         * did then we wouldn't have got to _here_ in the code -
+         * we would have noticed above that all ominoes were
+         * already at their target sizes, and terminated :-)
+         */
+        assert(wh >= 2*n);
+        for (i = 0; i < n; i++)
+            tmp[2*i] = tmp[2*i+1] = -1;
+        qhead = qtail = 0;
+        queue[qtail++] = j;
+        tmp[2*j] = tmp[2*j+1] = -2;    /* special value: `starting point' */
 
-	for (i = j = 0; i < n; i++)
-	    if (sizes[i] < k)
-		tmp[j++] = i;
-	if (j == 0)
-	    break;		       /* all ominoes are complete! */
-	j = tmp[random_upto(rs, j)];
-#ifdef DIVVY_DIAGNOSTICS
-	printf("Trying to extend %d\n", j);
-#endif
+        while (qhead < qtail) {
+            int tmpsq;
 
-	/*
-	 * So we're trying to expand omino j. We breadth-first
-	 * search out from j across the space of ominoes.
-	 * 
-	 * For bfs purposes, we use two elements of tmp per omino:
-	 * tmp[2*i+0] tells us which omino we got to i from, and
-	 * tmp[2*i+1] numbers the grid square that omino stole
-	 * from us.
-	 * 
-	 * This requires that wh (the size of tmp) is at least 2n,
-	 * i.e. k is at least 2. There would have been nothing to
-	 * stop a user calling this function with k=1, but if they
-	 * did then we wouldn't have got to _here_ in the code -
-	 * we would have noticed above that all ominoes were
-	 * already at their target sizes, and terminated :-)
-	 */
-	assert(wh >= 2*n);
-	for (i = 0; i < n; i++)
-	    tmp[2*i] = tmp[2*i+1] = -1;
-	qhead = qtail = 0;
-	queue[qtail++] = j;
-	tmp[2*j] = tmp[2*j+1] = -2;    /* special value: `starting point' */
+            j = queue[qhead];
 
-	while (qhead < qtail) {
-	    int tmpsq;
+            /*
+             * We wish to expand omino j. However, we might have
+             * got here by omino j having a square stolen from it,
+             * so first of all we must temporarily mark that
+             * square as not belonging to j, so that our adjacency
+             * calculations don't assume j _does_ belong to us.
+             */
+            tmpsq = tmp[2*j+1];
+            if (tmpsq >= 0) {
+                assert(own[tmpsq] == j);
+                own[tmpsq] = -3;
+            }
 
-	    j = queue[qhead];
+            /*
+             * OK. Now begin by seeing if we can find any
+             * unclaimed square into which we can expand omino j.
+             * If we find one, the entire bfs terminates.
+             */
+            for (i = 0; i < wh; i++) {
+                int dir;
 
-	    /*
-	     * We wish to expand omino j. However, we might have
-	     * got here by omino j having a square stolen from it,
-	     * so first of all we must temporarily mark that
-	     * square as not belonging to j, so that our adjacency
-	     * calculations don't assume j _does_ belong to us.
-	     */
-	    tmpsq = tmp[2*j+1];
-	    if (tmpsq >= 0) {
-		assert(own[tmpsq] == j);
-		own[tmpsq] = -3;
-	    }
+                if (own[order[i]] != -1)
+                    continue;               /* this square is claimed */
 
-	    /*
-	     * OK. Now begin by seeing if we can find any
-	     * unclaimed square into which we can expand omino j.
-	     * If we find one, the entire bfs terminates.
-	     */
-	    for (i = 0; i < wh; i++) {
-		int dir;
+                /*
+                 * Special case: if our current omino was size 1
+                 * and then had a square stolen from it, it's now
+                 * size zero, which means it's valid to `expand'
+                 * it into _any_ unclaimed square.
+                 */
+                if (sizes[j] == 1 && tmpsq >= 0)
+                    break;               /* got one */
 
-		if (own[order[i]] != -1)
-		    continue;	       /* this square is claimed */
+                /*
+                 * Failing that, we must do the full test for
+                 * addability.
+                 */
+                for (dir = 0; dir < 4; dir++)
+                    if (addable[order[i]*4+dir] == j) {
+                        /*
+                         * We know this square is addable to this
+                         * omino with the grid in the state it had
+                         * at the top of the loop. However, we
+                         * must now check that it's _still_
+                         * addable to this omino when the omino is
+                         * missing a square. To do this it's only
+                         * necessary to re-check addremcommon.
+                         */
+                        if (!addremcommon(w, h, order[i]%w, order[i]/w,
+                                          own, j))
+                            continue;
+                        break;
+                    }
+                if (dir == 4)
+                    continue;               /* we can't add this square to j */
 
-		/*
-		 * Special case: if our current omino was size 1
-		 * and then had a square stolen from it, it's now
-		 * size zero, which means it's valid to `expand'
-		 * it into _any_ unclaimed square.
-		 */
-		if (sizes[j] == 1 && tmpsq >= 0)
-		    break;	       /* got one */
+                break;                       /* got one! */
+            }
+            if (i < wh) {
+                i = order[i];
 
-		/*
-		 * Failing that, we must do the full test for
-		 * addability.
-		 */
-		for (dir = 0; dir < 4; dir++)
-		    if (addable[order[i]*4+dir] == j) {
-			/*
-			 * We know this square is addable to this
-			 * omino with the grid in the state it had
-			 * at the top of the loop. However, we
-			 * must now check that it's _still_
-			 * addable to this omino when the omino is
-			 * missing a square. To do this it's only
-			 * necessary to re-check addremcommon.
-			 */
-			if (!addremcommon(w, h, order[i]%w, order[i]/w,
-					  own, j))
-			    continue;
-			break;
-		    }
-		if (dir == 4)
-		    continue;	       /* we can't add this square to j */
+                /*
+                 * Restore the temporarily removed square _before_
+                 * we start shifting ownerships about.
+                 */
+                if (tmpsq >= 0)
+                    own[tmpsq] = j;
 
-		break;		       /* got one! */
-	    }
-	    if (i < wh) {
-		i = order[i];
+                /*
+                 * We are done. We can add square i to omino j,
+                 * and then backtrack along the trail in tmp
+                 * moving squares between ominoes, ending up
+                 * expanding our starting omino by one.
+                 */
+                while (1) {
+                    own[i] = j;
+                    if (tmp[2*j] == -2)
+                        break;
+                    i = tmp[2*j+1];
+                    j = tmp[2*j];
+                }
 
-		/*
-		 * Restore the temporarily removed square _before_
-		 * we start shifting ownerships about.
-		 */
-		if (tmpsq >= 0)
-		    own[tmpsq] = j;
+                /*
+                 * Increment the size of the starting omino.
+                 */
+                sizes[j]++;
 
-		/*
-		 * We are done. We can add square i to omino j,
-		 * and then backtrack along the trail in tmp
-		 * moving squares between ominoes, ending up
-		 * expanding our starting omino by one.
-		 */
-#ifdef DIVVY_DIAGNOSTICS
-		printf("(%d,%d)", i%w, i/w);
-#endif
-		while (1) {
-		    own[i] = j;
-#ifdef DIVVY_DIAGNOSTICS
-		    printf(" -> %d", j);
-#endif
-		    if (tmp[2*j] == -2)
-			break;
-		    i = tmp[2*j+1];
-		    j = tmp[2*j];
-#ifdef DIVVY_DIAGNOSTICS
-		    printf("; (%d,%d)", i%w, i/w);
-#endif
-		}
-#ifdef DIVVY_DIAGNOSTICS
-		printf("\n");
-#endif
+                /*
+                 * Terminate the bfs loop.
+                 */
+                break;
+            }
 
-		/*
-		 * Increment the size of the starting omino.
-		 */
-		sizes[j]++;
+            /*
+             * If we get here, we haven't been able to expand
+             * omino j into an unclaimed square. So now we begin
+             * to investigate expanding it into squares which are
+             * claimed by ominoes the bfs has not yet visited.
+             */
+            for (i = 0; i < wh; i++) {
+                int dir, nj;
 
-		/*
-		 * Terminate the bfs loop.
-		 */
-		break;
-	    }
+                nj = own[order[i]];
+                if (nj < 0 || tmp[2*nj] != -1)
+                    continue;               /* unclaimed, or owned by wrong omino */
+                if (!removable[order[i]])
+                    continue;               /* its omino won't let it go */
 
-	    /*
-	     * If we get here, we haven't been able to expand
-	     * omino j into an unclaimed square. So now we begin
-	     * to investigate expanding it into squares which are
-	     * claimed by ominoes the bfs has not yet visited.
-	     */
-	    for (i = 0; i < wh; i++) {
-		int dir, nj;
+                for (dir = 0; dir < 4; dir++)
+                    if (addable[order[i]*4+dir] == j) {
+                        /*
+                         * As above, re-check addremcommon.
+                         */
+                        if (!addremcommon(w, h, order[i]%w, order[i]/w,
+                                          own, j))
+                            continue;
 
-		nj = own[order[i]];
-		if (nj < 0 || tmp[2*nj] != -1)
-		    continue;	       /* unclaimed, or owned by wrong omino */
-		if (!removable[order[i]])
-		    continue;	       /* its omino won't let it go */
+                        /*
+                         * We have found a square we can use to
+                         * expand omino j, at the expense of the
+                         * as-yet unvisited omino nj. So add this
+                         * to the bfs queue.
+                         */
+                        assert(qtail < n);
+                        queue[qtail++] = nj;
+                        tmp[2*nj] = j;
+                        tmp[2*nj+1] = order[i];
 
-		for (dir = 0; dir < 4; dir++)
-		    if (addable[order[i]*4+dir] == j) {
-			/*
-			 * As above, re-check addremcommon.
-			 */
-			if (!addremcommon(w, h, order[i]%w, order[i]/w,
-					  own, j))
-			    continue;
+                        /*
+                         * Now terminate the loop over dir, to
+                         * ensure we don't accidentally add the
+                         * same omino twice to the queue.
+                         */
+                        break;
+                    }
+            }
 
-			/*
-			 * We have found a square we can use to
-			 * expand omino j, at the expense of the
-			 * as-yet unvisited omino nj. So add this
-			 * to the bfs queue.
-			 */
-			assert(qtail < n);
-			queue[qtail++] = nj;
-			tmp[2*nj] = j;
-			tmp[2*nj+1] = order[i];
+            /*
+             * Restore the temporarily removed square.
+             */
+            if (tmpsq >= 0)
+                own[tmpsq] = j;
 
-			/*
-			 * Now terminate the loop over dir, to
-			 * ensure we don't accidentally add the
-			 * same omino twice to the queue.
-			 */
-			break;
-		    }
-	    }
+            /*
+             * Advance the queue head.
+             */
+            qhead++;
+        }
 
-	    /*
-	     * Restore the temporarily removed square.
-	     */
-	    if (tmpsq >= 0)
-		own[tmpsq] = j;
-
-	    /*
-	     * Advance the queue head.
-	     */
-	    qhead++;
-	}
-
-	if (qhead == qtail) {
-	    /*
-	     * We have finished the bfs and not found any way to
-	     * expand omino j. Panic, and return failure.
-	     * 
-	     * FIXME: or should we loop over all ominoes before we
-	     * give up?
-	     */
-#ifdef DIVVY_DIAGNOSTICS
-	    printf("FAIL!\n");
-#endif
-	    retdsf = NULL;
-	    goto cleanup;
-	}
+        if (qhead == qtail) {
+            /*
+             * We have finished the bfs and not found any way to
+             * expand omino j. Panic, and return failure.
+             * 
+             * FIXME: or should we loop over all ominoes before we
+             * give up?
+             */
+            retdsf = NULL;
+            goto cleanup;
+        }
     }
-
-#ifdef DIVVY_DIAGNOSTICS
-    {
-	int x, y;
-	printf("SUCCESS! Final grid:\n");
-	for (y = 0; y < h; y++) {
-	    for (x = 0; x < w; x++)
-		printf("%3d", own[y*w+x]);
-	    printf("\n");
-	}
-    }
-#endif
 
     /*
      * Construct the output dsf.
      */
     for (i = 0; i < wh; i++) {
-	assert(own[i] >= 0 && own[i] < n);
-	tmp[own[i]] = i;
+        assert(own[i] >= 0 && own[i] < n);
+        tmp[own[i]] = i;
     }
     retdsf = dsf_new(wh);
     for (i = 0; i < wh; i++) {
-	dsf_merge(retdsf, i, tmp[own[i]]);
+        dsf_merge(retdsf, i, tmp[own[i]]);
     }
 
     /*
@@ -623,16 +580,16 @@ DSF *divvy_rectangle_attempt(int w, int h, int k, random_state *rs)
      */
     tmpdsf = dsf_new(wh);
     for (y = 0; y < h; y++)
-	for (x = 0; x+1 < w; x++)
-	    if (own[y*w+x] == own[y*w+(x+1)])
-		dsf_merge(tmpdsf, y*w+x, y*w+(x+1));
+        for (x = 0; x+1 < w; x++)
+            if (own[y*w+x] == own[y*w+(x+1)])
+                dsf_merge(tmpdsf, y*w+x, y*w+(x+1));
     for (x = 0; x < w; x++)
-	for (y = 0; y+1 < h; y++)
-	    if (own[y*w+x] == own[(y+1)*w+x])
-		dsf_merge(tmpdsf, y*w+x, (y+1)*w+x);
+        for (y = 0; y+1 < h; y++)
+            if (own[y*w+x] == own[(y+1)*w+x])
+                dsf_merge(tmpdsf, y*w+x, (y+1)*w+x);
     for (i = 0; i < wh; i++) {
-	j = dsf_canonify(retdsf, i);
-	assert(dsf_equivalent(tmpdsf, j, i));
+        j = dsf_canonify(retdsf, i);
+        assert(dsf_equivalent(tmpdsf, j, i));
     }
 
     cleanup:
@@ -660,7 +617,7 @@ DSF *divvy_rectangle(int w, int h, int k, random_state *rs)
     DSF *ret;
 
     do {
-	ret = divvy_rectangle_attempt(w, h, k, rs);
+        ret = divvy_rectangle_attempt(w, h, k, rs);
     } while (!ret);
 
     return ret;

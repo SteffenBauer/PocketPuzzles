@@ -19,12 +19,6 @@
 #include "tree234.h"
 #include "grid.h"
 
-/* Debugging options */
-
-/*
-#define DEBUG_GRID
-*/
-
 /* ----------------------------------------------------------------------
  * Deallocate or dereference a grid
  */
@@ -166,166 +160,6 @@ grid_edge *grid_nearest_edge(grid *g, int x, int y)
  * Grid generation
  */
 
-#ifdef SVG_GRID
-
-#define SVG_DOTS  1
-#define SVG_EDGES 2
-#define SVG_FACES 4
-
-#define FACE_COLOUR "red"
-#define EDGE_COLOUR "blue"
-#define DOT_COLOUR "black"
-
-static void grid_output_svg(FILE *fp, grid *g, int which)
-{
-    int i, j;
-
-    fprintf(fp,"\
-<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n\
-<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 20010904//EN\"\n\
-\"http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd\">\n\
-\n\
-<svg xmlns=\"http://www.w3.org/2000/svg\"\n\
-xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n\n");
-
-    if (which & SVG_FACES) {
-        fprintf(fp, "<g>\n");
-        for (i = 0; i < g->num_faces; i++) {
-            grid_face *f = g->faces[i];
-            fprintf(fp, "<polygon points=\"");
-            for (j = 0; j < f->order; j++) {
-                grid_dot *d = f->dots[j];
-                fprintf(fp, "%s%d,%d", (j == 0) ? "" : " ",
-                        d->x, d->y);
-            }
-            fprintf(fp, "\" style=\"fill: %s; fill-opacity: 0.2; stroke: %s\" />\n",
-                    FACE_COLOUR, FACE_COLOUR);
-        }
-        fprintf(fp, "</g>\n");
-    }
-    if (which & SVG_EDGES) {
-        fprintf(fp, "<g>\n");
-        for (i = 0; i < g->num_edges; i++) {
-            grid_edge *e = g->edges[i];
-            grid_dot *d1 = e->dot1, *d2 = e->dot2;
-
-            fprintf(fp, "<line x1=\"%d\" y1=\"%d\" x2=\"%d\" y2=\"%d\" "
-                        "style=\"stroke: %s\" />\n",
-                        d1->x, d1->y, d2->x, d2->y, EDGE_COLOUR);
-        }
-        fprintf(fp, "</g>\n");
-    }
-
-    if (which & SVG_DOTS) {
-        fprintf(fp, "<g>\n");
-        for (i = 0; i < g->num_dots; i++) {
-            grid_dot *d = g->dots[i];
-            fprintf(fp, "<ellipse cx=\"%d\" cy=\"%d\" rx=\"%d\" ry=\"%d\" fill=\"%s\" />",
-                    d->x, d->y, g->tilesize/20, g->tilesize/20, DOT_COLOUR);
-        }
-        fprintf(fp, "</g>\n");
-    }
-
-    fprintf(fp, "</svg>\n");
-}
-#endif
-
-#ifdef SVG_GRID
-#include <errno.h>
-
-static void grid_try_svg(grid *g, int which)
-{
-    char *svg = getenv("PUZZLES_SVG_GRID");
-    if (svg) {
-        FILE *svgf = fopen(svg, "w");
-        if (svgf) {
-            grid_output_svg(svgf, g, which);
-            fclose(svgf);
-        } else {
-            fprintf(stderr, "Unable to open file `%s': %s", svg, strerror(errno));
-        }
-    }
-}
-#endif
-
-/* Show the basic grid information, before doing grid_make_consistent */
-static void grid_debug_basic(grid *g)
-{
-    /* TODO: Maybe we should generate an SVG image of the dots and lines
-     * of the grid here, before grid_make_consistent.
-     * Would help with debugging grid generation. */
-#ifdef DEBUG_GRID
-    int i;
-    printf("--- Basic Grid Data ---\n");
-    for (i = 0; i < g->num_dots; i++) {
-        grid_dot *d = g->dots[i];
-        printf("Dot %d at (%d,%d)\n", i, d->x, d->y);
-    }
-    for (i = 0; i < g->num_faces; i++) {
-        grid_face *f = g->faces[i];
-        printf("Face %d: dots[", i);
-        int j;
-        for (j = 0; j < f->order; j++) {
-            grid_dot *d = f->dots[j];
-            printf("%s%d", j ? "," : "", (int)(d->index));
-        }
-        printf("]\n");
-    }
-#endif
-#ifdef SVG_GRID
-    grid_try_svg(g, SVG_FACES);
-#endif
-}
-
-/* Show the derived grid information, computed by grid_make_consistent */
-static void grid_debug_derived(grid *g)
-{
-#ifdef DEBUG_GRID
-    /* edges */
-    int i;
-    printf("--- Derived Grid Data ---\n");
-    for (i = 0; i < g->num_edges; i++) {
-        grid_edge *e = g->edges[i];
-        printf("Edge %d: dots[%d,%d] faces[%d,%d]\n",
-            i, (int)(e->dot1->index), (int)(e->dot2->index),
-            e->face1 ? (int)(e->face1->index) : -1,
-            e->face2 ? (int)(e->face2->index) : -1);
-    }
-    /* faces */
-    for (i = 0; i < g->num_faces; i++) {
-        grid_face *f = g->faces[i];
-        int j;
-        printf("Face %d: faces[", i);
-        for (j = 0; j < f->order; j++) {
-            grid_edge *e = f->edges[j];
-            grid_face *f2 = (e->face1 == f) ? e->face2 : e->face1;
-            printf("%s%d", j ? "," : "", f2 ? f2->index : -1);
-        }
-        printf("]\n");
-    }
-    /* dots */
-    for (i = 0; i < g->num_dots; i++) {
-        grid_dot *d = g->dots[i];
-        int j;
-        printf("Dot %d: dots[", i);
-        for (j = 0; j < d->order; j++) {
-            grid_edge *e = d->edges[j];
-            grid_dot *d2 = (e->dot1 == d) ? e->dot2 : e->dot1;
-            printf("%s%d", j ? "," : "", d2->index);
-        }
-        printf("] faces[");
-        for (j = 0; j < d->order; j++) {
-            grid_face *f = d->faces[j];
-            printf("%s%d", j ? "," : "", f ? f->index : -1);
-        }
-        printf("]\n");
-    }
-#endif
-#ifdef SVG_GRID
-    grid_try_svg(g, SVG_DOTS | SVG_EDGES | SVG_FACES);
-#endif
-}
-
 /* Helper function for building incomplete-edges list in
  * grid_make_consistent() */
 static int grid_edge_bydots_cmpfn(void *v1, void *v2)
@@ -368,8 +202,6 @@ static void grid_make_consistent(grid *g)
 {
     int i;
     tree234 *incomplete_edges;
-
-    grid_debug_basic(g);
 
     /* ====== Stage 1 ======
      * Generate edges
@@ -649,8 +481,6 @@ static void grid_make_consistent(grid *g)
             g->highest_y = max(g->highest_y, d->y);
         }
     }
-
-    grid_debug_derived(g);
 }
 
 /* Helpers for making grid-generation easier.  These functions are only
@@ -2462,21 +2292,21 @@ static grid *grid_new_dodecagonal(int width, int height, const char *desc)
             d = grid_get_dot(g, points, px - (  a    ), py - (2*a + b)); grid_face_set_dot(g, d, 11);
 
             /* triangle below dodecagon */
-	    if ((y < height - 1 && (x < width - 1 || !(y % 2)) && (x > 0 || (y % 2)))) {
-	      	grid_face_add_new(g, 3);
-	      	d = grid_get_dot(g, points, px + a, py + (2*a +   b)); grid_face_set_dot(g, d, 0);
-	      	d = grid_get_dot(g, points, px    , py + (2*a + 2*b)); grid_face_set_dot(g, d, 1);
-	      	d = grid_get_dot(g, points, px - a, py + (2*a +   b)); grid_face_set_dot(g, d, 2);
-	    }
+            if ((y < height - 1 && (x < width - 1 || !(y % 2)) && (x > 0 || (y % 2)))) {
+                      grid_face_add_new(g, 3);
+                      d = grid_get_dot(g, points, px + a, py + (2*a +   b)); grid_face_set_dot(g, d, 0);
+                      d = grid_get_dot(g, points, px    , py + (2*a + 2*b)); grid_face_set_dot(g, d, 1);
+                      d = grid_get_dot(g, points, px - a, py + (2*a +   b)); grid_face_set_dot(g, d, 2);
+            }
 
             /* triangle above dodecagon */
-	    if ((y && (x < width - 1 || !(y % 2)) && (x > 0 || (y % 2)))) {
-	      	grid_face_add_new(g, 3);
-	      	d = grid_get_dot(g, points, px - a, py - (2*a +   b)); grid_face_set_dot(g, d, 0);
-	      	d = grid_get_dot(g, points, px    , py - (2*a + 2*b)); grid_face_set_dot(g, d, 1);
-	      	d = grid_get_dot(g, points, px + a, py - (2*a +   b)); grid_face_set_dot(g, d, 2);
-	    }
-	}
+            if ((y && (x < width - 1 || !(y % 2)) && (x > 0 || (y % 2)))) {
+                      grid_face_add_new(g, 3);
+                      d = grid_get_dot(g, points, px - a, py - (2*a +   b)); grid_face_set_dot(g, d, 0);
+                      d = grid_get_dot(g, points, px    , py - (2*a + 2*b)); grid_face_set_dot(g, d, 1);
+                      d = grid_get_dot(g, points, px + a, py - (2*a +   b)); grid_face_set_dot(g, d, 2);
+            }
+        }
     }
 
     freetree234(points);
@@ -2547,54 +2377,54 @@ static grid *grid_new_greatdodecagonal(int width, int height, const char *desc)
             d = grid_get_dot(g, points, px - (  a    ), py - (2*a + b)); grid_face_set_dot(g, d, 11);
 
             /* hexagon below dodecagon */
-	    if (y < height - 1 && (x < width - 1 || !(y % 2)) && (x > 0 || (y % 2))) {
-	      	grid_face_add_new(g, 6);
-	      	d = grid_get_dot(g, points, px +   a, py + (2*a +   b)); grid_face_set_dot(g, d, 0);
-	      	d = grid_get_dot(g, points, px + 2*a, py + (2*a + 2*b)); grid_face_set_dot(g, d, 1);
-	      	d = grid_get_dot(g, points, px +   a, py + (2*a + 3*b)); grid_face_set_dot(g, d, 2);
-	      	d = grid_get_dot(g, points, px -   a, py + (2*a + 3*b)); grid_face_set_dot(g, d, 3);
-	      	d = grid_get_dot(g, points, px - 2*a, py + (2*a + 2*b)); grid_face_set_dot(g, d, 4);
-	      	d = grid_get_dot(g, points, px -   a, py + (2*a +   b)); grid_face_set_dot(g, d, 5);
-	    }
+            if (y < height - 1 && (x < width - 1 || !(y % 2)) && (x > 0 || (y % 2))) {
+                      grid_face_add_new(g, 6);
+                      d = grid_get_dot(g, points, px +   a, py + (2*a +   b)); grid_face_set_dot(g, d, 0);
+                      d = grid_get_dot(g, points, px + 2*a, py + (2*a + 2*b)); grid_face_set_dot(g, d, 1);
+                      d = grid_get_dot(g, points, px +   a, py + (2*a + 3*b)); grid_face_set_dot(g, d, 2);
+                      d = grid_get_dot(g, points, px -   a, py + (2*a + 3*b)); grid_face_set_dot(g, d, 3);
+                      d = grid_get_dot(g, points, px - 2*a, py + (2*a + 2*b)); grid_face_set_dot(g, d, 4);
+                      d = grid_get_dot(g, points, px -   a, py + (2*a +   b)); grid_face_set_dot(g, d, 5);
+            }
 
             /* hexagon above dodecagon */
-	    if (y && (x < width - 1 || !(y % 2)) && (x > 0 || (y % 2))) {
-	      	grid_face_add_new(g, 6);
-	      	d = grid_get_dot(g, points, px -   a, py - (2*a +   b)); grid_face_set_dot(g, d, 0);
-	      	d = grid_get_dot(g, points, px - 2*a, py - (2*a + 2*b)); grid_face_set_dot(g, d, 1);
-	      	d = grid_get_dot(g, points, px -   a, py - (2*a + 3*b)); grid_face_set_dot(g, d, 2);
-	      	d = grid_get_dot(g, points, px +   a, py - (2*a + 3*b)); grid_face_set_dot(g, d, 3);
-	      	d = grid_get_dot(g, points, px + 2*a, py - (2*a + 2*b)); grid_face_set_dot(g, d, 4);
-	      	d = grid_get_dot(g, points, px +   a, py - (2*a +   b)); grid_face_set_dot(g, d, 5);
-	    }
+            if (y && (x < width - 1 || !(y % 2)) && (x > 0 || (y % 2))) {
+                      grid_face_add_new(g, 6);
+                      d = grid_get_dot(g, points, px -   a, py - (2*a +   b)); grid_face_set_dot(g, d, 0);
+                      d = grid_get_dot(g, points, px - 2*a, py - (2*a + 2*b)); grid_face_set_dot(g, d, 1);
+                      d = grid_get_dot(g, points, px -   a, py - (2*a + 3*b)); grid_face_set_dot(g, d, 2);
+                      d = grid_get_dot(g, points, px +   a, py - (2*a + 3*b)); grid_face_set_dot(g, d, 3);
+                      d = grid_get_dot(g, points, px + 2*a, py - (2*a + 2*b)); grid_face_set_dot(g, d, 4);
+                      d = grid_get_dot(g, points, px +   a, py - (2*a +   b)); grid_face_set_dot(g, d, 5);
+            }
 
             /* square on right of dodecagon */
-	    if (x < width - 1) {
-	      	grid_face_add_new(g, 4);
-	      	d = grid_get_dot(g, points, px + 2*a + b, py - a); grid_face_set_dot(g, d, 0);
-	      	d = grid_get_dot(g, points, px + 4*a + b, py - a); grid_face_set_dot(g, d, 1);
-	      	d = grid_get_dot(g, points, px + 4*a + b, py + a); grid_face_set_dot(g, d, 2);
-	      	d = grid_get_dot(g, points, px + 2*a + b, py + a); grid_face_set_dot(g, d, 3);
-	    }
+            if (x < width - 1) {
+                      grid_face_add_new(g, 4);
+                      d = grid_get_dot(g, points, px + 2*a + b, py - a); grid_face_set_dot(g, d, 0);
+                      d = grid_get_dot(g, points, px + 4*a + b, py - a); grid_face_set_dot(g, d, 1);
+                      d = grid_get_dot(g, points, px + 4*a + b, py + a); grid_face_set_dot(g, d, 2);
+                      d = grid_get_dot(g, points, px + 2*a + b, py + a); grid_face_set_dot(g, d, 3);
+            }
 
             /* square on top right of dodecagon */
-	    if (y && (x < width - 1 || !(y % 2))) {
-	      	grid_face_add_new(g, 4);
-	      	d = grid_get_dot(g, points, px + (  a    ), py - (2*a +   b)); grid_face_set_dot(g, d, 0);
-		d = grid_get_dot(g, points, px + (2*a    ), py - (2*a + 2*b)); grid_face_set_dot(g, d, 1);
-		d = grid_get_dot(g, points, px + (2*a + b), py - (  a + 2*b)); grid_face_set_dot(g, d, 2);
-		d = grid_get_dot(g, points, px + (  a + b), py - (  a +   b)); grid_face_set_dot(g, d, 3);
-	    }
+            if (y && (x < width - 1 || !(y % 2))) {
+                      grid_face_add_new(g, 4);
+                      d = grid_get_dot(g, points, px + (  a    ), py - (2*a +   b)); grid_face_set_dot(g, d, 0);
+                d = grid_get_dot(g, points, px + (2*a    ), py - (2*a + 2*b)); grid_face_set_dot(g, d, 1);
+                d = grid_get_dot(g, points, px + (2*a + b), py - (  a + 2*b)); grid_face_set_dot(g, d, 2);
+                d = grid_get_dot(g, points, px + (  a + b), py - (  a +   b)); grid_face_set_dot(g, d, 3);
+            }
 
             /* square on top left of dodecagon */
-	    if (y && (x || (y % 2))) {
-	      	grid_face_add_new(g, 4);
-		d = grid_get_dot(g, points, px - (  a + b), py - (  a +   b)); grid_face_set_dot(g, d, 0);
-		d = grid_get_dot(g, points, px - (2*a + b), py - (  a + 2*b)); grid_face_set_dot(g, d, 1);
-		d = grid_get_dot(g, points, px - (2*a    ), py - (2*a + 2*b)); grid_face_set_dot(g, d, 2);
-	      	d = grid_get_dot(g, points, px - (  a    ), py - (2*a +   b)); grid_face_set_dot(g, d, 3);
-	    }
-	}
+            if (y && (x || (y % 2))) {
+                      grid_face_add_new(g, 4);
+                d = grid_get_dot(g, points, px - (  a + b), py - (  a +   b)); grid_face_set_dot(g, d, 0);
+                d = grid_get_dot(g, points, px - (2*a + b), py - (  a + 2*b)); grid_face_set_dot(g, d, 1);
+                d = grid_get_dot(g, points, px - (2*a    ), py - (2*a + 2*b)); grid_face_set_dot(g, d, 2);
+                      d = grid_get_dot(g, points, px - (  a    ), py - (2*a +   b)); grid_face_set_dot(g, d, 3);
+            }
+        }
     }
 
     freetree234(points);

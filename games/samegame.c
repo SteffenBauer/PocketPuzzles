@@ -390,22 +390,6 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
             if (n == 0)
                 break;               /* we're done */
 
-#ifdef GENERATION_DIAGNOSTICS
-            printf("initial grid:\n");
-            {
-                int x,y;
-                for (y = 0; y < h; y++) {
-                    for (x = 0; x < w; x++) {
-                        if (grid[y*w+x] == 0)
-                            printf("-");
-                        else
-                            printf("%d", grid[y*w+x]);
-                    }
-                    printf("\n");
-                }
-            }
-#endif
-
             /*
              * Now go through the list one element at a time in
              * random order, and actually attempt to insert
@@ -447,25 +431,6 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
                  */
                 for (i = 0; i+1 <= y; i++)
                     grid2[i*w+x] = grid2[(i+1)*w+x];
-
-#ifdef GENERATION_DIAGNOSTICS
-                printf("trying at n=%d (%d,%d)\n", n, x, y);
-                grid2[y*w+x] = tc;
-                {
-                    int x,y;
-                    for (y = 0; y < h; y++) {
-                        for (x = 0; x < w; x++) {
-                            if (grid2[y*w+x] == 0)
-                                printf("-");
-                            else if (grid2[y*w+x] <= nc)
-                                printf("%d", grid2[y*w+x]);
-                            else
-                                printf("*");
-                        }
-                        printf("\n");
-                    }
-                }
-#endif
 
                 /*
                  * Pick our square colour so that it doesn't match any
@@ -537,9 +502,6 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
                  * can conveniently check that I really have made a
                  * _valid_ inverse move later on.
                  */
-#ifdef GENERATION_DIAGNOSTICS
-                printf("picked colour %d\n", c);
-#endif
                 grid2[y*w+x] = tc;
 
                 /*
@@ -580,10 +542,6 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
                     continue;
 
                 dir = dirs[random_upto(rs, ndirs)];
-
-#ifdef GENERATION_DIAGNOSTICS
-                printf("picked dir %d\n", dir);
-#endif
 
                 /*
                  * Insert a square within column (x+dir) at position y.
@@ -659,31 +617,6 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
                     bool ok = true;
                     int fillstart = -1, ntc = 0;
 
-#ifdef GENERATION_DIAGNOSTICS
-                    {
-                        int x,y;
-                        printf("testing move (new, old):\n");
-                        for (y = 0; y < h; y++) {
-                            for (x = 0; x < w; x++) {
-                                if (grid2[y*w+x] == 0)
-                                    printf("-");
-                                else if (grid2[y*w+x] <= nc)
-                                    printf("%d", grid2[y*w+x]);
-                                else
-                                    printf("*");
-                            }
-                            printf("   ");
-                            for (x = 0; x < w; x++) {
-                                if (grid[y*w+x] == 0)
-                                    printf("-");
-                                else
-                                    printf("%d", grid[y*w+x]);
-                            }
-                            printf("\n");
-                        }
-                    }
-#endif
-
                     for (x1 = x2 = 0; x2 < w; x2++) {
                         bool usedcol = false;
 
@@ -696,10 +629,6 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
                                     (y2-1 >= 0 && grid2[(y2-1)*w+x2] == c) ||
                                     (x2+1 < w && grid2[y2*w+x2+1] == c) ||
                                     (x2-1 >= 0 && grid2[y2*w+x2-1] == c)) {
-#ifdef GENERATION_DIAGNOSTICS
-                                    printf("adjacency failure at %d,%d\n",
-                                           x2, y2);
-#endif
                                     ok = false;
                                 }
                                 continue;
@@ -708,10 +637,6 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
                                 break;
                             usedcol = true;
                             if (grid2[y2*w+x2] != grid[y1*w+x1]) {
-#ifdef GENERATION_DIAGNOSTICS
-                                printf("matching failure at %d,%d vs %d,%d\n",
-                                       x2, y2, x1, y1);
-#endif
                                 ok = false;
                             }
                             y1--;
@@ -725,10 +650,6 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
                         if (usedcol) {
                             while (y1 >= 0) {
                                 if (grid[y1*w+x1] != 0) {
-#ifdef GENERATION_DIAGNOSTICS
-                                    printf("junk at column top (%d,%d)\n",
-                                           x1, y1);
-#endif
                                     ok = false;
                                 }
                                 y1--;
@@ -764,16 +685,10 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
                     i = j = 0;
                     assert(fillstart >= 0);
                     list[i++] = fillstart;
-#ifdef OUTPUT_SOLUTION
-                    printf("M");
-#endif
                     while (j < i) {
                         k = list[j];
                         x = k % w;
                         y = k / w;
-#ifdef OUTPUT_SOLUTION
-                        printf("%s%d", j ? "," : "", k);
-#endif
                         j++;
 
                         assert(grid2[k] == tc);
@@ -788,10 +703,6 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
                         if (y+1 < h && grid2[k+w] == tc)
                             list[i++] = k+w;
                     }
-#ifdef OUTPUT_SOLUTION
-                    printf("\n");
-#endif
-
                     /*
                      * Check that we've filled the same number of
                      * tc squares as we originally found.
@@ -804,22 +715,6 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
                 break;               /* done it! */
             }
 
-#ifdef GENERATION_DIAGNOSTICS
-            {
-                int x,y;
-                printf("n=%d\n", n);
-                for (y = 0; y < h; y++) {
-                    for (x = 0; x < w; x++) {
-                        if (grid[y*w+x] == 0)
-                            printf("-");
-                        else
-                            printf("%d", grid[y*w+x]);
-                    }
-                    printf("\n");
-                }
-            }
-#endif
-
             if (n < 0)
                 break;
         }
@@ -829,41 +724,10 @@ static void gen_grid(int w, int h, int nc, int *grid, random_state *rs)
             if (grid[i] == 0) {
                 ok = false;
                 failures++;
-#if defined GENERATION_DIAGNOSTICS || defined SHOW_INCOMPLETE
-                {
-                    int x,y;
-                    printf("incomplete grid:\n");
-                    for (y = 0; y < h; y++) {
-                        for (x = 0; x < w; x++) {
-                            if (grid[y*w+x] == 0)
-                                printf("-");
-                            else
-                                printf("%d", grid[y*w+x]);
-                        }
-                        printf("\n");
-                    }
-                }
-#endif
                 break;
             }
 
     } while (!ok);
-
-#if defined GENERATION_DIAGNOSTICS || defined COUNT_FAILURES
-    printf("%d failures\n", failures);
-#endif
-#ifdef GENERATION_DIAGNOSTICS
-    {
-        int x,y;
-        printf("final grid:\n");
-        for (y = 0; y < h; y++) {
-            for (x = 0; x < w; x++) {
-                printf("%d", grid[y*w+x]);
-            }
-            printf("\n");
-        }
-    }
-#endif
 
     sfree(grid2);
     sfree(list);

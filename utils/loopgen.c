@@ -193,20 +193,20 @@ static bool can_colour_face(grid *g, char* board, int face_index,
         /* (i,j) are now advanced to next face */
         current_face = test_face->dots[i]->faces[j];
         s = (FACE_COLOUR(current_face) == colour);
-	if (!starting_dot) {
-	    starting_dot = test_face->dots[i];
-	    starting_face = current_face;
-	    current_state = s;
-	} else {
-	    if (s != current_state) {
-		++transitions;
-		current_state = s;
-		if (transitions > 2)
-		    break;
-	    }
-	    if (test_face->dots[i] == starting_dot &&
-		current_face == starting_face)
-		break;
+        if (!starting_dot) {
+            starting_dot = test_face->dots[i];
+            starting_face = current_face;
+            current_state = s;
+        } else {
+            if (s != current_state) {
+                ++transitions;
+                current_state = s;
+                if (transitions > 2)
+                    break;
+            }
+            if (test_face->dots[i] == starting_dot &&
+                current_face == starting_face)
+                break;
         }
     }
 
@@ -375,7 +375,7 @@ void generate_loop(grid *g, char *board, random_state *rs,
             /* No more faces we can use at all. */
             break;
         }
-	assert(c_lightable != 0 && c_darkable != 0);
+        assert(c_lightable != 0 && c_darkable != 0);
 
         /* Choose a colour, and colour the best available face
          * with that colour. */

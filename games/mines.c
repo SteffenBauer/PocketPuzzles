@@ -23,7 +23,6 @@ enum {
     COL_MINE, COL_BANG, COL_CROSS, COL_FLAG, COL_FLAGBASE, COL_QUERY,
     COL_HIGHLIGHT, COL_LOWLIGHT,
     COL_WRONGNUMBER,
-    COL_CURSOR,
     NCOLOURS
 };
 
@@ -388,12 +387,7 @@ static int setmunge(int x1, int y1, int mask1, int x2, int y2, int mask2,
 static void ss_add_todo(struct setstore *ss, struct set *s)
 {
     if (s->todo)
-    return;                   /* already on it */
-
-#ifdef SOLVER_DIAGNOSTICS
-    printf("adding set on todo list: %d,%d %03x %d\n",
-       s->x, s->y, s->mask, s->mines);
-#endif
+        return;                   /* already on it */
 
     s->prev = ss->todo_tail;
     if (s->prev)
@@ -448,9 +442,6 @@ static void ss_remove(struct setstore *ss, struct set *s)
 {
     struct set *next = s->next, *prev = s->prev;
 
-#ifdef SOLVER_DIAGNOSTICS
-    printf("removing set %d,%d %03x\n", s->x, s->y, s->mask);
-#endif
     /*
      * Remove s from the todo list.
      */
@@ -681,44 +672,35 @@ static int minesolve(int w, int h, int n, signed char *grid,
      */
     while (std->head != -1) {
         i = std->head;
-#ifdef SOLVER_DIAGNOSTICS
-        printf("known square at %d,%d [%d]\n", i%w, i/w, grid[i]);
-#endif
         std->head = std->next[i];
         if (std->head == -1)
-        std->tail = -1;
+            std->tail = -1;
 
         x = i % w;
         y = i / w;
 
         if (grid[i] >= 0) {
-        int dx, dy, mines, bit, val;
-#ifdef SOLVER_DIAGNOSTICS
-        printf("creating set around this square\n");
-#endif
-        /*
-         * Empty square. Construct the set of non-known squares
-         * around this one, and determine its mine count.
-         */
-        mines = grid[i];
-        bit = 1;
-        val = 0;
-        for (dy = -1; dy <= +1; dy++) {
-            for (dx = -1; dx <= +1; dx++) {
-#ifdef SOLVER_DIAGNOSTICS
-            printf("grid %d,%d = %d\n", x+dx, y+dy, grid[i+dy*w+dx]);
-#endif
-            if (x+dx < 0 || x+dx >= w || y+dy < 0 || y+dy >= h)
-                /* ignore this one */;
-            else if (grid[i+dy*w+dx] == -1)
-                mines--;
-            else if (grid[i+dy*w+dx] == -2)
-                val |= bit;
-            bit <<= 1;
+            int dx, dy, mines, bit, val;
+            /*
+             * Empty square. Construct the set of non-known squares
+             * around this one, and determine its mine count.
+             */
+            mines = grid[i];
+            bit = 1;
+            val = 0;
+            for (dy = -1; dy <= +1; dy++) {
+                for (dx = -1; dx <= +1; dx++) {
+                if (x+dx < 0 || x+dx >= w || y+dy < 0 || y+dy >= h)
+                    /* ignore this one */;
+                else if (grid[i+dy*w+dx] == -1)
+                    mines--;
+                else if (grid[i+dy*w+dx] == -2)
+                    val |= bit;
+                bit <<= 1;
+                }
             }
-        }
-        if (val)
-            ss_add(ss, x-1, y-1, val, mines);
+            if (val)
+                ss_add(ss, x-1, y-1, val, mines);
         }
 
         /*
@@ -727,9 +709,6 @@ static int minesolve(int w, int h, int n, signed char *grid,
          * one which does not.
          */
         {
-#ifdef SOLVER_DIAGNOSTICS
-        printf("finding sets containing known square %d,%d\n", x, y);
-#endif
         list = ss_overlap(ss, x, y, 1);
 
         for (j = 0; list[j]; j++) {
@@ -777,10 +756,6 @@ static int minesolve(int w, int h, int n, signed char *grid,
      * based on it.
      */
     if ((s = ss_todo(ss)) != NULL) {
-
-#ifdef SOLVER_DIAGNOSTICS
-        printf("set to do: %d,%d %03x %d\n", s->x, s->y, s->mask, s->mines);
-#endif
         /*
          * Firstly, see if this set has a mine count of zero or
          * of its own cardinality.
@@ -790,9 +765,6 @@ static int minesolve(int w, int h, int n, signed char *grid,
          * If so, we can immediately mark all the squares
          * in the set as known.
          */
-#ifdef SOLVER_DIAGNOSTICS
-        printf("easy\n");
-#endif
         known_squares(w, h, std, grid, open, ctx,
                   s->x, s->y, s->mask, (s->mines != 0));
 
@@ -903,38 +875,19 @@ static int minesolve(int w, int h, int n, signed char *grid,
         squaresleft = 0;
         minesleft = n;
         for (i = 0; i < w*h; i++) {
-        if (grid[i] == -1)
-            minesleft--;
-        else if (grid[i] == -2)
-            squaresleft++;
+            if (grid[i] == -1)
+                minesleft--;
+            else if (grid[i] == -2)
+                squaresleft++;
         }
-
-#ifdef SOLVER_DIAGNOSTICS
-        printf("global deduction time: squaresleft=%d minesleft=%d\n",
-           squaresleft, minesleft);
-        for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
-            int v = grid[y*w+x];
-            if (v == -1)
-            putchar('*');
-            else if (v == -2)
-            putchar('?');
-            else if (v == 0)
-            putchar('-');
-            else
-            putchar('0' + v);
-        }
-        putchar('\n');
-        }
-#endif
 
         /*
          * If there _are_ no unknown squares, we have actually
          * finished.
          */
         if (squaresleft == 0) {
-        assert(minesleft == 0);
-        break;
+            assert(minesleft == 0);
+            break;
         }
 
         /*
@@ -943,11 +896,11 @@ static int minesolve(int w, int h, int n, signed char *grid,
          * squares to play them in, then it's all easy.
          */
         if (minesleft == 0 || minesleft == squaresleft) {
-        for (i = 0; i < w*h; i++)
-            if (grid[i] == -2)
-            known_squares(w, h, std, grid, open, ctx,
-                      i % w, i / w, 1, minesleft != 0);
-        continue;           /* now go back to main deductive loop */
+            for (i = 0; i < w*h; i++)
+                if (grid[i] == -2)
+                known_squares(w, h, std, grid, open, ctx,
+                          i % w, i / w, 1, minesleft != 0);
+            continue;           /* now go back to main deductive loop */
         }
 
         /*
@@ -1041,11 +994,6 @@ static int minesolve(int w, int h, int n, signed char *grid,
 
             setused[cursor++] = ok;
             } else {
-#ifdef SOLVER_DIAGNOSTICS
-            printf("trying a set combination with %d %d\n",
-                   squaresleft, minesleft);
-#endif /* SOLVER_DIAGNOSTICS */
-
             /*
              * We've reached the end. See if we've got
              * anything interesting.
@@ -1125,34 +1073,6 @@ static int minesolve(int w, int h, int n, signed char *grid,
     if (done_something)
         continue;
 
-#ifdef SOLVER_DIAGNOSTICS
-    /*
-     * Dump the current known state of the grid.
-     */
-    printf("solver ran out of steam, ret=%d, grid:\n", nperturbs);
-    for (y = 0; y < h; y++) {
-        for (x = 0; x < w; x++) {
-        int v = grid[y*w+x];
-        if (v == -1)
-            putchar('*');
-        else if (v == -2)
-            putchar('?');
-        else if (v == 0)
-            putchar('-');
-        else
-            putchar('0' + v);
-        }
-        putchar('\n');
-    }
-
-    {
-        struct set *s;
-
-        for (i = 0; (s = index234(ss->sets, i)) != NULL; i++)
-        printf("remaining set: %d,%d %03x %d\n", s->x, s->y, s->mask, s->mines);
-    }
-#endif
-
     /*
      * Now we really are at our wits' end as far as solving
      * this grid goes. Our only remaining option is to call
@@ -1173,16 +1093,10 @@ static int minesolve(int w, int h, int n, signed char *grid,
          * If we have no sets at all, we must give up.
          */
         if (count234(ss->sets) == 0) {
-#ifdef SOLVER_DIAGNOSTICS
-        printf("perturbing on entire unknown set\n");
-#endif
-        ret = perturb(ctx, grid, 0, 0, 0);
+            ret = perturb(ctx, grid, 0, 0, 0);
         } else {
-        s = index234(ss->sets, random_upto(rs, count234(ss->sets)));
-#ifdef SOLVER_DIAGNOSTICS
-        printf("perturbing on set %d,%d %03x\n", s->x, s->y, s->mask);
-#endif
-        ret = perturb(ctx, grid, s->x, s->y, s->mask);
+            s = index234(ss->sets, random_upto(rs, count234(ss->sets)));
+            ret = perturb(ctx, grid, s->x, s->y, s->mask);
         }
 
         if (ret) {
@@ -1198,12 +1112,6 @@ static int minesolve(int w, int h, int n, signed char *grid,
          * list.
          */
         for (i = 0; i < ret->n; i++) {
-#ifdef SOLVER_DIAGNOSTICS
-            printf("perturbation %s mine at %d,%d\n",
-               ret->changes[i].delta > 0 ? "added" : "removed",
-               ret->changes[i].x, ret->changes[i].y);
-#endif
-
             if (ret->changes[i].delta < 0 &&
             grid[ret->changes[i].y*w+ret->changes[i].x] != -2) {
             std_add(std, ret->changes[i].y*w+ret->changes[i].x);
@@ -1225,34 +1133,6 @@ static int minesolve(int w, int h, int n, signed char *grid,
          */
         sfree(ret->changes);
         sfree(ret);
-
-#ifdef SOLVER_DIAGNOSTICS
-        /*
-         * Dump the current known state of the grid.
-         */
-        printf("state after perturbation:\n");
-        for (y = 0; y < h; y++) {
-            for (x = 0; x < w; x++) {
-            int v = grid[y*w+x];
-            if (v == -1)
-                putchar('*');
-            else if (v == -2)
-                putchar('?');
-            else if (v == 0)
-                putchar('-');
-            else
-                putchar('0' + v);
-            }
-            putchar('\n');
-        }
-
-        {
-            struct set *s;
-
-            for (i = 0; (s = index234(ss->sets, i)) != NULL; i++)
-            printf("remaining set: %d,%d %03x %d\n", s->x, s->y, s->mask, s->mines);
-        }
-#endif
 
         /*
          * And now we can go back round the deductive loop.
@@ -1695,28 +1575,6 @@ static struct perturbations *mineperturb(void *vctx, signed char *grid,
         }
     }
 
-#ifdef GENERATION_DIAGNOSTICS
-    {
-    int yy, xx;
-    printf("grid after perturbing:\n");
-    for (yy = 0; yy < ctx->h; yy++) {
-        for (xx = 0; xx < ctx->w; xx++) {
-        int v = ctx->grid[yy*ctx->w+xx];
-        if (yy == ctx->sy && xx == ctx->sx) {
-            assert(!v);
-            putchar('S');
-        } else if (v) {
-            putchar('*');
-        } else {
-            putchar('-');
-        }
-        }
-        putchar('\n');
-    }
-    printf("\n");
-    }
-#endif
-
     return ret;
 }
 
@@ -1762,28 +1620,6 @@ static bool *minegen(int w, int h, int n, int x, int y, bool unique,
 
         sfree(tmp);
     }
-
-#ifdef GENERATION_DIAGNOSTICS
-    {
-        int yy, xx;
-        printf("grid after initial generation:\n");
-        for (yy = 0; yy < h; yy++) {
-        for (xx = 0; xx < w; xx++) {
-            int v = ret[yy*w+xx];
-            if (yy == y && xx == x) {
-            assert(!v);
-            putchar('S');
-            } else if (v) {
-            putchar('*');
-            } else {
-            putchar('-');
-            }
-        }
-        putchar('\n');
-        }
-        printf("\n");
-    }
-#endif
 
     /*
      * Now set up a results grid to run the solver in, and a
@@ -2252,8 +2088,6 @@ struct game_ui {
     int validradius;
     int deaths;
     bool completed;
-    int cur_x, cur_y;
-    bool cur_visible;
     int click_mode;
 };
 
@@ -2264,8 +2098,6 @@ static game_ui *new_ui(const game_state *state)
     ui->hradius = ui->validradius = 0;
     ui->deaths = 0;
     ui->completed = false;
-    ui->cur_x = ui->cur_y = 0;
-    ui->cur_visible = false;
     ui->click_mode = 0;
     return ui;
 }
@@ -2293,7 +2125,7 @@ static void decode_ui(game_ui *ui, const char *encoding, const game_state *state
     int p= 0;
     sscanf(encoding, "D%d%n", &ui->deaths, &p);
     if (encoding[p] == 'C')
-    ui->completed = true;
+        ui->completed = true;
 }
 
 static config_item *get_prefs(game_ui *ui)
@@ -2341,7 +2173,6 @@ struct game_drawstate {
      *     - -22 and -23 mean the tile is highlighted for a possible
      *       click.
      */
-    int cur_x, cur_y; /* -1, -1 for no cursor displayed. */
 };
 
 static char *interpret_move(const game_state *from, game_ui *ui,
@@ -2369,7 +2200,6 @@ static char *interpret_move(const game_state *from, game_ui *ui,
         ui->hy = cy;
         ui->hradius = (from->grid[cy*from->w+cx] >= 0 ? 1 : 0);
         ui->validradius = ui->hradius;
-        ui->cur_visible = false;
         return MOVE_UI_UPDATE;
     }
 
@@ -2626,7 +2456,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_HIGHLIGHT   * 3 + i] = 0.75F;
         ret[COL_LOWLIGHT    * 3 + i] = 0.25;
         ret[COL_WRONGNUMBER * 3 + i] = 0.5F;
-        ret[COL_CURSOR      * 3 + i] = 0.75F;
     }
 
     *ncolours = NCOLOURS;
@@ -2643,7 +2472,6 @@ static game_drawstate *game_new_drawstate(drawing *dr, const game_state *state)
     ds->tilesize = 0;                  /* not decided yet */
     ds->grid = snewn(ds->w * ds->h, signed char);
     ds->bg = -1;
-    ds->cur_x = ds->cur_y = -1;
 
     memset(ds->grid, -99, ds->w * ds->h);
 
@@ -2798,8 +2626,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 {
     int x, y;
     int mines, markers, closed, bg;
-    int cx = -1, cy = -1;
-    bool cmoved;
+    char statusbar[512];
 
     bg = COL_BACKGROUND;
 
@@ -2828,10 +2655,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
         ds->started = true;
     }
 
-    if (ui->cur_visible) cx = ui->cur_x;
-    if (ui->cur_visible) cy = ui->cur_y;
-    cmoved = (cx != ds->cur_x || cy != ds->cur_y);
-
     /*
      * Now draw the tiles. Also in this loop, count up the number
      * of mines, mine markers, and closed squares.
@@ -2840,110 +2663,97 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (y = 0; y < ds->h; y++)
     for (x = 0; x < ds->w; x++) {
         int v = state->grid[y*ds->w+x];
-            bool cc = false;
-
-            if (v < 0)
-                closed++;
+        if (v < 0)
+            closed++;
         if (v == -1)
-        markers++;
+            markers++;
         if (state->layout->mines && state->layout->mines[y*ds->w+x])
-        mines++;
+            mines++;
 
-            if (v >= 0 && v <= 8) {
-                /*
-                 * Count up the flags around this tile, and if
-                 * there are too _many_, highlight the tile.
-                 */
-                int dx, dy, flags = 0;
+        if (v >= 0 && v <= 8) {
+            /*
+             * Count up the flags around this tile, and if
+             * there are too _many_, highlight the tile.
+             */
+            int dx, dy, flags = 0;
 
-                for (dy = -1; dy <= +1; dy++)
-                    for (dx = -1; dx <= +1; dx++) {
-                        int nx = x+dx, ny = y+dy;
-                        if (nx >= 0 && nx < ds->w &&
-                            ny >= 0 && ny < ds->h &&
-                            state->grid[ny*ds->w+nx] == -1)
-                            flags++;
-                    }
-
-                if (flags > v)
-                    v |= 32;
+            for (dy = -1; dy <= +1; dy++)
+            for (dx = -1; dx <= +1; dx++) {
+               int nx = x+dx, ny = y+dy;
+               if (nx >= 0 && nx < ds->w &&
+                   ny >= 0 && ny < ds->h &&
+                   state->grid[ny*ds->w+nx] == -1)
+                  flags++;
             }
 
+            if (flags > v)
+                v |= 32;
+        }
+
         if ((v == -2 || v == -3) &&
-        (abs(x-ui->hx) <= ui->hradius && abs(y-ui->hy) <= ui->hradius))
-        v -= 20;
+            (abs(x-ui->hx) <= ui->hradius && abs(y-ui->hy) <= ui->hradius))
+            v -= 20;
 
-            if (cmoved && /* if cursor has moved, force redraw of curr and prev pos */
-                ((x == cx && y == cy) || (x == ds->cur_x && y == ds->cur_y)))
-              cc = true;
-
-        if (ds->grid[y*ds->w+x] != v || bg != ds->bg || cc) {
-        draw_tile(dr, ds, COORD(x), COORD(y), v,
-                          (x == cx && y == cy) ? COL_CURSOR : bg);
-        ds->grid[y*ds->w+x] = v;
+        if (ds->grid[y*ds->w+x] != v || bg != ds->bg ) {
+            draw_tile(dr, ds, COORD(x), COORD(y), v, bg);
+            ds->grid[y*ds->w+x] = v;
         }
     }
     ds->bg = bg;
-    ds->cur_x = cx; ds->cur_y = cy;
 
     if (!state->layout->mines)
-    mines = state->layout->n;
+        mines = state->layout->n;
 
     /*
      * Update the status bar.
      */
-    {
-    char statusbar[512];
     if (state->dead) {
         sprintf(statusbar, "DEAD!");
     } else if (state->won) {
-            if (state->used_solve)
-                sprintf(statusbar, "Auto-solved.");
-            else
-                sprintf(statusbar, "COMPLETED!");
+        if (state->used_solve)
+            sprintf(statusbar, "Auto-solved.");
+        else
+            sprintf(statusbar, "COMPLETED!");
     } else {
-            int safe_closed = closed - mines;
+        int safe_closed = closed - mines;
         sprintf(statusbar, "Marked: %d / %d", markers, mines);
-            if (safe_closed > 0 && safe_closed <= 9) {
-                /*
-                 * In the situation where there's a very small number
-                 * of _non_-mine squares left unopened, it's helpful
-                 * to mention that number in the status line, to save
-                 * the player from having to count it up
-                 * painstakingly. This is particularly important if
-                 * the player has turned up the mine density to the
-                 * point where game generation resorts to its weird
-                 * pathological fallback of a very dense mine area
-                 * with a clearing in the middle, because that often
-                 * leads to a deduction you can only make by knowing
-                 * that there is (say) exactly one non-mine square to
-                 * find, and it's a real pain to have to count up two
-                 * large numbers of squares and subtract them to get
-                 * that value of 1.
-                 *
-                 * The threshold value of 8 for displaying this
-                 * information is because that's the largest number of
-                 * non-mine squares that might conceivably fit around
-                 * a single central square, and the most likely way to
-                 * _use_ this information is to observe that if all
-                 * the remaining safe squares are adjacent to _this_
-                 * square then everything else can be immediately
-                 * flagged as a mine.
-                 */
-                if (safe_closed == 1) {
-                    sprintf(statusbar + strlen(statusbar),
-                            " (1 safe square remains)");
-                } else {
-                    sprintf(statusbar + strlen(statusbar),
-                            " (%d safe squares remain)", safe_closed);
-                }
+        if (safe_closed > 0 && safe_closed <= 9) {
+            /*
+             * In the situation where there's a very small number
+             * of _non_-mine squares left unopened, it's helpful
+             * to mention that number in the status line, to save
+             * the player from having to count it up
+             * painstakingly. This is particularly important if
+             * the player has turned up the mine density to the
+             * point where game generation resorts to its weird
+             * pathological fallback of a very dense mine area
+             * with a clearing in the middle, because that often
+             * leads to a deduction you can only make by knowing
+             * that there is (say) exactly one non-mine square to
+             * find, and it's a real pain to have to count up two
+             * large numbers of squares and subtract them to get
+             * that value of 1.
+             *
+             * The threshold value of 8 for displaying this
+             * information is because that's the largest number of
+             * non-mine squares that might conceivably fit around
+             * a single central square, and the most likely way to
+             * _use_ this information is to observe that if all
+             * the remaining safe squares are adjacent to _this_
+             * square then everything else can be immediately
+             * flagged as a mine.
+             */
+            if (safe_closed == 1) {
+                sprintf(statusbar + strlen(statusbar), " (1 safe square remains)");
+            } else {
+                sprintf(statusbar + strlen(statusbar), " (%d safe squares remain)", safe_closed);
             }
+        }
     }
-        if (ui->deaths)
-            sprintf(statusbar + strlen(statusbar),
-                    "  Deaths: %d", ui->deaths);
+    if (ui->deaths)
+        sprintf(statusbar + strlen(statusbar), "  Deaths: %d", ui->deaths);
+
     status_bar(dr, statusbar);
-    }
 }
 
 static float game_anim_length(const game_state *oldstate,

@@ -37,7 +37,6 @@ enum {
     COL_TEXT,
     COL_GRID,
     COL_DRAG, COL_DRAGERASE,
-    COL_CURSOR,
     NCOLOURS
 };
 
@@ -255,14 +254,6 @@ static void remove_rect_placement(int w, int h,
 {
     int x, y, xx, yy;
 
-#ifdef SOLVER_DIAGNOSTICS
-    printf("ruling out rect %d placement at %d,%d w=%d h=%d\n", rectnum,
-           rectpositions[rectnum].rects[placement].x,
-           rectpositions[rectnum].rects[placement].y,
-           rectpositions[rectnum].rects[placement].w,
-           rectpositions[rectnum].rects[placement].h);
-#endif
-
     /*
      * Decrement each entry in the overlaps array to reflect the
      * removal of this rectangle placement.
@@ -404,11 +395,6 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
                         rlist[rlistn].y = y;
                         rlist[rlistn].w = rw;
                         rlist[rlistn].h = rh;
-#ifdef SOLVER_DIAGNOSTICS
-                        printf("rect %d [area %d]: candidate position at"
-                               " %d,%d w=%d h=%d\n",
-                               i, area, x, y, rw, rh);
-#endif
                         rlistn++;
                     }
                 }
@@ -487,33 +473,6 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
     while (1) {
         bool done_something = false;
 
-#ifdef SOLVER_DIAGNOSTICS
-        printf("starting deduction loop\n");
-
-        for (i = 0; i < nrects; i++) {
-            printf("rect %d overlaps:\n", i);
-            {
-                int x, y;
-                for (y = 0; y < h; y++) {
-                    for (x = 0; x < w; x++) {
-                        printf("%3d", overlaps[(i * h + y) * w + x]);
-                    }
-                    printf("\n");
-                }
-            }
-        }
-        printf("rectbyplace:\n");
-        {
-            int x, y;
-            for (y = 0; y < h; y++) {
-                for (x = 0; x < w; x++) {
-                    printf("%3d", rectbyplace[y * w + x]);
-                }
-                printf("\n");
-            }
-        }
-#endif
-
         /*
          * Housekeeping. Look for rectangles whose number has only
          * one candidate position left, and mark that square as
@@ -530,10 +489,6 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
                         ret = 0;       /* inconsistency */
                         goto cleanup;
                     }
-#ifdef SOLVER_DIAGNOSTICS
-                    printf("marking %d,%d as known for rect %d"
-                           " (sole remaining number position)\n", x, y, i);
-#endif
 
                     for (j = 0; j < nrects; j++)
                         overlaps[(j * h + y) * w + x] = -1;
@@ -575,11 +530,6 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
                             ret = 0;   /* inconsistency */
                             goto cleanup;
                         }
-#ifdef SOLVER_DIAGNOSTICS
-                        printf("marking %d,%d as known for rect %d"
-                               " (intersection of all placements)\n",
-                               xx, yy, i);
-#endif
 
                         for (j = 0; j < nrects; j++)
                             overlaps[(j * h + yy) * w + xx] = -1;
@@ -615,15 +565,6 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
                              * another rectangle. Therefore we must
                              * rule it out.
                              */
-#ifdef SOLVER_DIAGNOSTICS
-                            printf("rect %d placement at %d,%d w=%d h=%d "
-                                   "contains %d,%d which is known-other\n", i,
-                                   rectpositions[i].rects[j].x,
-                                   rectpositions[i].rects[j].y,
-                                   rectpositions[i].rects[j].w,
-                                   rectpositions[i].rects[j].h,
-                                   x, y);
-#endif
                             del = true;
                         }
 
@@ -647,16 +588,6 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
                      */
                     for (k = 0; k < nrects; k++)
                         if (k != i && workspace[k] == numbers[k].npoints) {
-#ifdef SOLVER_DIAGNOSTICS
-                            printf("rect %d placement at %d,%d w=%d h=%d "
-                                   "contains all number points for rect %d\n",
-                                   i,
-                                   rectpositions[i].rects[j].x,
-                                   rectpositions[i].rects[j].y,
-                                   rectpositions[i].rects[j].w,
-                                   rectpositions[i].rects[j].h,
-                                   k);
-#endif
                             del = true;
                             break;
                         }
@@ -669,15 +600,6 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
                      * recently.).
                      */
                     if (!del && workspace[i] == 0) {
-#ifdef SOLVER_DIAGNOSTICS
-                        printf("rect %d placement at %d,%d w=%d h=%d "
-                               "contains none of its own number points\n",
-                               i,
-                               rectpositions[i].rects[j].x,
-                               rectpositions[i].rects[j].y,
-                               rectpositions[i].rects[j].w,
-                               rectpositions[i].rects[j].h);
-#endif
                         del = true;
                     }
                 }
@@ -719,10 +641,6 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
                      * rectangle `index' which _don't_ contain
                      * square x,y.
                      */
-#ifdef SOLVER_DIAGNOSTICS
-                    printf("square %d,%d can only be in rectangle %d\n",
-                           x, y, index);
-#endif
                     for (j = 0; j < rectpositions[index].n; j++) {
                         struct rect *r = &rectpositions[index].rects[j];
                         if (x >= r->x && x < r->x + r->w &&
@@ -793,10 +711,6 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
  
                 }
             }
-
-#ifdef SOLVER_DIAGNOSTICS
-            printf("%d candidate rect placements we could eliminate\n", nrpns);
-#endif
             if (nrpns > 0) {
                 /*
                  * Now choose one of these unwanted rectangle
@@ -820,22 +734,12 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
                  * This will ensure that it is eliminated during
                  * the next pass of rectangle-focused deduction.
                  */
-#ifdef SOLVER_DIAGNOSTICS
-                printf("ensuring number for rect %d is within"
-                       " rect %d's placement at %d,%d w=%d h=%d\n",
-                       k, i, r.x, r.y, r.w, r.h);
-#endif
-
                 for (m = 0; m < numbers[k].npoints; m++) {
                     int x = numbers[k].points[m].x;
                     int y = numbers[k].points[m].y;
 
                     if (x < r.x || x >= r.x + r.w ||
                         y < r.y || y >= r.y + r.h) {
-#ifdef SOLVER_DIAGNOSTICS
-                        printf("eliminating number for rect %d at %d,%d\n",
-                               k, x, y);
-#endif
                         remove_number_placement(w, h, &numbers[k],
                                                 m, rectbyplace);
                         m--;           /* don't skip the next one */
@@ -846,9 +750,6 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
         }
 
         if (!done_something) {
-#ifdef SOLVER_DIAGNOSTICS
-            printf("terminating deduction loop\n");
-#endif
             break;
         }
     }
@@ -856,10 +757,6 @@ static int rect_solver(int w, int h, int nrects, struct numberdata *numbers,
     cleanup:
     ret = 1;
     for (i = 0; i < nrects; i++) {
-#ifdef SOLVER_DIAGNOSTICS
-        printf("rect %d has %d possible placements\n",
-               i, rectpositions[i].n);
-#endif
         if (rectpositions[i].n <= 0) {
             ret = 0;                   /* inconsistency */
         } else if (rectpositions[i].n > 1) {
@@ -1035,10 +932,6 @@ static void place_rect(game_params *params, int *grid, struct rect r)
         for (y = r.y; y < r.y+r.h; y++) {
             index(params, grid, x, y) = idx;
         }
-#ifdef GENERATION_DIAGNOSTICS
-    printf("    placing rectangle at (%d,%d) size %d x %d\n",
-           r.x, r.y, r.w, r.h);
-#endif
 }
 
 static struct rect find_rect(game_params *params, int *grid, int x, int y)
@@ -1078,59 +971,6 @@ static struct rect find_rect(game_params *params, int *grid, int x, int y)
 
     return r;
 }
-
-#ifdef GENERATION_DIAGNOSTICS
-static void display_grid(game_params *params, int *grid, int *numbers, int all)
-{
-    unsigned char *egrid = snewn((params->w*2+3) * (params->h*2+3),
-                                 unsigned char);
-    int x, y;
-    int r = (params->w*2+3);
-
-    memset(egrid, 0, (params->w*2+3) * (params->h*2+3));
-
-    for (x = 0; x < params->w; x++)
-        for (y = 0; y < params->h; y++) {
-            int i = index(params, grid, x, y);
-            if (x == 0 || index(params, grid, x-1, y) != i)
-                egrid[(2*y+2) * r + (2*x+1)] = 1;
-            if (x == params->w-1 || index(params, grid, x+1, y) != i)
-                egrid[(2*y+2) * r + (2*x+3)] = 1;
-            if (y == 0 || index(params, grid, x, y-1) != i)
-                egrid[(2*y+1) * r + (2*x+2)] = 1;
-            if (y == params->h-1 || index(params, grid, x, y+1) != i)
-                egrid[(2*y+3) * r + (2*x+2)] = 1;
-        }
-
-    for (y = 1; y < 2*params->h+2; y++) {
-        for (x = 1; x < 2*params->w+2; x++) {
-            if (!((y|x)&1)) {
-                int k = numbers ? index(params, numbers, x/2-1, y/2-1) : 0;
-                if (k || (all && numbers)) printf("%2d", k); else printf("  ");
-            } else if (!((y&x)&1)) {
-                int v = egrid[y*r+x];
-                if ((y&1) && v) v = '-';
-                if ((x&1) && v) v = '|';
-                if (!v) v = ' ';
-                putchar(v);
-                if (!(x&1)) putchar(v);
-            } else {
-                int c, d = 0;
-                if (egrid[y*r+(x+1)]) d |= 1;
-                if (egrid[(y-1)*r+x]) d |= 2;
-                if (egrid[y*r+(x-1)]) d |= 4;
-                if (egrid[(y+1)*r+x]) d |= 8;
-                c = " ??+?-++?+|+++++"[d];
-                putchar(c);
-                if (!(x&1)) putchar(c);
-            }
-        }
-        putchar('\n');
-    }
-
-    sfree(egrid);
-}
-#endif
 
 static char *new_game_desc(const game_params *params_in, random_state *rs,
                char **aux, bool interactive)
@@ -1258,11 +1098,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
                 if (index(params2, grid, x, y) < 0) {
                     int dirs[4], ndirs;
 
-#ifdef GENERATION_DIAGNOSTICS
-                    display_grid(params2, grid, NULL, false);
-                    printf("singleton at %d,%d\n", x, y);
-#endif
-
                     /*
                      * Check in which directions we can feasibly extend
                      * the singleton. We can extend in a particular
@@ -1311,9 +1146,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
                         switch (dir) {
                           case 1:          /* right */
                             assert(x < params2->w+1);
-#ifdef GENERATION_DIAGNOSTICS
-                            printf("extending right\n");
-#endif
                             r1 = find_rect(params2, grid, x+1, y);
                             r2.x = x;
                             r2.y = y;
@@ -1325,9 +1157,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
                             break;
                           case 2:          /* up */
                             assert(y > 0);
-#ifdef GENERATION_DIAGNOSTICS
-                            printf("extending up\n");
-#endif
                             r1 = find_rect(params2, grid, x, y-1);
                             r2.x = x;
                             r2.y = r1.y;
@@ -1339,9 +1168,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
                             break;
                           case 4:          /* left */
                             assert(x > 0);
-#ifdef GENERATION_DIAGNOSTICS
-                            printf("extending left\n");
-#endif
                             r1 = find_rect(params2, grid, x-1, y);
                             r2.x = r1.x;
                             r2.y = y;
@@ -1353,9 +1179,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
                             break;
                           case 8:          /* down */
                             assert(y < params2->h+1);
-#ifdef GENERATION_DIAGNOSTICS
-                            printf("extending down\n");
-#endif
                             r1 = find_rect(params2, grid, x, y+1);
                             r2.x = x;
                             r2.y = y;
@@ -1394,11 +1217,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
                                 }
                         }
 #endif
-
-#ifdef GENERATION_DIAGNOSTICS
-                        printf("need the 3x3 trick\n");
-#endif
-
                         /*
                          * FIXME: If the maximum rectangle area for
                          * this grid is less than 9, we ought to
@@ -1435,11 +1253,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
             int *grid2, *expand, *where;
             game_params params3real, *params3 = &params3real;
 
-#ifdef GENERATION_DIAGNOSTICS
-            printf("before expansion:\n");
-            display_grid(params2, grid, NULL, true);
-#endif
-
             /*
              * Set up the new grid.
              */
@@ -1459,13 +1272,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
                 x = random_upto(rs, params2->h-1);
                 expand[x]++;
             }
-
-#ifdef GENERATION_DIAGNOSTICS
-            printf("expand[] = {");
-            for (y = 0; y < params2->h-1; y++)
-                printf(" %d", expand[y]);
-            printf(" }\n");
-#endif
 
             /*
              * Perform the expansion. The way this works is that we
@@ -1563,10 +1369,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
             sfree(expand);
             sfree(where);
 
-#ifdef GENERATION_DIAGNOSTICS
-            printf("after expansion:\n");
-            display_grid(params3, grid2, NULL, true);
-#endif
             /*
              * Transpose.
              */
@@ -1593,11 +1395,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
                 params->w = params->h;
                 params->h = tmp;
             }
-
-#ifdef GENERATION_DIAGNOSTICS
-            printf("after transposition:\n");
-            display_grid(params2, grid, NULL, true);
-#endif
         }
 
         /*
@@ -1721,10 +1518,6 @@ static char *new_game_desc(const game_params *params_in, random_state *rs,
 
         *aux = ai;
     }
-
-#ifdef GENERATION_DIAGNOSTICS
-    display_grid(params, grid, numbers, false);
-#endif
 
     desc = snewn(11 * params->w * params->h, char);
     p = desc;
@@ -2071,12 +1864,6 @@ struct game_ui {
     int y1;
     int x2;
     int y2;
-    /*
-     * These are the coordinates of a cursor, whether it's visible, and
-     * whether it was used to start a drag.
-     */
-    int cur_x, cur_y;
-    bool cur_visible, cur_dragging;
 };
 
 static void reset_ui(game_ui *ui)
@@ -2097,9 +1884,6 @@ static game_ui *new_ui(const game_state *state)
     game_ui *ui = snew(game_ui);
     reset_ui(ui);
     ui->erasing = false;
-    ui->cur_x = ui->cur_y = 0;
-    ui->cur_visible = false;
-    ui->cur_dragging = false;
     return ui;
 }
 
@@ -2272,17 +2056,10 @@ static char *interpret_move(const game_state *from, game_ui *ui,
     coord_round(FROMCOORD((float)x), FROMCOORD((float)y), &xc, &yc);
 
     if (button == LEFT_BUTTON) {
-        if (ui->drag_start_x >= 0 && ui->cur_dragging)
-            reset_ui(ui); /* cancel keyboard dragging */
         startdrag = true;
-        ui->cur_visible = ui->cur_dragging = false;
         active = true;
     } else if (button == LEFT_RELEASE) {
         /* We assert we should have had a LEFT_BUTTON first. */
-        if (ui->cur_visible) {
-            ui->cur_visible = false;
-            active = true;
-        }
         enddrag = true;
     } else if (button != LEFT_DRAG) {
         return NULL;
@@ -2455,7 +2232,6 @@ static game_state *execute_move(const game_state *from, const game_ui *ui, const
  */
 
 #define CORRECT (1L<<16)
-#define CURSOR  (1L<<17)
 
 #define COLOUR(k) ( (k)==1 ? COL_LINE : (k)==2 ? COL_DRAG : COL_DRAGERASE )
 #define MAX4(x,y,z,w) ( max(max(x,y),max(z,w)) )
@@ -2490,7 +2266,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_CORRECT    * 3 + i] = 0.75F;
         ret[COL_LINE       * 3 + i] = 0.0F;
         ret[COL_TEXT       * 3 + i] = 0.0F;
-        ret[COL_CURSOR     * 3 + i] = 0.5F;
     }
 
     *ncolours = NCOLOURS;
@@ -2530,7 +2305,6 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
 
     draw_rect(dr, cx, cy, TILE_SIZE+1, TILE_SIZE+1, COL_GRID);
     draw_rect(dr, cx+GRIDW, cy+GRIDW, TILE_SIZE-GRIDW, TILE_SIZE-GRIDW,
-          (bgflags & CURSOR) ? COL_CURSOR :
           (bgflags & CORRECT) ? COL_CORRECT : COL_BACKGROUND);
 
     if (grid(state,x,y)) {
@@ -2656,11 +2430,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             c |= (unsigned long)index(state,corners,x+1,y+1) << 14;
         if (index(state, state->correct, x, y))
             c |= CORRECT;
-        if (ui->cur_visible && ui->cur_x == x && ui->cur_y == y)
-            c |= CURSOR;
 
         if (index(ds,ds->visible,x,y) != c) {
-            draw_tile(dr, ds, state, x, y, hedge, vedge, corners, (c & (CORRECT|CURSOR)) );
+            draw_tile(dr, ds, state, x, y, hedge, vedge, corners, (c & CORRECT) );
             index(ds,ds->visible,x,y) = c;
         }
     }

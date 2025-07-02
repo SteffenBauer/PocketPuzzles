@@ -16,7 +16,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <ctype.h>
 #include <math.h>
 
@@ -494,8 +493,6 @@ static game_state *new_game(midend *me, const game_params *params,
             pos++;
             continue;
         }
-        else if(*p != '_')
-            assert(!"Description contains invalid characters");
 
         ++p;
     }
@@ -636,10 +633,7 @@ static void set_blacks(game_state *state, const game_params *params,
     case SYMM_REF2: degree = 2; rotate = 0; break;
     case SYMM_ROT4: degree = 4; rotate = 1; break;
     case SYMM_REF4: degree = 4; rotate = 0; break;
-    default: assert(!"Unknown symmetry type");
     }
-    if (params->symm == SYMM_ROT4 && (h != w))
-        assert(!"4-fold symmetry unavailable without square grid");
 
     if (degree == 4) {
         rw = w / 2;

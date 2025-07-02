@@ -316,12 +316,6 @@ static const struct offset offsets[] = {
     { -1,  0 }  /* left */
 };
 
-#ifdef DEBUGGING
-static const char *dirstrs[] = {
-    "UP", "RIGHT", "DOWN", "LEFT"
-};
-#endif
-
 static bool range2grid(const game_state *state, int rangeno, int *x, int *y,
                        int *direction)
 {
@@ -382,7 +376,6 @@ static bool grid2range(const game_state *state, int x, int y, int *rangeno)
         ret = (state->h-y) + state->w + state->w + state->h;
     }
     *rangeno = ret;
-    debug(("grid2range: (%d,%d) rangeno = %d\n", x, y, ret));
     return true;
 }
 
@@ -467,8 +460,6 @@ struct game_ui {
     int flash_laserno;
     int errors;
     bool newmove;
-    int cur_x, cur_y;
-    bool cur_visible;
     int flash_laser; /* 0 = never, 1 = always, 2 = if anim. */
 };
 
@@ -478,9 +469,6 @@ static game_ui *new_ui(const game_state *state)
     ui->flash_laserno = LASER_EMPTY;
     ui->errors = 0;
     ui->newmove = false;
-
-    ui->cur_x = ui->cur_y = 1;
-    ui->cur_visible = false;
 
     ui->flash_laser = 0;
 
@@ -532,9 +520,6 @@ enum { LOOK_LEFT, LOOK_FORWARD, LOOK_RIGHT };
  * of us, or to our front-left or front-right. */
 static bool isball(game_state *state, int gx, int gy, int direction, int lookwhere)
 {
-    debug(("isball, (%d, %d), dir %s, lookwhere %s\n", gx, gy, dirstrs[direction],
-           lookwhere == LOOK_LEFT ? "LEFT" :
-           lookwhere == LOOK_FORWARD ? "FORWARD" : "RIGHT"));
     OFFSET(gx,gy,direction);
     if (lookwhere == LOOK_LEFT)
         OFFSET(gx,gy,direction-1);
@@ -542,8 +527,6 @@ static bool isball(game_state *state, int gx, int gy, int direction, int lookwhe
         OFFSET(gx,gy,direction+1);
     else if (lookwhere != LOOK_FORWARD)
         assert(!"unknown lookwhere");
-
-    debug(("isball, new (%d, %d)\n", gx, gy));
 
     /* if we're off the grid (into the firing range) there's never a ball. */
     if (gx < 1 || gy < 1 || gx > state->w || gy > state->h)
@@ -567,21 +550,17 @@ static int fire_laser_internal(game_state *state, int x, int y, int direction)
     /* I've just chosen to prioritise instant-hit over instant-reflection;
      * I can't find anywhere that gives me a definite algorithm for this. */
     if (isball(state, x, y, direction, LOOK_FORWARD)) {
-        debug(("Instant hit at (%d, %d)\n", x, y));
-    return LASER_HIT;           /* hit */
+        return LASER_HIT;           /* hit */
     }
 
     if (isball(state, x, y, direction, LOOK_LEFT) ||
         isball(state, x, y, direction, LOOK_RIGHT)) {
-        debug(("Instant reflection at (%d, %d)\n", x, y));
-    return LASER_REFLECT;           /* reflection */
+        return LASER_REFLECT;           /* reflection */
     }
     /* move us onto the grid. */
     OFFSET(x, y, direction);
 
     while (1) {
-        debug(("fire_laser: looping at (%d, %d) pointing %s\n",
-               x, y, dirstrs[direction]));
         if (grid2range(state, x, y, &unused)) {
             int exitno;
 
@@ -594,24 +573,20 @@ static int fire_laser_internal(game_state *state, int x, int y, int direction)
 
         if (isball(state, x, y, direction, LOOK_FORWARD)) {
             /* we're facing a ball; send back a reflection. */
-            debug(("Ball ahead of (%d, %d)", x, y));
             return LASER_HIT;           /* hit */
         }
 
         if (isball(state, x, y, direction, LOOK_LEFT)) {
             /* ball to our left; rotate clockwise and look again. */
-            debug(("Ball to left; turning clockwise.\n"));
             direction += 1; direction %= 4;
             continue;
         }
         if (isball(state, x, y, direction, LOOK_RIGHT)) {
             /* ball to our right; rotate anti-clockwise and look again. */
-            debug(("Ball to rightl turning anti-clockwise.\n"));
             direction += 3; direction %= 4;
             continue;
         }
         /* ... otherwise, we have no balls ahead of us so just move one step. */
-        debug(("No balls; moving forwards.\n"));
         OFFSET(x, y, direction);
     }
 }
@@ -876,24 +851,10 @@ static char *interpret_move(const game_state *state, game_ui *ui,
     if (button == LEFT_BUTTON || button == RIGHT_BUTTON) {
         gx = FROMDRAW(x);
         gy = FROMDRAW(y);
-        ui->cur_visible = false;
         wouldflash = 1;
     } else if (button == LEFT_RELEASE) {
         ui->flash_laser = 0;
         return MOVE_UI_UPDATE;
-    } else if (IS_CURSOR_SELECT(button)) {
-        if (ui->cur_visible) {
-            gx = ui->cur_x;
-            gy = ui->cur_y;
-            ui->flash_laser = 0;
-            wouldflash = 2;
-        } else {
-            ui->cur_visible = true;
-            return MOVE_UI_UPDATE;
-        }
-        /* Fix up 'button' for the below logic. */
-        if (button == CURSOR_SELECT2) button = RIGHT_BUTTON;
-        else button = LEFT_BUTTON;
     }
 
     if (gx != -1 && gy != -1) {
@@ -946,7 +907,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
 
         case REVEAL:
             if (!CAN_REVEAL(state)) return nullret;
-            if (ui->cur_visible) ui->cur_x = ui->cur_y = 1;
             sprintf(buf, "R");
             break;
 
@@ -1145,9 +1105,6 @@ static void draw_arena_tile(drawing *dr, const game_state *gs,
     int gs_tile = GRID(gs, gx, gy), ds_tile = GRID(ds, gx, gy);
     int dx = TODRAW(gx), dy = TODRAW(gy);
 
-    if (ui->cur_visible && ui->cur_x == gx && ui->cur_y == gy)
-        gs_tile |= FLAG_CURSOR;
-
     if (gs_tile != ds_tile || gs->reveal != ds->reveal || force) {
         int bcol, ocol, bg;
 
@@ -1251,9 +1208,6 @@ static void draw_laser_tile(drawing *dr, const game_state *gs,
 
     gs_tile |= wrong | omitted;
 
-    if (ui->cur_visible && ui->cur_x == gx && ui->cur_y == gy)
-        gs_tile |= FLAG_CURSOR;
-
     if (gs_tile != ds_tile || force) {
         draw_rect(dr, dx, dy, TILE_SIZE, TILE_SIZE, COL_BACKGROUND);
         draw_rect_outline(dr, dx, dy, TILE_SIZE, TILE_SIZE, COL_GRID);
@@ -1341,11 +1295,9 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
 
     /* draw the 'finish' button */
     if (CAN_REVEAL(state)) {
-        int outline = (ui->cur_visible && ui->cur_x == 0 && ui->cur_y == 0)
-            ? COL_CURSOR : COL_BALL;
         clip(dr, TODRAW(0)-1, TODRAW(0)-1, TILE_SIZE+1, TILE_SIZE+1);
         draw_circle(dr, TODRAW(0) + ds->crad-1, TODRAW(0) + ds->crad-1, ds->crad-1,
-                    outline, outline);
+                    COL_BALL, COL_BALL);
         draw_circle(dr, TODRAW(0) + ds->crad-1, TODRAW(0) + ds->crad-1, ds->crad-3,
                     COL_BUTTON, COL_BUTTON);
         unclip(dr);

@@ -217,35 +217,12 @@ static const char *validate_params(const game_params *params, bool full)
     return NULL;
 }
 
-#if 0
-/*
- * Bodge to permit varying the recursion depth for testing purposes.
-
-To test two Floods against each other:
-
-paste <(./flood.1 --generate 100 12x12c6m0#12345 | cut -f2 -d,) <(./flood.2 --generate 100 12x12c6m0#12345 | cut -f2 -d,) | awk '{print $2-$1}' | sort -n | uniq -c | awk '{print $2,$1}' | tee z
-
-and then run gnuplot and plot "z".
-
- */
-static int rdepth = 0;
-#define RECURSION_DEPTH (rdepth)
-void check_recursion_depth(void)
-{
-    if (!rdepth) {
-        const char *depthstr = getenv("FLOOD_DEPTH");
-        rdepth = depthstr ? atoi(depthstr) : 1;
-        rdepth = rdepth > 0 ? rdepth : 1;
-    }
-}
-#else
 /*
  * Last time I empirically checked this, depth 3 was a noticeable
  * improvement on 2, but 4 only negligibly better than 3.
  */
 #define RECURSION_DEPTH 3
 #define check_recursion_depth() (void)0
-#endif
 
 struct solver_scratch {
     int *queue[2];
@@ -278,51 +255,6 @@ static void free_scratch(struct solver_scratch *scratch)
     sfree(scratch->rgrids);
     sfree(scratch);
 }
-
-#if 0
-/* Diagnostic routines you can uncomment if you need them */
-void dump_grid(int w, int h, const char *grid, const char *titlefmt, ...)
-{
-    int x, y;
-    if (titlefmt) {
-        va_list ap;
-        va_start(ap, titlefmt);
-        vprintf(titlefmt, ap);
-        va_end(ap);
-        printf(":\n");
-    } else {
-        printf("Grid:\n");
-    }
-    for (y = 0; y < h; y++) {
-        printf("  ");
-        for (x = 0; x < w; x++) {
-            printf("%1x", grid[y*w+x]);
-        }
-        printf("\n");
-    }
-}
-
-void dump_dist(int w, int h, const int *dists, const char *titlefmt, ...)
-{
-    int x, y;
-    if (titlefmt) {
-        va_list ap;
-        va_start(ap, titlefmt);
-        vprintf(titlefmt, ap);
-        va_end(ap);
-        printf(":\n");
-    } else {
-        printf("Distances:\n");
-    }
-    for (y = 0; y < h; y++) {
-        printf("  ");
-        for (x = 0; x < w; x++) {
-            printf("%3d", dists[y*w+x]);
-        }
-        printf("\n");
-    }
-}
-#endif
 
 /*
  * Search a grid to find the most distant square(s). Return their
@@ -358,36 +290,23 @@ static void search(int w, int h, char *grid, int x0, int y0,
             qhead = qnext;
             qtail = 0;
             qnext = 0;
-#if 0
-            printf("switch queue, new dist %d, queue %d\n", currdist, qhead);
-#endif
         } else if (remaining == 0 && qnext == 0) {
             break;
         } else {
             int pos = scratch->queue[qcurr][qtail++];
             int y = pos / w;
             int x = pos % w;
-#if 0
-            printf("checking neighbours of %d,%d\n", x, y);
-#endif
             int dir;
             for (dir = 0; dir < 4; dir++) {
                 int y1 = y + (dir == 1 ? 1 : dir == 3 ? -1 : 0);
                 int x1 = x + (dir == 0 ? 1 : dir == 2 ? -1 : 0);
                 if (0 <= x1 && x1 < w && 0 <= y1 && y1 < h) {
                     int pos1 = y1*w+x1;
-#if 0
-                    printf("trying %d,%d: colours %d-%d dist %d\n", x1, y1,
-                           grid[pos], grid[pos1], scratch->dist[pos]);
-#endif
                     if (scratch->dist[pos1] == -1 &&
                         ((grid[pos1] == grid[pos] &&
                           scratch->dist[pos] == currdist) ||
                          (grid[pos1] != grid[pos] &&
                           scratch->dist[pos] == currdist - 1))) {
-#if 0
-                        printf("marking %d,%d dist %d\n", x1, y1, currdist);
-#endif
                         scratch->queue[qcurr][qhead++] = pos1;
                         scratch->queue[qcurr^1][qnext++] = pos1;
                         scratch->dist[pos1] = currdist;
@@ -475,9 +394,7 @@ static char choosemove_recurse(int w, int h, char *grid, int x0, int y0,
     bestcontrol = 0;
     bestmove = -1;
 
-#if 0
-    dump_grid(w, h, grid, "before choosemove_recurse %d", depth);
-#endif
+
     for (move = 0; move < maxmove; move++) {
         if (grid[y0*w+x0] == move)
             continue;
@@ -499,17 +416,7 @@ static char choosemove_recurse(int w, int h, char *grid, int x0, int y0,
             choosemove_recurse(w, h, tmpgrid, x0, y0, maxmove, scratch,
                                depth+1, &dist, &number, &control);
         } else {
-#if 0
-            dump_grid(w, h, tmpgrid, "after move %d at depth %d",
-                      move, depth);
-#endif
             search(w, h, tmpgrid, x0, y0, scratch, &dist, &number, &control);
-#if 0
-            dump_dist(w, h, scratch->dist, "after move %d at depth %d",
-                      move, depth);
-            printf("move %d at depth %d: %d at %d\n",
-                   depth, move, number, dist);
-#endif
         }
         if (dist < bestdist ||
             (dist == bestdist &&
@@ -522,10 +429,6 @@ static char choosemove_recurse(int w, int h, char *grid, int x0, int y0,
             bestmove = move;
         }
     }
-#if 0
-    printf("best at depth %d was %d (%d at %d, %d controlled)\n",
-           depth, bestmove, bestnumber, bestdist, bestcontrol);
-#endif
 
     *rbestdist = bestdist;
     *rbestnumber = bestnumber;
@@ -553,8 +456,10 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     /*
      * Invent a random grid.
      */
-    for (i = 0; i < wh; i++)
-        scratch->grid[i] = random_upto(rs, params->colours);
+    do {
+        for (i = 0; i < wh; i++)
+            scratch->grid[i] = random_upto(rs, params->colours);
+    } while (completed(w, h, scratch->grid));
 
     /*
      * Run the solver, and count how many moves it uses.
@@ -631,13 +536,10 @@ static game_state *new_game(midend *me, const game_params *params,
 
     for (i = 0; i < wh; i++) {
         char c = *desc++;
-        assert(c);
         if (c >= '0' && c <= '9')
             c -= '0';
         else if (c >= 'A' && c <= 'Z')
             c = 10 + (c - 'A');
-        else
-            assert(!"bad colour");
         state->grid[i] = c;
     }
     assert(*desc == ',');
@@ -850,11 +752,9 @@ static game_state *execute_move(const game_state *state, const game_ui *ui, cons
 
         sol->moves = snewn(sol->nmoves, char);
         for (i = 0, p = move; i < sol->nmoves; i++) {
-            assert(*p);
             sol->moves[i] = atoi(p);
             p += strspn(p, "0123456789");
             if (*p) {
-                assert(*p == ',');
                 p++;
             }
         }

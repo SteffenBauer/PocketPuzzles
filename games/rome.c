@@ -1923,7 +1923,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
             
             if((c & FD_KBMASK) == c) {
                 if(p & FM_UP)
-                    rome_draw_arrow(dr, (x+1)*tilesize, (y+0.75)*tilesize, tilesize*0.12, FM_UP, COL_ARROW_PENCIL);            
+                    rome_draw_arrow(dr, (x+1)*tilesize, (y+0.75)*tilesize, tilesize*0.12, FM_UP, COL_ARROW_PENCIL);
                 if(p & FM_DOWN)
                     rome_draw_arrow(dr, (x+1)*tilesize, (y+1.25)*tilesize, tilesize*0.12, FM_DOWN, COL_ARROW_PENCIL);
                 if(p & FM_LEFT)

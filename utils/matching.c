@@ -309,7 +309,7 @@ int matching(int nl, int nr, int **adjlists, int *adjsizes,
     size = matching_scratch_size(nl, nr);
     scratch = malloc(size);
     if (!scratch)
-	return -1;
+        return -1;
 
     ret = matching_with_scratch(scratch, nl, nr, adjlists, adjsizes,
                                 rs, outl, outr);

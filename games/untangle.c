@@ -242,16 +242,11 @@ static int64 mulu32to64(unsigned long x, unsigned long y)
     t = (b & 0xFFFF) << 16;
     ret.lo += t;
     if (ret.lo < t)
-    ret.hi++;
+        ret.hi++;
     t = (c & 0xFFFF) << 16;
     ret.lo += t;
     if (ret.lo < t)
-    ret.hi++;
-
-#ifdef DIAGNOSTIC_VIA_LONGLONG
-    assert(((unsigned long long)ret.hi << 32) + ret.lo ==
-       (unsigned long long)x * y);
-#endif
+        ret.hi++;
 
     return ret;
 }
@@ -260,27 +255,20 @@ static int64 mul32to64(long x, long y)
 {
     int sign = +1;
     int64 ret;
-#ifdef DIAGNOSTIC_VIA_LONGLONG
-    long long realret = (long long)x * y;
-#endif
 
     if (x < 0)
-    x = -x, sign = -sign;
+        x = -x, sign = -sign;
     if (y < 0)
-    y = -y, sign = -sign;
+        y = -y, sign = -sign;
 
     ret = mulu32to64(x, y);
 
     if (sign < 0) {
-    ret.hi = -ret.hi;
-    ret.lo = -ret.lo;
+        ret.hi = -ret.hi;
+        ret.lo = -ret.lo;
     if (ret.lo)
         ret.hi--;
     }
-
-#ifdef DIAGNOSTIC_VIA_LONGLONG
-    assert(((unsigned long long)ret.hi << 32) + ret.lo == realret);
-#endif
 
     return ret;
 }
@@ -294,7 +282,7 @@ static int64 dotprod64(long a, long b, long p, long q)
     ab.hi += pq.hi;
     ab.lo += pq.lo;
     if (ab.lo < pq.lo)
-    ab.hi++;
+        ab.hi++;
     return ab;
 }
 
@@ -672,12 +660,10 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     m = count234(edges);
     ea = snewn(m, edge);
     for (i = 0; (e = index234(edges, i)) != NULL; i++) {
-        assert(i < m);
         ea[i].a = min(tmp[e->a], tmp[e->b]);
         ea[i].b = max(tmp[e->a], tmp[e->b]);
         retlen += 1 + sprintf(buf, "%d-%d", ea[i].a, ea[i].b);
     }
-    assert(i == m);
     qsort(ea, m, sizeof(*ea), edgecmpC);
 
     ret = snewn(retlen, char);
@@ -688,7 +674,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         k += sprintf(ret + k, "%s%d-%d", sep, ea[i].a, ea[i].b);
         sep = ",";
     }
-    assert(k < retlen);
 
     sfree(ea);
     }
@@ -721,7 +706,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     for (i = 0; i < n; i++)
         k += sprintf(auxstr+k, ";P%d:%ld,%ld/%ld", i,
              pts2[i].x, pts2[i].y, pts2[i].d);
-    assert(k < auxlen);
     *aux = auxstr;
     retlen = strlen(ret);
     ret = sresize(ret, retlen + 2 + strlen(auxstr), char);
@@ -843,19 +827,15 @@ static game_state *new_game(midend *me, const game_params *params,
 
     while (*desc) {
         a = atoi(desc);
-        assert(a >= 0 && a < params->n);
         while (*desc && isdigit((unsigned char)*desc)) desc++;
-        assert(*desc == '-');
         desc++;                   /* eat dash */
         b = atoi(desc);
-        assert(b >= 0 && b < params->n);
         while (*desc && isdigit((unsigned char)*desc)) desc++;
         if (*desc && *desc == ';') {
             desc++;               /* eat semicolon */
             break;
         }
         if (*desc) {
-            assert(*desc == ',');
             desc++;               /* eat comma */
         }
         addedge(state->graph->edges, a, b);

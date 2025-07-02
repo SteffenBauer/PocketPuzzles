@@ -41,8 +41,6 @@
 enum {
     COL_BACKGROUND,
     COL_GRID,
-    COL_CURSOR_A,
-    COL_CURSOR_B,
     COL_WATER,
     COL_SHIP_CLUE,
     COL_SHIP_GUESS,
@@ -202,11 +200,8 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
 
 static game_params *default_params(void)
 {
-    assert(DEFAULT_PRESET < lenof(boats_presets));
     game_params *ret = NULL;
-
     game_fetch_preset(DEFAULT_PRESET, NULL, &ret);
-    
     return ret;
 }
 
@@ -552,7 +547,6 @@ enum { STATUS_COMPLETE, STATUS_INCOMPLETE, STATUS_INVALID };
 #define FE_COLLISION 0x01 
 #define FE_MISMATCH  0x02
 #define FE_FLEET     0x04
-#define FD_CURSOR    0x08
 
 struct boats_run 
 {
@@ -997,19 +991,6 @@ static int boats_collect_runs(game_state *state, struct boats_run *runs)
                 runs[i].ships++;
         }
     }
-    
-#if 0
-    if (solver_verbose) {
-        int d;
-        for(d = 0; d < i; d++)
-        {
-            printf("RUN: row=%i start=%i len=%i ships=%i %s\n",
-                runs[d].row, runs[d].start, runs[d].len, runs[d].ships,
-                runs[d].horizontal ? "Horizontal" : "Vertical"); 
-        }
-    }
-#endif
-    
     return i;
 }
 
@@ -1233,7 +1214,10 @@ static int boats_solver_place_ship(game_state *state, int x, int y)
      */
     
     int w = state->w;
+    int h = state->h;
     int ret = 0;
+
+    assert(x >= 0 && x < w && y >= 0 && y < h);
 
     if(state->grid[y*w+x] == WATER)
     {
@@ -2820,9 +2804,6 @@ restart:
  * User interface *
  * ************** */
 struct game_ui {
-    int cx, cy;
-    bool cursor;
-    
     char drag_from, drag_to;
     bool drag_ok;
     int dsx, dex, dsy, dey;
@@ -2835,8 +2816,6 @@ static game_ui *new_ui(const game_state *state)
     ret->drag_from = 0;
     ret->drag_to = 0;
     ret->dsx = ret->dex = ret->dsy = ret->dey = -1;
-    ret->cx = ret->cy = 0;
-    ret->cursor = false;
     ret->drag_ok = false;
     
     return ret;
@@ -2951,8 +2930,6 @@ static char *interpret_move(const game_state *state, game_ui *ui, const game_dra
             ui->drag_ok = true;
             ui->dsx = ui->dex = gx;
             ui->dsy = ui->dey = gy;
-            ui->cursor = false;
-            
             return MOVE_UI_UPDATE;
         } else {
             if (gy >= h && gx >= w) pos = -1;
@@ -3094,8 +3071,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_BACKGROUND        * 3 + i] = 1.0F;
         ret[COL_GRID              * 3 + i] = 0.0F;
         ret[COL_WATER             * 3 + i] = 0.75F;
-        ret[COL_CURSOR_A          * 3 + i] = 0.0F;
-        ret[COL_CURSOR_B          * 3 + i] = 1.0F;
         ret[COL_SHIP_CLUE         * 3 + i] = 0.0F;
         ret[COL_SHIP_GUESS        * 3 + i] = 0.0F;
         ret[COL_SHIP_ERROR        * 3 + i] = 0.25F;
@@ -3162,9 +3137,9 @@ static void boats_draw_ship(drawing *dr, int tx, int ty, double tilesize, char s
     double cx, cy, r;
     int coords[8];
     double off = tilesize / 20;
-    
+
     assert(IS_SHIP(ship));
-    
+
     cx = tx + (tilesize/2);
     cy = ty + (tilesize/2);
     r = (tilesize/2) - (off * 2);
@@ -3451,13 +3426,10 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
     {
         tx = x*tilesize + (0.5 * tilesize);
         ty = y*tilesize + (0.5 * tilesize);
-        
-        if(ui->cursor && ui->cx == x && ui->cy == y)
-            ds->gridfs[y*w+x] |= FD_CURSOR;
-        
+
         ship = state->gridclues[y*w+x] != EMPTY ? state->gridclues[y*w+x]
             : state->grid[y*w+x];
-        
+
         /* Check if this square is being changed by a drag */
         if(ui->drag_ok && x >= xmin && x <= xmax &&
             y >= ymin && y <= ymax && state->gridclues[y*w+x] == EMPTY &&
@@ -3508,15 +3480,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds, const game_state *oldst
                 draw_text(dr, tx + tilesize/2, ty + tilesize/2,
                   FONT_VARIABLE, tilesize/2, ALIGN_HCENTRE|ALIGN_VCENTRE,
                   COL_COUNT_ERROR, "?");
-            }
-            
-            if(ds->gridfs[y*w+x] & FD_CURSOR)
-            {
-                int coff = tilesize/8;
-                bgcol = state->grid[y*w+x] == EMPTY ? 
-                    COL_CURSOR_A : COL_CURSOR_B;
-                draw_rect_outline(dr, tx + coff, ty + coff,
-                    tilesize - coff*2 + 1, tilesize - coff*2 + 1, bgcol);
             }
         }
     }

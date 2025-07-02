@@ -31,7 +31,6 @@ enum {
     COL_0_DOT,
     COL_1_DOT,
     COL_ERROR,
-    COL_CURSOR,
     NCOLOURS
 };
 
@@ -48,7 +47,6 @@ struct game_params {
 #define F_COLOR_1    0x02
 #define F_SINGLE     0x04
 #define F_ERROR      0x08
-#define F_CURSOR     0x10
 
 #define COLMASK (F_COLOR_0|F_COLOR_1)
 
@@ -603,7 +601,6 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
 struct game_ui {
     int cx, cy;
-    bool cursor;
 
     int *drag;
     int dragtype;
@@ -616,7 +613,6 @@ static game_ui *new_ui(const game_state *state)
     game_ui *ret = snew(game_ui);
 
     ret->cx = ret->cy = 0;
-    ret->cursor = false;
     ret->ndrags = 0;
     ret->dragtype = -1;
     ret->drag = state ? snewn(state->w*state->h, int) : NULL;
@@ -696,7 +692,6 @@ static char *interpret_move(const game_state *state, game_ui *ui,
             && oy >= (ds->tilesize / 2) && gy < h) {
             hx = gx;
             hy = gy;
-            ui->cursor = false;
         }
         else
             return NULL;
@@ -862,7 +857,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_1          * 3 + i] = 0.25F;
         ret[COL_1_DOT      * 3 + i] = 1.0F;
         ret[COL_ERROR      * 3 + i] = 0.5F;
-        ret[COL_CURSOR     * 3 + i] = 0.5F;
     }
 
     *ncolours = NCOLOURS;
@@ -934,8 +928,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 }
             }
 
-            if (ui->cursor && ui->cx == x && ui->cy == y) tile |= F_CURSOR;
-
             if(ds->grid[y*w + x] == tile)
                 continue;
             
@@ -955,15 +947,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
             if (tile & F_ERROR)
                 clusters_draw_err_rectangle(dr, COORD(x), COORD(y), tilesize);
 
-            if (tile & F_CURSOR)
-            {
-                draw_rect(dr, COORD(x), COORD(y), tilesize / 12, tilesize - 1, COL_CURSOR);
-                draw_rect(dr, COORD(x), COORD(y), tilesize - 1, tilesize / 12, COL_CURSOR);
-                draw_rect(dr, COORD(x) + tilesize - 1 - tilesize / 12, COORD(y), tilesize / 12, tilesize - 1,
-                    COL_CURSOR);
-                draw_rect(dr, COORD(x), COORD(y) + tilesize - 1 - tilesize / 12, tilesize - 1, tilesize / 12,
-                    COL_CURSOR);
-            }
         }
     }
 }

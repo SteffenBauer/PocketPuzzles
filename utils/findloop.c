@@ -47,9 +47,9 @@ bool findloop_is_loop_edge(struct findloopstate *pv, int u, int v)
      * check if any ancestor is reachable from that child's subtree.
      */
     if (pv[u].parent == v && pv[u].shallowest_reachable >= pv[u].depth)
-	return false;
+        return false;
     if (pv[v].parent == u && pv[v].shallowest_reachable >= pv[v].depth)
-	return false;
+        return false;
     return true;
 }
 
@@ -57,15 +57,15 @@ static bool findloop_is_bridge_oneway(
     struct findloopstate *pv, int u, int v, int *u_vertices, int *v_vertices)
 {
     if (pv[u].parent != v)
-	return false;
+        return false;
     if (pv[u].shallowest_reachable < pv[u].depth)
-	return false;
+        return false;
 
     if (u_vertices)
-	*u_vertices = pv[u].subtree_size;
+        *u_vertices = pv[u].subtree_size;
     if (v_vertices) {
-	int r = pv[u].component_root;
-	*v_vertices = pv[r].subtree_size - pv[u].subtree_size;
+        int r = pv[u].component_root;
+        *v_vertices = pv[r].subtree_size - pv[u].subtree_size;
     }
 
     return true;
@@ -75,11 +75,11 @@ bool findloop_is_bridge(
     struct findloopstate *pv, int u, int v, int *u_vertices, int *v_vertices)
 {
     return (findloop_is_bridge_oneway(pv, u, v, u_vertices, v_vertices) ||
-	    findloop_is_bridge_oneway(pv, v, u, v_vertices, u_vertices));
+            findloop_is_bridge_oneway(pv, v, u, v_vertices, u_vertices));
 }
 
 bool findloop_run(struct findloopstate *pv, int nvertices,
-		  neighbour_fn_t neighbour, void *ctx)
+                  neighbour_fn_t neighbour, void *ctx)
 {
     int u, v, w;
     bool any_loop = false;
@@ -132,74 +132,63 @@ bool findloop_run(struct findloopstate *pv, int nvertices,
      */
 
     for (u = 0; u < nvertices; u++) {
-	pv[u].depth = -1;
-	pv[u].shallowest_reachable = nvertices;
-	pv[u].subtree_size = 1;
-	pv[u].parent = -1;
-	pv[u].component_root = u;
-	pv[u].prev = u - 1;
-	pv[u].next = (u == nvertices - 1) ? -1 : u + 1;
+        pv[u].depth = -1;
+        pv[u].shallowest_reachable = nvertices;
+        pv[u].subtree_size = 1;
+        pv[u].parent = -1;
+        pv[u].component_root = u;
+        pv[u].prev = u - 1;
+        pv[u].next = (u == nvertices - 1) ? -1 : u + 1;
     }
-
-    debug(("------------- new find_loops, nvertices=%d\n", nvertices));
 
     v = 0;
     while (v != -1) {
-	u = v;
-	if (pv[u].depth < 0) {
-	    /* Our first visit to the node (on the way down the search) */
-	    if (pv[u].parent < 0) {
-		debug(("    new component: processing %d\n", u));
-		pv[u].depth = 0;
-		pv[u].component_root = u;
-	    } else {
-		debug(("    processing %d\n", u));
-		pv[u].depth = pv[pv[u].parent].depth + 1;
-		pv[u].component_root = pv[pv[u].parent].component_root;
-	    }
+        u = v;
+        if (pv[u].depth < 0) {
+            /* Our first visit to the node (on the way down the search) */
+            if (pv[u].parent < 0) {
+                pv[u].depth = 0;
+                pv[u].component_root = u;
+            } else {
+                pv[u].depth = pv[pv[u].parent].depth + 1;
+                pv[u].component_root = pv[pv[u].parent].component_root;
+            }
 
-	    /* Schedule visits to the neighbors, and then back here */
-	    v = u;
-	    for (w = neighbour(u, ctx); w >= 0; w = neighbour(-1, ctx)) {
-		if (w == pv[u].parent)
-		    continue;
-		if (pv[w].depth < 0) {
-		    debug(("    adding edge %d-%d to tree\n", u, w));
-		    pv[w].parent = u;
-		    /* Remove the neighbour from the linked list */
-		    if (pv[w].prev >= 0)
-			pv[pv[w].prev].next = pv[w].next;
-		    if (pv[w].next >= 0)
-			pv[pv[w].next].prev = pv[w].prev;
-		    /* Add it to the start of the list */
-		    pv[w].prev = pv[v].prev;
-		    pv[w].next = v;
-		    if (pv[v].prev >= 0)
-			pv[pv[v].prev].next = w;
-		    pv[v].prev = w;
-		    /* Mark this as the next node to visit */
-		    v = w;
-		} else {
-		    debug(("    found back-edge %d-%d\n", u, w));
-		    pv[u].shallowest_reachable =
-			min(pv[u].shallowest_reachable, pv[w].depth);
-		    any_loop = true;
-		}
-	    }
-	} else {
-	    debug(("    wrapping up %d. |subtree| = %d, min(reachable) = %d\n",
-		   u, pv[u].subtree_size, pv[u].shallowest_reachable));
-	    if (pv[u].parent >= 0) {
-		if (pv[u].shallowest_reachable >= pv[u].depth) {
-		    debug(("    bridge: %d-%d\n", u, pv[u].parent));
-		}
-		pv[pv[u].parent].subtree_size += pv[u].subtree_size;
-		pv[pv[u].parent].shallowest_reachable =
-		    min(pv[pv[u].parent].shallowest_reachable,
-			pv[u].shallowest_reachable);
-	    }
-	    v = pv[u].next;
-	}
+            /* Schedule visits to the neighbors, and then back here */
+            v = u;
+            for (w = neighbour(u, ctx); w >= 0; w = neighbour(-1, ctx)) {
+                if (w == pv[u].parent)
+                    continue;
+                if (pv[w].depth < 0) {
+                    pv[w].parent = u;
+                    /* Remove the neighbour from the linked list */
+                    if (pv[w].prev >= 0)
+                        pv[pv[w].prev].next = pv[w].next;
+                    if (pv[w].next >= 0)
+                        pv[pv[w].next].prev = pv[w].prev;
+                    /* Add it to the start of the list */
+                    pv[w].prev = pv[v].prev;
+                    pv[w].next = v;
+                    if (pv[v].prev >= 0)
+                        pv[pv[v].prev].next = w;
+                    pv[v].prev = w;
+                    /* Mark this as the next node to visit */
+                    v = w;
+                } else {
+                    pv[u].shallowest_reachable =
+                        min(pv[u].shallowest_reachable, pv[w].depth);
+                    any_loop = true;
+                }
+            }
+        } else {
+            if (pv[u].parent >= 0) {
+                pv[pv[u].parent].subtree_size += pv[u].subtree_size;
+                pv[pv[u].parent].shallowest_reachable =
+                    min(pv[pv[u].parent].shallowest_reachable,
+                        pv[u].shallowest_reachable);
+            }
+            v = pv[u].next;
+        }
     }
 
     return any_loop;

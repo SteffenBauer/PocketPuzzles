@@ -2477,7 +2477,6 @@ static const char *current_key_label(const game_ui *ui,
 #define DOMINO_GUTTER (TILESIZE / 16)
 #define DOMINO_RADIUS (TILESIZE / 8)
 #define DOMINO_COFFSET (DOMINO_GUTTER + DOMINO_RADIUS)
-#define CURSOR_RADIUS (TILESIZE / 4)
 #define DOMINO_CLASH (TILESIZE / 6)
 
 #define COORD(x) ( (x) * TILESIZE + BORDER )
@@ -2783,13 +2782,6 @@ enum {
 #define DF_HIGHLIGHT     0x10
 #define DF_CLASH         0x20
 
-#define DF_CURSOR        0x01000
-#define DF_CURSOR_USEFUL 0x02000
-#define DF_CURSOR_XBASE  0x10000
-#define DF_CURSOR_XMASK  0x30000
-#define DF_CURSOR_YBASE  0x40000
-#define DF_CURSOR_YMASK  0xC0000
-
 #define CEDGE_OFF       (TILESIZE / 8)
 #define IS_EMPTY(s,x,y) ((s)->grid[(y)*(s)->w+(x)] == ((y)*(s)->w+(x)))
 
@@ -2881,17 +2873,6 @@ static void draw_tile(drawing *dr, game_drawstate *ds, const game_state *state,
             draw_rect(dr, cx+TILESIZE-1, cy+DOMINO_GUTTER,
                       3, TILESIZE-2*DOMINO_GUTTER, COL_EDGE);
         nc = COL_TEXT;
-    }
-
-    if (flags & DF_CURSOR) {
-        int curx = ((flags & DF_CURSOR_XMASK) / DF_CURSOR_XBASE) & 3;
-        int cury = ((flags & DF_CURSOR_YMASK) / DF_CURSOR_YBASE) & 3;
-        int ox = cx + curx*TILESIZE/2;
-        int oy = cy + cury*TILESIZE/2;
-
-        draw_rect_corners(dr, ox, oy, CURSOR_RADIUS, nc);
-            if (flags & DF_CURSOR_USEFUL)
-            draw_rect_corners(dr, ox, oy, CURSOR_RADIUS+1, nc);
     }
 
     if (flags & DF_HIGHLIGHT) {

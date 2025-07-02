@@ -40,24 +40,15 @@
 
 #include "puzzles.h"
 
-#ifdef STANDALONE_SOLVER
-bool verbose = 0;
-#endif
-
 enum {
     COL_BACKGROUND, COL_HIGHLIGHT, COL_LOWLIGHT,
-    COL_TEXT, COL_ERROR, COL_CURSOR, COL_DONE,
+    COL_TEXT, COL_ERROR, COL_DONE,
     COL_NEUTRAL, COL_NEGATIVE, COL_POSITIVE, COL_NOT,
     NCOLOURS
 };
 
 /* Cell states. */
 enum { EMPTY = 0, NEUTRAL = EMPTY, POSITIVE = 1, NEGATIVE = 2 };
-
-#if defined DEBUGGING || defined STANDALONE_SOLVER
-static const char *cellnames[3] = { "neutral", "positive", "negative" };
-#define NAME(w) ( ((w) < 0 || (w) > 2) ? "(out of range)" : cellnames[(w)] )
-#endif
 
 #define GRID2CHAR(g) ( ((g) >= 0 && (g) <= 2) ? ".+-"[(g)] : '?' )
 #define CHAR2GRID(c) ( (c) == '+' ? POSITIVE : (c) == '-' ? NEGATIVE : NEUTRAL )
@@ -722,47 +713,25 @@ static int solve_unflag(game_state *state, int i, int which,
                         const char *why, rowcol *rc)
 {
     int ii, ret = 0;
-#if defined DEBUGGING || defined STANDALONE_SOLVER
-    int w = state->w;
-#endif
 
     assert(i >= 0 && i < state->wh);
     ii = state->common->dominoes[i];
     if (ii == i) return 0;
 
-    if (rc)
-        debug(("solve_unflag: (%d,%d) for %s %d", i%w, i/w, rc->name, rc->num));
-
     if ((state->flags[i] & GS_SET) && (state->grid[i] == which)) {
-        debug(("solve_unflag: (%d,%d) already %s, cannot unflag (for %s).",
-               i%w, i/w, NAME(which), why));
         return -1;
     }
     if ((state->flags[ii] & GS_SET) && (state->grid[ii] == OPPOSITE(which))) {
-        debug(("solve_unflag: (%d,%d) opposite already %s, cannot unflag (for %s).",
-               ii%w, ii/w, NAME(OPPOSITE(which)), why));
         return -1;
     }
     if (POSSIBLE(i, which)) {
         state->flags[i] |= NOTFLAG(which);
         ret++;
-        debug(("solve_unflag: (%d,%d) CANNOT be %s (%s)",
-               i%w, i/w, NAME(which), why));
     }
     if (POSSIBLE(ii, OPPOSITE(which))) {
         state->flags[ii] |= NOTFLAG(OPPOSITE(which));
         ret++;
-        debug(("solve_unflag: (%d,%d) CANNOT be %s (%s, other half)",
-               ii%w, ii/w, NAME(OPPOSITE(which)), why));
     }
-#ifdef STANDALONE_SOLVER
-    if (verbose && ret) {
-        printf("(%d,%d)", i%w, i/w);
-        if (rc) printf(" in %s %d", rc->name, rc->num);
-        printf(" cannot be %s (%s); opposite (%d,%d) not %s.\n",
-               NAME(which), why, ii%w, ii/w, NAME(OPPOSITE(which)));
-    }
-#endif
     return ret;
 }
 
@@ -789,9 +758,6 @@ static int solve_set(game_state *state, int i, int which,
                      const char *why, rowcol *rc)
 {
     int ii;
-#if defined DEBUGGING || defined STANDALONE_SOLVER
-    int w = state->w;
-#endif
 
     ii = state->common->dominoes[i];
 
@@ -799,38 +765,17 @@ static int solve_set(game_state *state, int i, int which,
         if (state->grid[i] == which) {
             return 0; /* was already set and held, do nothing. */
         } else {
-            debug(("solve_set: (%d,%d) is held and %s, cannot set to %s",
-                   i%w, i/w, NAME(state->grid[i]), NAME(which)));
             return -1;
         }
     }
     if ((state->flags[ii] & GS_SET) && state->grid[ii] != OPPOSITE(which)) {
-        debug(("solve_set: (%d,%d) opposite is held and %s, cannot set to %s",
-                ii%w, ii/w, NAME(state->grid[ii]), NAME(OPPOSITE(which))));
         return -1;
     }
     if (!POSSIBLE(i, which)) {
-        debug(("solve_set: (%d,%d) NOT %s, cannot set.", i%w, i/w, NAME(which)));
-        return -1;
     }
     if (!POSSIBLE(ii, OPPOSITE(which))) {
-        debug(("solve_set: (%d,%d) NOT %s, cannot set (%d,%d).",
-               ii%w, ii/w, NAME(OPPOSITE(which)), i%w, i/w));
         return -1;
     }
-
-#ifdef STANDALONE_SOLVER
-    if (verbose) {
-        printf("(%d,%d)", i%w, i/w);
-        if (rc) printf(" in %s %d", rc->name, rc->num);
-        printf(" set to %s (%s), opposite (%d,%d) set to %s.\n",
-               NAME(which), why, ii%w, ii/w, NAME(OPPOSITE(which)));
-    }
-#endif
-    if (rc)
-        debug(("solve_set: (%d,%d) for %s %d", i%w, i/w, rc->name, rc->num));
-    debug(("solve_set: (%d,%d) setting to %s (%s), surrounds first:",
-           i%w, i/w, NAME(which), why));
 
     if (which != NEUTRAL) {
         if (solve_unflag_surrounds(state, i, which) < 0)
@@ -844,8 +789,6 @@ static int solve_set(game_state *state, int i, int which,
 
     state->flags[i] |= GS_SET;
     state->flags[ii] |= GS_SET;
-
-    debug(("solve_set: (%d,%d) set to %s (%s)", i%w, i/w, NAME(which), why));
 
     return 1;
 }
@@ -887,13 +830,7 @@ static int solve_checkfull(game_state *state, rowcol rc, int *counts)
         target = rc.targets[which];
         if (target == -1) continue;
 
-        /*debug(("%s %d for %s: target %d, count %d, unset %d",
-               rc.name, rc.num, NAME(which),
-               target, counts[which], unset[which]));*/
-
         if (target < counts[which]) {
-            debug(("%s %d has too many (%d) %s squares (target %d), impossible!",
-                   rc.name, rc.num, counts[which], NAME(which), target));
             return -1;
         }
         if (target == counts[which]) {
@@ -1050,8 +987,6 @@ static int solve_advancedfull(game_state *state, rowcol rc, int *counts)
             ((state->flags[i+rc.di] & GS_NOTMASK) != GS_NOTNEUTRAL))
             continue;
 
-        debug(("Domino in %s %d at (%d,%d) must be polarised.",
-               rc.name, rc.num, i%state->w, i/state->w));
         state->flags[i] |= GS_MARK;
         state->flags[i+rc.di] |= GS_MARK;
         nfound++;
@@ -1063,11 +998,9 @@ static int solve_advancedfull(game_state *state, rowcol rc, int *counts)
     counts[NEGATIVE] += nfound;
 
     if (rc.targets[POSITIVE] >= 0 && counts[POSITIVE] == rc.targets[POSITIVE]) {
-        debug(("%s %d has now filled POSITIVE:", rc.name, rc.num));
         clearpos = true;
     }
     if (rc.targets[NEGATIVE] >= 0 && counts[NEGATIVE] == rc.targets[NEGATIVE]) {
-        debug(("%s %d has now filled NEGATIVE:", rc.name, rc.num));
         clearneg = true;
     }
 
@@ -1166,10 +1099,6 @@ static int solve_oddlength(game_state *state, rowcol rc, int *counts)
     return ret;
 
 twoodd:
-    debug(("%s %d has >1 odd-length sections, starting at %d,%d and %d,%d.",
-           rc.name, rc.num,
-           startodd%state->w, startodd/state->w,
-           start%state->w, start/state->w));
     return 0;
 }
 
@@ -1280,14 +1209,12 @@ static int solve_countdominoes_nonneutral(game_state *state, rowcol rc, int *cou
  * the continue breaks. */
 #define SOLVE_FOR_ROWCOLS(fn) \
     ret = solve_rowcols(state, fn); \
-    if (ret < 0) { debug(("%s said impossible, cannot solve", #fn)); return -1; } \
+    if (ret < 0) { return -1; } \
     if (ret > 0) continue
 
 static int solve_state(game_state *state, int diff)
 {
     int ret;
-
-    debug(("solve_state, difficulty %s", magnets_diffnames[diff]));
 
     solve_clearflags(state);
     if (solve_startflags(state) < 0) return -1;
@@ -1355,7 +1282,6 @@ static char *game_state_diff(const game_state *src, const game_state *dst,
             }
         }
     }
-    debug(("game_state_diff returns %s", ret));
     return ret;
 }
 
@@ -1439,8 +1365,6 @@ static int lay_dominoes(game_state *state, random_state *rs, int *scratch)
 
         /* ...and lay a domino if we can. */
 
-        debug(("Laying domino at i:%d, (%d,%d)\n", i, i%state->w, i/state->w));
-
         /* The choice of which type of domino to lay here leads to subtle differences
          * in the sorts of boards that get produced. Too much bias towards magnets
          * leads to games that are too easy.
@@ -1460,10 +1384,8 @@ static int lay_dominoes(game_state *state, random_state *rs, int *scratch)
         assert(!(state->flags[i] & GS_NOTNEUTRAL));
 
         if (n < n_initial_neutral) {
-            debug(("  ...laying neutral\n"));
             ret = solve_set(state, i, NEUTRAL, "layout initial neutral", NULL);
         } else {
-            debug(("  ... preferring magnet\n"));
             if (!(state->flags[i] & GS_NOTPOSITIVE))
                 ret = solve_set(state, i, POSITIVE, "layout", NULL);
             else if (!(state->flags[i] & GS_NOTNEGATIVE))
@@ -1472,21 +1394,16 @@ static int lay_dominoes(game_state *state, random_state *rs, int *scratch)
                 ret = solve_set(state, i, NEUTRAL, "layout", NULL);
         }
         if (!ret) {
-            debug(("Unable to lay anything at (%d,%d), giving up.",
-                   i%state->w, i/state->w));
             ret = -1;
             break;
         }
 
         nlaid++;
         ret = solve_unnumbered(state);
-        if (ret == -1)
-            debug(("solve_unnumbered decided impossible.\n"));
         if (ret != 0)
             break;
     }
 
-    debug(("Laid %d dominoes, total %d dominoes.\n", nlaid, state->wh/2));
     return ret;
 }
 
@@ -1494,10 +1411,6 @@ static void gen_game(game_state *new, random_state *rs)
 {
     int ret, x, y, val;
     int *scratch = snewn(new->wh, int);
-
-#ifdef STANDALONE_SOLVER
-    if (verbose) printf("Generating new game...\n");
-#endif
 
     clear_state(new);
     sfree(new->common->dominoes); /* bit grotty. */
@@ -1540,12 +1453,10 @@ static int check_difficulty(const game_params *params, game_state *new,
     if (params->diff > DIFF_EASY) {
         /* If this is too easy, return. */
         if (solve_state(new, params->diff-1) > 0) {
-            debug(("Puzzle is too easy."));
             return -1;
         }
     }
     if (solve_state(new, params->diff) <= 0) {
-        debug(("Puzzle is not soluble at requested difficulty."));
         return -1;
     }
     if (!params->stripclues) return 0;
@@ -1590,7 +1501,6 @@ static int check_difficulty(const game_params *params, game_state *new,
         if (ret == 0 ||
             memcmp(new->grid, grid_correct, new->wh*sizeof(int)) != 0) {
             /* We made it ambiguous: put clue back. */
-            debug(("...now impossible/different, put clue back."));
             rc.targets[which] = target;
             rc.targets[NEUTRAL] = targetn;
         }
@@ -1623,15 +1533,11 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 }
 
 struct game_ui {
-    int cur_x, cur_y;
-    bool cur_visible;
 };
 
 static game_ui *new_ui(const game_state *state)
 {
     game_ui *ui = snew(game_ui);
-    ui->cur_x = ui->cur_y = 0;
-    ui->cur_visible = false;
     return ui;
 }
 
@@ -1643,8 +1549,6 @@ static void free_ui(game_ui *ui)
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
                                const game_state *newstate)
 {
-    if (!oldstate->completed && newstate->completed)
-        ui->cur_visible = false;
 }
 
 struct game_drawstate {
@@ -1658,7 +1562,6 @@ struct game_drawstate {
 #define DS_WHICH_MASK 0xf
 
 #define DS_ERROR    0x10
-#define DS_CURSOR   0x20
 #define DS_SET      0x40
 #define DS_NOTPOS   0x80
 #define DS_NOTNEG   0x100
@@ -1844,7 +1747,6 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_NEGATIVE   * 3 + i] = 0.25F;
         ret[COL_POSITIVE   * 3 + i] = 0.75F;
 
-        ret[COL_CURSOR     * 3 + i] = 0.9F;
         ret[COL_NEUTRAL    * 3 + i] = 0.5F;
         ret[COL_NOT        * 3 + i] = 0.25F;
         ret[COL_ERROR      * 3 + i] = 0.5F;
@@ -2094,10 +1996,6 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 c |= DS_ERROR;
             if (state->flags[idx] & GS_SET)
                 c |= DS_SET;
-
-            if (x == ui->cur_x && y == ui->cur_y && ui->cur_visible)
-                c |= DS_CURSOR;
-
             if (state->flags[idx] & GS_NOTPOSITIVE)
                 c |= DS_NOTPOS;
             if (state->flags[idx] & GS_NOTNEGATIVE)
