@@ -22,6 +22,7 @@
 * *Mosaic*: Possible crash in `solve_game` due to insufficient buffer size
 * *Pearl*: Fix shortcut-loop detection on squares
 * *Mines*: Fix possible hang during game generation
+* dev/gtk.c: Remove dependency on X11 headers
 
 ## 0.8.1 - 2023/12/30
 
