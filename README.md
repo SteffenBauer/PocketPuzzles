@@ -6,7 +6,7 @@ Port of [Simon Tatham's Portable Puzzle Collection](http://www.chiark.greenend.o
 
 [More screenshots](https://github.com/SteffenBauer/PocketPuzzles/blob/master/screenshots/screenshots.md)
 
-[**Download the app here**](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/README.md)
+[**Download the app here**](https://github.com/SteffenBauer/PocketPuzzles/blob/master/DOWNLOAD.md)
 
 Inspired by and building on the work of [Port to Android by Chris Boyle](https://github.com/chrisboyle/sgtpuzzles) and [Puzzles for pocketbook by mnk](https://github.com/svn2github/pocketbook-free/tree/master/puzzles)
 
@@ -41,7 +41,7 @@ I'm interested in reports from more devices; especially how it looks like on col
 
 ### Binary app ready to install
 
-See here [release/README.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/release/README.md) for already compiled app files ready for installation on a PocketBook Firmware 5 and higher device.
+See here [DOWNLOAD.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master/DOWNLOAD.md) for already compiled app files ready for installation on a PocketBook Firmware 5 and higher device.
 
 **Memory usage**: The app itself is around 1.5 MB. It additionally stores the game preferences and the status of the last played game in a separate configuration file, which is usually less than 100 KB. So in total the app will take the space of a few eBooks.
 

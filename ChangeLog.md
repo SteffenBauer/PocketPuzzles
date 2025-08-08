@@ -1,6 +1,6 @@
 ## ChangeLog
 
-## 0.8.2 nightly
+## 0.8.2 - 2025/08/08
 
 ### Changed
 * Switch to SDK-B288-6.8
@@ -13,6 +13,7 @@
 * Remove unused infrastructure to print a game
 * Remove unused cursor controls infrastructure
 * Remove unused debug statements
+* Provide compiled binaries now as GitHub releases assets
 
 ### Added
 * Supports dark mode on firmware >= 6.8 devices
