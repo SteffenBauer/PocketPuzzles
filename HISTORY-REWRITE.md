@@ -6,13 +6,15 @@ As this turned out to be a bad idea, as it was bloating the repository size, thi
 
 If you have an existing clone **please do this now before pulling the repository**:
 
+* Delete your local clone and ***re-clone*** the whole repository again (*easiest* method).
+* Or cleanup your local repository manually:
 ```
 git fetch origin
-git checkout main
-git reset --hard origin/main
+git checkout master
+git reset --hard origin/master
+git reflog expire --expire-unreachable=now --all
+git gc --prune=now --aggressive
 ```
-
-Or even easier: Delete your local clone and ***re-clone*** the whole repository again.
 
 If you don't do this, a new `git pull` with either fail or create a messy "frankenmerge".
 
