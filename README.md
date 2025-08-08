@@ -1,5 +1,7 @@
 # PocketPuzzles
 
+[**IMPORTANT NOTICE FOR PEOPLE WITH A LOCAL REPOSITORY CLONE**](https://github.com/SteffenBauer/PocketPuzzles/blob/master/HISTORY-REWRITE.md)
+
 Port of [Simon Tatham's Portable Puzzle Collection](http://www.chiark.greenend.org.uk/~sgtatham/puzzles/) to the [PocketBook eReader family](https://de.wikipedia.org/wiki/PocketBook)
 
 <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_stars.png" width="220"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_loopy_game.png" width="220"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_loopy_config.png" width="220">
