@@ -1,7 +1,5 @@
 # PocketPuzzles
 
-[**IMPORTANT NOTICE FOR PEOPLE WITH A LOCAL REPOSITORY CLONE**](https://github.com/SteffenBauer/PocketPuzzles/blob/master/HISTORY-REWRITE.md)
-
 Port of [Simon Tatham's Portable Puzzle Collection](http://www.chiark.greenend.org.uk/~sgtatham/puzzles/) to the [PocketBook eReader family](https://de.wikipedia.org/wiki/PocketBook)
 
 <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_chooser_stars.png" width="220"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_loopy_game.png" width="220"> <img src="https://raw.githubusercontent.com/SteffenBauer/PocketPuzzles/master/screenshots/puzzles_loopy_config.png" width="220">
@@ -50,6 +48,8 @@ See here [DOWNLOAD.md](https://github.com/SteffenBauer/PocketPuzzles/blob/master
 ### Manual build
 
 Clone the [pocketbook SDK](https://github.com/blchinezu/pocketbook-sdk/) and set it up for the firmware of your device.
+
+When you already have a local repository clone, [please read this important notice](https://github.com/SteffenBauer/PocketPuzzles/blob/master/HISTORY-REWRITE.md)
 
 Modify the path to your local copy of the SDK in the `Makefile` at the line `PBSDK ?= ...`
 
