@@ -52,6 +52,12 @@ enum {
     NCOLOURS
 };
 
+enum {
+    PREF_CLICK_ACTIONS,
+    PREF_HINTS,
+    N_PREF_ITEMS
+};
+
 enum cell_state {
     STATE_UNMARKED = 0,
     STATE_MARKED = 1,
@@ -118,6 +124,8 @@ struct game_ui {
     bool solved;
     bool in_progress;
     int last_x, last_y, last_state;
+    int click_mode;
+    bool hints;
 };
 
 struct game_drawstate {
@@ -922,12 +930,44 @@ static game_ui *new_ui(const game_state *state)
     ui->last_y = -1;
     ui->last_state = 0;
     ui->solved = false;
+    ui->click_mode = 0;
+    ui->hints = true;
     return ui;
 }
 
 static void free_ui(game_ui *ui)
 {
     sfree(ui);
+}
+
+static config_item *get_prefs(game_ui *ui)
+{
+    config_item *ret;
+
+    ret = snewn(N_PREF_ITEMS+1, config_item);
+
+    ret[PREF_CLICK_ACTIONS].name = "Short/Long click actions";
+    ret[PREF_CLICK_ACTIONS].kw = "short-long";
+    ret[PREF_CLICK_ACTIONS].type = C_CHOICES;
+    ret[PREF_CLICK_ACTIONS].u.choices.choicenames = ":Black/White:White/Black";
+    ret[PREF_CLICK_ACTIONS].u.choices.choicekws = ":black:white";
+    ret[PREF_CLICK_ACTIONS].u.choices.selected = ui->click_mode;
+
+    ret[PREF_HINTS].name = "Show unfinished hints";
+    ret[PREF_HINTS].kw = "show-hints";
+    ret[PREF_HINTS].type = C_BOOLEAN;
+    ret[PREF_HINTS].u.boolean.bval = ui->hints;
+
+    ret[N_PREF_ITEMS].name = NULL;
+    ret[N_PREF_ITEMS].type = C_END;
+
+    return ret;
+}
+
+static void set_prefs(game_ui *ui, const config_item *cfg)
+{
+    ui->click_mode = cfg[PREF_CLICK_ACTIONS].u.choices.selected;
+    ui->hints = cfg[PREF_HINTS].u.boolean.bval;
 }
 
 static void game_changed_state(game_ui *ui, const game_state *oldstate,
@@ -953,11 +993,12 @@ static char *interpret_move(const game_state *state, game_ui *ui,
         cell_state = 
             get_coords(state, state->cells_contents, gameX, gameY);
         if (cell_state) {
-            ui->last_state = *cell_state & (STATE_BLANK | STATE_MARKED);
-            ui->last_state =
-                (ui->last_state +
-                    ((button ==
-                        RIGHT_BUTTON) ? 2 : 1)) % (STATE_BLANK | STATE_MARKED);
+            ui->last_state = *cell_state & (STATE_OK_NUM);
+            if(ui->click_mode == 0)
+                ui->last_state += button == RIGHT_BUTTON ? STATE_BLANK : STATE_MARKED;
+            else
+                ui->last_state += button == RIGHT_BUTTON ? STATE_MARKED : STATE_BLANK;
+            ui->last_state %= STATE_OK_NUM;
         }
         if (button == RIGHT_BUTTON) {
             /* Right button toggles twice */
@@ -1264,25 +1305,28 @@ static void game_set_size(drawing *dr, game_drawstate *ds,
     ds->tilesize = tilesize;
 }
 
-#define COLOUR(ret, i, r, g, b) \
-   ((ret[3*(i)+0] = (r)), (ret[3*(i)+1] = (g)), (ret[3*(i)+2] = (b)))
-
 static float *game_colours(frontend *fe, int *ncolours)
 {
+    int i;
     float *ret = snewn(3 * NCOLOURS, float);
 
-    COLOUR(ret, COL_BACKGROUND,          1.0F, 1.0F, 1.0F);
-    COLOUR(ret, COL_GRID,                0.0F, 0.0F, 0.0F);
-    COLOUR(ret, COL_UNMARKED,            0.5F, 0.5F, 0.5F);
-    COLOUR(ret, COL_MARKED,              0.0F, 0.0F, 0.0F);
-    COLOUR(ret, COL_BLANK,               1.0F, 1.0F, 1.0F);
-    COLOUR(ret, COL_MARKED_UNSOLVED,     0.1F, 0.1F, 0.1F);
-    COLOUR(ret, COL_BLANK_UNSOLVED,      0.9F, 0.9F, 0.9F);
-    COLOUR(ret, COL_TEXT_DARK,           0.0F, 0.0F, 0.0F);
-    COLOUR(ret, COL_TEXT_LIGHT,          1.0F, 1.0F, 1.0F);
-    COLOUR(ret, COL_TEXT_DARK_UNSOLVED,  0.5F, 0.5F, 0.5F);
-    COLOUR(ret, COL_TEXT_LIGHT_UNSOLVED, 0.5F, 0.5F, 0.5F);
-    COLOUR(ret, COL_ERROR,               0.5F, 0.5F, 0.5F);
+    for (i=0;i<3;i++) {
+        ret[COL_BACKGROUND          * 3 + i] = 1.0F;
+        ret[COL_GRID                * 3 + i] = 0.0F;
+        ret[COL_UNMARKED            * 3 + i] = 0.75F;
+        ret[COL_MARKED              * 3 + i] = 0.0F;
+        ret[COL_BLANK               * 3 + i] = 1.0F;
+        ret[COL_MARKED_UNSOLVED     * 3 + i] = 0.1F;
+        ret[COL_BLANK_UNSOLVED      * 3 + i] = 0.9F;
+        ret[COL_TEXT_DARK           * 3 + i] = 0.0F;
+        ret[COL_TEXT_LIGHT          * 3 + i] = 1.0F;
+        ret[COL_TEXT_DARK_UNSOLVED  * 3 + i] = 0.5F;
+        ret[COL_TEXT_LIGHT_UNSOLVED * 3 + i] = 0.5F;
+        ret[COL_ERROR               * 3 + i] = 0.5F;
+    }
+
+    *ncolours = NCOLOURS;
+    return ret;
 
     *ncolours = NCOLOURS;
     return ret;
@@ -1308,7 +1352,7 @@ static void game_free_drawstate(drawing *dr, game_drawstate *ds)
     sfree(ds);
 }
 
-static void draw_cell(drawing *dr, int cell, int ts, signed char clue_val,
+static void draw_cell(drawing *dr, const game_ui *ui, int cell, int ts, signed char clue_val,
                       int x, int y)
 {
     int startX = ((x * ts) + ts/2)-1, startY = ((y * ts)+ ts/2)-1;
@@ -1318,21 +1362,24 @@ static void draw_cell(drawing *dr, int cell, int ts, signed char clue_val,
                       COL_GRID);
 
     if (cell & STATE_MARKED) {
+        color = COL_MARKED;
         if ((clue_val >= 0) && !(cell & STATE_SOLVED)) {
-            color = COL_MARKED_UNSOLVED; text_color = COL_TEXT_LIGHT_UNSOLVED;
+            text_color = ui->hints ? COL_TEXT_LIGHT_UNSOLVED : COL_TEXT_LIGHT;
         }
         else {
-            color = COL_MARKED; text_color = COL_TEXT_LIGHT;
+            text_color = COL_TEXT_LIGHT;
         }
     } else if (cell & STATE_BLANK) {
+        color = COL_BLANK;
         if ((clue_val >= 0) && !(cell & STATE_SOLVED)) {
-            color = COL_BLANK_UNSOLVED; text_color = COL_TEXT_DARK_UNSOLVED;
+            text_color = ui->hints ? COL_TEXT_DARK_UNSOLVED : COL_TEXT_DARK;
         }
         else {
-            color = COL_BLANK; text_color = COL_TEXT_DARK;
+            text_color = COL_TEXT_DARK;
         }
     } else {
-        color = COL_UNMARKED; text_color = COL_TEXT_DARK;
+        color = COL_UNMARKED;
+        text_color = COL_TEXT_DARK;
     }
 
     draw_rect(dr, startX, startY, ts-1, ts-1, color);
@@ -1370,7 +1417,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
                 clue_val = -1;
             }
             if (ds->state[(y * state->width) + x] != cell) {
-                draw_cell(dr, cell, ds->tilesize, clue_val, x, y);
+                draw_cell(dr, ui, cell, ds->tilesize, clue_val, x, y);
                 ds->state[(y * state->width) + x] = cell;
             }
         }
@@ -1429,7 +1476,7 @@ const struct game thegame = {
     free_game,
     true, solve_game,
     false, NULL, NULL, /* can_format_as_text_now, text_format */
-    false, NULL, NULL, /* get_prefs, set_prefs */
+    true, get_prefs, set_prefs,
     new_ui,
     free_ui,
     NULL, /* encode_ui */

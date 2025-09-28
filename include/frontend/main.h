@@ -3,6 +3,8 @@
 
 #include "common.h"
 
+extern void IvSetAppCapability(int caps) __attribute__((weak));
+
 extern void paramScreenInit();
 extern void paramScreenShow();
 extern void paramScreenFree();

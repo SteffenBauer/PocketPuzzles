@@ -44,19 +44,24 @@ void switchToGameScreen() {
     gameScreenShow();
 }
 
-static bool setupAppCapabilities() {
+static bool setupAppCapabilities(bool *canInvertScreen) {
     const char *firmware_version = GetSoftwareVersion();
     char *ptr;
     int major, minor;
 
     ptr = strchr(firmware_version, '.');
     sscanf(ptr+1, "%i.%i", &major, &minor);
-    if (major < 6) {
-        Message(ICON_WARNING, "", "This app only runs under firmware version 6 or higher!", 2000);
+    if (major < 5) {
+        Message(ICON_WARNING, "", "This app only runs under firmware version 5 or higher!", 2000);
         return false;
     }
-    if (minor >= 8)
+    if ((major >= 6) && (minor >= 8) && IvSetAppCapability) {
         IvSetAppCapability(APP_CAPABILITY_SUPPORT_SCREEN_INVERSION);
+        *canInvertScreen = true;
+    }
+    else {
+        *canInvertScreen = false;
+    }
     return true;
 }
 
@@ -95,8 +100,10 @@ void exitApp() {
 }
 
 static int main_handler(int event_type, int param_one, int param_two) {
+    bool canInvertScreen;
+
     if (event_type == EVT_INIT) {
-        if (setupAppCapabilities())
+        if (setupAppCapabilities(&canInvertScreen))
             setupApp();
         else
             CloseApp();
@@ -123,7 +130,7 @@ static int main_handler(int event_type, int param_one, int param_two) {
     else if (event_type == EVT_POINTERUP) {
         SCREEN.release(param_one, param_two);
     }
-    else if (event_type == EVT_SCREEN_INVERSION_MODE_CHANGED) {
+    else if (canInvertScreen && (event_type == EVT_SCREEN_INVERSION_MODE_CHANGED)) {
         FullUpdate();
     }
     return 0;

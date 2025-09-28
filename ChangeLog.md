@@ -1,5 +1,12 @@
 ## ChangeLog
 
+## Nightly
+
+### Changed
+* *Mosaic*: Simplify color palette
+* *Mosaic*: Add option to disable grey-out of unfinished hints
+* Make app backwards-compatible with Firmware V5
+
 ## 0.8.2 - 2025/08/08
 
 ### Changed
