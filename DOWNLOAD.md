@@ -15,7 +15,7 @@ Download `SGTPuzzles.app.zip` from one of the above links. Unzip the file. Conne
 
 ### Nightly build
 
-[Nightly build](https://github.com/SteffenBauer/PocketPuzzles/releases/download/2025092801/SGTPuzzles.app.zip)
+[Nightly build](https://github.com/SteffenBauer/PocketPuzzles/releases/download/20251102/SGTPuzzles.app.zip)
 
 The nightly pre-release will be kept in sync with the current master branch. Install this if you want the newest features; keep in mind that this build might be unstable and less thoroughly tested.
 
