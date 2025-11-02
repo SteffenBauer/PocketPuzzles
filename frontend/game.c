@@ -609,7 +609,6 @@ void gameRelease(int x, int y) {
         }
     }
     gameDrawFurniture();
-    if (!fe->with_statusbar) checkGameEnd();
 }
 
 void gamePrev() {
@@ -711,21 +710,6 @@ static void gameSetupControlButtons() {
             fe->gameButton[i].posy = fe->gamelayout.buttonpanel.starty + fe->gamelayout.control_size + 4;
         }
         fe->gameButton[i].size = fe->gamelayout.control_size;
-    }
-}
-
-static void checkGameEnd() {
-    int status;
-    if (!fe->finished) {
-        status = midend_status(me);
-        if (status == 1) {
-            Message(ICON_INFORMATION, "", "Puzzle is solved!", 2000);
-            fe->finished = true;
-        }
-        else if (status == -1) {
-            Message(ICON_WARNING, "", "Puzzle is lost!", 2000);
-            fe->finished = true;
-        }
     }
 }
 
@@ -936,6 +920,7 @@ void gameScreenShow() {
     gameDrawControlButtons();
     gameDrawStatusBar();
     ink_status_bar(NULL, midend_get_statustext(me));
+    SoftUpdate();
     FullUpdate();
 }
 

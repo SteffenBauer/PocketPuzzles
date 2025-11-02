@@ -422,6 +422,7 @@ void paramScreenShow() {
     paramDrawMenu();
     paramDrawPanel(false);
     paramDrawParams();
+    SoftUpdate();
     FullUpdate();
 }
 

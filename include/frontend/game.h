@@ -119,7 +119,6 @@ static void gameDrawMenu();
 static void gameDrawControlButtons();
 static void gameDrawStatusBar();
 
-static void checkGameEnd();
 static bool coord_in_gamecanvas(int x, int y);
 void gamePrepareFrontend();
 static BUTTON gameGetButton(const char *gameName, char key);

@@ -267,6 +267,7 @@ void chooserScreenShow() {
     chooserDrawMenu();
     chooserDrawChooserButtons(ca.current_chooserpage);
     chooserDrawControlButtons(ca.current_chooserpage);
+    SoftUpdate();
     FullUpdate();
 }
 
