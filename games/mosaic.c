@@ -751,14 +751,13 @@ static char *new_game_desc(const game_params *params, random_state *rs,
                     desc[(y*params->width)+x].clue);
                 location_in_str++;
             } else {
-                if (space_count <= 'z') {
-                    space_count++;
-                } else {
+                if (space_count == 'z') {
                     sprintf(compressed_desc + location_in_str, "%c",
                         space_count);
                     location_in_str++;
                     space_count = 'a'-1;
                 }
+                space_count++;
             }
         }
     }
