@@ -1,5 +1,5 @@
 /*
- * creek.c
+ * flow.c
  */
 
 /*
@@ -37,9 +37,9 @@ enum {
     COL_GRID,
     COL_INK,
     COL_ERROR,
-    COL_CREEK_UNDEF,
-    COL_CREEK_FILLED,
-    COL_CREEK_EMPTY,
+    COL_FLOW_UNDEF,
+    COL_FLOW_FILLED,
+    COL_FLOW_EMPTY,
     NCOLOURS
 };
 
@@ -61,8 +61,8 @@ enum {
 #define ENCODE(upper,title,lower) #lower
 #define CONFIG(upper,title,lower) ":" #title
 enum { DIFFLIST(ENUM) DIFFCOUNT };
-static char const *const creek_diffnames[] = { DIFFLIST(TITLE) };
-static char const creek_diffchars[] = DIFFLIST(ENCODE);
+static char const *const flow_diffnames[] = { DIFFLIST(TITLE) };
+static char const flow_diffchars[] = DIFFLIST(ENCODE);
 #define DIFFCONFIG DIFFLIST(CONFIG)
 
 struct game_params {
@@ -98,7 +98,7 @@ static game_params *default_params(void)
     return ret;
 }
 
-static const struct game_params creek_presets[] = {
+static const struct game_params flow_presets[] = {
     { 6,  6, DIFF_EASY},
     { 6,  6, DIFF_TRICKY},
     { 8,  8, DIFF_TRICKY},
@@ -112,13 +112,13 @@ static bool game_fetch_preset(int i, char **name, game_params **params)
     game_params *ret;
     char str[80];
 
-    if (i < 0 || i >= lenof(creek_presets))
+    if (i < 0 || i >= lenof(flow_presets))
         return false;
 
     ret = snew(game_params);
-    *ret = creek_presets[i];
+    *ret = flow_presets[i];
 
-    sprintf(str, "%dx%d, %s", ret->w, ret->h, creek_diffnames[ret->diff]);
+    sprintf(str, "%dx%d, %s", ret->w, ret->h, flow_diffnames[ret->diff]);
 
     *name = dupstr(str);
     *params = ret;
@@ -150,7 +150,7 @@ static void decode_params(game_params *ret, char const *string)
         int i;
         string++;
         for (i = 0; i < DIFFCOUNT; i++)
-            if (*string == creek_diffchars[i])
+            if (*string == flow_diffchars[i])
                 ret->diff = i;
         if (*string) string++;
     }
@@ -162,7 +162,7 @@ static char *encode_params(const game_params *params, bool full)
 
     sprintf(data, "%dx%d", params->w, params->h);
     if (full)
-        sprintf(data + strlen(data), "d%c", creek_diffchars[params->diff]);
+        sprintf(data + strlen(data), "d%c", flow_diffchars[params->diff]);
 
     return dupstr(data);
 }
@@ -226,44 +226,48 @@ static const char *validate_params(const game_params *params, bool full)
     return NULL;
 }
 
-struct solver_scratch_creek {
+struct solver_scratch_flow {
     DSF *whitedsf;
     signed char *tmpsoln;
     const signed char *clues;
     int depth;
 };
 
-static struct solver_scratch_creek *new_scratch_creek(int w, int h) {
-    struct solver_scratch_creek *ret = snew(struct solver_scratch_creek);
+static struct solver_scratch_flow *new_scratch_flow(int w, int h) {
+    struct solver_scratch_flow *ret = snew(struct solver_scratch_flow);
     ret->whitedsf = dsf_new(w*h);
     ret->tmpsoln = snewn(w*h, signed char);
     ret->depth = 0;
     return ret;
 }
 
-static struct solver_scratch_creek *dup_scratch_creek(int w, int h, const struct solver_scratch_creek *scc) {
-    struct solver_scratch_creek *ret = snew(struct solver_scratch_creek);
+static struct solver_scratch_flow *dup_scratch_flow(int w, int h, const struct solver_scratch_flow *scc) {
+    struct solver_scratch_flow *ret = snew(struct solver_scratch_flow);
     if (scc->whitedsf != NULL) {
         ret->whitedsf = dsf_new(w*h);
         dsf_copy(ret->whitedsf, scc->whitedsf);
+    } else {
+        ret->whitedsf = NULL;
     }     
     
     if (scc->tmpsoln != NULL) {
         ret->tmpsoln = snewn(w*h, signed char); 
         memcpy(ret->tmpsoln, scc->tmpsoln, w*h*sizeof(signed char));
+    } else {
+        ret->tmpsoln = NULL;
     }
     ret->clues = scc->clues;
     ret->depth = scc->depth;
     return ret;
 }
 
-static void free_scratch_creek(struct solver_scratch_creek *scc) {
+static void free_scratch_flow(struct solver_scratch_flow *scc) {
     dsf_free(scc->whitedsf);
     sfree(scc->tmpsoln);
     sfree(scc);
 }
 
-static int vertex_degree_creek(int w, int h, signed char *soln, int x, int y,
+static int vertex_degree_flow(int w, int h, signed char *soln, int x, int y,
                          bool anti, int *sx, int *sy)
 {
     int ret = 0;
@@ -289,7 +293,7 @@ static int vertex_degree_creek(int w, int h, signed char *soln, int x, int y,
     return anti ? ret + (4-neigh) : ret;
 }
 
-static bool check_connectedness_creek(int w, int h, DSF *dsf,
+static bool check_connectedness_flow(int w, int h, DSF *dsf,
                      signed char *soln, const signed char *clues, int level) {
     int x, y, i, first_white = -1;
     int W = w+1, H = h+1;
@@ -409,7 +413,7 @@ static bool check_connectedness_creek(int w, int h, DSF *dsf,
     return true;
 }
 
-static bool check_completed_creek(int w, int h,
+static bool check_completed_flow(int w, int h,
            const signed char *clues,
            signed char *soln,
            unsigned char *errors,
@@ -420,7 +424,7 @@ static bool check_completed_creek(int w, int h,
     bool err = false;
     memset(errors, 0, W*H);
 
-    if (!check_connectedness_creek(w, h, dsf, soln, clues, DIFF_EASY)) {
+    if (!check_connectedness_flow(w, h, dsf, soln, clues, DIFF_EASY)) {
         err = true;
         for (y = 0; y < h; y++) {
             for (x = 0; x < w; x++) {
@@ -438,9 +442,9 @@ static bool check_completed_creek(int w, int h,
             if ((c = clues[y*W+x]) < 0)
                 continue;
 
-            if (vertex_degree_creek(w, h, soln, x, y,
+            if (vertex_degree_flow(w, h, soln, x, y,
                              false, NULL, NULL) > c ||
-                vertex_degree_creek(w, h, soln, x, y,
+                vertex_degree_flow(w, h, soln, x, y,
                              true, NULL, NULL) > 4-c) {
                 errors[y*W+x] |= ERR_VERTEX;
                 err = true;
@@ -458,8 +462,8 @@ static bool check_completed_creek(int w, int h,
     return true;
 }
 
-static void initialize_solver_creek(int w, int h, const signed char *clues,
-                              signed char *soln, struct solver_scratch_creek *scc,
+static void initialize_solver_flow(int w, int h, const signed char *clues,
+                              signed char *soln, struct solver_scratch_flow *scc,
                       int difficulty) {
     memset(soln, 0, w*h);
     scc->clues = clues;
@@ -467,8 +471,8 @@ static void initialize_solver_creek(int w, int h, const signed char *clues,
     return;
 }
                       
-static int creek_solve(int w, int h, const signed char *clues,
-               signed char *soln, struct solver_scratch_creek *scc,
+static int flow_solve(int w, int h, const signed char *clues,
+               signed char *soln, struct solver_scratch_flow *scc,
                int difficulty)
 {
     int W = w+1, H = h+1;
@@ -546,7 +550,7 @@ static int creek_solve(int w, int h, const signed char *clues,
             if (nneigh == 1) {
                 memcpy (scc->tmpsoln, soln, w*h*sizeof(signed char));
                 scc->tmpsoln[nj] = 1;
-                if (!check_connectedness_creek(w, h, scc->whitedsf, scc->tmpsoln, clues, difficulty)) {
+                if (!check_connectedness_flow(w, h, scc->whitedsf, scc->tmpsoln, clues, difficulty)) {
                     soln[nj] = -1;
                     done_something = true;
                 }
@@ -589,19 +593,19 @@ static int creek_solve(int w, int h, const signed char *clues,
                 if (c == 3 && no > 0) {
                     for (i = 0;i < nneigh; i++) {
                         int ret;
-                        struct solver_scratch_creek *tscc = dup_scratch_creek(w,h,scc);
+                        struct solver_scratch_flow *tscc = dup_scratch_flow(w,h,scc);
                         memcpy(scc->tmpsoln, soln, w*h*sizeof(signed char));
                         tscc->depth = 1;
                         j = neighbours[i];
                         if (soln[j] == 0) {
                             scc->tmpsoln[j] = -1;
-                            ret = creek_solve(w,h,clues,scc->tmpsoln, tscc, difficulty);
+                            ret = flow_solve(w,h,clues,scc->tmpsoln, tscc, difficulty);
                             if (ret == 0) {
                                 done_something = true;
                                 soln[j] = 1;
                             }
                         }
-                        free_scratch_creek(tscc);
+                        free_scratch_flow(tscc);
                         if (done_something) break;
                     }
                 }
@@ -609,35 +613,35 @@ static int creek_solve(int w, int h, const signed char *clues,
                 if ((c == 1 || c == 2) && no > 0 && difficulty == DIFF_HARD) {
                     for (i = 0; i < nneigh; i++) {
                         int ret;
-                        struct solver_scratch_creek *tscc = dup_scratch_creek(w,h,scc);
+                        struct solver_scratch_flow *tscc = dup_scratch_flow(w,h,scc);
                         memcpy(scc->tmpsoln, soln, w*h*sizeof(signed char));
                         tscc->depth = 1;
                         j = neighbours[i];
                         if (soln[j] == 0) {
                             scc->tmpsoln[j] = 1;
-                            ret = creek_solve(w,h,clues,scc->tmpsoln, tscc, difficulty);
+                            ret = flow_solve(w,h,clues,scc->tmpsoln, tscc, difficulty);
                             if (ret == 0) {
                                 done_something = true;
                                 soln[j] = -1;
                             }
                         }
-                        free_scratch_creek(tscc);
+                        free_scratch_flow(tscc);
                         if (done_something) break;
 
                         if (c == 2) {
-                            tscc = dup_scratch_creek(w,h,scc);
+                            tscc = dup_scratch_flow(w,h,scc);
                             memcpy(scc->tmpsoln, soln, w*h*sizeof(signed char));
                             tscc->depth = 1;
                             j = neighbours[i];
                             if (soln[j] == 0) {
                                 scc->tmpsoln[j] = -1;
-                                ret = creek_solve(w,h,clues,scc->tmpsoln, tscc, difficulty);
+                                ret = flow_solve(w,h,clues,scc->tmpsoln, tscc, difficulty);
                                 if (ret == 0) {
                                     done_something = true;
                                     soln[j] = 1;
                                 }
                             }
-                            free_scratch_creek(tscc);
+                            free_scratch_flow(tscc);
                             if (done_something) break;
                         }
                     }
@@ -646,18 +650,18 @@ static int creek_solve(int w, int h, const signed char *clues,
                         int ret;
                         int r1,r2;
                         int cb[4];
-                        struct solver_scratch_creek *tscc;
+                        struct solver_scratch_flow *tscc;
                         for (i=0;i<4;i++) cb[i] = 0;
                             
                         for (r1=0;r1<3;r1++)
                         for (r2=r1+1;r2<4;r2++) {
-                            tscc = dup_scratch_creek(w,h,scc);
+                            tscc = dup_scratch_flow(w,h,scc);
                             memcpy(scc->tmpsoln, soln, w*h*sizeof(signed char));
                             tscc->depth = 1;
                             scc->tmpsoln[neighbours[r1]] = 1;
                             scc->tmpsoln[neighbours[r2]] = 1;
-                            ret = creek_solve(w,h,clues,scc->tmpsoln, tscc, difficulty);
-                            free_scratch_creek(tscc);
+                            ret = flow_solve(w,h,clues,scc->tmpsoln, tscc, difficulty);
+                            free_scratch_flow(tscc);
                             if (ret == 0) {
                                 cb[r1]++;
                                 cb[r2]++;
@@ -711,7 +715,7 @@ static int creek_solve(int w, int h, const signed char *clues,
     } while (done_something);
 
        /* Check if grid is connected */
-       if (!check_connectedness_creek(w, h, scc->whitedsf, soln, clues, DIFF_EASY)) {
+       if (!check_connectedness_flow(w, h, scc->whitedsf, soln, clues, DIFF_EASY)) {
            return 0;
        }
 
@@ -728,7 +732,7 @@ static int creek_solve(int w, int h, const signed char *clues,
 /*
  * Filled-grid generator.
  */
-static void creek_generate(int w, int h, signed char *soln, random_state *rs)
+static void flow_generate(int w, int h, signed char *soln, random_state *rs)
 {
     int i;
     int *whites, nw;
@@ -749,7 +753,7 @@ static void creek_generate(int w, int h, signed char *soln, random_state *rs)
         for (i=0;i<(w+h)/2;i++) {
             ridx = random_upto(rs, nw);
             soln[whites[ridx]] = 1;
-            if (!check_connectedness_creek(w, h, connected, soln, NULL, DIFF_EASY))
+            if (!check_connectedness_flow(w, h, connected, soln, NULL, DIFF_EASY))
                 soln[whites[ridx]] = -1;
             else
                 break;
@@ -767,7 +771,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     int w = params->w, h = params->h, W = w+1, H = h+1;
     signed char *soln, *tmpsoln, *clues;
     int *clueindices;
-    struct solver_scratch_creek *scc;
+    struct solver_scratch_flow *scc;
     int x, y, v, i, j;
     char *desc;
     char cont;
@@ -776,13 +780,13 @@ static char *new_game_desc(const game_params *params, random_state *rs,
     tmpsoln = snewn(w*h, signed char);
     clues = snewn(W*H, signed char);
     clueindices = snewn(W*H, int);
-    scc = new_scratch_creek(w, h);
+    scc = new_scratch_flow(w, h);
 
     do {
         /*
          * Create the filled grid.
          */
-        creek_generate(w, h, soln, rs);
+        flow_generate(w, h, soln, rs);
 
         /*
          * Fill in the complete set of clues.
@@ -804,7 +808,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
          * at each clue point we will always have at most one square
          * undecided, which we can then fill in uniquely.
          */
-        initialize_solver_creek(w, h, clues, tmpsoln, scc, DIFF_EASY);
+        initialize_solver_flow(w, h, clues, tmpsoln, scc, DIFF_EASY);
 
         /*
          * Remove as many clues as possible while retaining solubility.
@@ -845,8 +849,8 @@ static char *new_game_desc(const game_params *params, random_state *rs,
 
                 if (pass == j) {
                     clues[y*W+x] = -1;
-                    initialize_solver_creek(w, h, clues, tmpsoln, scc, params->diff);
-                    if (creek_solve(w, h, clues, tmpsoln, scc, params->diff) != 1)
+                    initialize_solver_flow(w, h, clues, tmpsoln, scc, params->diff);
+                    if (flow_solve(w, h, clues, tmpsoln, scc, params->diff) != 1)
                         clues[y*W+x] = v;           /* put it back */
                 }
             }
@@ -857,8 +861,8 @@ static char *new_game_desc(const game_params *params, random_state *rs,
          * down and verifying that it can't manage it.
          */
         if (params->diff > 0) {
-            initialize_solver_creek(w, h, clues, tmpsoln, scc, params->diff - 1);
-            cont = creek_solve(w, h, clues, tmpsoln, scc, params->diff - 1) <= 1;
+            initialize_solver_flow(w, h, clues, tmpsoln, scc, params->diff - 1);
+            cont = flow_solve(w, h, clues, tmpsoln, scc, params->diff - 1) <= 1;
         }
         else
             cont = false;
@@ -900,7 +904,7 @@ static char *new_game_desc(const game_params *params, random_state *rs,
         desc = sresize(desc, p - desc, char);
     }
 
-    free_scratch_creek(scc);
+    free_scratch_flow(scc);
     sfree(clueindices);
     sfree(clues);
     sfree(tmpsoln);
@@ -1013,11 +1017,11 @@ static char *solve_game(const game_state *state, const game_state *currstate,
     int movelen, movesize;
     int x, y;
 
-    struct solver_scratch_creek *scc = new_scratch_creek(w, h);
+    struct solver_scratch_flow *scc = new_scratch_flow(w, h);
     soln = snewn(w*h, signed char);
-    initialize_solver_creek(w, h, state->clues->clues, soln, scc, DIFF_HARD);
-    ret = creek_solve(w, h, state->clues->clues, soln, scc, DIFF_HARD);
-    free_scratch_creek(scc);
+    initialize_solver_flow(w, h, state->clues->clues, soln, scc, DIFF_HARD);
+    ret = flow_solve(w, h, state->clues->clues, soln, scc, DIFF_HARD);
+    free_scratch_flow(scc);
     if (ret != 1) {
         sfree(soln);
         if (ret == 0)
@@ -1279,7 +1283,7 @@ static game_state *execute_move(const game_state *state, const game_ui *ui, cons
         }
     }
 
-    ret->completed = check_completed_creek(w, h, ret->clues->clues, ret->soln, ret->errors, ret->clues->tmpdsf);
+    ret->completed = check_completed_flow(w, h, ret->clues->clues, ret->soln, ret->errors, ret->clues->tmpdsf);
     return ret;
 }
 
@@ -1315,9 +1319,9 @@ static float *game_colours(frontend *fe, int *ncolours)
         ret[COL_GRID         * 3 + i] = 0.25F;
         ret[COL_INK          * 3 + i] = 0.0F;
         ret[COL_ERROR        * 3 + i] = 0.5F;
-        ret[COL_CREEK_UNDEF  * 3 + i] = 0.75F;
-        ret[COL_CREEK_FILLED * 3 + i] = 0.0F;
-        ret[COL_CREEK_EMPTY  * 3 + i] = 1.0F;
+        ret[COL_FLOW_UNDEF   * 3 + i] = 0.75F;
+        ret[COL_FLOW_FILLED  * 3 + i] = 0.0F;
+        ret[COL_FLOW_EMPTY   * 3 + i] = 1.0F;
     }
 
     *ncolours = NCOLOURS;
@@ -1364,7 +1368,7 @@ static void draw_clue(drawing *dr, game_drawstate *ds,
               CLUE_TEXTSIZE, ALIGN_VCENTRE|ALIGN_HCENTRE, tcol, p);
 }
 
-static void draw_tile_creek(drawing *dr, game_drawstate *ds, game_clues *clues,
+static void draw_tile_flow(drawing *dr, game_drawstate *ds, game_clues *clues,
               int x, int y, long v)
 {
     int w = clues->w, h = clues->h, W = w+1 /*, H = h+1 */;
@@ -1377,10 +1381,10 @@ static void draw_tile_creek(drawing *dr, game_drawstate *ds, game_clues *clues,
     clip(dr, cx, cy, tsx, tsy);
 
     draw_rect(dr, cx, cy, tsx, tsy,
-          (v & CR_ERR)   ? COL_CREEK_EMPTY :
-          (v & CR_BLACK) ? COL_CREEK_FILLED :
-          (v & CR_WHITE) ? COL_CREEK_EMPTY :
-          (x<0 || x==w || y<0 || y==h) ? COL_BACKGROUND : COL_CREEK_UNDEF);
+          (v & CR_ERR)   ? COL_FLOW_EMPTY :
+          (v & CR_BLACK) ? COL_FLOW_FILLED :
+          (v & CR_WHITE) ? COL_FLOW_EMPTY :
+          (x<0 || x==w || y<0 || y==h) ? COL_BACKGROUND : COL_FLOW_UNDEF);
 
     if (v & CR_ERR)
         draw_circle(dr, COORD(x) + (ds->tilesize)/2, COORD(y) + (ds->tilesize)/2, (9+ ds->tilesize) / 20, COL_ERROR, COL_GRID);
@@ -1483,7 +1487,7 @@ static void game_redraw(drawing *dr, game_drawstate *ds,
     for (y = -1; y <= h; y++) {
         for (x = -1; x <= w; x++) {
              if (ds->todraw[(y+1)*(w+2)+(x+1)] != ds->grid[(y+1)*(w+2)+(x+1)]) {
-                draw_tile_creek(dr, ds, state->clues, x, y,
+                draw_tile_flow(dr, ds, state->clues, x, y,
                               ds->todraw[(y+1)*(w+2)+(x+1)]);
                 ds->grid[(y+1)*(w+2)+(x+1)] = ds->todraw[(y+1)*(w+2)+(x+1)];
             }
@@ -1510,7 +1514,7 @@ static int game_status(const game_state *state)
 }
 
 #ifdef COMBINED
-#define thegame creek
+#define thegame flow
 #endif
 
 static const char rules[] = "You have a grid of squares, and some circles with clues.\n\n"
@@ -1520,7 +1524,7 @@ static const char rules[] = "You have a grid of squares, and some circles with c
 "This puzzle was contributed by Steffen Bauer.";
 
 const struct game thegame = {
-    "Creek", "games.creek", "creek", rules,
+    "Flow", "games.flow", "flow", rules,
     default_params,
     game_fetch_preset, NULL,  /* preset_menu */
     decode_params,

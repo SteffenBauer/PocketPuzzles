@@ -78,7 +78,7 @@
 - [X] Tents: Change error for tree without tent
 - [X] Palisade: Thicker lines / dotted lines on error / clue error background
 - [X] Palisade: Fill finished regions
-- [X] Unequal: Coloring, <> polygon error, pencil marker persistence, adjacent error display, error circles, presets with Kropki mode
+- [X] Unequal: Coloring, <> polygon error, pencil marker persistence, adjacent error display, error circles, presets with Dots mode
 - [X] Unruly: Coloring
 - [X] Bridges: Add path button
 - [X] Bridges: Adjust game colors
@@ -110,7 +110,7 @@
 - [X] Loopy: Check min/max grid sizes
 - [X] Bridges: Change Path button to indicator
 - [X] Tracks: Rework UI (cell versus border clicks)
-- [X] Creek: Separate from Slant as standalone game
+- [X] Flow: Separate from Slant as standalone game
 - [X] Walls: Expand error display
 - [X] Walls: Expand solver / difficulty levels (area parity criteria)
 - [X] Sticks: Implement dragging
@@ -129,7 +129,7 @@
 - [ ] Slant: 'Hard' game difficulty (backtracking)
 - [ ] Twiddle: Re-activate basic animation (?)
 - [X] Dominosa: Remove limit on highlighted numbers
-- [X] Creek: Smaller border
+- [X] Flow: Smaller border
 - [X] Slant: Smaller border
 - [ ] Pattern: Optimize border size calculation
 - [X] Bridges: Change current hint finish indicator to grey-out
@@ -183,7 +183,7 @@
 - [X] Bricks: Short-click, black or white
 - [X] Bridges: 'Show Grid' button
 - [X] Clusters: Short-click, black or white
-- [X] Creek: Short-click, black or white
+- [X] Flow: Short-click, black or white
 - [X] Map: Show pencil button; Pencil fill, all or possible only
 - [X] Mines: Short-click, flag or reveal
 - [ ] Mosaic: Short-click, black or white
@@ -203,8 +203,8 @@
 - [ ] Binary: Border & tiles 3D effect
 - [ ] Bricks: Cell colors
 - [ ] Clusters: Cell colors
-- [ ] Creek: Cell colors
 - [ ] Fifteen: Border & tiles 3D effect
+- [ ] Flow: Cell colors
 - [ ] Inertia: 3D effect of blocked cells
 - [ ] Mines: Border & Cells 3D effect
 - [ ] Mosaic: Cell colors
@@ -214,6 +214,6 @@
 - [ ] Sixteen: Border & tiles 3D effect
 - [ ] Twiddle: Border & tiles 3D effect
 - [ ] Undead: Monster icons
-- [ ] Unequal/Kropki mode: Hint colors
+- [ ] Unequal/Dots mode: Hint colors
 - [ ] Unruly: Cell colors; 3D effect of fixed cells
 

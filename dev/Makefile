@@ -7,15 +7,15 @@ CC := $(TOOLPATH)$(CC)
 # building with GTK 1.2, or you can set it to `pkg-config gtk+-2.0'
 # if you want to enforce 2.0. The default is to try 2.0 and fall back
 # to 1.2 if it isn't found.
-GTK_CONFIG = sh -c 'pkg-config gtk+-2.0 $$0 2>/dev/null || gtk-config $$0'
+GTK_CONFIG = sh -c 'pkg-config gtk+-2.0 $$0 2>/dev/null || pkg-config gtk+-1.2 $$0'
 
 CFLAGS := -O2 -Wall -Wno-deprecated-declarations -g -I./ -I../include/ `$(GTK_CONFIG) --cflags` \
 		$(CFLAGS)
 XLIBS = `$(GTK_CONFIG) --libs` -lm
 ULIBS = -lm
 
-all: abcd ascent binary blackbox boats bricks bridges clusters creek crossnum cube \
-		dominosa fifteen filling flip flood galaxies guess inertia keen lightup \
+all: abcd ascent binary blackbox boats bricks bridges clusters crossnum cube \
+		dominosa fifteen filling flip flood flow galaxies guess inertia keen lightup \
 		loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs \
 		range rect rome salad samegame signpost singles sixteen slant solo \
 		spokes sticks tents towers tracks twiddle undead unequal unruly \
@@ -72,12 +72,6 @@ clusters: clusters.o no-icon.o drawing.o gtk.o malloc.o \
 		midend.o misc.o random.o version.o  \
 		$(XLFLAGS) $(XLIBS)
 
-creek: creek.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
-		midend.o misc.o random.o version.o
-	$(CC) -o $@ creek.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
-		midend.o misc.o random.o version.o  \
-		$(XLFLAGS) $(XLIBS)
-
 crossnum: drawing.o gtk.o crossnum.o no-icon.o malloc.o \
 		midend.o misc.o random.o version.o
 	$(CC) -o $@ drawing.o gtk.o crossnum.o no-icon.o malloc.o \
@@ -120,6 +114,12 @@ flood: drawing.o flood.o no-icon.o gtk.o malloc.o midend.o \
 	$(CC) -o $@ drawing.o flood.o no-icon.o gtk.o malloc.o midend.o \
 		misc.o random.o version.o  $(XLFLAGS) \
 		$(XLIBS)
+
+flow: flow.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
+		midend.o misc.o random.o version.o
+	$(CC) -o $@ flow.o no-icon.o drawing.o dsf.o gtk.o malloc.o \
+		midend.o misc.o random.o version.o  \
+		$(XLFLAGS) $(XLIBS)
 
 galaxies: drawing.o dsf.o galaxies.o no-icon.o gtk.o \
 		malloc.o midend.o misc.o random.o version.o
@@ -373,8 +373,6 @@ bridges.o: ../games/bridges.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 clusters.o: ../games/clusters.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
-creek.o: ../games/creek.c ../include/puzzles.h
-	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 crossnum.o: ../games/crossnum.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 cube.o: ../games/cube.c ../include/puzzles.h
@@ -388,6 +386,8 @@ filling.o: ../games/filling.c ../include/puzzles.h
 flip.o: ../games/flip.c ../include/puzzles.h ../include/tree234.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 flood.o: ../games/flood.c ../include/puzzles.h
+	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
+flow.o: ../games/flow.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 galaxies.o: ../games/galaxies.c ../include/puzzles.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
@@ -509,5 +509,5 @@ version.o: ../utils/version.c ../include/version.h
 	$(CC) $(COMPAT) $(FWHACK) $(CFLAGS) $(XFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o abcd ascent binary blackbox boats bricks bridges clusters creek crossnum cube dominosa fifteen filling flip flood galaxies guess inertia keen lightup loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs range rect rome salad samegame signpost singles sixteen slant solo spokes sticks tents towers tracks twiddle undead unequal unruly untangle walls
+	rm -f *.o abcd ascent binary blackbox boats bricks bridges clusters crossnum cube dominosa fifteen filling flip flood flow galaxies guess inertia keen lightup loopy magnets map mathrax mines mosaic net palisade pattern pearl pegs range rect rome salad samegame signpost singles sixteen slant solo spokes sticks tents towers tracks twiddle undead unequal unruly untangle walls
 
