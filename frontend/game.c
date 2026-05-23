@@ -895,10 +895,10 @@ bool gameResumeGame() {
             i++;
         }
     }
+    sfree(name);
     if (!validSavegame) {
         return false;
     }
-    sfree(name);
     gamePrepareFrontend();
     return true;
 }
@@ -920,7 +920,6 @@ void gameScreenShow() {
     gameDrawControlButtons();
     gameDrawStatusBar();
     ink_status_bar(NULL, midend_get_statustext(me));
-    SoftUpdate();
     FullUpdate();
 }
 
