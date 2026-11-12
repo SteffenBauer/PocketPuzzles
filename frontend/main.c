@@ -8,6 +8,19 @@
 #include "inkview.h"
 #include "frontend/main.h"
 
+// Firmware 4.x compatibility
+#ifndef IV_KEY_HOME
+#define IV_KEY_HOME KEY_HOME
+#define IV_KEY_PREV KEY_PREV
+#define IV_KEY_NEXT KEY_NEXT
+#endif
+#ifndef APP_CAPABILITY_SUPPORT_SCREEN_INVERSION
+#define APP_CAPABILITY_SUPPORT_SCREEN_INVERSION 0
+#endif
+#ifndef EVT_SCREEN_INVERSION_MODE_CHANGED
+#define EVT_SCREEN_INVERSION_MODE_CHANGED (-1)
+#endif
+
 void switchToParamScreen() {
     SCREEN.currentScreen = SCREEN_PARAMS;
     SCREEN.tap           = &paramTap;
@@ -51,8 +64,8 @@ static bool setupAppCapabilities(bool *canInvertScreen) {
 
     ptr = strchr(firmware_version, '.');
     sscanf(ptr+1, "%i.%i", &major, &minor);
-    if (major < 5) {
-        Message(ICON_WARNING, "", "This app only runs under firmware version 5 or higher!", 2000);
+    if (major < 4) {
+        Message(ICON_WARNING, "", "This app only runs under firmware version 4 or higher!", 2000);
         return false;
     }
     if ((major >= 6) && (minor >= 8) && IvSetAppCapability) {
