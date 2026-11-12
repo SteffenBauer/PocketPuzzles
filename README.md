@@ -17,12 +17,7 @@
 > the root of this repo and compile with
 >
 > ```
-> export SDK="$FRSCSDK"
-> make clean
-> make PBSDK="$SDK" \
->  CC="LD_LIBRARY_PATH=$SDK/lib $SDK/bin/arm-none-linux-gnueabi-gcc" \
->  STRIP="$SDK/bin/arm-none-linux-gnueabi-strip" \
->  CFLAGS="-I$SDK/include -L$SDK/lib -DCOMBINED -std=c99 -DNDEBUG -fsigned-char -fomit-frame-pointer -fPIC -O2 -linkview -lfreetype -lm -D_XOPEN_SOURCE=632 -DVERSION=\\\"0.8.2-fw4\\\""
+> export SDK="/path/to/FRSCSDK" make firmware-4
 > ```
 >
 > I am not that competent, Claude helped me understand and solve the problems
