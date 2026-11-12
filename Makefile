@@ -1,14 +1,18 @@
-.PHONY = all clean
+.PHONY: all clean firmware-4
 
 PBSDK ?= ../SDK-B288/usr
+CROSS ?= arm-obreey-linux-gnueabi
+ARCHFLAGS ?= -march=armv7-a -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp
+EXTRAFLAGS ?=
+
 LIB = $(PBSDK)/lib
-CC = LD_LIBRARY_PATH=$(LIB) $(PBSDK)/bin/arm-obreey-linux-gnueabi-gcc
-STRIP = $(PBSDK)/bin/arm-obreey-linux-gnueabi-strip
+CC = LD_LIBRARY_PATH=$(LIB) $(PBSDK)/bin/$(CROSS)-gcc
+STRIP = $(PBSDK)/bin/$(CROSS)-strip
 PBRES = $(PBSDK)/bin/pbres
 
-GIT_VERSION := "0.8.2-nightly"
+CFLAGS = $(EXTRAFLAGS) -DCOMBINED -std=c99 -DNDEBUG -fsigned-char -fomit-frame-pointer -fPIC -O2 $(ARCHFLAGS) -linkview -lfreetype -lm -D_XOPEN_SOURCE=632 -DVERSION=\"$(GIT_VERSION)\"
 
-CFLAGS = -DCOMBINED -std=c99 -DNDEBUG -fsigned-char -fomit-frame-pointer -fPIC -O2 -march=armv7-a -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp -linkview -lfreetype -lm -D_XOPEN_SOURCE=632 -DVERSION=\"$(GIT_VERSION)\"
+GIT_VERSION := "0.8.2-nightly"
 
 UTILSRCS := $(wildcard utils/*.c)
 UTILOBJS := $(UTILSRCS:%.c=%.o)
@@ -25,6 +29,9 @@ HEADERS := $(wildcard include /*.h)
 ICONS := $(wildcard icons/*/*.bmp)
 
 all: build/SGTPuzzles.app
+
+firmware-4:
+	$(MAKE) --no-print-directory all CROSS=arm-none-linux-gnueabi ARCHFLAGS= EXTRAFLAGS="-DPB_FW4 -I$(PBSDK)/include -L$(PBSDK)/lib"
 
 build/SGTPuzzles.app: icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS)
 	mkdir -p ./build

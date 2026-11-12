@@ -8,6 +8,21 @@
 #include "inkview.h"
 #include "frontend/main.h"
 
+#ifdef PB_FW4
+// Firmware 4.x compatibility: SDK 4.x headers lack these identifiers.
+#define IV_KEY_HOME KEY_HOME
+#define IV_KEY_PREV KEY_PREV
+#define IV_KEY_NEXT KEY_NEXT
+#define APP_CAPABILITY_SUPPORT_SCREEN_INVERSION 0   // unused: requires FW >= 6.8
+#define EVT_SCREEN_INVERSION_MODE_CHANGED (-1)      // never sent on FW 4
+#define MIN_FW_MAJOR 4
+#else
+#define MIN_FW_MAJOR 5
+#endif
+
+#define STR_(x) #x
+#define STR(x) STR_(x)
+
 void switchToParamScreen() {
     SCREEN.currentScreen = SCREEN_PARAMS;
     SCREEN.tap           = &paramTap;
@@ -51,8 +66,8 @@ static bool setupAppCapabilities(bool *canInvertScreen) {
 
     ptr = strchr(firmware_version, '.');
     sscanf(ptr+1, "%i.%i", &major, &minor);
-    if (major < 5) {
-        Message(ICON_WARNING, "", "This app only runs under firmware version 5 or higher!", 2000);
+    if (major < MIN_FW_MAJOR) {
+        Message(ICON_WARNING, "", "This app only runs under firmware version STR(MIN_FW_MAJOR) or higher!", 2000);
         return false;
     }
     if ((major >= 6) && (minor >= 8) && IvSetAppCapability) {

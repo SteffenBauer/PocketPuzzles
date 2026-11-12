@@ -1,3 +1,27 @@
+> [!IMPORTANT]
+> This is a fork of
+> [SteffenBauer/PocketPuzzles](https://github.com/SteffenBauer/PocketPuzzles)
+> with the objective of compiling for firmware version 4.x for my pocketbook
+> touch lux 2
+>
+> Such firmware version can be found here
+> [blchinezu/pocketbook-sdk](https://github.com/blchinezu/pocketbook-sdk). The
+> folder `FRSCSDK/` contains the firmware version 4.x
+>
+> By luck, this downgrade is really easy. The app have not been fully tested
+> buts seems to work fine. The only change is some new aliases in the file
+> `frontend/main.c` for the retro-compatibility
+>
+> To compile for 4.x, one need to clone the pocketbook-sdk mentionned above,
+> export the path to it `export FRSCSDK="/path/to/FRSCSDK"`, then navigate to
+> the root of this repo and compile with
+>
+> ```
+> export SDK="/path/to/FRSCSDK" make firmware-4
+> ```
+>
+> I am not that competent, Claude helped me understand and solve the problems
+
 # PocketPuzzles
 
 Port of [Simon Tatham's Portable Puzzle Collection](http://www.chiark.greenend.org.uk/~sgtatham/puzzles/) to the [PocketBook eReader family](https://de.wikipedia.org/wiki/PocketBook)
@@ -88,4 +112,3 @@ Lots of hacking and reverse-engineering, as documentation for PocketBook app dev
 Build and installation is completely **on your own risk**! You must be aware that this software could brick your device.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
