@@ -31,7 +31,7 @@ ICONS := $(wildcard icons/*/*.bmp)
 all: build/SGTPuzzles.app
 
 firmware-4:
-	$(MAKE) --no-print-directory all CROSS=arm-none-linux-gnueabi ARCHFLAGS= EXTRAFLAGS="-I$(PBSDK)/include -L$(PBSDK)/lib"
+	$(MAKE) --no-print-directory all CROSS=arm-none-linux-gnueabi ARCHFLAGS= EXTRAFLAGS="-DPB_FW4 -I$(PBSDK)/include -L$(PBSDK)/lib"
 
 build/SGTPuzzles.app: icons/icons.c $(GAMEOBJS) $(FRONTENDOBJS) $(UTILOBJS)
 	mkdir -p ./build
